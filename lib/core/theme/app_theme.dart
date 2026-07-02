@@ -184,38 +184,42 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.dark,
+        surface: Colors.black,
+        background: Colors.black,
       ),
       textTheme: _buildTextTheme(Colors.white),
       appBarTheme: AppBarTheme(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
         titleTextStyle: GoogleFonts.inter(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
       ),
-      scaffoldBackgroundColor: const Color(0xFF121212),
+      scaffoldBackgroundColor: Colors.black,
       cardTheme: CardTheme(
-        color: const Color(0xFF1E1E2E),
-        elevation: 0,
+        color: const Color(0xFF0A0A0A),
+        shadowColor: AppColors.primary.withOpacity(0.15),
+        elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFF2A2A3E), width: 1),
+          side: const BorderSide(color: Color(0xFF1A1A1A), width: 1),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF1E1E2E),
+        fillColor: const Color(0xFF0A0A0A),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2A2A3E)),
+          borderSide: const BorderSide(color: Color(0xFF1A1A1A)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2A2A3E)),
+          borderSide: const BorderSide(color: Color(0xFF1A1A1A)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -228,6 +232,27 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         labelStyle: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
         hintStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 14),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.black,
+        selectedItemColor: AppColors.primaryLight,
+        unselectedItemColor: Colors.white38,
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+      ),
+      dialogTheme: DialogTheme(
+        backgroundColor: const Color(0xFF0A0A0A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF1A1A1A), width: 1),
+        ),
+        elevation: 10,
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Color(0xFF0A0A0A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
     );
   }
