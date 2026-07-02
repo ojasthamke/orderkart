@@ -1,0 +1,60 @@
+name: Flutter Build CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Flutter App
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Set up Java JDK (required for Android builds)
+      - name: Set up Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. Set up Flutter environment
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      # 4. Get all packages/dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 5. Build Android Release APK
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      # 6. Build Flutter Web Release
+      - name: Build Flutter Web
+        run: flutter build web --release
+
+      # 7. Upload APK Artifact
+      - name: Upload Android APK Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      # 8. Upload Web Release Artifact
+      - name: Upload Web Build Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-web
+          path: build/web/
