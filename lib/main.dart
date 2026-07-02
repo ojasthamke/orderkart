@@ -17,36 +17,55 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Lock orientation to portrait for better UX on phones
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  try {
+    // Lock orientation to portrait for better UX on phones
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
 
-  // Set system UI overlay style for sunlight-friendly white theme
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.white,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
+    // Set system UI overlay style for sunlight-friendly white theme
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+    );
 
-  // Initialize SQLite database
-  await DatabaseHelper.instance.database;
+    // Initialize SQLite database
+    await DatabaseHelper.instance.database;
 
-  // Initialize local notifications
-  const AndroidInitializationSettings androidInit =
-      AndroidInitializationSettings('ic_launcher');
-  const InitializationSettings initSettings =
-      InitializationSettings(android: androidInit);
-  await flutterLocalNotificationsPlugin.initialize(initSettings);
+    // Initialize local notifications
+    const AndroidInitializationSettings androidInit =
+        AndroidInitializationSettings('ic_launcher');
+    const InitializationSettings initSettings =
+        InitializationSettings(android: androidInit);
+    await flutterLocalNotificationsPlugin.initialize(initSettings);
 
-  runApp(
-    // ProviderScope wraps the entire app for Riverpod state management
-    const ProviderScope(
-      child: OrderKartApp(),
-    ),
-  );
+    runApp(
+      const ProviderScope(
+        child: OrderKartApp(),
+      ),
+    );
+  } catch (e, st) {
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                'Failed to initialize app:\n$e',
+                style: const TextStyle(color: Colors.red, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
+
