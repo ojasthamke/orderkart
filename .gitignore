@@ -1,0 +1,21 @@
+# Flutter related
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Web related
+.web/
+
+# Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# OS related
+.DS_Store
+Thumbs.db

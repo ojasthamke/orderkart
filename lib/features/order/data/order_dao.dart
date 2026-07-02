@@ -1,0 +1,255 @@
+/// OrderDao — complete SQLite operations for orders
+
+import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
+import '../../../core/database/database_helper.dart';
+import '../domain/order.dart';
+import '../domain/order_item.dart';
+import '../domain/payment.dart';
+
+class OrderDao {
+  final _uuid = const Uuid();
+  Future<Database> get _db => DatabaseHelper.instance.database;
+
+  /// Get all orders with optional filters and customer info via JOIN
+  Future<List<AppOrder>> getAllOrders({
+    String? status,
+    String? filter,
+    String? customerId,
+    int limit   = 30,
+    int offset  = 0,
+  }) async {
+    final db = await _db;
+
+    List<String> conditions = [];
+    List<dynamic> args = [];
+
+    if (customerId != null) {
+      conditions.add('o.customer_id = ?');
+      args.add(customerId);
+    }
+    if (status != null && status != 'all') {
+      conditions.add('o.delivery_status = ?');
+      args.add(status);
+    }
+
+    // Date filters
+    final now   = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (filter == 'today') {
+      conditions.add('DATE(o.created_at) = DATE(?)');
+      args.add(today.toIso8601String());
+    } else if (filter == 'yesterday') {
+      final yesterday = today.subtract(const Duration(days: 1));
+      conditions.add('DATE(o.created_at) = DATE(?)');
+      args.add(yesterday.toIso8601String());
+    } else if (filter == 'week') {
+      conditions.add('o.created_at >= ?');
+      args.add(today.subtract(const Duration(days: 7)).toIso8601String());
+    } else if (filter == 'month') {
+      conditions.add('strftime(\'%Y-%m\', o.created_at) = strftime(\'%Y-%m\', ?)');
+      args.add(now.toIso8601String());
+    }
+
+    final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
+
+    final maps = await db.rawQuery('''
+      SELECT
+        o.*,
+        c.name    AS customer_name,
+        c.address AS customer_address,
+        c.phone1  AS customer_phone
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.id
+      $where
+      ORDER BY o.created_at DESC
+      LIMIT $limit OFFSET $offset
+    ''', args);
+
+    return maps.map(AppOrder.fromMap).toList();
+  }
+
+  Future<AppOrder?> getOrderById(String id) async {
+    final db = await _db;
+    final maps = await db.rawQuery('''
+      SELECT o.*, c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone
+      FROM orders o JOIN customers c ON o.customer_id = c.id
+      WHERE o.id = ?
+    ''', [id]);
+    if (maps.isEmpty) return null;
+    return AppOrder.fromMap(maps.first);
+  }
+
+  Future<List<OrderItem>> getOrderItems(String orderId) async {
+    final db = await _db;
+    final maps = await db.query('order_items',
+        where: 'order_id = ?', whereArgs: [orderId]);
+    return maps.map(OrderItem.fromMap).toList();
+  }
+
+  Future<List<Payment>> getOrderPayments(String orderId) async {
+    final db = await _db;
+    final maps = await db.query('payments',
+        where: 'order_id = ?',
+        whereArgs: [orderId],
+        orderBy: 'created_at DESC');
+    return maps.map(Payment.fromMap).toList();
+  }
+
+  Future<String> insertOrder(AppOrder order) async {
+    final db = await _db;
+    final id  = order.id.isEmpty ? _uuid.v4() : order.id;
+    final now = DateTime.now().toIso8601String();
+    await db.insert('orders', {
+      ...order.toMap(),
+      'id':         id,
+      'created_at': now,
+      'updated_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    return id;
+  }
+
+  Future<void> insertOrderItem(OrderItem item) async {
+    final db = await _db;
+    final id = item.id.isEmpty ? _uuid.v4() : item.id;
+    await db.insert('order_items', {
+      ...item.toMap(),
+      'id': id,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> deleteOrderItems(String orderId) async {
+    final db = await _db;
+    await db.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+  }
+
+  Future<void> updateOrder(AppOrder order) async {
+    final db = await _db;
+    await db.update(
+      'orders',
+      {...order.toMap(), 'updated_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [order.id],
+    );
+  }
+
+  Future<void> deleteOrder(String id) async {
+    final db = await _db;
+    await db.delete('orders', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateDeliveryStatus(String orderId, String status) async {
+    final db = await _db;
+    await db.update(
+      'orders',
+      {'delivery_status': status, 'updated_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  Future<void> insertPayment(Payment payment) async {
+    final db = await _db;
+    await db.insert('payments', {
+      ...payment.toMap(),
+      'id': payment.id.isEmpty ? _uuid.v4() : payment.id,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateOrderPayment(
+      String orderId, double paidAmount, double remainingAmount) async {
+    final db = await _db;
+    await db.update(
+      'orders',
+      {
+        'paid_amount':      paidAmount,
+        'remaining_amount': remainingAmount,
+        'updated_at':       DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  /// Analytics summary query
+  Future<Map<String, dynamic>> getAnalyticsSummary() async {
+    final db = await _db;
+    final now    = DateTime.now();
+    final today  = DateTime(now.year, now.month, now.day).toIso8601String();
+    final month  = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    final todaySales = await db.rawQuery(
+        'SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE DATE(created_at) = DATE(?)',
+        [today]);
+    final monthlySales = await db.rawQuery(
+        "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ?",
+        [month]);
+    final pendingPayments = await db.rawQuery(
+        'SELECT COALESCE(SUM(remaining_amount),0) AS v FROM orders WHERE remaining_amount > 0');
+    final cashReceived = await db.rawQuery(
+        "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method = 'cash'");
+    final onlineReceived = await db.rawQuery(
+        "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method != 'cash'");
+    final totalExpenses = await db.rawQuery(
+        'SELECT COALESCE(SUM(amount),0) AS v FROM expenses');
+    final customerCount = await db.rawQuery(
+        'SELECT COUNT(*) AS v FROM customers');
+    final orderCount = await db.rawQuery(
+        'SELECT COUNT(*) AS v FROM orders');
+    final itemCount = await db.rawQuery(
+        'SELECT COUNT(*) AS v FROM items');
+
+    // Top selling items
+    final topItems = await db.rawQuery('''
+      SELECT item_name, SUM(total_price) AS revenue, SUM(quantity) AS qty
+      FROM order_items
+      GROUP BY item_name
+      ORDER BY revenue DESC
+      LIMIT 5
+    ''');
+
+    // Low stock items
+    final lowStock = await db.rawQuery(
+        'SELECT * FROM items WHERE min_stock > 0 AND stock <= min_stock ORDER BY stock ASC LIMIT 10');
+
+    return {
+      'today_sales':      (todaySales.first['v'] as num?)?.toDouble()    ?? 0,
+      'monthly_sales':    (monthlySales.first['v'] as num?)?.toDouble()  ?? 0,
+      'pending_payments': (pendingPayments.first['v'] as num?)?.toDouble()?? 0,
+      'cash_received':    (cashReceived.first['v'] as num?)?.toDouble()  ?? 0,
+      'online_received':  (onlineReceived.first['v'] as num?)?.toDouble()?? 0,
+      'total_expenses':   (totalExpenses.first['v'] as num?)?.toDouble() ?? 0,
+      'customer_count':   customerCount.first['v'] ?? 0,
+      'order_count':      orderCount.first['v']    ?? 0,
+      'item_count':       itemCount.first['v']     ?? 0,
+      'top_items':        topItems,
+      'low_stock':        lowStock,
+    };
+  }
+
+  /// Weekly chart data
+  Future<List<Map<String, dynamic>>> getWeeklySales() async {
+    final db = await _db;
+    final maps = await db.rawQuery('''
+      SELECT DATE(created_at) AS day, COALESCE(SUM(grand_total), 0) AS total
+      FROM orders
+      WHERE created_at >= datetime('now', '-7 days')
+      GROUP BY DATE(created_at)
+      ORDER BY day ASC
+    ''');
+    return List<Map<String, dynamic>>.from(maps);
+  }
+
+  /// Monthly chart data (last 6 months)
+  Future<List<Map<String, dynamic>>> getMonthlySales() async {
+    final db = await _db;
+    final maps = await db.rawQuery('''
+      SELECT strftime('%Y-%m', created_at) AS month, COALESCE(SUM(grand_total), 0) AS total
+      FROM orders
+      WHERE created_at >= datetime('now', '-6 months')
+      GROUP BY strftime('%Y-%m', created_at)
+      ORDER BY month ASC
+    ''');
+    return List<Map<String, dynamic>>.from(maps);
+  }
+}
