@@ -162,7 +162,7 @@ class _ExpenseCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.gray200),
         boxShadow: AppColors.cardShadow,

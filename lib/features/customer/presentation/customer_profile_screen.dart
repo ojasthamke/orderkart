@@ -145,7 +145,7 @@ class CustomerProfileScreen extends ConsumerWidget {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gray200),
         boxShadow: AppColors.cardShadow,
@@ -416,7 +416,7 @@ class _CustomerOrderTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.gray200),
       ),

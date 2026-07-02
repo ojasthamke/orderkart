@@ -122,7 +122,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gray200),
         boxShadow: AppColors.cardShadow,
@@ -169,7 +169,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gray200),
       ),
@@ -213,7 +213,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gray200),
       ),
@@ -277,7 +277,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gray200),
         boxShadow: AppColors.cardShadow,
@@ -334,7 +334,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gray200),
       ),

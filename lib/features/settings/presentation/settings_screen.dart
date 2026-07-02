@@ -333,7 +333,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   color: AppColors.error),
               Container(
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: Theme.of(context).cardTheme.color,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.error.withOpacity(0.3)),
                 ),
@@ -389,7 +389,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _card(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gray200),
         boxShadow: AppColors.cardShadow,

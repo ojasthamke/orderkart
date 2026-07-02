@@ -195,7 +195,7 @@ class DashboardScreen extends ConsumerWidget {
                         ? Container(
                             height: 120,
                             decoration: BoxDecoration(
-                              color: AppColors.white,
+                              color: Theme.of(context).cardTheme.color,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: AppColors.gray200),
                             ),

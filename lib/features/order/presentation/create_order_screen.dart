@@ -280,7 +280,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.gray200),
         boxShadow: AppColors.cardShadow,
@@ -411,7 +411,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Theme.of(context).cardTheme.color,
         boxShadow: AppColors.elevatedShadow,
       ),
       child: Row(
