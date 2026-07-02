@@ -56,26 +56,49 @@ class DashboardScreen extends ConsumerWidget {
                   // ── Welcome row ──────────────────────────────────────
                   Row(
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome Back!',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                      // App Logo
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: AppColors.cardShadow,
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primaryLight, AppColors.primary],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          Text(
-                            'FreshFlow OrderKart',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primary,
-                                ),
-                          ),
-                        ],
+                        ),
+                        child: const Icon(
+                          Icons.shopping_cart_checkout_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome Back!',
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                            ),
+                            Text(
+                              'FreshFlow OrderKart',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primary,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
                       ref.watch(lowStockProvider).when(
                             data: (lowItems) => lowItems.isNotEmpty
                                 ? Badge(
@@ -238,7 +261,7 @@ class DashboardScreen extends ConsumerWidget {
       onTap: () => Navigator.of(context).pushNamed(routeName),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardTheme.color,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.gray200),
           boxShadow: AppColors.cardShadow,
@@ -289,7 +312,7 @@ class _RecentOrderTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.gray200),
       ),
