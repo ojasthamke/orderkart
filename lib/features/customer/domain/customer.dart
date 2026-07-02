@@ -133,14 +133,17 @@ class Customer {
 
   String get mainHouseNumber {
     if (houseNumber.contains('|')) {
-      return houseNumber.split('|')[0].trim();
+      final parts = houseNumber.split('|');
+      if (parts.isNotEmpty) return parts[0].trim();
     }
     return '';
   }
 
   String get subHouseNumber {
     if (houseNumber.contains('|')) {
-      return houseNumber.split('|')[1].trim();
+      final parts = houseNumber.split('|');
+      if (parts.length > 1) return parts[1].trim();
+      return '';
     }
     return houseNumber;
   }
