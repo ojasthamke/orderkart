@@ -10,6 +10,7 @@ import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/customer_avatar.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
 
@@ -123,25 +124,9 @@ class _CustomerCard extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // Avatar
-                CircleAvatar(
+                CustomerAvatar(
+                  photoPath: customer.photoPath,
                   radius: 26,
-                  backgroundColor: AppColors.primarySurface,
-                  backgroundImage: customer.photoPath.isNotEmpty
-                      ? AssetImage(customer.photoPath)
-                      : null,
-                  child: customer.photoPath.isEmpty
-                      ? Text(
-                          customer.name.isNotEmpty
-                              ? customer.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 18,
-                          ),
-                        )
-                      : null,
                 ),
                 const SizedBox(width: 14),
                 // Info

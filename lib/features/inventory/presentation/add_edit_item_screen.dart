@@ -109,7 +109,17 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   prefixIcon: Icon(Icons.scale_rounded),
                 ),
                 items: AppConstants.itemUnits
-                    .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                    .map((u) => DropdownMenuItem(
+                          value: u,
+                          child: Text(
+                            u,
+                            style: TextStyle(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                        ))
                     .toList(),
                 onChanged: (v) => setState(() => _unit = v ?? _unit),
               ),

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:io';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
@@ -365,11 +367,39 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 DropdownButton<String>(
                   value: _paymentMethod,
                   underline: const SizedBox.shrink(),
-                  items: const [
-                    DropdownMenuItem(value: 'cash',   child: Text('Cash')),
-                    DropdownMenuItem(value: 'online', child: Text('Online')),
-                    DropdownMenuItem(value: 'upi',    child: Text('UPI')),
-                    DropdownMenuItem(value: 'card',   child: Text('Card')),
+                  items: [
+                    DropdownMenuItem(
+                        value: 'cash',
+                        child: Text('Cash',
+                            style: TextStyle(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : AppColors.textPrimary))),
+                    DropdownMenuItem(
+                        value: 'online',
+                        child: Text('Online',
+                            style: TextStyle(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : AppColors.textPrimary))),
+                    DropdownMenuItem(
+                        value: 'upi',
+                        child: Text('UPI',
+                            style: TextStyle(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : AppColors.textPrimary))),
+                    DropdownMenuItem(
+                        value: 'card',
+                        child: Text('Card',
+                            style: TextStyle(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : AppColors.textPrimary))),
                   ],
                   onChanged: (v) =>
                       setState(() => _paymentMethod = v ?? 'cash'),
@@ -389,6 +419,50 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             _quickPayBtn('Pay None', 0, currency),
           ],
         ),
+        if (_paymentMethod == AppConstants.paymentOnline || _paymentMethod == AppConstants.paymentUPI) ...[
+          const SizedBox(height: 16),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Scan & Pay QR Code',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                if (settings != null) ...[
+                  if (settings.qrCustomImage.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        File(settings.qrCustomImage),
+                        width: 160,
+                        height: 160,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                      ),
+                    )
+                  else if (settings.qrContent.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.gray200),
+                      ),
+                      child: QrImageView(
+                        data: settings.qrContent,
+                        version: QrVersions.auto,
+                        size: 160.0,
+                      ),
+                    )
+                  else
+                    const Text('No QR Code configured in Settings',
+                        style: TextStyle(fontSize: 12, color: AppColors.textHint))
+                ] else
+                  const CircularProgressIndicator(),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -458,13 +532,51 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final now     = DateTime.now();
     final orderId = widget.orderId ?? const Uuid().v4();
 
+    final roundingDiff = _smartRound ? _smartRounded - _afterDiscount : 0;
+    
+    final List<OrderItem> items = [];
+    if (_cart.isNotEmpty) {
+      double distributedSum = 0;
+      for (int i = 0; i < _cart.length; i++) {
+        final c = _cart[i];
+        double adjustedTotal = c.total;
+        
+        if (roundingDiff != 0 && _subtotal > 0) {
+          if (i == _cart.length - 1) {
+            adjustedTotal = double.parse((c.total + (roundingDiff - distributedSum)).toStringAsFixed(2));
+          } else {
+            final share = double.parse((roundingDiff * (c.total / _subtotal)).toStringAsFixed(2));
+            adjustedTotal = double.parse((c.total + share).toStringAsFixed(2));
+            distributedSum += share;
+          }
+        }
+        
+        final adjustedUnitPrice = c.quantity > 0 
+            ? double.parse((adjustedTotal / c.quantity).toStringAsFixed(4))
+            : c.price;
+        
+        items.add(OrderItem(
+          id:         const Uuid().v4(),
+          orderId:    orderId,
+          itemId:     c.itemId,
+          itemName:   c.name,
+          itemUnit:   c.unit,
+          quantity:   c.quantity,
+          unitPrice:  adjustedUnitPrice,
+          totalPrice: adjustedTotal,
+        ));
+      }
+    }
+
+    final adjustedSubtotal = double.parse((_subtotal + roundingDiff).toStringAsFixed(2));
+
     final order = AppOrder(
       id:                 orderId,
       customerId:         widget.customerId,
-      subtotal:           _subtotal,
+      subtotal:           adjustedSubtotal,
       discount:           _discount,
       deliveryCharge:     _deliveryEnabled ? _deliveryCharge : 0,
-      smartRoundedAmount: _smartRound ? _smartRounded - _afterDiscount : 0,
+      smartRoundedAmount: 0, 
       grandTotal:         _grandTotal,
       paidAmount:         _paidAmount,
       remainingAmount:    _remaining,

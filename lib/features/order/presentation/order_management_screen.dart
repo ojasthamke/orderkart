@@ -13,6 +13,8 @@ import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
+import '../../../core/widgets/customer_avatar.dart';
+import '../../customer/presentation/customer_provider.dart';
 import '../domain/order.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
@@ -199,6 +201,7 @@ class _OrderManagementScreenState
   void _addPayment(BuildContext context, AppOrder order) {
     PaymentDialog.show(
       context,
+      customerId:      order.customerId,
       remainingAmount: order.remainingAmount,
       grandTotal:      order.grandTotal,
       currency:        '\u20b9',
@@ -255,7 +258,7 @@ class _OrderManagementScreenState
 }
 
 // ── Order Card ────────────────────────────────────────────────────────────────
-class _OrderCard extends StatelessWidget {
+class _OrderCard extends ConsumerWidget {
   final AppOrder order;
   final VoidCallback onTap;
   final VoidCallback onToggleDelivery;
@@ -283,7 +286,9 @@ class _OrderCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final customerAsync = ref.watch(customerDetailProvider(order.customerId));
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
@@ -306,6 +311,23 @@ class _OrderCard extends StatelessWidget {
                 // Header row
                 Row(
                   children: [
+                    customerAsync.when(
+                      data: (customer) => CustomerAvatar(
+                        photoPath: customer?.photoPath,
+                        radius: 18,
+                      ),
+                      loading: () => const CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.primarySurface,
+                        child: SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      error: (_, __) => const CustomerAvatar(photoPath: '', radius: 18),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         order.customerName ?? 'Unknown',

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -55,6 +57,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         );
     if (mounted) SnackbarHelper.showSuccess(context, 'Settings saved');
+  }
+
+  Future<void> _pickQrImage(AppSettings current) async {
+    final picker = ImagePicker();
+    final img = await picker.pickImage(source: ImageSource.gallery);
+    if (img != null) {
+      await ref.read(settingsProvider.notifier).update(
+            current.copyWith(qrCustomImage: img.path),
+          );
+      if (mounted) SnackbarHelper.showSuccess(context, 'QR Code image uploaded');
+    }
+  }
+
+  Future<void> _deleteQrImage(AppSettings current) async {
+    final ok = await ConfirmDeleteDialog.show(
+      context,
+      title: 'Delete QR Code Image',
+      message: 'Are you sure you want to delete the business QR code image?',
+    );
+    if (!ok) return;
+    await ref.read(settingsProvider.notifier).update(
+          current.copyWith(qrCustomImage: ''),
+        );
+    if (mounted) SnackbarHelper.showSuccess(context, 'QR Code image deleted');
   }
 
   @override
@@ -151,23 +177,79 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _card([
                 _textTile('QR Content (UPI / URL / Text)', _qrCon,
                     Icons.qr_code_2_rounded),
-                const SizedBox(height: 8),
-                if (settings.qrContent.isNotEmpty)
+                const SizedBox(height: 12),
+                if (settings.qrCustomImage.isNotEmpty) ...[
+                  const Center(
+                    child: Text('Custom QR Image Uploaded:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
+                  const SizedBox(height: 8),
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppColors.gray200),
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white,
                       ),
-                      child: QrImageView(
-                        data: settings.qrContent,
-                        version: QrVersions.auto,
-                        size: 150.0,
+                      child: Image.file(
+                        File(settings.qrCustomImage),
+                        width: 150,
+                        height: 150,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _pickQrImage(settings),
+                        icon: const Icon(Icons.cached_rounded),
+                        label: const Text('Replace Image'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _deleteQrImage(settings),
+                        icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                        label: const Text('Delete Image', style: TextStyle(color: AppColors.error)),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Center(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickQrImage(settings),
+                      icon: const Icon(Icons.upload_file_rounded),
+                      label: const Text('Upload QR Image'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (settings.qrContent.isNotEmpty) ...[
+                    const Center(
+                      child: Text('Generated UPI QR Code:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.gray200),
+                        ),
+                        child: QrImageView(
+                          data: settings.qrContent,
+                          version: QrVersions.auto,
+                          size: 150.0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+                const SizedBox(height: 12),
               ]),
               const SizedBox(height: 8),
               SizedBox(

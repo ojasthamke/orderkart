@@ -1,11 +1,16 @@
-/// PaymentDialog — Add payment to an existing order
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/customer_avatar.dart';
+import '../../../customer/presentation/customer_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 
-class PaymentDialog extends StatefulWidget {
+class PaymentDialog extends ConsumerStatefulWidget {
+  final String customerId;
   final double remainingAmount;
   final double grandTotal;
   final String currency;
@@ -13,6 +18,7 @@ class PaymentDialog extends StatefulWidget {
 
   const PaymentDialog({
     super.key,
+    required this.customerId,
     required this.remainingAmount,
     required this.grandTotal,
     required this.currency,
@@ -21,6 +27,7 @@ class PaymentDialog extends StatefulWidget {
 
   static Future<void> show(
     BuildContext context, {
+    required String customerId,
     required double remainingAmount,
     required double grandTotal,
     required String currency,
@@ -29,6 +36,7 @@ class PaymentDialog extends StatefulWidget {
     return showDialog(
       context: context,
       builder: (_) => PaymentDialog(
+        customerId:      customerId,
         remainingAmount: remainingAmount,
         grandTotal:      grandTotal,
         currency:        currency,
@@ -38,10 +46,10 @@ class PaymentDialog extends StatefulWidget {
   }
 
   @override
-  State<PaymentDialog> createState() => _PaymentDialogState();
+  ConsumerState<PaymentDialog> createState() => _PaymentDialogState();
 }
 
-class _PaymentDialogState extends State<PaymentDialog> {
+class _PaymentDialogState extends ConsumerState<PaymentDialog> {
   final _amountCon = TextEditingController();
   final _notesCon  = TextEditingController();
   String _method   = AppConstants.paymentCash;
@@ -70,6 +78,33 @@ class _PaymentDialogState extends State<PaymentDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            ref.watch(customerDetailProvider(widget.customerId)).when(
+                  data: (customer) => customer == null
+                      ? const SizedBox.shrink()
+                      : Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Row(
+                            children: [
+                              CustomerAvatar(
+                                photoPath: customer.photoPath,
+                                radius: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  customer.name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
             // Info row
             Container(
               padding: const EdgeInsets.all(12),
@@ -134,6 +169,55 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 _methodChip('Card',   AppConstants.paymentCard),
               ],
             ),
+
+            if (_method == AppConstants.paymentOnline || _method == AppConstants.paymentUPI) ...[
+              const SizedBox(height: 16),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Scan & Pay QR Code',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    ref.watch(settingsProvider).when(
+                          loading: () => const CircularProgressIndicator(),
+                          error: (_, __) => const Text('Failed to load QR code'),
+                          data: (settings) {
+                            if (settings.qrCustomImage.isNotEmpty) {
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  File(settings.qrCustomImage),
+                                  width: 160,
+                                  height: 160,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                                ),
+                              );
+                            } else if (settings.qrContent.isNotEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.gray200),
+                                ),
+                                child: QrImageView(
+                                  data: settings.qrContent,
+                                  version: QrVersions.auto,
+                                  size: 160.0,
+                                ),
+                              );
+                            } else {
+                              return const Text('No QR Code configured in Settings',
+                                  style: TextStyle(fontSize: 12, color: AppColors.textHint));
+                            }
+                          },
+                        ),
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 12),
 

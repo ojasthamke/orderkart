@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/customer_avatar.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
@@ -151,25 +152,13 @@ class CustomerProfileScreen extends ConsumerWidget {
         boxShadow: AppColors.cardShadow,
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              CircleAvatar(
+              CustomerAvatar(
+                photoPath: customer.photoPath,
                 radius: 36,
-                backgroundColor: AppColors.primarySurface,
-                backgroundImage: customer.photoPath.isNotEmpty
-                    ? AssetImage(customer.photoPath)
-                    : null,
-                child: customer.photoPath.isEmpty
-                    ? Text(
-                        customer.name[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 28,
-                        ),
-                      )
-                    : null,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -222,6 +211,35 @@ class CustomerProfileScreen extends ConsumerWidget {
                   AppFormatters.currency(customer.totalPaid)),
             ],
           ),
+          if (customer.notes.isNotEmpty) ...[
+            const Divider(height: 24),
+            const Text(
+              'NOTES',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.gray500),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF141414)
+                    : AppColors.gray50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.gray200),
+              ),
+              child: SelectableText(
+                customer.notes,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(height: 1.4),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -272,12 +290,20 @@ class CustomerProfileScreen extends ConsumerWidget {
               icon: Icons.chat_rounded,
               label: 'WhatsApp',
               color: AppColors.success,
-              onTap: () {
-                final wa = customer.whatsapp.isNotEmpty
-                    ? customer.whatsapp
-                    : customer.phone1;
-                launchUrl(Uri.parse('https://wa.me/$wa'));
-              },
+              onTap: () => _launchWhatsApp(
+                  context,
+                  customer.whatsapp.isNotEmpty
+                      ? customer.whatsapp
+                      : customer.phone1),
+            ),
+          // Google Maps
+          if (customer.mapsLocation.isNotEmpty)
+            _actionBtn(
+              context: context,
+              icon: Icons.map_rounded,
+              label: 'Map',
+              color: Colors.blue,
+              onTap: () => _openMap(context, customer.mapsLocation),
             ),
           // Create Order
           _actionBtn(
@@ -338,9 +364,139 @@ class CustomerProfileScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _openMap(BuildContext context, String mapsLocation) async {
+    final cleanLoc = mapsLocation.trim();
+    if (cleanLoc.isEmpty) {
+      SnackbarHelper.showError(context, 'No location saved for this customer.');
+      return;
+    }
+
+    Uri uri;
+    if (cleanLoc.startsWith('http')) {
+      uri = Uri.parse(cleanLoc);
+    } else {
+      final parts = cleanLoc.split(',');
+      if (parts.length != 2 || double.tryParse(parts[0]) == null || double.tryParse(parts[1]) == null) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Invalid Location'),
+            content: Text('The saved coordinates "$cleanLoc" are invalid. Please edit them in customer settings.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(_),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      uri = Uri.parse('google.navigation:q=$cleanLoc');
+    }
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        final fallbackUri = cleanLoc.startsWith('http')
+            ? uri
+            : Uri.parse('https://www.google.com/maps/search/?api=1&query=$cleanLoc');
+            
+        if (await canLaunchUrl(fallbackUri)) {
+          await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+        } else {
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text('Google Maps Error'),
+                content: const Text('Google Maps is not installed, or both maps link and coordinate queries failed to launch.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(_),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Maps Launch Failure'),
+            content: Text('Failed to open Google Maps: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(_),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _launchWhatsApp(BuildContext context, String phone) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.isEmpty) {
+      SnackbarHelper.showError(context, 'WhatsApp number is missing');
+      return;
+    }
+    final finalPhone = cleanPhone.length == 10 ? '91$cleanPhone' : cleanPhone;
+    final url = Uri.parse('whatsapp://send?phone=$finalPhone');
+    final fallbackUrl = Uri.parse('https://wa.me/$finalPhone');
+
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(fallbackUrl)) {
+        await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('WhatsApp Not Installed'),
+              content: const Text('WhatsApp is not installed on this device, and wa.me links failed to launch.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(_),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('WhatsApp Error'),
+            content: Text('Failed to open WhatsApp: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(_),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
   void _showPayDialog(BuildContext context, WidgetRef ref, Customer customer) {
     PaymentDialog.show(
       context,
+      customerId:      customer.id,
       remainingAmount: customer.outstandingBalance,
       grandTotal:      customer.outstandingBalance,
       currency:        '₹',

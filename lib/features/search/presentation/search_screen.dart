@@ -6,7 +6,9 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
-import '../../../core/widgets/loading_shimmer.dart';
+import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/widgets/customer_avatar.dart';
+import '../../customer/presentation/customer_provider.dart';
 import '../domain/search_result.dart';
 import 'search_provider.dart';
 
@@ -163,7 +165,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-class _SearchResultTile extends StatelessWidget {
+class _SearchResultTile extends ConsumerWidget {
   final SearchResult result;
   final VoidCallback onTap;
 
@@ -192,7 +194,37 @@ class _SearchResultTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    Widget leadingWidget = Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: _color.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(_icon, color: _color, size: 18),
+    );
+
+    if (result.type == SearchResultType.customer) {
+      final customerAsync = ref.watch(customerDetailProvider(result.id));
+      leadingWidget = customerAsync.when(
+        data: (customer) => CustomerAvatar(
+          photoPath: customer?.photoPath,
+          radius: 19,
+        ),
+        loading: () => const CircleAvatar(
+          radius: 19,
+          backgroundColor: AppColors.primarySurface,
+          child: SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        error: (_, __) => const CustomerAvatar(photoPath: '', radius: 19),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
@@ -202,15 +234,7 @@ class _SearchResultTile extends StatelessWidget {
       ),
       child: ListTile(
         onTap: onTap,
-        leading: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: _color.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(_icon, color: _color, size: 18),
-        ),
+        leading: leadingWidget,
         title: Text(
           result.title,
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),

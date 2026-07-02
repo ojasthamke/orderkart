@@ -173,6 +173,13 @@ class AppTheme {
         labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
         unselectedLabelStyle: GoogleFonts.inter(fontSize: 13),
       ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
+        menuStyle: MenuStyle(
+          backgroundColor: MaterialStateProperty.all(AppColors.white),
+          elevation: MaterialStateProperty.all(8),
+        ),
+      ),
     );
   }
 
@@ -252,6 +259,13 @@ class AppTheme {
         backgroundColor: Color(0xFF0A0A0A),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+        menuStyle: MenuStyle(
+          backgroundColor: MaterialStateProperty.all(const Color(0xFF0A0A0A)),
+          elevation: MaterialStateProperty.all(8),
         ),
       ),
     );

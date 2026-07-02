@@ -34,9 +34,9 @@ class OrderKartApp extends ConsumerWidget {
     return MaterialApp(
       title: 'OrderKart — FreshFlow',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.dark,
+      themeMode: themeMode,
       initialRoute: AppRoutes.dashboard,
       onGenerateRoute: (settings) => _generateRoute(settings),
     );

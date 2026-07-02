@@ -7,6 +7,8 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/loading_shimmer.dart';
+import '../../../core/widgets/customer_avatar.dart';
+import '../../customer/presentation/customer_provider.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../order/domain/order.dart';
@@ -293,7 +295,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _RecentOrderTile extends StatelessWidget {
+class _RecentOrderTile extends ConsumerWidget {
   final AppOrder order;
   final VoidCallback onTap;
 
@@ -308,7 +310,9 @@ class _RecentOrderTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final customerAsync = ref.watch(customerDetailProvider(order.customerId));
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -318,6 +322,22 @@ class _RecentOrderTile extends StatelessWidget {
       ),
       child: ListTile(
         onTap: onTap,
+        leading: customerAsync.when(
+          data: (customer) => CustomerAvatar(
+            photoPath: customer?.photoPath,
+            radius: 20,
+          ),
+          loading: () => const CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.primarySurface,
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          error: (_, __) => const CustomerAvatar(photoPath: '', radius: 20),
+        ),
         title: Text(
           order.customerName ?? 'Unknown Customer',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),

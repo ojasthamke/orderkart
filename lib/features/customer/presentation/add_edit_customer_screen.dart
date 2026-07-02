@@ -196,27 +196,36 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               const SizedBox(height: 16),
 
               // Google Maps Location
-              TextFormField(
-                controller: _mapsCon,
-                decoration: InputDecoration(
-                  labelText: 'Google Maps Link (optional)',
-                  prefixIcon: const Icon(Icons.map_rounded),
-                  suffixIcon: _mapsCon.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.open_in_new_rounded, color: AppColors.primary),
-                          onPressed: () async {
-                            final url = Uri.tryParse(_mapsCon.text.trim());
-                            if (url != null && await canLaunchUrl(url)) {
-                              await launchUrl(url, mode: LaunchMode.externalApplication);
-                            } else {
-                              if (mounted) SnackbarHelper.showError(context, 'Invalid map link');
-                            }
-                          },
-                        )
-                      : null,
-                ),
-                keyboardType: TextInputType.url,
-                onChanged: (v) => setState(() {}),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _mapsCon,
+                      decoration: InputDecoration(
+                        labelText: 'Location Coordinates (lat,lng) or Map Link',
+                        prefixIcon: const Icon(Icons.location_on_rounded),
+                        suffixIcon: _mapsCon.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear_rounded, color: AppColors.error),
+                                onPressed: () {
+                                  setState(() {
+                                    _mapsCon.clear();
+                                  });
+                                },
+                              )
+                            : null,
+                      ),
+                      keyboardType: TextInputType.text,
+                      onChanged: (v) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    icon: const Icon(Icons.gps_fixed_rounded),
+                    tooltip: 'Set Coordinates',
+                    onPressed: _showCoordinatesDialog,
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -262,6 +271,70 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     if (img != null) {
       setState(() => _photoPath = img.path);
     }
+  }
+
+  void _showCoordinatesDialog() {
+    final latCon = TextEditingController();
+    final lngCon = TextEditingController();
+    
+    final current = _mapsCon.text.trim();
+    if (current.isNotEmpty && !current.startsWith('http')) {
+      final parts = current.split(',');
+      if (parts.length == 2) {
+        latCon.text = parts[0];
+        lngCon.text = parts[1];
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enter GPS Coordinates'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: latCon,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              decoration: const InputDecoration(
+                labelText: 'Latitude (e.g. 18.5204)',
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: lngCon,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              decoration: const InputDecoration(
+                labelText: 'Longitude (e.g. 73.8567)',
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final lat = double.tryParse(latCon.text.trim());
+              final lng = double.tryParse(lngCon.text.trim());
+              if (lat != null && lng != null) {
+                setState(() {
+                  _mapsCon.text = '$lat,$lng';
+                });
+                Navigator.pop(ctx);
+              } else {
+                SnackbarHelper.showError(ctx, 'Please enter valid coordinates');
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _save() async {

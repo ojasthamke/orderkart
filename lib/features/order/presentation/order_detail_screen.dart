@@ -14,6 +14,8 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
+import '../../../core/widgets/customer_avatar.dart';
+import '../../customer/presentation/customer_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../domain/order.dart';
 import '../domain/payment.dart';
@@ -100,6 +102,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 _buildSummarySection(order, currency),
                 const SizedBox(height: 16),
 
+                if (order.notes.isNotEmpty) ...[
+                  _buildNotesSection(order),
+                  const SizedBox(height: 16),
+                ],
+
                 // Payments list
                 _buildPaymentsSection(order, currency),
                 const SizedBox(height: 24),
@@ -165,6 +172,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Widget _buildCustomerCard(AppOrder order) {
+    final customerAsync = ref.watch(customerDetailProvider(order.customerId));
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -173,35 +182,59 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gray200),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'CUSTOMER',
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.gray500),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            order.customerName ?? 'Unknown Customer',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-          ),
-          if (order.customerPhone != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              order.customerPhone!,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          customerAsync.when(
+            data: (customer) => CustomerAvatar(
+              photoPath: customer?.photoPath,
+              radius: 24,
             ),
-          ],
-          if (order.customerAddress != null && order.customerAddress!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              order.customerAddress!,
-              style: const TextStyle(color: AppColors.textHint, fontSize: 12),
+            loading: () => const CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.primarySurface,
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             ),
-          ],
+            error: (_, __) => const CustomerAvatar(photoPath: '', radius: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CUSTOMER',
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.gray500),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  order.customerName ?? 'Unknown Customer',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+                if (order.customerPhone != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    order.customerPhone!,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                ],
+                if (order.customerAddress != null && order.customerAddress!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    order.customerAddress!,
+                    style: const TextStyle(color: AppColors.textHint, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -301,6 +334,46 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           if (order.remainingAmount > 0)
             _sumRow('Due Amount',     '$currency${order.remainingAmount.toStringAsFixed(2)}',
                 color: AppColors.error, isBold: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotesSection(AppOrder order) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ORDER NOTES',
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.gray500),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF141414)
+                  : AppColors.gray50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.gray200),
+            ),
+            child: SelectableText(
+              order.notes,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+            ),
+          ),
         ],
       ),
     );
@@ -470,6 +543,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   void _addPayment(AppOrder order) {
     PaymentDialog.show(
       context,
+      customerId:      order.customerId,
       remainingAmount: order.remainingAmount,
       grandTotal:      order.grandTotal,
       currency:        '₹',
