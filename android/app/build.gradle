@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.orderkart"
-    compileSdk flutter.compileSdkVersion
+    compileSdk 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -42,8 +42,8 @@ android {
 
     defaultConfig {
         applicationId "com.example.orderkart"
-        minSdkVersion flutter.minSdkVersion
-        targetSdkVersion flutter.targetSdkVersion
+        minSdkVersion 21
+        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
