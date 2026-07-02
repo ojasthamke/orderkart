@@ -10,6 +10,7 @@ import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/app_settings.dart';
 import 'settings_provider.dart';
+import '../../../core/widgets/qr_full_screen_preview.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -185,19 +186,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.gray200),
-                        borderRadius: BorderRadius.circular(12),
-                        color: Colors.white,
+                    child: GestureDetector(
+                      onTap: () => QrFullScreenPreview.show(
+                        context,
+                        qrCustomImage: settings.qrCustomImage,
                       ),
-                      child: Image.file(
-                        File(settings.qrCustomImage),
-                        width: 150,
-                        height: 150,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.gray200),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white,
+                        ),
+                        child: Image.file(
+                          File(settings.qrCustomImage),
+                          width: 150,
+                          height: 150,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                        ),
                       ),
                     ),
                   ),
@@ -233,17 +240,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.gray200),
+                      child: GestureDetector(
+                        onTap: () => QrFullScreenPreview.show(
+                          context,
+                          qrContent: settings.qrContent,
                         ),
-                        child: QrImageView(
-                          data: settings.qrContent,
-                          version: QrVersions.auto,
-                          size: 150.0,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.gray200),
+                          ),
+                          child: QrImageView(
+                            data: settings.qrContent,
+                            version: QrVersions.auto,
+                            size: 150.0,
+                          ),
                         ),
                       ),
                     ),
@@ -369,15 +382,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _card([
                 ListTile(
                   leading: const Icon(Icons.info_outline_rounded),
-                  title: const Text('About FreshFlow'),
+                  title: const Text('About OrderKart'),
                   subtitle: const Text('v1.0.0'),
                   trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   onTap: () => showAboutDialog(
                     context: context,
-                    applicationName: 'FreshFlow • OrderKart',
+                    applicationName: 'OrderKart',
                     applicationVersion: '1.0.0',
                     applicationLegalese:
-                        '© 2024 FreshFlow. All rights reserved.',
+                        '© 2026 OrderKart. All rights reserved.',
                     children: [
                       const Text(
                           'An offline-first order management app for delivery businesses.'),
@@ -395,7 +408,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       title: const Text('Privacy Policy'),
                       content: const SingleChildScrollView(
                         child: Text(
-                          'FreshFlow stores all data locally on your device. No data is transmitted to any server unless you explicitly enable cloud sync. We do not collect any personal information.\n\nAll your business data including customers, orders, and inventory is stored in a local SQLite database on your device.\n\nFor questions, contact the developer.',
+                          'OrderKart stores all data locally on your device. No data is transmitted to any server unless you explicitly enable cloud sync. We do not collect any personal information.\n\nAll your business data including customers, orders, and inventory is stored in a local SQLite database on your device.\n\nFor questions, contact the developer.',
                         ),
                       ),
                       actions: [

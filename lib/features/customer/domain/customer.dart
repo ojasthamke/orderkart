@@ -131,6 +131,20 @@ class Customer {
         updatedAt:           DateTime.parse(map['updated_at']    as String),
       );
 
+  String get mainHouseNumber {
+    if (houseNumber.contains('|')) {
+      return houseNumber.split('|')[0].trim();
+    }
+    return '';
+  }
+
+  String get subHouseNumber {
+    if (houseNumber.contains('|')) {
+      return houseNumber.split('|')[1].trim();
+    }
+    return houseNumber;
+  }
+
   @override
   bool operator ==(Object other) => other is Customer && other.id == id;
   @override

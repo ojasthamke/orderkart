@@ -8,6 +8,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/customer_avatar.dart';
 import 'package:orderkart/features/customer/presentation/customer_provider.dart';
 import 'package:orderkart/features/settings/presentation/settings_provider.dart';
+import '../../../../core/widgets/qr_full_screen_preview.dart';
 
 class PaymentDialog extends ConsumerStatefulWidget {
   final String customerId;
@@ -184,28 +185,40 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
                           error: (_, __) => const Text('Failed to load QR code'),
                           data: (settings) {
                             if (settings.qrCustomImage.isNotEmpty) {
-                              return ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.file(
-                                  File(settings.qrCustomImage),
-                                  width: 160,
-                                  height: 160,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                              return GestureDetector(
+                                onTap: () => QrFullScreenPreview.show(
+                                  context,
+                                  qrCustomImage: settings.qrCustomImage,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.file(
+                                    File(settings.qrCustomImage),
+                                    width: 160,
+                                    height: 160,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                                  ),
                                 ),
                               );
                             } else if (settings.qrContent.isNotEmpty) {
-                              return Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.gray200),
+                              return GestureDetector(
+                                onTap: () => QrFullScreenPreview.show(
+                                  context,
+                                  qrContent: settings.qrContent,
                                 ),
-                                child: QrImageView(
-                                  data: settings.qrContent,
-                                  version: QrVersions.auto,
-                                  size: 160.0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.gray200),
+                                  ),
+                                  child: QrImageView(
+                                    data: settings.qrContent,
+                                    version: QrVersions.auto,
+                                    size: 160.0,
+                                  ),
                                 ),
                               );
                             } else {

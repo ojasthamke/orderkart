@@ -16,6 +16,8 @@ class OrderDao {
     String? status,
     String? filter,
     String? customerId,
+    DateTime? startDate,
+    DateTime? endDate,
     int limit   = 30,
     int offset  = 0,
   }) async {
@@ -36,7 +38,11 @@ class OrderDao {
     // Date filters
     final now   = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    if (filter == 'today') {
+    if (startDate != null && endDate != null) {
+      conditions.add('o.created_at >= ? AND o.created_at <= ?');
+      args.add(DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0).toIso8601String());
+      args.add(DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999).toIso8601String());
+    } else if (filter == 'today') {
       conditions.add('DATE(o.created_at) = DATE(?)');
       args.add(today.toIso8601String());
     } else if (filter == 'yesterday') {
@@ -249,6 +255,26 @@ class OrderDao {
       WHERE created_at >= datetime('now', '-6 months')
       GROUP BY strftime('%Y-%m', created_at)
       ORDER BY month ASC
+    ''');
+    return List<Map<String, dynamic>>.from(maps);
+  }
+
+  Future<List<Map<String, dynamic>>> getTopCustomers() async {
+    final db = await _db;
+    final maps = await db.rawQuery('''
+      SELECT
+        c.id,
+        c.name,
+        c.photo_path,
+        c.outstanding_balance,
+        COUNT(o.id) AS total_orders,
+        COALESCE(SUM(o.grand_total), 0) AS total_purchase,
+        COALESCE(SUM(o.paid_amount), 0) AS total_paid,
+        COALESCE(SUM(o.remaining_amount), 0) AS pending_amount,
+        MAX(o.created_at) AS last_order_date
+      FROM customers c
+      LEFT JOIN orders o ON c.id = o.customer_id AND o.delivery_status != 'cancelled'
+      GROUP BY c.id
     ''');
     return List<Map<String, dynamic>>.from(maps);
   }

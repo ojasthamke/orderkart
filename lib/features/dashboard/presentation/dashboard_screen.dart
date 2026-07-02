@@ -13,16 +13,30 @@ import '../../order/presentation/order_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../order/domain/order.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  String _selectedFilter = 'all'; // 'all', 'today', 'yesterday', 'week', 'month', 'custom'
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  @override
+  Widget build(BuildContext context) {
     final summaryAsync = ref.watch(analyticsSummaryProvider);
-    final ordersAsync   = ref.watch(orderManagementProvider);
+    final params = DashboardOrdersParams(
+      filter: _selectedFilter == 'custom' ? null : _selectedFilter,
+      startDate: _startDate,
+      endDate: _endDate,
+    );
+    final ordersAsync = ref.watch(dashboardOrdersProvider(params));
 
     return AppScaffold(
-      title: 'FreshFlow Dashboard',
+      title: 'OrderKart Dashboard',
       showBack: false,
       actions: [
         IconButton(
@@ -46,8 +60,9 @@ class DashboardScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(analyticsSummaryProvider);
-              ref.invalidate(orderManagementProvider);
+              ref.invalidate(inventoryProvider);
               ref.invalidate(lowStockProvider);
+              ref.invalidate(dashboardOrdersProvider(params));
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -65,15 +80,12 @@ class DashboardScreen extends ConsumerWidget {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: AppColors.cardShadow,
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primaryLight, AppColors.primary],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: AppColors.primarySurface,
+                          border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 1.5),
                         ),
                         child: const Icon(
-                          Icons.shopping_cart_checkout_rounded,
-                          color: Colors.white,
+                          Icons.local_mall_rounded,
+                          color: AppColors.primary,
                           size: 32,
                         ),
                       ),
@@ -90,7 +102,7 @@ class DashboardScreen extends ConsumerWidget {
                                   ),
                             ),
                             Text(
-                              'FreshFlow OrderKart',
+                              'OrderKart',
                               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.w800,
                                     color: AppColors.primary,
@@ -131,7 +143,7 @@ class DashboardScreen extends ConsumerWidget {
                     mainAxisSpacing: 12,
                     children: [
                       StatCard(
-                        label: 'Today\'s Sales',
+                        label: "Today's Sales",
                         value: AppFormatters.currency(todaySales),
                         icon: Icons.currency_rupee_rounded,
                         color: AppColors.primary,
@@ -193,25 +205,55 @@ class DashboardScreen extends ConsumerWidget {
 
                   const SizedBox(height: 24),
 
-                  // ── Recent Orders ─────────────────────────────────────
+                  // ── Orders History & Filter Header ───────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Recent Orders',
+                        'Orders History',
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      TextButton(
-                        onPressed: () =>
-                            Navigator.of(context).pushNamed(AppRoutes.orderManagement),
-                        child: const Text('View All'),
-                      ),
+                      if (_selectedFilter == 'custom' && _startDate != null && _endDate != null)
+                        IconButton(
+                          icon: const Icon(Icons.date_range_rounded, size: 20, color: AppColors.primary),
+                          onPressed: _pickDateRange,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 8),
+
+                  // Filter Chips Row
+                  SizedBox(
+                    height: 38,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _buildFilterChip('all', 'All'),
+                        _buildFilterChip('today', 'Today'),
+                        _buildFilterChip('yesterday', 'Yesterday'),
+                        _buildFilterChip('week', 'This Week'),
+                        _buildFilterChip('month', 'This Month'),
+                        _buildFilterChip('custom', 'Custom'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (_selectedFilter == 'custom' && _startDate != null && _endDate != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Range: ${AppFormatters.date(_startDate!)} - ${AppFormatters.date(_endDate!)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                      ),
+                    ),
+                  ],
 
                   ordersAsync.when(
                     loading: () => const LoadingShimmer(count: 3),
@@ -219,19 +261,20 @@ class DashboardScreen extends ConsumerWidget {
                     data: (orders) => orders.isEmpty
                         ? Container(
                             height: 120,
+                            width: double.infinity,
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardTheme.color,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: AppColors.gray200),
                             ),
                             child: const Center(
-                              child: Text('No orders recorded yet'),
+                              child: Text('No orders match this filter'),
                             ),
                           )
                         : ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            itemCount: orders.length > 5 ? 5 : orders.length,
+                            itemCount: orders.length,
                             itemBuilder: (ctx, i) {
                               final o = orders[i];
                               return _RecentOrderTile(
@@ -241,7 +284,7 @@ class DashboardScreen extends ConsumerWidget {
                                         arguments: {'orderId': o.id})
                                     .then((_) {
                                   ref.invalidate(analyticsSummaryProvider);
-                                  ref.invalidate(orderManagementProvider);
+                                  ref.invalidate(dashboardOrdersProvider(params));
                                 }),
                               ).animate(delay: (i * 30).ms).fadeIn();
                             },
@@ -255,6 +298,52 @@ class DashboardScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Widget _buildFilterChip(String value, String label) {
+    final isSelected = _selectedFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) {
+            setState(() {
+              _selectedFilter = value;
+              if (value != 'custom') {
+                _startDate = null;
+                _endDate = null;
+              } else {
+                _pickDateRange();
+              }
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _pickDateRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: _startDate != null && _endDate != null
+          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          : null,
+    );
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+    } else if (_startDate == null || _endDate == null) {
+      // Revert back to all if they cancel without picking
+      setState(() {
+        _selectedFilter = 'all';
+      });
+    }
   }
 
   Widget _shortcutTile(BuildContext context, String label, IconData icon,

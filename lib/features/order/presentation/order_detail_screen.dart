@@ -225,13 +225,36 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ],
-                if (order.customerAddress != null && order.customerAddress!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    order.customerAddress!,
-                    style: const TextStyle(color: AppColors.textHint, fontSize: 12),
-                  ),
-                ],
+                customerAsync.when(
+                  data: (cust) {
+                    if (cust == null) return const SizedBox.shrink();
+                    final houseStr = [
+                      if (cust.mainHouseNumber.isNotEmpty) 'Main: ${cust.mainHouseNumber}',
+                      if (cust.subHouseNumber.isNotEmpty) 'No: ${cust.subHouseNumber}',
+                    ].join(' • ');
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (houseStr.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            houseStr,
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                        if (cust.address.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            cust.address,
+                            style: const TextStyle(color: AppColors.textHint, fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
               ],
             ),
           ),
@@ -593,7 +616,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Center(
-                child: pw.Text('FreshFlow Receipt',
+                child: pw.Text('OrderKart Receipt',
                     style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold, fontSize: 16)),
               ),

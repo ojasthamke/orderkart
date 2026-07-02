@@ -32,7 +32,7 @@ class OrderKartApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
-      title: 'OrderKart — FreshFlow',
+      title: 'OrderKart',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

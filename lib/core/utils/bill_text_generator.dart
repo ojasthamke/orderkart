@@ -62,7 +62,7 @@ class BillTextGenerator {
       buf.writeln('✅ Fully Paid');
     }
     buf.writeln(sep);
-    buf.writeln('_Powered by FreshFlow_');
+    buf.writeln('_Powered by OrderKart_');
 
     return buf.toString();
   }

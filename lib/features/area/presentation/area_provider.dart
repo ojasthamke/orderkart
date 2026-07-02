@@ -1,10 +1,9 @@
-/// AreaProvider — Riverpod state management for Areas
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/area_dao.dart';
 import '../data/area_repository_impl.dart';
 import '../domain/area.dart';
 import '../domain/area_repository.dart';
+import '../../order/presentation/order_provider.dart';
 
 // Repository provider
 final areaRepositoryProvider = Provider<AreaRepository>((ref) {
@@ -13,11 +12,12 @@ final areaRepositoryProvider = Provider<AreaRepository>((ref) {
 
 // State notifier for area list
 class AreaNotifier extends StateNotifier<AsyncValue<List<Area>>> {
+  final Ref _ref;
   final AreaRepository _repo;
   String _search = '';
   String _sort   = 'name';
 
-  AreaNotifier(this._repo) : super(const AsyncValue.loading()) {
+  AreaNotifier(this._ref, this._repo) : super(const AsyncValue.loading()) {
     loadAreas();
   }
 
@@ -29,6 +29,11 @@ class AreaNotifier extends StateNotifier<AsyncValue<List<Area>>> {
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
+  }
+
+  void _invalidateAll() {
+    _ref.invalidate(areaProvider);
+    _ref.invalidate(analyticsSummaryProvider);
   }
 
   void search(String query) {
@@ -44,20 +49,23 @@ class AreaNotifier extends StateNotifier<AsyncValue<List<Area>>> {
   Future<void> addArea(Area area) async {
     await _repo.addArea(area);
     await loadAreas();
+    _invalidateAll();
   }
 
   Future<void> updateArea(Area area) async {
     await _repo.updateArea(area);
     await loadAreas();
+    _invalidateAll();
   }
 
   Future<void> deleteArea(String id) async {
     await _repo.deleteArea(id);
     await loadAreas();
+    _invalidateAll();
   }
 }
 
 final areaProvider =
     StateNotifierProvider<AreaNotifier, AsyncValue<List<Area>>>((ref) {
-  return AreaNotifier(ref.read(areaRepositoryProvider));
+  return AreaNotifier(ref, ref.read(areaRepositoryProvider));
 });

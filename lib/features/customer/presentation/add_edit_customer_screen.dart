@@ -33,6 +33,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   final _phone2Con   = TextEditingController();
   final _waCon        = TextEditingController();
   final _houseCon    = TextEditingController();
+  final _mainHouseCon = TextEditingController();
   final _addressCon  = TextEditingController();
   final _notesCon    = TextEditingController();
   final _mapsCon     = TextEditingController();
@@ -63,7 +64,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         _phone1Con.text  = customer.phone1;
         _phone2Con.text  = customer.phone2;
         _waCon.text       = customer.whatsapp;
-        _houseCon.text   = customer.houseNumber;
+        _mainHouseCon.text = customer.mainHouseNumber;
+        _houseCon.text   = customer.subHouseNumber;
         _addressCon.text = customer.address;
         _notesCon.text   = customer.notes;
         _mapsCon.text    = customer.mapsLocation;
@@ -75,8 +77,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   @override
   void dispose() {
     _nameCon.dispose(); _phone1Con.dispose(); _phone2Con.dispose();
-    _waCon.dispose(); _houseCon.dispose(); _addressCon.dispose();
-    _notesCon.dispose(); _mapsCon.dispose();
+    _waCon.dispose(); _houseCon.dispose(); _mainHouseCon.dispose();
+    _addressCon.dispose(); _notesCon.dispose(); _mapsCon.dispose();
     super.dispose();
   }
 
@@ -174,13 +176,30 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               ),
               const SizedBox(height: 16),
 
-              // House number
-              TextFormField(
-                controller: _houseCon,
-                decoration: const InputDecoration(
-                  labelText: 'House / Flat Number',
-                  prefixIcon: Icon(Icons.home_rounded),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _mainHouseCon,
+                      decoration: const InputDecoration(
+                        labelText: 'Main House Number',
+                        prefixIcon: Icon(Icons.home_rounded),
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _houseCon,
+                      decoration: const InputDecoration(
+                        labelText: 'House / Flat Number',
+                        prefixIcon: Icon(Icons.tag_rounded),
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
 
@@ -354,7 +373,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         phone1:             _phone1Con.text.trim(),
         phone2:             _phone2Con.text.trim(),
         whatsapp:           _waCon.text.trim(),
-        houseNumber:        _houseCon.text.trim(),
+        houseNumber:        _mainHouseCon.text.trim().isNotEmpty
+            ? '${_mainHouseCon.text.trim()}|${_houseCon.text.trim()}'
+            : _houseCon.text.trim(),
         address:            _addressCon.text.trim(),
         notes:              _notesCon.text.trim(),
         mapsLocation:       _mapsCon.text.trim(),

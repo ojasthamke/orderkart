@@ -2,12 +2,41 @@
 
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:convert';
 import '../../../core/database/database_helper.dart';
 import '../domain/customer.dart';
 
 class CustomerDao {
   final _uuid = const Uuid();
   Future<Database> get _db => DatabaseHelper.instance.database;
+
+  Future<List<String>> _getCustomerOrder(String streetId) async {
+    final db = await _db;
+    final maps = await db.query(
+      'settings',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: ['street_customers_order:$streetId'],
+    );
+    if (maps.isEmpty) return [];
+    try {
+      final val = maps.first['value'] as String;
+      final List<dynamic> list = jsonDecode(val);
+      return list.cast<String>();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> saveCustomerOrder(String streetId, List<String> orderedIds) async {
+    final db = await _db;
+    final val = jsonEncode(orderedIds);
+    await db.insert(
+      'settings',
+      {'key': 'street_customers_order:$streetId', 'value': val},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
 
   Future<List<Customer>> getCustomersByStreet(String streetId, {String? searchQuery}) async {
     final db = await _db;
@@ -22,9 +51,22 @@ class CustomerDao {
       'customers',
       where: where,
       whereArgs: args,
-      orderBy: 'name ASC',
     );
-    return maps.map(Customer.fromMap).toList();
+    final customers = maps.map(Customer.fromMap).toList();
+
+    final order = await _getCustomerOrder(streetId);
+    if (order.isNotEmpty) {
+      customers.sort((a, b) {
+        int idxA = order.indexOf(a.id);
+        int idxB = order.indexOf(b.id);
+        if (idxA == -1) idxA = 999999;
+        if (idxB == -1) idxB = 999999;
+        return idxA.compareTo(idxB);
+      });
+    } else {
+      customers.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+    return customers;
   }
 
   Future<Customer?> getCustomerById(String id) async {

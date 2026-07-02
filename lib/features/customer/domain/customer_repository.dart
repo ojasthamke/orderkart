@@ -8,4 +8,5 @@ abstract class CustomerRepository {
   Future<void> deleteCustomer(String id);
   Future<void> updateBalance(String customerId, double delta);
   Future<List<Customer>> searchCustomers(String query);
+  Future<void> reorderCustomers(String streetId, List<String> orderedIds);
 }

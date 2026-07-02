@@ -4,11 +4,17 @@ import '../data/settings_dao.dart';
 import '../domain/app_settings.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/database/database_helper.dart';
+import '../../order/presentation/order_provider.dart';
+import '../../area/presentation/area_provider.dart';
+import '../../street/presentation/street_provider.dart';
+import '../../customer/presentation/customer_provider.dart';
+import '../../inventory/presentation/inventory_provider.dart';
 
 class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
+  final Ref _ref;
   final SettingsDao _dao;
 
-  SettingsNotifier(this._dao) : super(const AsyncValue.loading()) {
+  SettingsNotifier(this._ref, this._dao) : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -20,6 +26,24 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
+  }
+
+  void _invalidateAll() {
+    _ref.invalidate(settingsProvider);
+    _ref.invalidate(themeModeProvider);
+    _ref.invalidate(analyticsSummaryProvider);
+    _ref.invalidate(areaProvider);
+    _ref.invalidate(streetProviderFamily);
+    _ref.invalidate(customerListProvider);
+    _ref.invalidate(customerDetailProvider);
+    _ref.invalidate(orderManagementProvider);
+    _ref.invalidate(customerOrdersProvider);
+    _ref.invalidate(orderDetailProvider);
+    _ref.invalidate(inventoryProvider);
+    _ref.invalidate(lowStockProvider);
+    _ref.invalidate(stockHistoryProvider);
+    _ref.invalidate(topCustomersProvider);
+    _ref.invalidate(dashboardOrdersProvider);
   }
 
   Future<void> update(AppSettings settings) async {
@@ -40,6 +64,7 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     await _dao.setValue(AppConstants.keyStaffWhatsApp,      settings.staffWhatsApp);
     await _dao.setValue(AppConstants.keyLastDeliveryCharge, settings.lastDeliveryCharge.toString());
     state = AsyncValue.data(settings);
+    _invalidateAll();
   }
 
   Future<void> updateLastDeliveryCharge(double charge) async {
@@ -48,17 +73,19 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     if (current != null) {
       state = AsyncValue.data(current.copyWith(lastDeliveryCharge: charge));
     }
+    _invalidateAll();
   }
 
   Future<void> resetApp() async {
     await DatabaseHelper.instance.resetDatabase();
     await load();
+    _invalidateAll();
   }
 }
 
 final settingsProvider =
     StateNotifierProvider<SettingsNotifier, AsyncValue<AppSettings>>(
-        (ref) => SettingsNotifier(SettingsDao()));
+        (ref) => SettingsNotifier(ref, SettingsDao()));
 
 final themeModeProvider = Provider<ThemeMode>((ref) {
   final settings = ref.watch(settingsProvider).value;

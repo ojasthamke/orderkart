@@ -3,17 +3,19 @@ import '../data/expense_dao.dart';
 import '../data/expense_repository_impl.dart';
 import '../domain/expense.dart';
 import '../domain/expense_repository.dart';
+import '../../order/presentation/order_provider.dart';
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>(
     (ref) => ExpenseRepositoryImpl(ExpenseDao()));
 
 class ExpenseNotifier extends StateNotifier<AsyncValue<List<Expense>>> {
+  final Ref _ref;
   final ExpenseRepository _repo;
   String _search   = '';
   String _category = '';
   String _month    = '';
 
-  ExpenseNotifier(this._repo) : super(const AsyncValue.loading()) {
+  ExpenseNotifier(this._ref, this._repo) : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -29,6 +31,14 @@ class ExpenseNotifier extends StateNotifier<AsyncValue<List<Expense>>> {
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
+  }
+
+  void _invalidateAll() {
+    _ref.invalidate(expenseProvider);
+    _ref.invalidate(monthlySummaryProvider);
+    _ref.invalidate(analyticsSummaryProvider);
+    _ref.invalidate(weeklyChartProvider);
+    _ref.invalidate(monthlyChartProvider);
   }
 
   void search(String q) {
@@ -49,22 +59,25 @@ class ExpenseNotifier extends StateNotifier<AsyncValue<List<Expense>>> {
   Future<void> add(Expense e) async {
     await _repo.addExpense(e);
     await load();
+    _invalidateAll();
   }
 
   Future<void> update(Expense e) async {
     await _repo.updateExpense(e);
     await load();
+    _invalidateAll();
   }
 
   Future<void> delete(String id) async {
     await _repo.deleteExpense(id);
     await load();
+    _invalidateAll();
   }
 }
 
 final expenseProvider =
     StateNotifierProvider<ExpenseNotifier, AsyncValue<List<Expense>>>(
-        (ref) => ExpenseNotifier(ref.read(expenseRepositoryProvider)));
+        (ref) => ExpenseNotifier(ref, ref.read(expenseRepositoryProvider)));
 
 final monthlySummaryProvider = FutureProvider<List<Map<String, dynamic>>>(
     (ref) => ref.read(expenseRepositoryProvider).getMonthlySummary());

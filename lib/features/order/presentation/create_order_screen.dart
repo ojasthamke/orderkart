@@ -16,8 +16,8 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
-import 'package:orderkart/features/settings/domain/app_settings.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../../../core/widgets/qr_full_screen_preview.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
 import '../domain/payment.dart';
@@ -431,28 +431,40 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 const SizedBox(height: 8),
                 if (settings != null) ...[
                   if (settings.qrCustomImage.isNotEmpty)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(settings.qrCustomImage),
-                        width: 160,
-                        height: 160,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                    GestureDetector(
+                      onTap: () => QrFullScreenPreview.show(
+                        context,
+                        qrCustomImage: settings.qrCustomImage,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          File(settings.qrCustomImage),
+                          width: 160,
+                          height: 160,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                        ),
                       ),
                     )
                   else if (settings.qrContent.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.gray200),
+                    GestureDetector(
+                      onTap: () => QrFullScreenPreview.show(
+                        context,
+                        qrContent: settings.qrContent,
                       ),
-                      child: QrImageView(
-                        data: settings.qrContent,
-                        version: QrVersions.auto,
-                        size: 160.0,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.gray200),
+                        ),
+                        child: QrImageView(
+                          data: settings.qrContent,
+                          version: QrVersions.auto,
+                          size: 160.0,
+                        ),
                       ),
                     )
                   else

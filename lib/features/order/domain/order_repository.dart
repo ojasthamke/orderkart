@@ -3,7 +3,13 @@ import 'order_item.dart';
 import 'payment.dart';
 
 abstract class OrderRepository {
-  Future<List<AppOrder>> getAllOrders({String? status, String? filter, String? customerId});
+  Future<List<AppOrder>> getAllOrders({
+    String? status,
+    String? filter,
+    String? customerId,
+    DateTime? startDate,
+    DateTime? endDate,
+  });
   Future<AppOrder?> getOrderById(String id);
   Future<List<OrderItem>> getOrderItems(String orderId);
   Future<List<Payment>> getOrderPayments(String orderId);

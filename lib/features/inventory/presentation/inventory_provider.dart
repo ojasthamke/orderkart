@@ -4,17 +4,20 @@ import '../data/inventory_repository_impl.dart';
 import '../domain/inventory_repository.dart';
 import '../domain/item.dart';
 import '../domain/stock_history.dart';
+import '../../order/presentation/order_provider.dart';
+import '../../search/presentation/search_provider.dart';
 
 final inventoryRepositoryProvider = Provider<InventoryRepository>(
     (ref) => InventoryRepositoryImpl(ItemDao()));
 
 class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
+  final Ref _ref;
   final InventoryRepository _repo;
   String _category = '';
   String _search   = '';
   String _sort     = 'name';
 
-  InventoryNotifier(this._repo) : super(const AsyncValue.loading()) {
+  InventoryNotifier(this._ref, this._repo) : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -30,6 +33,14 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
+  }
+
+  void _invalidateAll() {
+    _ref.invalidate(inventoryProvider);
+    _ref.invalidate(lowStockProvider);
+    _ref.invalidate(stockHistoryProvider);
+    _ref.invalidate(analyticsSummaryProvider);
+    _ref.invalidate(searchProvider);
   }
 
   void filterByCategory(String category) {
@@ -50,28 +61,32 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
   Future<void> addItem(Item item) async {
     await _repo.addItem(item);
     await load();
+    _invalidateAll();
   }
 
   Future<void> updateItem(Item item) async {
     await _repo.updateItem(item);
     await load();
+    _invalidateAll();
   }
 
   Future<void> deleteItem(String id) async {
     await _repo.deleteItem(id);
     await load();
+    _invalidateAll();
   }
 
   Future<void> adjustStock(
       String itemId, double change, String reason) async {
     await _repo.adjustStock(itemId, change, reason);
     await load();
+    _invalidateAll();
   }
 }
 
 final inventoryProvider =
     StateNotifierProvider<InventoryNotifier, AsyncValue<List<Item>>>(
-        (ref) => InventoryNotifier(ref.read(inventoryRepositoryProvider)));
+        (ref) => InventoryNotifier(ref, ref.read(inventoryRepositoryProvider)));
 
 final lowStockProvider = FutureProvider<List<Item>>(
     (ref) => ref.read(inventoryRepositoryProvider).getLowStockItems());

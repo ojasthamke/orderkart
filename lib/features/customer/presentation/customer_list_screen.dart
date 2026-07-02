@@ -69,11 +69,20 @@ class CustomerListScreen extends ConsumerWidget {
                           .then((_) =>
                               ref.refresh(customerListProvider(streetId))),
                     )
-                  : ListView.builder(
+                  : ReorderableListView.builder(
                       padding: const EdgeInsets.only(bottom: 96),
                       itemCount: customers.length,
+                      onReorder: (oldIndex, newIndex) {
+                        if (newIndex > oldIndex) {
+                          newIndex -= 1;
+                        }
+                        ref
+                            .read(customerListProvider(streetId).notifier)
+                            .reorder(oldIndex, newIndex);
+                      },
                       itemBuilder: (ctx, i) =>
                           _CustomerCard(
+                            key: ValueKey(customers[i].id),
                             customer: customers[i],
                             streetId: streetId,
                             ref: ref,
@@ -96,6 +105,7 @@ class _CustomerCard extends StatelessWidget {
   final WidgetRef ref;
 
   const _CustomerCard({
+    super.key,
     required this.customer,
     required this.streetId,
     required this.ref,
@@ -179,7 +189,7 @@ class _CustomerCard extends StatelessWidget {
                       if (customer.houseNumber.isNotEmpty ||
                           customer.address.isNotEmpty)
                         Text(
-                          '${customer.houseNumber.isNotEmpty ? '${customer.houseNumber}, ' : ''}${customer.address}',
+                          '${customer.mainHouseNumber.isNotEmpty ? 'Main: ${customer.mainHouseNumber}, No: ${customer.subHouseNumber}' : customer.subHouseNumber}${customer.address.isNotEmpty ? ', ${customer.address}' : ''}',
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall

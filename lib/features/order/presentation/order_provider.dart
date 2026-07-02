@@ -7,6 +7,9 @@ import '../domain/order_repository.dart';
 import '../domain/payment.dart';
 import '../../customer/data/customer_dao.dart';
 import '../../inventory/data/item_dao.dart';
+import '../../customer/presentation/customer_provider.dart';
+import '../../inventory/presentation/inventory_provider.dart';
+import '../../search/presentation/search_provider.dart';
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   return OrderRepositoryImpl(OrderDao(), CustomerDao(), ItemDao());
@@ -14,12 +17,13 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
 
 // Order management state
 class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> {
+  final Ref _ref;
   final OrderRepository _repo;
   String _status = 'all';
   String _filter = 'all';
   String? _customerId;
 
-  OrderManagementNotifier(this._repo, {String? customerId})
+  OrderManagementNotifier(this._ref, this._repo, {String? customerId})
       : _customerId = customerId,
         super(const AsyncValue.loading()) {
     load();
@@ -39,6 +43,23 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
     }
   }
 
+  void _invalidateAll() {
+    _ref.invalidate(orderManagementProvider);
+    _ref.invalidate(customerOrdersProvider);
+    _ref.invalidate(orderDetailProvider);
+    _ref.invalidate(customerListProvider);
+    _ref.invalidate(customerDetailProvider);
+    _ref.invalidate(inventoryProvider);
+    _ref.invalidate(lowStockProvider);
+    _ref.invalidate(stockHistoryProvider);
+    _ref.invalidate(analyticsSummaryProvider);
+    _ref.invalidate(weeklyChartProvider);
+    _ref.invalidate(monthlyChartProvider);
+    _ref.invalidate(searchProvider);
+    _ref.invalidate(topCustomersProvider);
+    _ref.invalidate(dashboardOrdersProvider);
+  }
+
   void setStatus(String status) {
     _status = status;
     load();
@@ -52,32 +73,37 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
   Future<void> updateDeliveryStatus(String orderId, String status) async {
     await _repo.updateDeliveryStatus(orderId, status);
     await load();
+    _invalidateAll();
   }
 
   Future<void> addPayment(Payment payment) async {
     await _repo.addPayment(payment);
     await load();
+    _invalidateAll();
   }
 
   Future<void> deleteOrder(String id) async {
     await _repo.deleteOrder(id);
     await load();
+    _invalidateAll();
   }
 
   Future<void> createOrder(AppOrder order, List<OrderItem> items) async {
     await _repo.createOrder(order, items);
     await load();
+    _invalidateAll();
   }
 }
 
 final orderManagementProvider =
     StateNotifierProvider<OrderManagementNotifier, AsyncValue<List<AppOrder>>>(
-        (ref) => OrderManagementNotifier(ref.read(orderRepositoryProvider)));
+        (ref) => OrderManagementNotifier(ref, ref.read(orderRepositoryProvider)));
 
 // Per-customer orders
 final customerOrdersProvider = StateNotifierProvider.family<
     OrderManagementNotifier, AsyncValue<List<AppOrder>>, String>(
   (ref, customerId) => OrderManagementNotifier(
+    ref,
     ref.read(orderRepositoryProvider),
     customerId: customerId,
   ),
@@ -106,4 +132,37 @@ final weeklyChartProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
 
 final monthlyChartProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   return OrderDao().getMonthlySales();
+});
+
+final topCustomersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
+  return OrderDao().getTopCustomers();
+});
+
+class DashboardOrdersParams {
+  final String? filter;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  const DashboardOrdersParams({this.filter, this.startDate, this.endDate});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DashboardOrdersParams &&
+          runtimeType == other.runtimeType &&
+          filter == other.filter &&
+          startDate == other.startDate &&
+          endDate == other.endDate;
+
+  @override
+  int get hashCode => filter.hashCode ^ startDate.hashCode ^ endDate.hashCode;
+}
+
+final dashboardOrdersProvider = FutureProvider.family<List<AppOrder>, DashboardOrdersParams>((ref, params) {
+  final repo = ref.read(orderRepositoryProvider);
+  return repo.getAllOrders(
+    filter: params.filter,
+    startDate: params.startDate,
+    endDate: params.endDate,
+  );
 });

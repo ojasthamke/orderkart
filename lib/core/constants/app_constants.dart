@@ -4,7 +4,7 @@ class AppConstants {
   AppConstants._();
 
   // App Info
-  static const String appName = 'FreshFlow';
+  static const String appName = 'OrderKart';
   static const String appTagline = 'Smart Delivery Management';
   static const String appVersion = '1.0.0';
   static const String appBuild = '1';

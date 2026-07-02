@@ -17,10 +17,20 @@ class OrderRepositoryImpl implements OrderRepository {
   OrderRepositoryImpl(this._orderDao, this._customerDao, this._itemDao);
 
   @override
-  Future<List<AppOrder>> getAllOrders(
-      {String? status, String? filter, String? customerId}) =>
+  Future<List<AppOrder>> getAllOrders({
+    String? status,
+    String? filter,
+    String? customerId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) =>
       _orderDao.getAllOrders(
-          status: status, filter: filter, customerId: customerId);
+        status: status,
+        filter: filter,
+        customerId: customerId,
+        startDate: startDate,
+        endDate: endDate,
+      );
 
   @override
   Future<AppOrder?> getOrderById(String id) => _orderDao.getOrderById(id);
@@ -35,13 +45,31 @@ class OrderRepositoryImpl implements OrderRepository {
 
   @override
   Future<String> createOrder(AppOrder order, List<OrderItem> items) async {
+    final existing = await _orderDao.getOrderById(order.id);
+    if (existing != null) {
+      final oldItems = await _orderDao.getOrderItems(order.id);
+      for (final oldItem in oldItems) {
+        if (oldItem.itemId.isNotEmpty) {
+          await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity);
+          await _itemDao.insertStockHistory(StockHistory(
+            id:           _uuid.v4(),
+            itemId:       oldItem.itemId,
+            itemName:     oldItem.itemName,
+            changeAmount: oldItem.quantity,
+            reason:       'order_edit_restore',
+            orderId:      order.id,
+            createdAt:    DateTime.now(),
+          ));
+        }
+      }
+      await _orderDao.deleteOrderItems(order.id);
+    }
+
     final orderId = await _orderDao.insertOrder(order);
 
-    // Insert all line items with the real order ID
     for (final item in items) {
       await _orderDao.insertOrderItem(item.copyWith(orderId: orderId));
 
-      // Decrease stock if item has a valid item_id
       if (item.itemId.isNotEmpty) {
         await _itemDao.adjustStock(item.itemId, -item.quantity);
         final dbItem = await _itemDao.getItemById(item.itemId);
@@ -59,7 +87,6 @@ class OrderRepositoryImpl implements OrderRepository {
       }
     }
 
-    // Recalculate customer totals
     await _customerDao.recalcCustomerTotals(order.customerId);
 
     return orderId;
@@ -74,6 +101,23 @@ class OrderRepositoryImpl implements OrderRepository {
   @override
   Future<void> deleteOrder(String id) async {
     final order = await _orderDao.getOrderById(id);
+    if (order != null) {
+      final oldItems = await _orderDao.getOrderItems(id);
+      for (final oldItem in oldItems) {
+        if (oldItem.itemId.isNotEmpty) {
+          await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity);
+          await _itemDao.insertStockHistory(StockHistory(
+            id:           _uuid.v4(),
+            itemId:       oldItem.itemId,
+            itemName:     oldItem.itemName,
+            changeAmount: oldItem.quantity,
+            reason:       'order_delete',
+            orderId:      id,
+            createdAt:    DateTime.now(),
+          ));
+        }
+      }
+    }
     await _orderDao.deleteOrder(id);
     if (order != null) {
       await _customerDao.recalcCustomerTotals(order.customerId);

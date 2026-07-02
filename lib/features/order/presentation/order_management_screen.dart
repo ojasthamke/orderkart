@@ -374,14 +374,26 @@ class _OrderCard extends ConsumerWidget {
                 const SizedBox(height: 6),
 
                 // Address / phone
-                if (order.customerAddress?.isNotEmpty == true)
-                  Text(
-                    order.customerAddress!,
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: AppColors.textSecondary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                customerAsync.when(
+                  data: (cust) {
+                    if (cust == null) return const SizedBox.shrink();
+                    final houseStr = [
+                      if (cust.mainHouseNumber.isNotEmpty) 'Main: ${cust.mainHouseNumber}',
+                      if (cust.subHouseNumber.isNotEmpty) 'No: ${cust.subHouseNumber}',
+                    ].join(' • ');
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 2),
+                      child: Text(
+                        '${houseStr.isNotEmpty ? '$houseStr  •  ' : ''}${cust.address}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
 
                 const SizedBox(height: 8),
 
