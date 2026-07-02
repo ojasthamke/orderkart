@@ -7,9 +7,9 @@ class AppColors {
   AppColors._();
 
   // ── Primary Brand ──────────────────────────────────────────────────────────
-  static const Color primary = Color(0xFF1565C0);       // Deep Blue
-  static const Color primaryLight = Color(0xFF1976D2);  // Blue 700
-  static const Color primarySurface = Color(0xFFE3F2FD); // Blue 50
+  static const Color primary = Color(0xFF388E3C);       // Green 700
+  static const Color primaryLight = Color(0xFF81C784);  // Green 300
+  static const Color primarySurface = Color(0xFFE8F5E9); // Green 50
 
   // ── Accent ─────────────────────────────────────────────────────────────────
   static const Color success = Color(0xFF2E7D32);       // Green 800
