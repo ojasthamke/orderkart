@@ -28,7 +28,7 @@ class DatabaseHelper {
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       // Enable WAL mode for better concurrent performance
-      onOpen: (db) => db.execute('PRAGMA journal_mode=WAL'),
+      onOpen: (db) => db.rawQuery('PRAGMA journal_mode=WAL'),
     );
   }
 
