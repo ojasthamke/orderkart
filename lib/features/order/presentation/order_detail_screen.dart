@@ -440,9 +440,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: () => _shareBill(order, currency),
-                icon: const Icon(Icons.share_rounded),
-                label: const Text('Share WhatsApp'),
+                onPressed: () => _shareBill(order, currency, isCustomer: true),
+                icon: const Icon(Icons.chat_rounded),
+                label: const Text('Customer WA'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.success,
                   foregroundColor: Colors.white,
@@ -451,6 +451,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
+          onPressed: () => _shareBill(order, currency, isCustomer: false),
+          icon: const Icon(Icons.groups_rounded),
+          label: const Text('Share to Staff Group'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF128C7E), // WhatsApp Teal
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 50),
+          ),
         ),
       ],
     );
@@ -557,7 +568,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         onLayout: (PdfPageFormat format) async => doc.save());
   }
 
-  void _shareBill(AppOrder order, String currency) {
+  Future<void> _shareBill(AppOrder order, String currency, {required bool isCustomer}) async {
     final settings = ref.read(settingsProvider).value;
     final list = order.items
             ?.map((it) => {
@@ -587,6 +598,42 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       currency:        currency,
     );
 
-    Share.share(text, subject: 'Invoice for Order #${order.id.substring(0, 8).toUpperCase()}');
+    String encodedText = Uri.encodeComponent(text);
+    Uri? url;
+
+    if (isCustomer) {
+      String phone = order.customerPhone ?? '';
+      String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+      if (cleanPhone.length == 10) cleanPhone = '91$cleanPhone'; // Default to +91 if 10 digits
+      
+      if (cleanPhone.isNotEmpty) {
+        url = Uri.parse('whatsapp://send?phone=$cleanPhone&text=$encodedText');
+      } else {
+        url = Uri.parse('whatsapp://send?text=$encodedText');
+      }
+    } else {
+      // Group share skips phone number so WhatsApp opens its group/contact picker
+      url = Uri.parse('whatsapp://send?text=$encodedText');
+    }
+
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback to https://wa.me if the whatsapp:// scheme fails
+        final fallbackUrl = isCustomer && order.customerPhone != null && order.customerPhone!.isNotEmpty
+            ? Uri.parse('https://wa.me/${order.customerPhone!.replaceAll(RegExp(r'\D'), '')}?text=$encodedText')
+            : Uri.parse('https://wa.me/?text=$encodedText');
+            
+        if (await canLaunchUrl(fallbackUrl)) {
+          await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+        } else {
+          // Ultimate fallback to generic OS Share sheet
+          Share.share(text, subject: 'Invoice for Order #${order.id.substring(0, 8).toUpperCase()}');
+        }
+      }
+    } catch (e) {
+      Share.share(text, subject: 'Invoice for Order #${order.id.substring(0, 8).toUpperCase()}');
+    }
   }
 }
