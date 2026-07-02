@@ -77,12 +77,12 @@ dev_dependencies:
 flutter_native_splash:
   color: "#388E3C" # AppColors.primary (FreshFlow Green)
   android: true
-  ios: true
+  ios: false
   web: false
 
 flutter_launcher_icons:
   android: true
-  ios: true
+  ios: false
   image_path: "assets/icon.png"
   min_sdk_android: 21
   adaptive_icon_background: "#388E3C"
