@@ -47,20 +47,9 @@ jobs:
       - name: Build Android APK
         run: flutter build apk --release
 
-      # 6. Build Flutter Web Release
-      - name: Build Flutter Web
-        run: flutter build web --release
-
       # 7. Upload APK Artifact
       - name: Upload Android APK Release
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
-      # 8. Upload Web Release Artifact
-      - name: Upload Web Build Release
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-web
-          path: build/web/

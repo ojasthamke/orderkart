@@ -295,7 +295,7 @@ class CustomerProfileScreen extends ConsumerWidget {
             icon: Icons.phone_rounded,
             label: 'Call',
             color: AppColors.primary,
-            onTap: () => launchUrl(Uri.parse('tel:${customer.phone1}')),
+            onTap: () => _launchCall(context, customer.phone1),
           ),
           // WhatsApp
           if (customer.whatsapp.isNotEmpty || customer.phone1.isNotEmpty)
@@ -503,6 +503,28 @@ class CustomerProfileScreen extends ConsumerWidget {
             ],
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _launchCall(BuildContext context, String phone) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.isEmpty) {
+      SnackbarHelper.showError(context, 'Phone number is missing');
+      return;
+    }
+    final url = Uri.parse('tel:$cleanPhone');
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      } else {
+        if (context.mounted) {
+          SnackbarHelper.showError(context, 'Could not launch dialer for number: $phone');
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        SnackbarHelper.showError(context, 'Failed to make phone call: $e');
       }
     }
   }

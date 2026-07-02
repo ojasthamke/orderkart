@@ -115,7 +115,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     keyboardType: TextInputType.phone),
                 _textTile('Staff WhatsApp Group', _staffWaCon,
                     Icons.groups_rounded,
-                    keyboardType: TextInputType.phone),
+                    keyboardType: TextInputType.url),
               ]),
               const SizedBox(height: 8),
               SizedBox(

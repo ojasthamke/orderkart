@@ -6,6 +6,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
@@ -709,8 +710,51 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         url = Uri.parse('whatsapp://send?text=$encodedText');
       }
     } else {
-      // Group share skips phone number so WhatsApp opens its group/contact picker
-      url = Uri.parse('whatsapp://send?text=$encodedText');
+      final staffLink = settings?.staffWhatsApp ?? '';
+      if (staffLink.trim().isEmpty) {
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Staff Group Link Missing'),
+              content: const Text(
+                'Please configure the Staff WhatsApp Group Link in Settings first.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(_),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
+      await Clipboard.setData(ClipboardData(text: text));
+      if (context.mounted) {
+        SnackbarHelper.showInfo(context, 'Bill text copied to clipboard');
+      }
+
+      Uri? groupUri;
+      try {
+        groupUri = Uri.parse(staffLink.trim());
+      } catch (_) {}
+
+      if (groupUri != null) {
+        try {
+          if (await canLaunchUrl(groupUri)) {
+            await launchUrl(groupUri, mode: LaunchMode.externalApplication);
+            return;
+          }
+        } catch (_) {}
+      }
+
+      if (context.mounted) {
+        SnackbarHelper.showError(context, 'Could not open the configured Staff Group Link');
+      }
+      return;
     }
 
     try {
