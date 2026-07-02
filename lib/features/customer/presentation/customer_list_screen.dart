@@ -80,16 +80,17 @@ class CustomerListScreen extends ConsumerWidget {
                             .read(customerListProvider(streetId).notifier)
                             .reorder(oldIndex, newIndex);
                       },
-                      itemBuilder: (ctx, i) =>
-                          _CustomerCard(
-                            key: ValueKey(customers[i].id),
-                            customer: customers[i],
-                            streetId: streetId,
-                            ref: ref,
-                          )
-                          .animate(delay: (i * 40).ms)
-                          .fadeIn()
-                          .slideX(begin: 0.05),
+                      itemBuilder: (ctx, i) => KeyedSubtree(
+                        key: ValueKey(customers[i].id),
+                        child: _CustomerCard(
+                          customer: customers[i],
+                          streetId: streetId,
+                          ref: ref,
+                        )
+                            .animate(delay: (i * 40).ms)
+                            .fadeIn()
+                            .slideX(begin: 0.05),
+                      ),
                     ),
             ),
           ),
