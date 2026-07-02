@@ -180,14 +180,14 @@ class CustomerProfileScreen extends ConsumerWidget {
                           .bodyMedium
                           ?.copyWith(color: AppColors.textSecondary),
                     ),
-                    final houseDetails = [
-                      if (customer.mainHouseNumber.isNotEmpty) 'Main: ${customer.mainHouseNumber}',
-                      if (customer.subHouseNumber.isNotEmpty) 'No: ${customer.subHouseNumber}',
-                    ].join(' • ');
-                    if (houseDetails.isNotEmpty) ...[
+                    if (customer.mainHouseNumber.isNotEmpty ||
+                        customer.subHouseNumber.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        houseDetails,
+                        [
+                          if (customer.mainHouseNumber.isNotEmpty) 'Main: ${customer.mainHouseNumber}',
+                          if (customer.subHouseNumber.isNotEmpty) 'No: ${customer.subHouseNumber}',
+                        ].join(' • '),
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
