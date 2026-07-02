@@ -24,13 +24,13 @@ Future<void> main() async {
       DeviceOrientation.portraitDown,
     ]);
 
-    // Set system UI overlay style for sunlight-friendly white theme
+    // Set system UI overlay style for AMOLED Black Theme
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.black,
+        systemNavigationBarIconBrightness: Brightness.light,
       ),
     );
 
