@@ -16,6 +16,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
+import 'package:orderkart/features/settings/domain/app_settings.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
@@ -151,7 +152,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   const SizedBox(height: 16),
 
                   // Payment
-                  _buildPaymentSection(currency),
+                  _buildPaymentSection(currency, settings),
 
                   const SizedBox(height: 16),
 
@@ -336,7 +337,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 
   // ── Payment section ──────────────────────────────────────────────────────────
-  Widget _buildPaymentSection(String currency) {
+  Widget _buildPaymentSection(String currency, AppSettings? settings) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -585,18 +586,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       updatedAt:          now,
     );
 
-    final items = _cart
-        .map((c) => OrderItem(
-              id:         const Uuid().v4(),
-              orderId:    orderId,
-              itemId:     c.itemId,
-              itemName:   c.name,
-              itemUnit:   c.unit,
-              quantity:   c.quantity,
-              unitPrice:  c.price,
-              totalPrice: c.total,
-            ))
-        .toList();
+
 
     try {
       await ref

@@ -6,8 +6,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/customer_avatar.dart';
-import '../../../customer/presentation/customer_provider.dart';
-import '../../settings/presentation/settings_provider.dart';
+import 'package:orderkart/features/customer/presentation/customer_provider.dart';
+import 'package:orderkart/features/settings/presentation/settings_provider.dart';
 
 class PaymentDialog extends ConsumerStatefulWidget {
   final String customerId;
