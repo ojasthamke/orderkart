@@ -17,6 +17,7 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../../settings/domain/app_settings.dart';
 import '../../../core/widgets/qr_full_screen_preview.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
