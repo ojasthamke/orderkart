@@ -16,6 +16,7 @@ import '../../order/presentation/order_provider.dart';
 import '../../order/presentation/widgets/payment_dialog.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
+import '../../order/domain/order.dart';
 
 class CustomerProfileScreen extends ConsumerWidget {
   final String customerId;

@@ -9,6 +9,7 @@ import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
+import '../../order/domain/order.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -153,7 +154,7 @@ class DashboardScreen extends ConsumerWidget {
                       _shortcutTile(context, 'Areas & Map', Icons.map_rounded,
                           AppColors.primary, AppRoutes.areas),
                       _shortcutTile(context, 'Orders List',
-                          Icons.receipt_long_rounded, Colors.orange, AppRoutes.orders),
+                          Icons.receipt_long_rounded, Colors.orange, AppRoutes.orderManagement),
                       _shortcutTile(context, 'Inventory', Icons.inventory_2_rounded,
                           AppColors.success, AppRoutes.inventory),
                       _shortcutTile(context, 'Expenses', Icons.money_off_rounded,
@@ -180,7 +181,7 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                       TextButton(
                         onPressed: () =>
-                            Navigator.of(context).pushNamed(AppRoutes.orders),
+                            Navigator.of(context).pushNamed(AppRoutes.orderManagement),
                         child: const Text('View All'),
                       ),
                     ],

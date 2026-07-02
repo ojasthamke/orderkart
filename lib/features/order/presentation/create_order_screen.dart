@@ -20,7 +20,6 @@ import '../domain/order_item.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
 import 'widgets/item_selector_widget.dart';
-import 'widgets/order_summary_sheet.dart';
 import 'widgets/smart_round_banner.dart';
 
 class CreateOrderScreen extends ConsumerStatefulWidget {

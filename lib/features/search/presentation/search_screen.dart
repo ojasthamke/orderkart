@@ -86,7 +86,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (results) {
                 final filtered = results.where((r) {
-                  return _currentFilter == 'all' || r.type == _currentFilter;
+                  return _currentFilter == 'all' || r.type.name == _currentFilter;
                 }).toList();
 
                 if (filtered.isEmpty) {
@@ -118,25 +118,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   void _navigateToResult(SearchResult res) {
     switch (res.type) {
-      case 'customer':
+      case SearchResultType.customer:
         Navigator.of(context).pushNamed(
           AppRoutes.customerProfile,
           arguments: {'customerId': res.id},
         );
         break;
-      case 'item':
+      case SearchResultType.item:
         Navigator.of(context).pushNamed(
           AppRoutes.addEditItem,
           arguments: {'itemId': res.id},
         );
         break;
-      case 'order':
+      case SearchResultType.order:
         Navigator.of(context).pushNamed(
           AppRoutes.orderDetail,
           arguments: {'orderId': res.id},
         );
         break;
-      case 'area':
+      case SearchResultType.area:
         Navigator.of(context).pushNamed(
           AppRoutes.streets,
           arguments: {
@@ -145,13 +145,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           },
         );
         break;
-      case 'street':
+      case SearchResultType.street:
         Navigator.of(context).pushNamed(
           AppRoutes.customers,
           arguments: {
             'streetId':   res.id,
             'streetName': res.title,
           },
+        );
+        break;
+      case SearchResultType.expense:
+        Navigator.of(context).pushNamed(
+          AppRoutes.expenses,
         );
         break;
     }
@@ -166,23 +171,23 @@ class _SearchResultTile extends StatelessWidget {
 
   IconData get _icon {
     switch (result.type) {
-      case 'customer': return Icons.person_rounded;
-      case 'item':     return Icons.inventory_2_rounded;
-      case 'order':    return Icons.receipt_long_rounded;
-      case 'area':     return Icons.map_rounded;
-      case 'street':   return Icons.turn_slight_right_rounded;
-      default:         return Icons.search_rounded;
+      case SearchResultType.customer: return Icons.person_rounded;
+      case SearchResultType.item:     return Icons.inventory_2_rounded;
+      case SearchResultType.order:    return Icons.receipt_long_rounded;
+      case SearchResultType.area:     return Icons.map_rounded;
+      case SearchResultType.street:   return Icons.turn_slight_right_rounded;
+      case SearchResultType.expense:  return Icons.money_off_rounded;
     }
   }
 
   Color get _color {
     switch (result.type) {
-      case 'customer': return AppColors.primary;
-      case 'item':     return AppColors.success;
-      case 'order':    return AppColors.warning;
-      case 'area':     return Colors.deepPurple;
-      case 'street':   return Colors.teal;
-      default:         return AppColors.gray600;
+      case SearchResultType.customer: return AppColors.primary;
+      case SearchResultType.item:     return AppColors.success;
+      case SearchResultType.order:    return AppColors.warning;
+      case SearchResultType.area:     return Colors.deepPurple;
+      case SearchResultType.street:   return Colors.teal;
+      case SearchResultType.expense:  return AppColors.error;
     }
   }
 

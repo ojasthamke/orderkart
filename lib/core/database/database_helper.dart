@@ -256,4 +256,12 @@ class DatabaseHelper {
     await db.execute('DELETE FROM expenses');
     // Re-seed defaults but keep settings
   }
+
+  /// Closes the database connection
+  Future<void> close() async {
+    if (_db != null && _db!.isOpen) {
+      await _db!.close();
+      _db = null;
+    }
+  }
 }

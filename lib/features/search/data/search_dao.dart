@@ -22,8 +22,7 @@ class SearchDao {
         id:       c['id'] as String,
         title:    c['name'] as String,
         subtitle: 'Customer • ${c['phone1']}',
-        type:     'customer',
-        extra:    c,
+        type:     SearchResultType.customer,
       ));
     }
 
@@ -39,8 +38,7 @@ class SearchDao {
         id:       item['id'] as String,
         title:    item['name'] as String,
         subtitle: 'Item • Category: ${item['category']} • Rate: ₹${item['selling_price']}',
-        type:     'item',
-        extra:    item,
+        type:     SearchResultType.item,
       ));
     }
 
@@ -56,8 +54,7 @@ class SearchDao {
         id:       a['id'] as String,
         title:    a['name'] as String,
         subtitle: 'Area • ${a['description']}',
-        type:     'area',
-        extra:    a,
+        type:     SearchResultType.area,
       ));
     }
 
@@ -73,8 +70,7 @@ class SearchDao {
         id:       s['id'] as String,
         title:    s['name'] as String,
         subtitle: 'Street • ${s['description']}',
-        type:     'street',
-        extra:    s,
+        type:     SearchResultType.street,
       ));
     }
 
@@ -91,8 +87,7 @@ class SearchDao {
         id:       o['id'] as String,
         title:    'Order #${(o['id'] as String).substring(0, 8).toUpperCase()}',
         subtitle: 'Order • Customer: ${o['customer_name']} • Total: ₹${o['grand_total']} (${o['delivery_status']})',
-        type:     'order',
-        extra:    o,
+        type:     SearchResultType.order,
       ));
     }
 

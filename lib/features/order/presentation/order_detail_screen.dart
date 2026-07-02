@@ -558,6 +558,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   void _shareBill(AppOrder order, String currency) {
+    final settings = ref.read(settingsProvider).value;
     final list = order.items
             ?.map((it) => {
                   'item_name':   it.itemName,
