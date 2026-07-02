@@ -37,6 +37,12 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      # 4.1 Generate Launcher Icons and Splash Screens
+      - name: Generate Native Assets
+        run: |
+          flutter pub run flutter_launcher_icons
+          flutter pub run flutter_native_splash:create
+
       # 5. Build Android Release APK
       - name: Build Android APK
         run: flutter build apk --release

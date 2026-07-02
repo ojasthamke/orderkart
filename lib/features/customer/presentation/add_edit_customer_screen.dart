@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -93,12 +94,22 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               // Photo picker
               GestureDetector(
                 onTap: _pickImage,
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: AppColors.primarySurface,
-                  backgroundImage: _photoPath.isNotEmpty
-                      ? FileImage(File(_photoPath))
-                      : null,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.primaryLight, width: 2),
+                    image: _photoPath.isNotEmpty
+                        ? DecorationImage(
+                            image: _photoPath.startsWith('http')
+                                ? NetworkImage(_photoPath) as ImageProvider
+                                : FileImage(File(_photoPath)),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
                   child: _photoPath.isEmpty
                       ? const Icon(Icons.camera_alt_rounded,
                           size: 32, color: AppColors.primary)
@@ -187,11 +198,25 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               // Google Maps Location
               TextFormField(
                 controller: _mapsCon,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Google Maps Link (optional)',
-                  prefixIcon: Icon(Icons.map_rounded),
+                  prefixIcon: const Icon(Icons.map_rounded),
+                  suffixIcon: _mapsCon.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.open_in_new_rounded, color: AppColors.primary),
+                          onPressed: () async {
+                            final url = Uri.tryParse(_mapsCon.text.trim());
+                            if (url != null && await canLaunchUrl(url)) {
+                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                            } else {
+                              if (mounted) SnackbarHelper.showError(context, 'Invalid map link');
+                            }
+                          },
+                        )
+                      : null,
                 ),
                 keyboardType: TextInputType.url,
+                onChanged: (v) => setState(() {}),
               ),
               const SizedBox(height: 16),
 
