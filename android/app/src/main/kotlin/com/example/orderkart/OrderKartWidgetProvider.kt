@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
 import android.widget.RemoteViews
+import com.example.orderkart.R
 import es.antonborri.home_widget.HomeWidgetProvider
 
 class OrderKartWidgetProvider : HomeWidgetProvider() {
