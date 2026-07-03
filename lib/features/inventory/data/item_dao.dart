@@ -35,8 +35,8 @@ class ItemDao {
     return maps.map(Item.fromMap).toList();
   }
 
-  Future<Item?> getItemById(String id) async {
-    final db = await _db;
+  Future<Item?> getItemById(String id, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     final maps = await db.query('items', where: 'id = ?', whereArgs: [id]);
     if (maps.isEmpty) return null;
     return Item.fromMap(maps.first);

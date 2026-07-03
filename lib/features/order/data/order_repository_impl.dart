@@ -49,9 +49,9 @@ class OrderRepositoryImpl implements OrderRepository {
   Future<String> createOrder(AppOrder order, List<OrderItem> items) async {
     final db = await DatabaseHelper.instance.database;
     return await db.transaction((txn) async {
-      final existing = await _orderDao.getOrderById(order.id);
+      final existing = await _orderDao.getOrderById(order.id, executor: txn);
       if (existing != null) {
-        final oldItems = await _orderDao.getOrderItems(order.id);
+        final oldItems = await _orderDao.getOrderItems(order.id, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
             await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
@@ -76,7 +76,7 @@ class OrderRepositoryImpl implements OrderRepository {
 
         if (item.itemId.isNotEmpty) {
           await _itemDao.adjustStock(item.itemId, -item.quantity, executor: txn);
-          final dbItem = await _itemDao.getItemById(item.itemId);
+          final dbItem = await _itemDao.getItemById(item.itemId, executor: txn);
           if (dbItem != null) {
             await _itemDao.insertStockHistory(StockHistory(
               id:           _uuid.v4(),
@@ -109,9 +109,9 @@ class OrderRepositoryImpl implements OrderRepository {
   Future<void> deleteOrder(String id) async {
     final db = await DatabaseHelper.instance.database;
     await db.transaction((txn) async {
-      final order = await _orderDao.getOrderById(id);
+      final order = await _orderDao.getOrderById(id, executor: txn);
       if (order != null) {
-        final oldItems = await _orderDao.getOrderItems(id);
+        final oldItems = await _orderDao.getOrderItems(id, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
             await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
@@ -138,11 +138,11 @@ class OrderRepositoryImpl implements OrderRepository {
   Future<void> updateDeliveryStatus(String orderId, String status) async {
     final db = await DatabaseHelper.instance.database;
     await db.transaction((txn) async {
-      final order = await _orderDao.getOrderById(orderId);
+      final order = await _orderDao.getOrderById(orderId, executor: txn);
       if (order == null) return;
 
       if (status == 'cancelled' && order.deliveryStatus != 'cancelled') {
-        final oldItems = await _orderDao.getOrderItems(orderId);
+        final oldItems = await _orderDao.getOrderItems(orderId, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
             await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
@@ -169,8 +169,8 @@ class OrderRepositoryImpl implements OrderRepository {
     final db = await DatabaseHelper.instance.database;
     await db.transaction((txn) async {
       await _orderDao.insertPayment(payment, executor: txn);
-      final allPayments = await _orderDao.getOrderPayments(payment.orderId);
-      final order = await _orderDao.getOrderById(payment.orderId);
+      final allPayments = await _orderDao.getOrderPayments(payment.orderId, executor: txn);
+      final order = await _orderDao.getOrderById(payment.orderId, executor: txn);
       if (order != null) {
         final totalPaid = allPayments.fold<double>(0, (sum, p) => sum + p.amount);
         final remaining = (order.grandTotal - totalPaid).clamp(0, double.infinity);

@@ -80,8 +80,8 @@ class OrderDao {
     return maps.map(AppOrder.fromMap).toList();
   }
 
-  Future<AppOrder?> getOrderById(String id) async {
-    final db = await _db;
+  Future<AppOrder?> getOrderById(String id, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     final maps = await db.rawQuery('''
       SELECT o.*, o.rowid AS order_number, c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone
       FROM orders o JOIN customers c ON o.customer_id = c.id
@@ -91,15 +91,15 @@ class OrderDao {
     return AppOrder.fromMap(maps.first);
   }
 
-  Future<List<OrderItem>> getOrderItems(String orderId) async {
-    final db = await _db;
+  Future<List<OrderItem>> getOrderItems(String orderId, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     final maps = await db.query('order_items',
         where: 'order_id = ?', whereArgs: [orderId]);
     return maps.map(OrderItem.fromMap).toList();
   }
 
-  Future<List<Payment>> getOrderPayments(String orderId) async {
-    final db = await _db;
+  Future<List<Payment>> getOrderPayments(String orderId, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     final maps = await db.query('payments',
         where: 'order_id = ?',
         whereArgs: [orderId],
