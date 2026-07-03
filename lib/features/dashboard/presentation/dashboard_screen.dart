@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/customer_avatar.dart';
@@ -40,116 +41,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final ordersAsync = ref.watch(dashboardOrdersProvider(params));
 
     return AppScaffold(
-      title: 'OrderKart Dashboard',
+      title: 'OrderKart',
       showBack: false,
+      drawer: const AppDrawer(),
       actions: [
         IconButton(
           icon: const Icon(Icons.search_rounded),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
-        ),
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert_rounded),
-          onSelected: (value) {
-            if (value == 'todays_sales') {
-              _showTodaysSales(context);
-            } else if (value == 'due_payments') {
-              ref.read(pendingCustomersProvider).whenData((pending) {
-                if (pending.isNotEmpty) {
-                  _showPendingReminder(context, pending);
-                } else {
-                  SnackbarHelper.showInfo(context, 'No pending payments');
-                }
-              });
-            } else if (value == 'active_customers') {
-              _showActiveCustomers(context);
-            } else if (value == 'total_orders') {
-              Navigator.of(context).pushNamed(AppRoutes.orderManagement);
-            } else if (value == 'expense_report') {
-              Navigator.of(context).pushNamed(AppRoutes.expenses);
-            } else if (value == 'low_stock') {
-              Navigator.of(context).pushNamed(AppRoutes.inventory);
-            } else if (value == 'reports') {
-              Navigator.of(context).pushNamed(AppRoutes.analytics);
-            } else if (value == 'settings') {
-              Navigator.of(context).pushNamed(AppRoutes.settings);
-            } else if (value == 'backup') {
-              Navigator.of(context).pushNamed(AppRoutes.backupRestore);
-            }
-          },
-          itemBuilder: (ctx) => [
-            const PopupMenuItem(
-              value: 'todays_sales',
-              child: ListTile(
-                leading: Icon(Icons.today_rounded, color: AppColors.primary),
-                title: Text("Today's Sales"),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'due_payments',
-              child: ListTile(
-                leading: Icon(Icons.report_problem_rounded, color: AppColors.error),
-                title: Text('Due Payments'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'active_customers',
-              child: ListTile(
-                leading: Icon(Icons.people_rounded, color: AppColors.success),
-                title: Text('Active Customers'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'total_orders',
-              child: ListTile(
-                leading: Icon(Icons.receipt_long_rounded, color: Colors.deepPurple),
-                title: Text('Total Orders'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'expense_report',
-              child: ListTile(
-                leading: Icon(Icons.money_off_rounded, color: AppColors.error),
-                title: Text('Expense Report'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'low_stock',
-              child: ListTile(
-                leading: Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-                title: Text('Low Stock Alerts'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'reports',
-              child: ListTile(
-                leading: Icon(Icons.analytics_rounded, color: Colors.purple),
-                title: Text('Full Reports & Analytics'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'backup',
-              child: ListTile(
-                leading: Icon(Icons.backup_rounded, color: Colors.blue),
-                title: Text('Backup & Restore'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'settings',
-              child: ListTile(
-                leading: Icon(Icons.settings_rounded, color: Colors.blueGrey),
-                title: Text('Settings'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
         ),
       ],
       floatingActionButton: FloatingActionButton.extended(

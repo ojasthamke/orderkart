@@ -15,6 +15,8 @@ import 'features/customer/presentation/add_edit_customer_screen.dart';
 import 'features/order/presentation/create_order_screen.dart';
 import 'features/order/presentation/order_management_screen.dart';
 import 'features/order/presentation/order_detail_screen.dart';
+import 'core/widgets/qr_full_screen_preview.dart';
+import 'features/order/presentation/payment_details_screen.dart';
 import 'features/inventory/presentation/inventory_screen.dart';
 import 'features/inventory/presentation/add_edit_item_screen.dart';
 import 'features/inventory/presentation/stock_adjustment_screen.dart';
@@ -103,6 +105,15 @@ class OrderKartApp extends ConsumerWidget {
           orderId: args['orderId'] as String,
         ));
 
+      case AppRoutes.paymentDetails:
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
+        return _slide(PaymentDetailsScreen(
+          customerId: args['customerId'] as String? ?? '',
+          remainingAmount: args['remainingAmount'] as double? ?? 0.0,
+          grandTotal: args['grandTotal'] as double? ?? 0.0,
+          currency: args['currency'] as String? ?? '₹',
+        ));
+
       case AppRoutes.inventory:
         return _slide(const InventoryScreen());
 
@@ -139,6 +150,13 @@ class OrderKartApp extends ConsumerWidget {
 
       case AppRoutes.search:
         return _slide(const SearchScreen());
+
+      case AppRoutes.qrPreview:
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
+        return _slide(QrFullScreenPreview(
+          qrCustomImage: args['qrCustomImage'] as String?,
+          qrContent: args['qrContent'] as String?,
+        ));
 
       case AppRoutes.notifications:
         return _slide(const NotificationCenterScreen());

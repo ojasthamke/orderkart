@@ -13,6 +13,7 @@ class AppRoutes {
   static const String createOrder = '/create-order';
   static const String orderManagement = '/order-management';
   static const String orderDetail = '/order-detail';
+  static const String paymentDetails = '/payment-details';
   static const String inventory = '/inventory';
   static const String addEditItem = '/add-edit-item';
   static const String stockAdjustment = '/stock-adjustment';
@@ -22,6 +23,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String backupRestore = '/backup-restore';
   static const String search = '/search';
+  static const String qrPreview = '/qr-preview';
 
   // Notes
   static const String notes         = '/notes';

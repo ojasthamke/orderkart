@@ -564,27 +564,35 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     );
   }
 
-  void _addPayment(AppOrder order) {
-    PaymentDialog.show(
+  Future<void> _addPayment(AppOrder order) async {
+    final result = await Navigator.pushNamed(
       context,
-      customerId:      order.customerId,
-      remainingAmount: order.remainingAmount,
-      grandTotal:      order.grandTotal,
-      currency:        '₹',
-      onPay: (amount, method, notes) async {
-        await ref.read(orderManagementProvider.notifier).addPayment(Payment(
-              id:         const Uuid().v4(),
-              orderId:    order.id,
-              customerId: order.customerId,
-              amount:     amount,
-              method:     method,
-              notes:      notes,
-              createdAt:  DateTime.now(),
-            ));
-        ref.refresh(orderDetailProvider(widget.orderId));
-        if (mounted) SnackbarHelper.showSuccess(context, 'Payment of ₹$amount added');
+      AppRoutes.paymentDetails,
+      arguments: {
+        'customerId': order.customerId,
+        'remainingAmount': order.remainingAmount,
+        'grandTotal': order.grandTotal,
+        'currency': '₹',
       },
     );
+
+    if (result != null && result is Map<String, dynamic>) {
+      final amount = result['amount'] as double;
+      final method = result['method'] as String;
+      final notes = result['notes'] as String;
+
+      await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+            id:         const Uuid().v4(),
+            orderId:    order.id,
+            customerId: order.customerId,
+            amount:     amount,
+            method:     method,
+            notes:      notes,
+            createdAt:  DateTime.now(),
+          ));
+      ref.refresh(orderDetailProvider(widget.orderId));
+      if (mounted) SnackbarHelper.showSuccess(context, 'Payment of ₹$amount added');
+    }
   }
 
   Future<void> _updateStatus(String orderId, String status) async {

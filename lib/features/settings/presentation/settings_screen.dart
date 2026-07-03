@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -10,7 +12,6 @@ import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/app_settings.dart';
 import 'settings_provider.dart';
-import '../../../core/widgets/qr_full_screen_preview.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -187,9 +188,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 8),
                   Center(
                     child: GestureDetector(
-                      onTap: () => QrFullScreenPreview.show(
+                      onTap: () => Navigator.pushNamed(
                         context,
-                        qrCustomImage: settings.qrCustomImage,
+                        AppRoutes.qrPreview,
+                        arguments: {'qrCustomImage': settings.qrCustomImage},
                       ),
                       child: Container(
                         padding: const EdgeInsets.all(8),
@@ -241,9 +243,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 8),
                     Center(
                       child: GestureDetector(
-                        onTap: () => QrFullScreenPreview.show(
+                        onTap: () => Navigator.pushNamed(
                           context,
-                          qrContent: settings.qrContent,
+                          AppRoutes.qrPreview,
+                          arguments: {'qrContent': settings.qrContent},
                         ),
                         child: Container(
                           padding: const EdgeInsets.all(12),

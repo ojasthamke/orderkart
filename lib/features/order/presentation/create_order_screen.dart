@@ -433,9 +433,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 if (settings != null) ...[
                   if (settings.qrCustomImage.isNotEmpty)
                     GestureDetector(
-                      onTap: () => QrFullScreenPreview.show(
+                      onTap: () => Navigator.pushNamed(
                         context,
-                        qrCustomImage: settings.qrCustomImage,
+                        AppRoutes.qrPreview,
+                        arguments: {'qrCustomImage': settings.qrCustomImage},
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
@@ -450,9 +451,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     )
                   else if (settings.qrContent.isNotEmpty)
                     GestureDetector(
-                      onTap: () => QrFullScreenPreview.show(
+                      onTap: () => Navigator.pushNamed(
                         context,
-                        qrContent: settings.qrContent,
+                        AppRoutes.qrPreview,
+                        arguments: {'qrContent': settings.qrContent},
                       ),
                       child: Container(
                         padding: const EdgeInsets.all(8),

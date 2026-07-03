@@ -18,7 +18,6 @@ import '../../customer/presentation/customer_provider.dart';
 import '../domain/order.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
-import 'widgets/payment_dialog.dart';
 
 class OrderManagementScreen extends ConsumerStatefulWidget {
   const OrderManagementScreen({super.key});
@@ -198,29 +197,37 @@ class _OrderManagementScreenState
     }
   }
 
-  void _addPayment(BuildContext context, AppOrder order) {
-    PaymentDialog.show(
+  Future<void> _addPayment(BuildContext context, AppOrder order) async {
+    final result = await Navigator.pushNamed(
       context,
-      customerId:      order.customerId,
-      remainingAmount: order.remainingAmount,
-      grandTotal:      order.grandTotal,
-      currency:        '\u20b9',
-      onPay: (amount, method, notes) async {
-        await ref.read(orderManagementProvider.notifier).addPayment(
-              Payment(
-                id:         const Uuid().v4(),
-                orderId:    order.id,
-                customerId: order.customerId,
-                amount:     amount,
-                method:     method,
-                notes:      notes,
-                createdAt:  DateTime.now(),
-              ),
-            );
-        if (mounted)
-          SnackbarHelper.showSuccess(context, 'Payment recorded');
+      AppRoutes.paymentDetails,
+      arguments: {
+        'customerId': order.customerId,
+        'remainingAmount': order.remainingAmount,
+        'grandTotal': order.grandTotal,
+        'currency': '₹',
       },
     );
+
+    if (result != null && result is Map<String, dynamic>) {
+      final amount = result['amount'] as double;
+      final method = result['method'] as String;
+      final notes = result['notes'] as String;
+
+      await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+            id:         const Uuid().v4(),
+            orderId:    order.id,
+            customerId: order.customerId,
+            amount:     amount,
+            method:     method,
+            notes:      notes,
+            createdAt:  DateTime.now(),
+          ));
+      
+      if (context.mounted) {
+        SnackbarHelper.showSuccess(context, 'Payment of ₹$amount added');
+      }
+    }
   }
 
   Future<void> _deleteOrder(BuildContext context, AppOrder order) async {

@@ -5,11 +5,12 @@ import '../constants/app_colors.dart';
 
 class AppScaffold extends StatelessWidget {
   final String title;
-  final Widget body;
+  final Widget? body;
   final Widget? floatingActionButton;
   final List<Widget>? actions;
   final Widget? bottomNavigationBar;
   final Widget? bottomSheet;
+  final Widget? drawer;
   final bool showBack;
   final PreferredSizeWidget? bottom;
   final Color? backgroundColor;
@@ -18,11 +19,12 @@ class AppScaffold extends StatelessWidget {
   const AppScaffold({
     super.key,
     required this.title,
-    required this.body,
+    this.body,
     this.floatingActionButton,
     this.actions,
     this.bottomNavigationBar,
     this.bottomSheet,
+    this.drawer,
     this.showBack = true,
     this.bottom,
     this.backgroundColor,
@@ -40,7 +42,14 @@ class AppScaffold extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 onPressed: onBack ?? () => Navigator.of(context).pop(),
               )
-            : null,
+            : drawer != null
+                ? Builder(
+                    builder: (ctx) => IconButton(
+                      icon: const Icon(Icons.menu_rounded),
+                      onPressed: () => Scaffold.of(ctx).openDrawer(),
+                    ),
+                  )
+                : null,
         automaticallyImplyLeading: false,
         actions: actions,
         bottom: bottom,
@@ -49,6 +58,7 @@ class AppScaffold extends StatelessWidget {
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       bottomSheet: bottomSheet,
+      drawer: drawer,
     );
   }
 }

@@ -8,16 +8,6 @@ class QrFullScreenPreview extends StatelessWidget {
 
   const QrFullScreenPreview({super.key, this.qrCustomImage, this.qrContent});
 
-  static void show(BuildContext context, {String? qrCustomImage, String? qrContent}) {
-    showDialog(
-      context: context,
-      builder: (_) => QrFullScreenPreview(
-        qrCustomImage: qrCustomImage,
-        qrContent: qrContent,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

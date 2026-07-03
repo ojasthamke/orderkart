@@ -533,45 +533,47 @@ class CustomerProfileScreen extends ConsumerWidget {
     }
   }
 
-  void _showPayDialog(BuildContext context, WidgetRef ref, Customer customer) {
-    PaymentDialog.show(
+  Future<void> _showPayDialog(BuildContext context, WidgetRef ref, Customer customer) async {
+    final result = await Navigator.pushNamed(
       context,
-      customerId:      customer.id,
-      remainingAmount: customer.outstandingBalance,
-      grandTotal:      customer.outstandingBalance,
-      currency:        '₹',
-      onPay: (amount, method, notes) async {
-        // Record payment for outstanding balance
-        // To do this, we can associate with a dummy/general payment or just update balance.
-        // For compliance with our data model, payments belong to an order, so let's prompt them
-        // to pay off their oldest pending order or apply payment directly.
-        // We'll query orders and apply it. Or we can show a list of pending orders.
-        // To keep it direct, we'll let them add a payment to the oldest pending order.
-        final orders = ref.read(customerOrdersProvider(customer.id)).value;
-        final pending = orders?.where((o) => o.remainingAmount > 0).toList();
-        if (pending != null && pending.isNotEmpty) {
-          final oldest = pending.last;
-          await ref.read(orderManagementProvider.notifier).addPayment(Payment(
-                id:         const Uuid().v4(),
-                orderId:    oldest.id,
-                customerId: customer.id,
-                amount:     amount,
-                method:     method,
-                notes:      notes,
-                createdAt:  DateTime.now(),
-              ));
-          ref.refresh(customerDetailProvider(customer.id));
-          ref.refresh(customerOrdersProvider(customer.id));
-          if (context.mounted) {
-            SnackbarHelper.showSuccess(context, 'Payment of ₹$amount applied to Order ${oldest.orderNoLabel}');
-          }
-        } else {
-          if (context.mounted) {
-            SnackbarHelper.showError(context, 'No pending orders found to apply payment');
-          }
-        }
+      AppRoutes.paymentDetails,
+      arguments: {
+        'customerId': customer.id,
+        'remainingAmount': customer.outstandingBalance,
+        'grandTotal': customer.outstandingBalance,
+        'currency': '₹',
       },
     );
+
+    if (result != null && result is Map<String, dynamic>) {
+      final amount = result['amount'] as double;
+      final method = result['method'] as String;
+      final notes = result['notes'] as String;
+
+      final orders = ref.read(customerOrdersProvider(customer.id)).value;
+      final pending = orders?.where((o) => o.remainingAmount > 0).toList();
+      if (pending != null && pending.isNotEmpty) {
+        final oldest = pending.last;
+        await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+              id:         const Uuid().v4(),
+              orderId:    oldest.id,
+              customerId: customer.id,
+              amount:     amount,
+              method:     method,
+              notes:      notes,
+              createdAt:  DateTime.now(),
+            ));
+        ref.refresh(customerDetailProvider(customer.id));
+        ref.refresh(customerOrdersProvider(customer.id));
+        if (context.mounted) {
+          SnackbarHelper.showSuccess(context, 'Payment of ₹$amount applied to Order ${oldest.orderNoLabel}');
+        }
+      } else {
+        if (context.mounted) {
+          SnackbarHelper.showInfo(context, 'No pending orders found to apply payment.');
+        }
+      }
+    }
   }
 
   Future<void> _confirmDelete(

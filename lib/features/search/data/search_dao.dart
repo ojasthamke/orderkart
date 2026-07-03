@@ -8,6 +8,7 @@ class SearchDao {
 
     final db = await DatabaseHelper.instance.database;
     final q = '%${query.trim()}%';
+    final int? searchInt = int.tryParse(query.trim());
     final List<SearchResult> results = [];
 
     // 1. Search Customers
@@ -76,16 +77,18 @@ class SearchDao {
 
     // 5. Search Orders (By customer name via JOIN, or by ID)
     final orders = await db.rawQuery('''
-      SELECT o.*, c.name AS customer_name
+      SELECT o.*, o.rowid AS order_number, c.name AS customer_name
       FROM orders o
       JOIN customers c ON o.customer_id = c.id
-      WHERE c.name LIKE ? OR o.id LIKE ?
+      WHERE c.name LIKE ? OR o.id LIKE ? ${searchInt != null ? 'OR o.rowid = ?' : ''}
       LIMIT 10
-    ''', [q, q]);
+    ''', [q, q, if (searchInt != null) searchInt]);
     for (final o in orders) {
+      final orderNo = o['order_number'] as int?;
+      final orderNoLabel = orderNo != null ? '#${orderNo.toString().padLeft(3, '0')}' : '#000';
       results.add(SearchResult(
         id:       o['id'] as String,
-        title:    'Order #${(o['id'] as String).substring(0, 8).toUpperCase()}',
+        title:    'Order $orderNoLabel',
         subtitle: 'Order • Customer: ${o['customer_name']} • Total: ₹${o['grand_total']} (${o['delivery_status']})',
         type:     SearchResultType.order,
       ));
