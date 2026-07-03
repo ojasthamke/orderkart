@@ -14,7 +14,6 @@ import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../order/domain/payment.dart';
 import '../../order/presentation/order_provider.dart';
-import '../../order/presentation/widgets/payment_dialog.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
 import '../../order/domain/order.dart';

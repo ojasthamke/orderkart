@@ -21,7 +21,6 @@ import '../../settings/presentation/settings_provider.dart';
 import '../domain/order.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
-import 'widgets/payment_dialog.dart';
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
   final String orderId;
