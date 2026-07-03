@@ -91,6 +91,38 @@ final inventoryProvider =
 final lowStockProvider = FutureProvider<List<Item>>(
     (ref) => ref.read(inventoryRepositoryProvider).getLowStockItems());
 
+final outOfStockProvider = FutureProvider<List<Item>>((ref) async {
+  final items = await ref.read(inventoryRepositoryProvider).getAllItems();
+  return items.where((i) => i.stock <= 0).toList();
+});
+
+final stockSummaryProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final items = await ref.read(inventoryRepositoryProvider).getAllItems();
+  final totalItems = items.length;
+  final outOfStock = items.where((i) => i.stock <= 0).toList();
+  final lowStock = items.where((i) => i.isLowStock && i.stock > 0).toList();
+  
+  double totalCostValue = 0;
+  double totalSellingValue = 0;
+  for (final item in items) {
+    if (item.stock > 0) {
+      totalCostValue += item.stock * item.costPrice;
+      totalSellingValue += item.stock * item.sellingPrice;
+    }
+  }
+
+  return {
+    'total_items': totalItems,
+    'out_of_stock_count': outOfStock.length,
+    'low_stock_count': lowStock.length,
+    'out_of_stock_items': outOfStock,
+    'low_stock_items': lowStock,
+    'cost_value': totalCostValue,
+    'selling_value': totalSellingValue,
+    'potential_profit': totalSellingValue - totalCostValue,
+  };
+});
+
 final stockHistoryProvider =
     FutureProvider.family<List<StockHistory>, String>((ref, itemId) {
   return ref.read(inventoryRepositoryProvider).getStockHistory(itemId);

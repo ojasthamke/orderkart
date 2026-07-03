@@ -153,25 +153,40 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                       final isSelected = _selected?.id == item.id;
 
                       return GestureDetector(
-                        onTap: () => setState(() {
-                          _selected = item;
-                          // Keep existing quantity, or reset it
-                          _qty = 1.0;
-                          _qtyController.text = '1';
-                        }),
+                        onTap: () {
+                          if (item.stock <= 0) {
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('❌ "${item.name}" is out of stock! Cannot add to order.'),
+                                backgroundColor: AppColors.error,
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                          setState(() {
+                            _selected = item;
+                            _qty = 1.0.clamp(0.1, item.stock);
+                            _qtyController.text = AppFormatters.quantity(_qty);
+                          });
+                        },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.primarySurface
-                                : AppColors.gray50,
+                            color: item.stock <= 0
+                                ? AppColors.gray200.withOpacity(0.4)
+                                : isSelected
+                                    ? AppColors.primarySurface
+                                    : AppColors.gray50,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected
                                   ? AppColors.primary
-                                  : AppColors.gray200,
+                                  : (item.stock <= 0 ? AppColors.error.withOpacity(0.3) : AppColors.gray200),
                               width: isSelected ? 2 : 1,
                             ),
                           ),
@@ -186,7 +201,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                             .textTheme
                                             .bodyMedium
                                             ?.copyWith(
-                                                fontWeight: FontWeight.w600)),
+                                                fontWeight: FontWeight.w600,
+                                                color: item.stock <= 0 ? AppColors.textSecondary : null)),
                                     const SizedBox(height: 2),
                                     Text(
                                       '₹${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Stock: ${AppFormatters.quantity(item.stock)}',
@@ -194,7 +210,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: AppColors.primary,
+                                            color: item.stock <= 0 ? AppColors.error : AppColors.primary,
                                             fontWeight: FontWeight.w600,
                                           ),
                                     ),
@@ -203,7 +219,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                     if (item.stock <= 0)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 2),
-                                        child: Text('❌ Out of stock',
+                                        child: Text('❌ OUT OF STOCK — Cannot add to order',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelSmall
@@ -214,7 +230,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                     else if (item.isLowStock)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 2),
-                                        child: Text('⚠️ Low stock',
+                                        child: Text('⚠️ Low stock (Only ${AppFormatters.quantity(item.stock)} available)',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelSmall
@@ -226,7 +242,10 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                               ),
                               if (isSelected)
                                 const Icon(Icons.check_circle_rounded,
-                                    color: AppColors.primary),
+                                    color: AppColors.primary)
+                              else if (item.stock <= 0)
+                                const Icon(Icons.block_rounded,
+                                    color: AppColors.error, size: 20),
                             ],
                           ),
                         ),
@@ -254,22 +273,38 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Quantity (${_selected!.unit})',
-                        style: Theme.of(context).textTheme.labelMedium),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Quantity (${_selected!.unit})',
+                            style: Theme.of(context).textTheme.labelMedium),
+                        Text(
+                          'Max Available: ${AppFormatters.quantity(_selected!.stock)} ${_selected!.unit}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _qty > _selected!.stock ? AppColors.error : AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     // Preset chips
                     Wrap(
                       spacing: 8,
                       children: AppConstants.quantityPresets.map((q) {
+                        final disabled = q > _selected!.stock;
                         return ChoiceChip(
                           label: Text(AppFormatters.quantity(q)),
                           selected: _qty == q,
-                          onSelected: (_) {
-                            setState(() {
-                              _qty = q;
-                              _qtyController.text = AppFormatters.quantity(q);
-                            });
-                          },
+                          onSelected: disabled
+                              ? null
+                              : (_) {
+                                  setState(() {
+                                    _qty = q;
+                                    _qtyController.text = AppFormatters.quantity(q);
+                                  });
+                                },
                         );
                       }).toList(),
                     ),
@@ -281,44 +316,72 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                             controller: _qtyController,
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Custom qty',
                               isDense: true,
+                              errorText: _qty > _selected!.stock ? 'Exceeds stock (${_selected!.stock})' : null,
                             ),
                             onChanged: (v) {
                               final p = double.tryParse(v);
-                              if (p != null && p > 0) setState(() => _qty = p);
+                              if (p != null && p > 0) {
+                                if (p > _selected!.stock) {
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Cannot exceed available stock (${_selected!.stock} ${_selected!.unit})'),
+                                      backgroundColor: AppColors.error,
+                                      duration: const Duration(seconds: 1),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                                setState(() => _qty = p);
+                              }
                             },
                           ),
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton.icon(
-                          onPressed: () {
-                            widget.onItemSelected(_selected!, _qty);
-                            
-                            // Success feedback SnackBar
-                            final addedItemName = _selected!.name;
-                            final addedQty = _qty;
-                            final addedUnit = _selected!.unit;
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Added $addedQty $addedUnit of $addedItemName to order'),
-                                duration: const Duration(seconds: 1),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                          onPressed: _qty > _selected!.stock || _selected!.stock <= 0
+                              ? () {
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Quantity (${_qty}) exceeds available stock (${_selected!.stock})'),
+                                      backgroundColor: AppColors.error,
+                                      duration: const Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              : () {
+                                  widget.onItemSelected(_selected!, _qty);
+                                  
+                                  // Success feedback SnackBar
+                                  final addedItemName = _selected!.name;
+                                  final addedQty = _qty;
+                                  final addedUnit = _selected!.unit;
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Added $addedQty $addedUnit of $addedItemName to order'),
+                                      duration: const Duration(seconds: 1),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
 
-                            setState(() {
-                              _selected = null;
-                              _qty = 1.0;
-                              _qtyController.text = '1';
-                            });
-                          },
+                                  setState(() {
+                                    _selected = null;
+                                    _qty = 1.0;
+                                    _qtyController.text = '1';
+                                  });
+                                },
                           icon: const Icon(Icons.add_rounded),
                           label: const Text('Add to Order'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: _qty > _selected!.stock || _selected!.stock <= 0
+                                ? Colors.grey
+                                : AppColors.primary,
                             foregroundColor: Colors.white,
                           ),
                         ),

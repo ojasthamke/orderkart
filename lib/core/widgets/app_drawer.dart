@@ -45,15 +45,13 @@ class AppDrawer extends ConsumerWidget {
             const Divider(height: 1, thickness: 1),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 children: [
+                  _SectionHeader(title: 'MAIN'),
                   _DrawerItem(
                     icon: Icons.dashboard_rounded,
                     title: 'Dashboard',
-                    onTap: () {
-                      Navigator.pop(context);
-                      // Already on dashboard if drawer is open from there
-                    },
+                    onTap: () => Navigator.pop(context),
                   ),
                   _DrawerItem(
                     icon: Icons.people_alt_rounded,
@@ -65,7 +63,7 @@ class AppDrawer extends ConsumerWidget {
                   ),
                   _DrawerItem(
                     icon: Icons.shopping_cart_rounded,
-                    title: 'Orders',
+                    title: 'Orders & Sales',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, AppRoutes.orderManagement);
@@ -73,10 +71,33 @@ class AppDrawer extends ConsumerWidget {
                   ),
                   _DrawerItem(
                     icon: Icons.inventory_rounded,
-                    title: 'Inventory',
+                    title: 'Inventory & Stock',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, AppRoutes.inventory);
+                    },
+                  ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+                    child: Divider(height: 1),
+                  ),
+
+                  _SectionHeader(title: 'MANAGEMENT & ROUTES'),
+                  _DrawerItem(
+                    icon: Icons.map_rounded,
+                    title: 'Areas & Streets',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.areas);
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.alt_route_rounded,
+                    title: 'Visits & Route Plan',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.visits);
                     },
                   ),
                   _DrawerItem(
@@ -87,10 +108,21 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.expenses);
                     },
                   ),
+                  _DrawerItem(
+                    icon: Icons.note_alt_rounded,
+                    title: 'Notes & Reminders',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.notes);
+                    },
+                  ),
+
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                     child: Divider(height: 1),
                   ),
+
+                  _SectionHeader(title: 'INSIGHTS & ALERTS'),
                   _DrawerItem(
                     icon: Icons.analytics_rounded,
                     title: 'Analytics & Reports',
@@ -99,13 +131,12 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.analytics);
                     },
                   ),
-
                   _DrawerItem(
-                    icon: Icons.note_alt_rounded,
-                    title: 'Notes',
+                    icon: Icons.search_rounded,
+                    title: 'Global Search',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.notes);
+                      Navigator.pushNamed(context, AppRoutes.search);
                     },
                   ),
                   _DrawerItem(
@@ -116,10 +147,13 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.notifications);
                     },
                   ),
+
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                     child: Divider(height: 1),
                   ),
+
+                  _SectionHeader(title: 'SYSTEM & SETTINGS'),
                   _DrawerItem(
                     icon: Icons.settings_rounded,
                     title: 'Settings',
@@ -184,6 +218,27 @@ class _DrawerItem extends StatelessWidget {
       hoverColor: AppColors.primary.withOpacity(0.05),
       splashColor: AppColors.primary.withOpacity(0.1),
       onTap: onTap,
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textHint,
+          letterSpacing: 1.1,
+        ),
+      ),
     );
   }
 }

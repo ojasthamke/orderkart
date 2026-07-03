@@ -21,10 +21,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   final List<Widget> _screens = const [
     DashboardScreen(),
-    InventoryScreen(),
+    InventoryScreen(showBack: false),
     AreaScreen(showBack: false),
-    NotesListScreen(),
-    ExpenseScreen(),
+    NotesListScreen(showBack: false),
+    ExpenseScreen(showBack: false),
   ];
 
   @override

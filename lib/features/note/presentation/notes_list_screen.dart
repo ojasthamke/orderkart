@@ -6,19 +6,19 @@ import 'note_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/widgets/app_scaffold.dart';
 
 class NotesListScreen extends ConsumerWidget {
-  const NotesListScreen({super.key});
+  final bool showBack;
+  const NotesListScreen({super.key, this.showBack = true});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notesState = ref.watch(noteListNotifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Notes'),
-        centerTitle: true,
-      ),
+    return AppScaffold(
+      title: 'My Notes',
+      showBack: showBack,
       body: notesState.when(
         data: (notes) {
           if (notes.isEmpty) {

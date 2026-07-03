@@ -15,7 +15,8 @@ import '../domain/expense.dart';
 import 'expense_provider.dart';
 
 class ExpenseScreen extends ConsumerWidget {
-  const ExpenseScreen({super.key});
+  final bool showBack;
+  const ExpenseScreen({super.key, this.showBack = true});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -24,6 +25,7 @@ class ExpenseScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Expenses',
+      showBack: showBack,
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_expense',
         onPressed: () => Navigator.of(context)

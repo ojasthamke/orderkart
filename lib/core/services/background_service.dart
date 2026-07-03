@@ -9,7 +9,10 @@ import '../constants/app_constants.dart';
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
-      if (task == 'dailySummaryTask') {
+      // Must initialize NotificationService in the background isolate!
+      await NotificationService.instance.init();
+
+      if (task == 'dailySummaryTask' || task == 'instantSummaryCheck') {
         final prefs = await SharedPreferences.getInstance();
         final db = await DatabaseHelper.instance.database;
 

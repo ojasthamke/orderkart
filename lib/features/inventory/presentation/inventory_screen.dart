@@ -15,7 +15,8 @@ import '../domain/item.dart';
 import 'inventory_provider.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
-  const InventoryScreen({super.key});
+  final bool showBack;
+  const InventoryScreen({super.key, this.showBack = true});
 
   @override
   ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
@@ -31,6 +32,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     return AppScaffold(
       title: 'Inventory',
+      showBack: widget.showBack,
       actions: [
         PopupMenuButton<String>(
           icon: const Icon(Icons.sort_rounded),

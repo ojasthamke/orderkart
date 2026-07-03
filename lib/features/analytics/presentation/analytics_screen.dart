@@ -9,6 +9,7 @@ import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../order/presentation/order_provider.dart';
+import '../../inventory/presentation/inventory_provider.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
@@ -468,6 +469,234 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // ── Stock & Inventory Analysis ──────────────────────
+                  Text(
+                    'Stock & Inventory Analysis',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+
+                  ref.watch(stockSummaryProvider).when(
+                        loading: () => const LoadingShimmer(count: 2),
+                        error: (err, _) => Text('Error loading stock report: $err'),
+                        data: (stockData) {
+                          final int totalItems = stockData['total_items'] ?? 0;
+                          final int outCount = stockData['out_of_stock_count'] ?? 0;
+                          final int lowCount = stockData['low_stock_count'] ?? 0;
+                          final double costVal = stockData['cost_value'] ?? 0.0;
+                          final double sellVal = stockData['selling_value'] ?? 0.0;
+                          final double profitVal = stockData['potential_profit'] ?? 0.0;
+                          final outList = stockData['out_of_stock_items'] as List<dynamic>? ?? [];
+                          final lowList = stockData['low_stock_items'] as List<dynamic>? ?? [];
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Stock Metrics Cards
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.error.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: AppColors.error.withOpacity(0.2)),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            '$outCount',
+                                            style: const TextStyle(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w900,
+                                                color: AppColors.error),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                            'Out of Stock',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.error),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: AppColors.warning.withOpacity(0.2)),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            '$lowCount',
+                                            style: const TextStyle(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w900,
+                                                color: AppColors.warning),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                            'Low Stock',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.warning),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            '$totalItems',
+                                            style: const TextStyle(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w900,
+                                                color: AppColors.primary),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                            'Total Items',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.primary),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Inventory Asset Valuation Card
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.gray200),
+                                ),
+                                child: Column(
+                                  children: [
+                                    _detailRow('Inventory Cost Value', AppFormatters.currency(costVal)),
+                                    const Divider(height: 20),
+                                    _detailRow('Retail Selling Value', AppFormatters.currency(sellVal),
+                                        valueColor: AppColors.primary),
+                                    const Divider(height: 20),
+                                    _detailRow('Potential Profit Margin', AppFormatters.currency(profitVal),
+                                        valueColor: AppColors.success),
+                                  ],
+                                ),
+                              ),
+
+                              if (outList.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                Text(
+                                  '❌ Out of Stock Items Alert (${outList.length})',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700, color: AppColors.error),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.error.withOpacity(0.04),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.error.withOpacity(0.2)),
+                                  ),
+                                  child: ListView.separated(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: outList.length,
+                                    separatorBuilder: (_, __) => const Divider(height: 1),
+                                    itemBuilder: (_, idx) {
+                                      final item = outList[idx];
+                                      return ListTile(
+                                        dense: true,
+                                        leading: const Icon(Icons.error_outline_rounded,
+                                            color: AppColors.error, size: 20),
+                                        title: Text(item.name,
+                                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                                        subtitle: Text('${item.category} • Unit: ${item.unit}'),
+                                        trailing: const Text(
+                                          '0 in stock',
+                                          style: TextStyle(
+                                              color: AppColors.error, fontWeight: FontWeight.w800),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+
+                              if (lowList.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                Text(
+                                  '⚠️ Low Stock Items Warning (${lowList.length})',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700, color: AppColors.warning),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.warning.withOpacity(0.04),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.warning.withOpacity(0.2)),
+                                  ),
+                                  child: ListView.separated(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: lowList.length,
+                                    separatorBuilder: (_, __) => const Divider(height: 1),
+                                    itemBuilder: (_, idx) {
+                                      final item = lowList[idx];
+                                      return ListTile(
+                                        dense: true,
+                                        leading: const Icon(Icons.warning_amber_rounded,
+                                            color: AppColors.warning, size: 20),
+                                        title: Text(item.name,
+                                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                                        subtitle: Text(
+                                            'Min Threshold: ${AppFormatters.quantity(item.minStock)} ${item.unit}'),
+                                        trailing: Text(
+                                          '${AppFormatters.quantity(item.stock)} left',
+                                          style: const TextStyle(
+                                              color: AppColors.warning, fontWeight: FontWeight.w800),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        },
+                      ),
+
                   const SizedBox(height: 32),
                 ],
               ),

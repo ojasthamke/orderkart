@@ -581,6 +581,50 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       SnackbarHelper.showError(context, 'Add at least one item');
       return;
     }
+
+    // ── Pre-Save Stock Validation ───────────────────────────────────────────────
+    final inventoryAsync = ref.read(inventoryProvider);
+    final inventoryList = inventoryAsync.value ?? [];
+
+    for (final cartItem in _cart) {
+      final dbItem = inventoryList.firstWhere((i) => i.id == cartItem.itemId,
+          orElse: () => Item(
+                id: cartItem.itemId,
+                name: cartItem.name,
+                category: 'Other',
+                sellingPrice: cartItem.price,
+                stock: 0,
+                unit: cartItem.unit,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ));
+      
+      if (cartItem.quantity > dbItem.stock) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: AppColors.error),
+                SizedBox(width: 8),
+                Text('Insufficient Stock'),
+              ],
+            ),
+            content: Text(
+              'Item "${cartItem.name}" has only ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit} in stock, but ${AppFormatters.quantity(cartItem.quantity)} was added to order.\n\nPlease adjust quantity before saving.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => _saving = true);
 
     final now     = DateTime.now();
@@ -683,9 +727,23 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           setState(() {
             final existing = _cart.indexWhere((c) => c.itemId == item.id);
             if (existing >= 0) {
-              _cart[existing] = _cart[existing].copyWith(
-                  quantity: _cart[existing].quantity + qty);
+              final newTotal = _cart[existing].quantity + qty;
+              if (newTotal > item.stock) {
+                SnackbarHelper.showError(
+                  context,
+                  'Cannot add more "${item.name}". Stock limit is ${AppFormatters.quantity(item.stock)}',
+                );
+                return;
+              }
+              _cart[existing] = _cart[existing].copyWith(quantity: newTotal);
             } else {
+              if (qty > item.stock) {
+                SnackbarHelper.showError(
+                  context,
+                  'Cannot add ${AppFormatters.quantity(qty)} of "${item.name}". Stock limit is ${AppFormatters.quantity(item.stock)}',
+                );
+                return;
+              }
               _cart.add(_CartItem(
                 itemId:   item.id,
                 name:     item.name,
