@@ -138,6 +138,10 @@ final topCustomersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   return OrderDao().getTopCustomers();
 });
 
+final todaysDetailedReportProvider = FutureProvider<Map<String, dynamic>>((ref) {
+  return OrderDao().getTodaysDetailedReport();
+});
+
 class DashboardOrdersParams {
   final String? filter;
   final DateTime? startDate;

@@ -35,7 +35,7 @@ class SettingsDao {
       deliveryCharge:       double.tryParse(m[AppConstants.keyDeliveryCharge] ?? '10') ?? 10,
       smartRounding:        (m[AppConstants.keySmartRounding]  ?? 'true') == 'true',
       currency:             m[AppConstants.keyCurrency]        ?? '₹',
-      themeMode:            m[AppConstants.keyThemeMode]       ?? 'system',
+      themeMode:            m[AppConstants.keyThemeMode]       ?? 'light',
       notificationsEnabled: (m[AppConstants.keyNotifications]  ?? 'true') == 'true',
       lowStockAlert:        (m[AppConstants.keyLowStockAlert]  ?? 'true') == 'true',
       pendingAlert:         (m[AppConstants.keyPendingAlert]   ?? 'true') == 'true',

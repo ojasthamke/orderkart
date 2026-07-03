@@ -14,6 +14,7 @@ class AppOrder {
   final String notes;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int? orderNumber;       // Sequential rowid from SQLite
 
   // Joined / computed fields
   final String? customerName;
@@ -21,6 +22,11 @@ class AppOrder {
   final String? customerPhone;
   final List<dynamic> items;  // List<OrderItem>
   final List<dynamic> payments; // List<Payment>
+
+  String get orderNoLabel {
+    if (orderNumber == null) return '#000';
+    return '#${orderNumber!.toString().padLeft(3, '0')}';
+  }
 
   const AppOrder({
     required this.id,
@@ -36,6 +42,7 @@ class AppOrder {
     this.notes              = '',
     required this.createdAt,
     required this.updatedAt,
+    this.orderNumber,
     this.customerName,
     this.customerAddress,
     this.customerPhone,
@@ -57,6 +64,7 @@ class AppOrder {
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? orderNumber,
     String? customerName,
     String? customerAddress,
     String? customerPhone,
@@ -77,6 +85,7 @@ class AppOrder {
       notes:               notes               ?? this.notes,
       createdAt:           createdAt           ?? this.createdAt,
       updatedAt:           updatedAt           ?? this.updatedAt,
+      orderNumber:         orderNumber         ?? this.orderNumber,
       customerName:        customerName        ?? this.customerName,
       customerAddress:     customerAddress     ?? this.customerAddress,
       customerPhone:       customerPhone       ?? this.customerPhone,
@@ -115,6 +124,7 @@ class AppOrder {
         notes:               map['notes']                as String? ?? '',
         createdAt:           DateTime.parse(map['created_at'] as String),
         updatedAt:           DateTime.parse(map['updated_at'] as String),
+        orderNumber:         map['order_number']         as int?,
         customerName:        map['customer_name']        as String?,
         customerAddress:     map['customer_address']     as String?,
         customerPhone:       map['customer_phone']       as String?,

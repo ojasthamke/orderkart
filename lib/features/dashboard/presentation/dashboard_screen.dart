@@ -5,9 +5,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
-import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/customer_avatar.dart';
+import '../../../core/widgets/snackbar_helper.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../customer/domain/customer.dart';
 import '../../order/presentation/order_provider.dart';
@@ -44,18 +44,115 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           icon: const Icon(Icons.search_rounded),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
         ),
-        IconButton(
-          icon: const Icon(Icons.settings_rounded),
-          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.settings),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert_rounded),
+          onSelected: (value) {
+            if (value == 'todays_sales') {
+              _showTodaysSales(context);
+            } else if (value == 'due_payments') {
+              ref.read(pendingCustomersProvider).whenData((pending) {
+                if (pending.isNotEmpty) {
+                  _showPendingReminder(context, pending);
+                } else {
+                  SnackbarHelper.showInfo(context, 'No pending payments');
+                }
+              });
+            } else if (value == 'active_customers') {
+              _showActiveCustomers(context);
+            } else if (value == 'total_orders') {
+              Navigator.of(context).pushNamed(AppRoutes.orderManagement);
+            } else if (value == 'expense_report') {
+              Navigator.of(context).pushNamed(AppRoutes.expenses);
+            } else if (value == 'low_stock') {
+              Navigator.of(context).pushNamed(AppRoutes.inventory);
+            } else if (value == 'reports') {
+              Navigator.of(context).pushNamed(AppRoutes.analytics);
+            } else if (value == 'settings') {
+              Navigator.of(context).pushNamed(AppRoutes.settings);
+            } else if (value == 'backup') {
+              Navigator.of(context).pushNamed(AppRoutes.backupRestore);
+            }
+          },
+          itemBuilder: (ctx) => [
+            const PopupMenuItem(
+              value: 'todays_sales',
+              child: ListTile(
+                leading: Icon(Icons.today_rounded, color: AppColors.primary),
+                title: Text("Today's Sales"),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'due_payments',
+              child: ListTile(
+                leading: Icon(Icons.report_problem_rounded, color: AppColors.error),
+                title: Text('Due Payments'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'active_customers',
+              child: ListTile(
+                leading: Icon(Icons.people_rounded, color: AppColors.success),
+                title: Text('Active Customers'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'total_orders',
+              child: ListTile(
+                leading: Icon(Icons.receipt_long_rounded, color: Colors.deepPurple),
+                title: Text('Total Orders'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'expense_report',
+              child: ListTile(
+                leading: Icon(Icons.money_off_rounded, color: AppColors.error),
+                title: Text('Expense Report'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'low_stock',
+              child: ListTile(
+                leading: Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                title: Text('Low Stock Alerts'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'reports',
+              child: ListTile(
+                leading: Icon(Icons.analytics_rounded, color: Colors.purple),
+                title: Text('Full Reports & Analytics'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'backup',
+              child: ListTile(
+                leading: Icon(Icons.backup_rounded, color: Colors.blue),
+                title: Text('Backup & Restore'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'settings',
+              child: ListTile(
+                leading: Icon(Icons.settings_rounded, color: Colors.blueGrey),
+                title: Text('Settings'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
         ),
       ],
       body: summaryAsync.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(child: Text('Dashboard error: $e')),
         data: (summary) {
-          final double todaySales = summary['today_sales'] ?? 0;
-          final int orderCount = summary['order_count'] ?? 0;
-          final int customerCount = summary['customer_count'] ?? 0;
           final double pendingPayments = summary['pending_payments'] ?? 0;
 
           return RefreshIndicator(
@@ -215,74 +312,64 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ── KPI grid ──────────────────────────────────────────
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    childAspectRatio: 1.2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    children: [
-                      StatCard(
-                        label: "Today's Sales",
-                        value: AppFormatters.currency(todaySales),
-                        icon: Icons.currency_rupee_rounded,
-                        color: AppColors.primary,
+                  // ── Money Remained Tracker ─────────────────────────────
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.error.withOpacity(0.85),
+                          AppColors.error.withOpacity(0.70),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      StatCard(
-                        label: 'Due Payments',
-                        value: AppFormatters.currency(pendingPayments),
-                        icon: Icons.payments_rounded,
-                        color: AppColors.error,
-                      ),
-                      StatCard(
-                        label: 'Active Customers',
-                        value: '$customerCount',
-                        icon: Icons.people_rounded,
-                        color: AppColors.success,
-                      ),
-                      StatCard(
-                        label: 'Total Orders',
-                        value: '$orderCount',
-                        icon: Icons.receipt_long_rounded,
-                        color: Colors.deepPurple,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // ── Shortcut modules ──────────────────────────────────
-                  Text(
-                    'Quick Access',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 12),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 3,
-                    childAspectRatio: 0.95,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    children: [
-                      _shortcutTile(context, 'Areas & Map', Icons.map_rounded,
-                          AppColors.primary, AppRoutes.areas),
-                      _shortcutTile(context, 'Orders List',
-                          Icons.receipt_long_rounded, Colors.orange, AppRoutes.orderManagement),
-                      _shortcutTile(context, 'Inventory', Icons.inventory_2_rounded,
-                          AppColors.success, AppRoutes.inventory),
-                      _shortcutTile(context, 'Expenses', Icons.money_off_rounded,
-                          AppColors.error, AppRoutes.expenses),
-                      _shortcutTile(context, 'Reports', Icons.analytics_rounded,
-                          Colors.purple, AppRoutes.analytics),
-                      _shortcutTile(context, 'Settings', Icons.settings_rounded,
-                          Colors.blueGrey, AppRoutes.settings),
-                    ],
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppColors.elevatedShadow,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'MONEY REMAINED',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.account_balance_wallet_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          AppFormatters.currency(pendingPayments),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Total outstanding dues from orders.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 24),
@@ -448,43 +535,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  Widget _shortcutTile(BuildContext context, String label, IconData icon,
-      Color color, String routeName) {
-    return GestureDetector(
-      onTap: () => Navigator.of(context).pushNamed(routeName),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardTheme.color,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.gray200),
-          boxShadow: AppColors.cardShadow,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showPendingReminder(BuildContext context, List<Customer> pending) {
     showModalBottomSheet(
       context: context,
@@ -605,54 +655,430 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     .bodySmall
                                     ?.copyWith(color: AppColors.textSecondary),
                               ),
-                            if (c.serialNo > 0 || c.houseNumber.isNotEmpty)
+                            if (c.address.isNotEmpty)
                               Text(
-                                [
-                                  if (c.serialNo > 0)
-                                    '#${c.serialNo}',
-                                  if (c.houseNumber.isNotEmpty)
-                                    c.houseNumber,
-                                ].join(' · '),
+                                c.address,
                                 style: Theme.of(context)
                                     .textTheme
-                                    .labelSmall
-                                    ?.copyWith(color: AppColors.textHint),
+                                    .bodySmall
+                                    ?.copyWith(color: AppColors.textSecondary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                          ],
+                             if (c.serialNo > 0 || c.houseNumber.isNotEmpty)
+                               Text(
+                                 [
+                                   if (c.serialNo > 0)
+                                     '#${c.serialNo}',
+                                   if (c.houseNumber.isNotEmpty)
+                                     c.houseNumber,
+                                 ].join(' · '),
+                                 style: Theme.of(context)
+                                     .textTheme
+                                     .labelSmall
+                                     ?.copyWith(color: AppColors.textHint),
+                               ),
+                           ],
+                         ),
+                         trailing: Column(
+                           mainAxisAlignment: MainAxisAlignment.center,
+                           crossAxisAlignment: CrossAxisAlignment.end,
+                           children: [
+                             Text(
+                               AppFormatters.currency(c.outstandingBalance),
+                               style: Theme.of(context)
+                                   .textTheme
+                                   .titleSmall
+                                   ?.copyWith(
+                                     color: AppColors.error,
+                                     fontWeight: FontWeight.w800,
+                                   ),
+                             ),
+                             const SizedBox(height: 2),
+                             Text(
+                               'Due',
+                               style: Theme.of(context)
+                                   .textTheme
+                                   .labelSmall
+                                   ?.copyWith(color: AppColors.error),
+                             ),
+                           ],
+                         ),
+                       ),
+                     ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.05);
+                   },
+                 ),
+               ),
+             ],
+           ),
+         ),
+       ),
+     );
+   }
+
+   void _showActiveCustomers(BuildContext context) {
+     showModalBottomSheet(
+       context: context,
+       isScrollControlled: true,
+       backgroundColor: Colors.transparent,
+       builder: (ctx) {
+         return StatefulBuilder(
+           builder: (context, setSheetState) {
+             final customersState = ref.watch(allCustomersProvider);
+             return Container(
+               height: MediaQuery.of(ctx).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).bottomSheetTheme.backgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: AppColors.gray300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.people_rounded, color: AppColors.success, size: 24),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Active Customers',
+                          style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  Expanded(
+                    child: customersState.when(
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, _) => Center(child: Text('Error: $err')),
+                      data: (list) {
+                        if (list.isEmpty) {
+                          return const Center(child: Text('No active customers found.'));
+                        }
+                        final sortedList = List<Customer>.from(list);
+                        sortedList.sort((a, b) {
+                          if (a.serialNo == 0) return 1;
+                          if (b.serialNo == 0) return -1;
+                          return a.serialNo.compareTo(b.serialNo);
+                        });
+
+                        return ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          itemCount: sortedList.length,
+                          separatorBuilder: (_, __) => const Divider(),
+                          itemBuilder: (_, i) {
+                            final c = sortedList[i];
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                Navigator.of(context).pushNamed(
+                                  AppRoutes.customerProfile,
+                                  arguments: {'customerId': c.id},
+                                );
+                              },
+                              leading: CustomerAvatar(
+                                photoPath: c.photoPath,
+                                radius: 20,
+                              ),
+                              title: Text(
+                                c.serialNo > 0 ? '#${c.serialNo} · ${c.name}' : c.name,
+                                style: const TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (c.phone1.isNotEmpty)
+                                    Text(
+                                      c.phone1,
+                                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                                    ),
+                                  if (c.address.isNotEmpty)
+                                    Text(
+                                      c.address,
+                                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                                    ),
+                                ],
+                              ),
+                              trailing: c.outstandingBalance > 0
+                                  ? Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          AppFormatters.currency(c.outstandingBalance),
+                                          style: const TextStyle(
+                                            color: AppColors.error,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Due',
+                                          style: Theme.of(ctx).textTheme.labelSmall?.copyWith(color: AppColors.error),
+                                        ),
+                                      ],
+                                    )
+                                  : const Icon(Icons.chevron_right_rounded, color: AppColors.gray400),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showTodaysSales(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final reportAsync = ref.watch(todaysDetailedReportProvider);
+            return Container(
+              height: MediaQuery.of(ctx).size.height * 0.90,
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).bottomSheetTheme.backgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: reportAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Center(child: Text('Error loading report: $err')),
+                data: (data) {
+                  final double totalSales = data['total_sales'] ?? 0.0;
+                  final double cash = data['cash_received'] ?? 0.0;
+                  final double online = data['online_received'] ?? 0.0;
+                  final List<AppOrder> orders = data['orders'] as List<AppOrder>? ?? [];
+                  final List<Map<String, dynamic>> items = List<Map<String, dynamic>>.from(data['items'] ?? []);
+
+                  return Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      Container(
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: AppColors.gray300,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              AppFormatters.currency(c.outstandingBalance),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(
-                                    color: AppColors.error,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                            Row(
+                              children: [
+                                const Icon(Icons.today_rounded, color: AppColors.primary, size: 24),
+                                const SizedBox(width: 10),
+                                Text(
+                                  "Today's Sales Tracker",
+                                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Due',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(color: AppColors.error),
+                            IconButton(
+                              icon: const Icon(Icons.refresh_rounded),
+                              onPressed: () {
+                                ref.invalidate(todaysDetailedReportProvider);
+                              },
                             ),
                           ],
                         ),
                       ),
-                    ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.05);
-                  },
-                ),
+                      const Divider(height: 24),
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Text(
+                                    "TODAY'S TOTAL REVENUE",
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 11,
+                                      letterSpacing: 1.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    AppFormatters.currency(totalSales),
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          const Text('Cash Payments', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                                          Text(AppFormatters.currency(cash), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.success)),
+                                        ],
+                                      ),
+                                      Container(width: 1, height: 24, color: AppColors.gray300),
+                                      Column(
+                                        children: [
+                                          const Text('Online/UPI', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                                          Text(AppFormatters.currency(online), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary)),
+                                        ],
+                                      ),
+                                    ],
+                                  )
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              "Today's Orders (${orders.length})",
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                            ),
+                            const SizedBox(height: 8),
+                            if (orders.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(child: Text("No orders created today.", style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                              )
+                            else
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: orders.length,
+                                itemBuilder: (ctx, i) {
+                                  final o = orders[i];
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side: BorderSide(color: AppColors.borderColor(context)),
+                                    ),
+                                    child: ListTile(
+                                      onTap: () {
+                                        Navigator.pop(ctx);
+                                        Navigator.of(context).pushNamed(
+                                          AppRoutes.orderDetail,
+                                          arguments: {'orderId': o.id},
+                                        );
+                                      },
+                                      title: Text(
+                                        '${o.orderNoLabel} · ${o.customerName ?? 'Unknown'}',
+                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                      ),
+                                      subtitle: Text(
+                                        AppFormatters.time(o.createdAt),
+                                        style: const TextStyle(fontSize: 11, color: AppColors.textHint),
+                                      ),
+                                      trailing: Text(
+                                        AppFormatters.currency(o.grandTotal),
+                                        style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary, fontSize: 13),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            const SizedBox(height: 24),
+                            Text(
+                              "Items Sold Today (${items.length})",
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                            ),
+                            const SizedBox(height: 8),
+                            if (items.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(child: Text("No items sold today.", style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                              )
+                            else
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).cardTheme.color,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.borderColor(context)),
+                                ),
+                                child: ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: items.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  itemBuilder: (ctx, i) {
+                                    final it = items[i];
+                                    final name = it['item_name'] ?? '';
+                                    final unit = it['item_unit'] ?? '';
+                                    final double qty = (it['qty'] as num?)?.toDouble() ?? 0.0;
+                                    final double total = (it['total'] as num?)?.toDouble() ?? 0.0;
+
+                                    return ListTile(
+                                      dense: true,
+                                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                      subtitle: Text(
+                                        'Qty: ${AppFormatters.quantity(qty, unit: unit)}',
+                                        style: const TextStyle(fontSize: 11),
+                                      ),
+                                      trailing: Text(
+                                        AppFormatters.currency(total),
+                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                Navigator.pushNamed(context, AppRoutes.analytics);
+                              },
+                              icon: const Icon(Icons.analytics_rounded, size: 18),
+                              label: const Text("Open Full Reports & Analytics"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -701,7 +1127,7 @@ class _RecentOrderTile extends ConsumerWidget {
           error: (_, __) => const CustomerAvatar(photoPath: '', radius: 20),
         ),
         title: Text(
-          order.customerName ?? 'Unknown Customer',
+          '${order.orderNoLabel} · ${order.customerName ?? 'Unknown Customer'}',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         ),
         subtitle: Text(

@@ -84,4 +84,19 @@ class AppColors {
           offset: const Offset(0, 4),
         ),
       ];
+
+  static Color textPrimaryColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? Colors.white : textPrimary;
+
+  static Color textSecondaryColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? Colors.white70 : textSecondary;
+
+  static Color textHintColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? Colors.white38 : textHint;
+
+  static Color borderColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1A1A1A) : gray200;
+
+  static Color cardColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0A0A0A) : white;
 }

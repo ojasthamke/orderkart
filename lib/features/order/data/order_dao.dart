@@ -62,6 +62,7 @@ class OrderDao {
     final maps = await db.rawQuery('''
       SELECT
         o.*,
+        o.rowid   AS order_number,
         c.name    AS customer_name,
         c.address AS customer_address,
         c.phone1  AS customer_phone
@@ -78,7 +79,7 @@ class OrderDao {
   Future<AppOrder?> getOrderById(String id) async {
     final db = await _db;
     final maps = await db.rawQuery('''
-      SELECT o.*, c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone
+      SELECT o.*, o.rowid AS order_number, c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone
       FROM orders o JOIN customers c ON o.customer_id = c.id
       WHERE o.id = ?
     ''', [id]);
@@ -298,5 +299,56 @@ class OrderDao {
       GROUP BY c.id
     ''');
     return List<Map<String, dynamic>>.from(maps);
+  }
+
+  Future<Map<String, dynamic>> getTodaysDetailedReport() async {
+    final db = await _db;
+    final now    = DateTime.now();
+    final today  = DateTime(now.year, now.month, now.day).toIso8601String();
+
+    // Today's orders
+    final orderMaps = await db.rawQuery('''
+      SELECT o.*, o.rowid AS order_number, c.name AS customer_name
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.id
+      WHERE DATE(o.created_at) = DATE(?)
+      ORDER BY o.created_at DESC
+    ''', [today]);
+
+    // Today's items sold
+    final itemMaps = await db.rawQuery('''
+      SELECT item_name, item_unit, SUM(quantity) AS qty, SUM(total_price) AS total
+      FROM order_items
+      WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?))
+      GROUP BY item_name, item_unit
+      ORDER BY qty DESC
+    ''', [today]);
+
+    // Today's payment breakdown
+    final cashPayments = await db.rawQuery('''
+      SELECT COALESCE(SUM(amount), 0) AS v
+      FROM payments
+      WHERE DATE(created_at) = DATE(?) AND method = 'cash'
+    ''', [today]);
+
+    final onlinePayments = await db.rawQuery('''
+      SELECT COALESCE(SUM(amount), 0) AS v
+      FROM payments
+      WHERE DATE(created_at) = DATE(?) AND method != 'cash'
+    ''', [today]);
+
+    final totalSales = await db.rawQuery('''
+      SELECT COALESCE(SUM(grand_total), 0) AS v
+      FROM orders
+      WHERE DATE(created_at) = DATE(?)
+    ''', [today]);
+
+    return {
+      'orders': orderMaps.map(AppOrder.fromMap).toList(),
+      'items': itemMaps,
+      'cash_received': (cashPayments.first['v'] as num?)?.toDouble() ?? 0.0,
+      'online_received': (onlinePayments.first['v'] as num?)?.toDouble() ?? 0.0,
+      'total_sales': (totalSales.first['v'] as num?)?.toDouble() ?? 0.0,
+    };
   }
 }

@@ -26,7 +26,7 @@ class AppSettings {
     this.deliveryCharge    = 10.0,
     this.smartRounding     = true,
     this.currency          = '₹',
-    this.themeMode         = 'system',
+    this.themeMode         = 'light',
     this.notificationsEnabled = true,
     this.lowStockAlert     = true,
     this.pendingAlert      = true,

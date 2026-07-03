@@ -142,7 +142,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Order #${order.id.substring(0, 8).toUpperCase()}',
+                'Order ${order.orderNoLabel}',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 4),
@@ -622,7 +622,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                         fontWeight: pw.FontWeight.bold, fontSize: 16)),
               ),
               pw.Divider(),
-              pw.Text('Order: #${order.id.substring(0, 8).toUpperCase()}'),
+              pw.Text('Order: ${order.orderNoLabel}'),
               pw.Text('Date: ${AppFormatters.dateTime(order.createdAt)}'),
               pw.Text('Customer: ${order.customerName}'),
               pw.Divider(),
@@ -770,7 +770,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
     } catch (e) {
       // Last resort: OS share sheet
-      Share.share(text, subject: 'Invoice for Order #${order.id.substring(0, 8).toUpperCase()}');
+      Share.share(text, subject: 'Invoice for Order ${order.orderNoLabel}');
     }
   }
 }

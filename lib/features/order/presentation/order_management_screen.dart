@@ -330,7 +330,7 @@ class _OrderCard extends ConsumerWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        order.customerName ?? 'Unknown',
+                        '${order.orderNoLabel} · ${order.customerName ?? 'Unknown'}',
                         style: Theme.of(context).textTheme.titleSmall
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),

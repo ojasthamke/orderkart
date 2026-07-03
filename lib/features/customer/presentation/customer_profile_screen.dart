@@ -563,7 +563,7 @@ class CustomerProfileScreen extends ConsumerWidget {
           ref.refresh(customerDetailProvider(customer.id));
           ref.refresh(customerOrdersProvider(customer.id));
           if (context.mounted) {
-            SnackbarHelper.showSuccess(context, 'Payment of ₹$amount applied to Order #${oldest.id.substring(0,8).toUpperCase()}');
+            SnackbarHelper.showSuccess(context, 'Payment of ₹$amount applied to Order ${oldest.orderNoLabel}');
           }
         } else {
           if (context.mounted) {
@@ -622,7 +622,7 @@ class _CustomerOrderTile extends StatelessWidget {
         title: Row(
           children: [
             Text(
-              'Order #${order.id.substring(0, 8).toUpperCase()}',
+              'Order ${order.orderNoLabel}',
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             ),
             const SizedBox(width: 8),

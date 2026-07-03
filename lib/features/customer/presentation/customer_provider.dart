@@ -7,6 +7,7 @@ import '../../street/presentation/street_provider.dart';
 import '../../area/presentation/area_provider.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../search/presentation/search_provider.dart';
+import '../../../core/database/database_helper.dart';
 
 final customerRepositoryProvider = Provider<CustomerRepository>(
     (ref) => CustomerRepositoryImpl(CustomerDao()));
@@ -102,4 +103,11 @@ final customerDetailProvider =
 final pendingCustomersProvider = FutureProvider<List<Customer>>((ref) async {
   final dao = CustomerDao();
   return dao.getCustomersWithDue();
+});
+
+// All customers list
+final allCustomersProvider = FutureProvider<List<Customer>>((ref) async {
+  final db = await DatabaseHelper.instance.database;
+  final maps = await db.query('customers', orderBy: 'serial_no ASC');
+  return maps.map(Customer.fromMap).toList();
 });
