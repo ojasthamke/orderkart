@@ -44,6 +44,7 @@ class SettingsDao {
       qrCustomImage:        m[AppConstants.keyQrCustomImage]   ?? '',
       staffWhatsApp:        m[AppConstants.keyStaffWhatsApp]   ?? '',
       lastDeliveryCharge:   double.tryParse(m[AppConstants.keyLastDeliveryCharge] ?? '10') ?? 10,
+      notificationTime:     m[AppConstants.keyNotifTime]       ?? '06:00',
     );
   }
 }

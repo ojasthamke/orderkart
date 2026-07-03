@@ -272,6 +272,10 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_item      ON stock_history(item_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_expenses_date   ON expenses(date)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_items_category  ON items(category)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_orders_customer_created ON orders(customer_id, created_at)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_serial ON customers(serial_no)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_outstanding ON customers(outstanding_balance)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)');
   }
 
   /// Seeds default settings on fresh install

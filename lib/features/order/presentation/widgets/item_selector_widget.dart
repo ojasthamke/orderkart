@@ -23,9 +23,16 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
   String _search   = '';
   String _category = 'All';
   double _qty = 1.0;
+  final _qtyController = TextEditingController(text: '1');
   Item?  _selected;
 
   final _categories = ['All', ...AppConstants.itemCategories];
+
+  @override
+  void dispose() {
+    _qtyController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +238,12 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                         return ChoiceChip(
                           label: Text(AppFormatters.quantity(q)),
                           selected: _qty == q,
-                          onSelected: (_) => setState(() => _qty = q),
+                          onSelected: (_) {
+                            setState(() {
+                              _qty = q;
+                              _qtyController.text = AppFormatters.quantity(q);
+                            });
+                          },
                         );
                       }).toList(),
                     ),
@@ -240,7 +252,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                       children: [
                         Expanded(
                           child: TextFormField(
-                            initialValue: AppFormatters.quantity(_qty),
+                            controller: _qtyController,
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
                             decoration: const InputDecoration(

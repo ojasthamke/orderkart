@@ -4,6 +4,8 @@ import '../domain/app_note.dart';
 import 'note_provider.dart';
 
 import '../../../core/constants/app_routes.dart';
+import '../../../core/widgets/confirm_delete_dialog.dart';
+import '../../../core/widgets/snackbar_helper.dart';
 
 class NotesListScreen extends ConsumerWidget {
   const NotesListScreen({super.key});
@@ -56,13 +58,13 @@ class NotesListScreen extends ConsumerWidget {
   }
 }
 
-class _NoteCard extends StatelessWidget {
+class _NoteCard extends ConsumerWidget {
   final AppNote note;
 
   const _NoteCard({required this.note});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     
     final List<Color> noteColors = [
@@ -87,6 +89,27 @@ class _NoteCard extends StatelessWidget {
           AppRoutes.addEditNote,
           arguments: {'note': note},
         );
+      },
+      onLongPress: () async {
+        final ok = await ConfirmDeleteDialog.show(
+          context,
+          title: 'Delete Note',
+          message: 'Are you sure you want to delete this note?',
+        );
+        if (ok && context.mounted) {
+          await ref.read(noteListNotifier.notifier).deleteNote(note.id);
+          if (context.mounted) {
+            SnackbarHelper.showWithUndo(
+              context, 
+              message: 'Note deleted',
+              undoLabel: 'Undo',
+            ).then((undone) async {
+              if (undone) {
+                await ref.read(noteListNotifier.notifier).addNote(note);
+              }
+            });
+          }
+        }
       },
       borderRadius: BorderRadius.circular(16),
       child: Ink(

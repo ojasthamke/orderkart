@@ -53,6 +53,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   final _noteCon         = TextEditingController();
   final _discountCon     = TextEditingController();
   final _paidCon         = TextEditingController();
+  bool   _saving         = false;
 
   // Calculated
   double get _subtotal => _cart.fold(0, (s, i) => s + i.total);
@@ -71,6 +72,41 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     if (settings != null) {
       _deliveryCharge = settings.lastDeliveryCharge;
       _smartRound     = settings.smartRounding;
+    }
+
+    if (widget.orderId != null) {
+      Future.microtask(() => _loadExistingOrder(widget.orderId!));
+    }
+  }
+
+  Future<void> _loadExistingOrder(String orderId) async {
+    final order = await ref.read(orderDetailProvider(orderId).future);
+    if (order != null && mounted) {
+      setState(() {
+        _discount = order.discount;
+        _deliveryCharge = order.deliveryCharge;
+        _deliveryEnabled = order.deliveryCharge > 0;
+        _paidAmount = order.paidAmount;
+        _noteCon.text = order.notes;
+        
+        if (_discount > 0) _discountCon.text = _discount.toStringAsFixed(2);
+        if (_paidAmount > 0) _paidCon.text = _paidAmount.toStringAsFixed(2);
+        
+        if (order.payments.isNotEmpty) {
+          _paymentMethod = order.payments.first.method;
+        }
+        
+        _cart.clear();
+        for (final item in order.items) {
+          _cart.add(_CartItem(
+            itemId: item.itemId,
+            name: item.itemName,
+            unit: item.itemUnit,
+            price: item.unitPrice,
+            quantity: item.quantity,
+          ));
+        }
+      });
     }
   }
 
@@ -540,10 +576,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // ── Save order ────────────────────────────────────────────────────────────────
   Future<void> _saveOrder() async {
+    if (_saving) return;
     if (_cart.isEmpty) {
       SnackbarHelper.showError(context, 'Add at least one item');
       return;
     }
+    setState(() => _saving = true);
 
     final now     = DateTime.now();
     final orderId = widget.orderId ?? const Uuid().v4();
@@ -630,6 +668,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         arguments: {'orderId': orderId},
       );
     } catch (e) {
+      setState(() => _saving = false);
       if (mounted) SnackbarHelper.showError(context, 'Failed to save order: $e');
     }
   }

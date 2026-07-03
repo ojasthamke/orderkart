@@ -162,6 +162,28 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     }
   }
 
+  Future<bool> _isValidSqliteFile(File file) async {
+    try {
+      final raf = await file.open(mode: FileMode.read);
+      final bytes = await raf.read(16);
+      await raf.close();
+      final header = String.fromCharCodes(bytes);
+      return header.startsWith('SQLite format 3');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _isValidSqliteBytes(List<int> bytes) async {
+    try {
+      if (bytes.length < 16) return false;
+      final header = String.fromCharCodes(bytes.sublist(0, 16));
+      return header.startsWith('SQLite format 3');
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _importDatabase() async {
     setState(() => _loading = true);
     try {
@@ -177,24 +199,44 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
 
       if (srcPath.toLowerCase().endsWith('.zip')) {
         final bytes = await File(srcPath).readAsBytes();
-        final archive = ZipDecoder().decodeBytes(bytes);
+        Archive archive;
+        try {
+          archive = ZipDecoder().decodeBytes(bytes);
+        } catch (_) {
+          throw Exception("The selected zip file is corrupted or invalid.");
+        }
+
+        bool hasDb = false;
+        List<int>? dbData;
+        for (final file in archive) {
+          if (file.name == 'orderkart.db' && file.isFile) {
+            hasDb = true;
+            dbData = file.content as List<int>;
+            break;
+          }
+        }
+
+        if (!hasDb || dbData == null) {
+          throw Exception("Invalid backup: zip file does not contain orderkart.db");
+        }
+
+        if (!await _isValidSqliteBytes(dbData)) {
+          throw Exception("Invalid backup: orderkart.db inside zip is corrupted or not a valid SQLite database.");
+        }
 
         // Close connection first
         await DatabaseHelper.instance.close();
 
+        final dbDest = File(dbPath);
+        await dbDest.writeAsBytes(dbData);
+
         for (final file in archive) {
           final filename = file.name;
-          if (file.isFile) {
-            final data = file.content as List<int>;
-            if (filename == 'orderkart.db') {
-              final dbDest = File(dbPath);
-              await dbDest.writeAsBytes(data);
-            } else if (filename.startsWith('customer_photos/')) {
-              final relativeName = p.basename(filename);
-              final photoDest = File('${AppConstants.appDocsDir}/customer_photos/$relativeName');
-              await photoDest.parent.create(recursive: true);
-              await photoDest.writeAsBytes(data);
-            }
+          if (file.isFile && filename.startsWith('customer_photos/')) {
+            final relativeName = p.basename(filename);
+            final photoDest = File('${AppConstants.appDocsDir}/customer_photos/$relativeName');
+            await photoDest.parent.create(recursive: true);
+            await photoDest.writeAsBytes(file.content as List<int>);
           }
         }
 
@@ -202,8 +244,12 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         await DatabaseHelper.instance.database;
       } else {
         // Fallback for legacy raw .db imports
+        final file = File(srcPath);
+        if (!await _isValidSqliteFile(file)) {
+          throw Exception("The selected file is not a valid SQLite database.");
+        }
         await DatabaseHelper.instance.close();
-        await File(srcPath).copy(dbPath);
+        await file.copy(dbPath);
         await DatabaseHelper.instance.database;
       }
 

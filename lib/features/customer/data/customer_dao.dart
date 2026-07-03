@@ -10,6 +10,10 @@ class CustomerDao {
   final _uuid = const Uuid();
   Future<Database> get _db => DatabaseHelper.instance.database;
 
+  Future<DatabaseExecutor> _getExecutor(DatabaseExecutor? executor) async {
+    return executor ?? await _db;
+  }
+
   Future<List<String>> _getCustomerOrder(String streetId) async {
     final db = await _db;
     final maps = await db.query(
@@ -40,17 +44,22 @@ class CustomerDao {
 
   Future<List<Customer>> getCustomersByStreet(String streetId, {String? searchQuery}) async {
     final db = await _db;
-    String where = 'street_id = ?';
-    List<dynamic> args = [streetId];
+    String where = '';
+    List<dynamic> args = [];
+    if (streetId.isNotEmpty) {
+      where = 'street_id = ?';
+      args.add(streetId);
+    }
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      where += ' AND (name LIKE ? OR phone1 LIKE ? OR house_number LIKE ?)';
+      if (where.isNotEmpty) where += ' AND ';
+      where += '(name LIKE ? OR phone1 LIKE ? OR house_number LIKE ?)';
       final q = '%${searchQuery.trim()}%';
       args.addAll([q, q, q]);
     }
     final maps = await db.query(
       'customers',
-      where: where,
-      whereArgs: args,
+      where: where.isEmpty ? null : where,
+      whereArgs: args.isEmpty ? null : args,
     );
     final customers = maps.map(Customer.fromMap).toList();
 
@@ -79,10 +88,13 @@ class CustomerDao {
     final q = '%${query.trim()}%';
     final maps = await db.rawQuery('''
       SELECT c.* FROM customers c
+      LEFT JOIN streets s ON c.street_id = s.id
+      LEFT JOIN areas a ON s.area_id = a.id
       WHERE c.name LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ?
             OR c.house_number LIKE ? OR c.address LIKE ?
+            OR s.name LIKE ? OR a.name LIKE ?
       LIMIT 50
-    ''', [q, q, q, q, q]);
+    ''', [q, q, q, q, q, q, q]);
     return maps.map(Customer.fromMap).toList();
   }
 
@@ -149,8 +161,8 @@ class CustomerDao {
   }
 
   /// Recalculates customer totals from orders table
-  Future<void> recalcCustomerTotals(String customerId) async {
-    final db = await _db;
+  Future<void> recalcCustomerTotals(String customerId, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     final result = await db.rawQuery('''
       SELECT
         COUNT(*)            AS total_orders,

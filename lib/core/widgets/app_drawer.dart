@@ -99,14 +99,7 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.analytics);
                     },
                   ),
-                  _DrawerItem(
-                    icon: Icons.route_rounded,
-                    title: 'Route Planner',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.visits);
-                    },
-                  ),
+
                   _DrawerItem(
                     icon: Icons.note_alt_rounded,
                     title: 'Notes',

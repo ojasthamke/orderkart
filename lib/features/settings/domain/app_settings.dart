@@ -17,6 +17,7 @@ class AppSettings {
   final String qrCustomImage;
   final String staffWhatsApp;
   final double lastDeliveryCharge;
+  final String notificationTime;
 
   const AppSettings({
     this.businessName      = 'My Business',
@@ -35,6 +36,7 @@ class AppSettings {
     this.qrCustomImage     = '',
     this.staffWhatsApp     = '',
     this.lastDeliveryCharge= 10.0,
+    this.notificationTime  = '06:00',
   });
 
   AppSettings copyWith({
@@ -54,6 +56,7 @@ class AppSettings {
     String? qrCustomImage,
     String? staffWhatsApp,
     double? lastDeliveryCharge,
+    String? notificationTime,
   }) {
     return AppSettings(
       businessName:       businessName       ?? this.businessName,
@@ -72,6 +75,7 @@ class AppSettings {
       qrCustomImage:      qrCustomImage      ?? this.qrCustomImage,
       staffWhatsApp:      staffWhatsApp      ?? this.staffWhatsApp,
       lastDeliveryCharge: lastDeliveryCharge ?? this.lastDeliveryCharge,
+      notificationTime:   notificationTime   ?? this.notificationTime,
     );
   }
 }

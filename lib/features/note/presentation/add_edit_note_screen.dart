@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/notification_service.dart';
 import '../domain/app_note.dart';
 import 'note_provider.dart';
+import '../../../core/widgets/confirm_delete_dialog.dart';
+import '../../../core/widgets/snackbar_helper.dart';
 
 class AddEditNoteScreen extends ConsumerStatefulWidget {
   final AppNote? existingNote;
@@ -128,6 +130,34 @@ class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          if (widget.existingNote != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: () async {
+                final ok = await ConfirmDeleteDialog.show(
+                  context,
+                  title: 'Delete Note',
+                  message: 'Are you sure you want to delete this note?',
+                );
+                if (ok && context.mounted) {
+                  final note = widget.existingNote!;
+                  await ref.read(noteListNotifier.notifier).deleteNote(note.id);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    SnackbarHelper.showWithUndo(
+                      context, 
+                      message: 'Note deleted',
+                      undoLabel: 'Undo',
+                    ).then((undone) async {
+                      if (undone) {
+                        await ref.read(noteListNotifier.notifier).addNote(note);
+                      }
+                    });
+                  }
+                }
+              },
+              tooltip: 'Delete Note',
+            ),
           IconButton(
             icon: Icon(
               _isPinned ? Icons.push_pin : Icons.push_pin_outlined,

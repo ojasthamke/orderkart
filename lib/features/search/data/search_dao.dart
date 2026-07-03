@@ -8,21 +8,36 @@ class SearchDao {
 
     final db = await DatabaseHelper.instance.database;
     final q = '%${query.trim()}%';
-    final int? searchInt = int.tryParse(query.trim());
+    
+    // Support parsing order numbers like #007 or 007 or 7
+    String cleanNumStr = query.trim();
+    if (cleanNumStr.startsWith('#')) {
+      cleanNumStr = cleanNumStr.substring(1);
+    }
+    cleanNumStr = cleanNumStr.replaceFirst(RegExp(r'^0+'), '');
+    final int? searchInt = int.tryParse(cleanNumStr.isNotEmpty ? cleanNumStr : query.trim());
+
     final List<SearchResult> results = [];
 
-    // 1. Search Customers
-    final customers = await db.query(
-      'customers',
-      where: 'name LIKE ? OR phone1 LIKE ? OR house_number LIKE ? OR address LIKE ?',
-      whereArgs: [q, q, q, q],
-      limit: 10,
-    );
+    // 1. Search Customers (including phone2, whatsapp, street name, area name)
+    final customers = await db.rawQuery('''
+      SELECT c.*, s.name AS street_name, a.name AS area_name
+      FROM customers c
+      LEFT JOIN streets s ON c.street_id = s.id
+      LEFT JOIN areas a ON s.area_id = a.id
+      WHERE c.name LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ? OR c.whatsapp LIKE ?
+         OR c.house_number LIKE ? OR c.address LIKE ? OR s.name LIKE ? OR a.name LIKE ?
+      LIMIT 15
+    ''', [q, q, q, q, q, q, q, q]);
+
     for (final c in customers) {
+      final street = c['street_name'] as String? ?? '';
+      final area = c['area_name'] as String? ?? '';
+      final loc = [if (street.isNotEmpty) street, if (area.isNotEmpty) area].join(', ');
       results.add(SearchResult(
         id:       c['id'] as String,
         title:    c['name'] as String,
-        subtitle: 'Customer • ${c['phone1']}',
+        subtitle: 'Customer • ${c['phone1']} ${loc.isNotEmpty ? "($loc)" : ""}',
         type:     SearchResultType.customer,
       ));
     }
@@ -30,8 +45,8 @@ class SearchDao {
     // 2. Search Items
     final items = await db.query(
       'items',
-      where: 'name LIKE ? OR category LIKE ?',
-      whereArgs: [q, q],
+      where: 'name LIKE ? OR category LIKE ? OR barcode LIKE ?',
+      whereArgs: [q, q, q],
       limit: 10,
     );
     for (final item in items) {
@@ -75,14 +90,14 @@ class SearchDao {
       ));
     }
 
-    // 5. Search Orders (By customer name via JOIN, or by ID)
+    // 5. Search Orders (By customer name/phone via JOIN, or by sequential number/rowid)
     final orders = await db.rawQuery('''
       SELECT o.*, o.rowid AS order_number, c.name AS customer_name
       FROM orders o
       JOIN customers c ON o.customer_id = c.id
-      WHERE c.name LIKE ? OR o.id LIKE ? ${searchInt != null ? 'OR o.rowid = ?' : ''}
-      LIMIT 10
-    ''', [q, q, if (searchInt != null) searchInt]);
+      WHERE c.name LIKE ? OR o.id LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ? ${searchInt != null ? 'OR o.rowid = ?' : ''}
+      LIMIT 15
+    ''', [q, q, q, q, if (searchInt != null) searchInt]);
     for (final o in orders) {
       final orderNo = o['order_number'] as int?;
       final orderNoLabel = orderNo != null ? '#${orderNo.toString().padLeft(3, '0')}' : '#000';

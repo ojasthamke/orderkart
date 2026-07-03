@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/utils/external_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
@@ -330,7 +330,7 @@ class CustomerProfileScreen extends ConsumerWidget {
             icon: Icons.phone_rounded,
             label: 'Call',
             color: AppColors.primary,
-            onTap: () => _launchCall(context, customer.phone1),
+            onTap: () => ExternalLauncher.launchCall(context, customer.phone1),
           ),
           // WhatsApp
           if (customer.whatsapp.isNotEmpty || customer.phone1.isNotEmpty)
@@ -339,7 +339,7 @@ class CustomerProfileScreen extends ConsumerWidget {
               icon: Icons.chat_rounded,
               label: 'WhatsApp',
               color: AppColors.success,
-              onTap: () => _launchWhatsApp(
+              onTap: () => ExternalLauncher.launchWhatsApp(
                   context,
                   customer.whatsapp.isNotEmpty
                       ? customer.whatsapp
@@ -352,7 +352,7 @@ class CustomerProfileScreen extends ConsumerWidget {
               icon: Icons.map_rounded,
               label: 'Map',
               color: Colors.blue,
-              onTap: () => _openMap(context, customer.mapsLocation),
+              onTap: () => ExternalLauncher.openMap(context, customer.mapsLocation),
             ),
           // Record Payment
           if (customer.outstandingBalance > 0)
@@ -395,142 +395,7 @@ class CustomerProfileScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openMap(BuildContext context, String mapsLocation) async {
-    final cleanLoc = mapsLocation.trim();
-    if (cleanLoc.isEmpty) {
-      SnackbarHelper.showError(context, 'No location saved for this customer.');
-      return;
-    }
 
-    Uri uri;
-    if (cleanLoc.startsWith('http')) {
-      uri = Uri.parse(cleanLoc);
-    } else {
-      final parts = cleanLoc.split(',');
-      if (parts.length != 2 || double.tryParse(parts[0]) == null || double.tryParse(parts[1]) == null) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Invalid Location'),
-            content: Text('The saved coordinates "$cleanLoc" are invalid. Please edit them in customer settings.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(_),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-      uri = Uri.parse('google.navigation:q=$cleanLoc');
-    }
-
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        final fallbackUri = cleanLoc.startsWith('http')
-            ? uri
-            : Uri.parse('https://www.google.com/maps/search/?api=1&query=$cleanLoc');
-            
-        if (await canLaunchUrl(fallbackUri)) {
-          await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
-        } else {
-          if (context.mounted) {
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text('Google Maps Error'),
-                content: const Text('Google Maps is not installed, or both maps link and coordinate queries failed to launch.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(_),
-                    child: const Text('OK'),
-                  ),
-                ],
-              ),
-            );
-          }
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Maps Launch Failure'),
-            content: Text('Failed to open Google Maps: $e'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(_),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _launchWhatsApp(BuildContext context, String phone) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-    if (cleanPhone.isEmpty) {
-      SnackbarHelper.showError(context, 'WhatsApp number is missing');
-      return;
-    }
-    final finalPhone = cleanPhone.length == 10 ? '91$cleanPhone' : cleanPhone;
-    final nativeUrl  = Uri.parse('whatsapp://send?phone=$finalPhone');
-    final webUrl     = Uri.parse('https://wa.me/$finalPhone');
-
-    try {
-      // Try native scheme first (works when WhatsApp is installed)
-      if (await canLaunchUrl(nativeUrl)) {
-        await launchUrl(nativeUrl, mode: LaunchMode.externalApplication);
-        return;
-      }
-      // Fall back to wa.me web link — works even when native scheme is blocked
-      await launchUrl(webUrl, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('WhatsApp Error'),
-            content: Text('Could not open WhatsApp for +$finalPhone.\n\nMake sure WhatsApp is installed.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(_),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _launchCall(BuildContext context, String phone) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-    if (cleanPhone.isEmpty) {
-      SnackbarHelper.showError(context, 'Phone number is missing');
-      return;
-    }
-    final url = Uri.parse('tel:$cleanPhone');
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url);
-      } else {
-        if (context.mounted) {
-          SnackbarHelper.showError(context, 'Could not launch dialer for number: $phone');
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        SnackbarHelper.showError(context, 'Failed to make phone call: $e');
-      }
-    }
-  }
 
   Future<void> _showPayDialog(BuildContext context, WidgetRef ref, Customer customer) async {
     final result = await Navigator.pushNamed(

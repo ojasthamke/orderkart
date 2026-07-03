@@ -15,41 +15,44 @@ import '../domain/customer.dart';
 import 'customer_provider.dart';
 
 class CustomerListScreen extends ConsumerWidget {
-  final String streetId;
-  final String streetName;
+  final String? streetId;
+  final String? streetName;
 
   const CustomerListScreen({
     super.key,
-    required this.streetId,
-    required this.streetName,
+    this.streetId,
+    this.streetName,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final customersAsync = ref.watch(customerListProvider(streetId));
+    final effectiveStreetId = streetId ?? '';
+    final customersAsync = ref.watch(customerListProvider(effectiveStreetId));
 
     return AppScaffold(
-      title: streetName,
+      title: streetName ?? 'All Customers',
       actions: [
         IconButton(
           icon: const Icon(Icons.search_rounded),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
         ),
       ],
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'add_customer',
-        onPressed: () => Navigator.of(context).pushNamed(
-          AppRoutes.addEditCustomer,
-          arguments: {'streetId': streetId},
-        ).then((_) => ref.refresh(customerListProvider(streetId))),
-        child: const Icon(Icons.person_add_rounded),
-      ),
+      floatingActionButton: streetId != null 
+        ? FloatingActionButton(
+            heroTag: 'add_customer',
+            onPressed: () => Navigator.of(context).pushNamed(
+              AppRoutes.addEditCustomer,
+              arguments: {'streetId': streetId},
+            ).then((_) => ref.refresh(customerListProvider(effectiveStreetId))),
+            child: const Icon(Icons.person_add_rounded),
+          )
+        : null,
       body: Column(
         children: [
           CustomSearchBar(
             hint: 'Search customers, phone, house no...',
             onChanged: (q) =>
-                ref.read(customerListProvider(streetId).notifier).search(q),
+                ref.read(customerListProvider(effectiveStreetId).notifier).search(q),
           ),
           Expanded(
             child: customersAsync.when(
@@ -61,13 +64,17 @@ class CustomerListScreen extends ConsumerWidget {
                       title: 'No Customers Yet',
                       subtitle: 'Add your first customer in this street',
                       actionLabel: 'Add Customer',
-                      onAction: () => Navigator.of(context)
-                          .pushNamed(
-                            AppRoutes.addEditCustomer,
-                            arguments: {'streetId': streetId},
-                          )
-                          .then((_) =>
-                              ref.refresh(customerListProvider(streetId))),
+                      onAction: () {
+                        if (streetId != null) {
+                          Navigator.of(context)
+                            .pushNamed(
+                              AppRoutes.addEditCustomer,
+                              arguments: {'streetId': streetId},
+                            )
+                            .then((_) =>
+                                ref.refresh(customerListProvider(effectiveStreetId)));
+                        }
+                      },
                     )
                   : ReorderableListView.builder(
                       padding: const EdgeInsets.only(bottom: 96),
@@ -77,14 +84,14 @@ class CustomerListScreen extends ConsumerWidget {
                           newIndex -= 1;
                         }
                         ref
-                            .read(customerListProvider(streetId).notifier)
+                            .read(customerListProvider(effectiveStreetId).notifier)
                             .reorder(oldIndex, newIndex);
                       },
                       itemBuilder: (ctx, i) => KeyedSubtree(
                         key: ValueKey(customers[i].id),
                         child: _CustomerCard(
                           customer: customers[i],
-                          streetId: streetId,
+                          streetId: effectiveStreetId,
                           ref: ref,
                         )
                             .animate(delay: (i * 40).ms)

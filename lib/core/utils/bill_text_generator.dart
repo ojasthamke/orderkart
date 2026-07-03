@@ -11,7 +11,7 @@ class BillTextGenerator {
     required String businessName,
     required String customerName,
     required String customerAddress,
-    required String orderId,
+    required String orderNoLabel,
     required DateTime orderDate,
     required List<Map<String, dynamic>> items,
     required double subtotal,
@@ -29,7 +29,7 @@ class BillTextGenerator {
 
     buf.writeln('*$businessName*');
     buf.writeln(sep);
-    buf.writeln('Order #${orderId.substring(0, 8).toUpperCase()}');
+    buf.writeln('Order $orderNoLabel');
     buf.writeln('Date: ${AppFormatters.dateTime(orderDate)}');
     buf.writeln('Customer: $customerName');
     if (customerAddress.isNotEmpty) {

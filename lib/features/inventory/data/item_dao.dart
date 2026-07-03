@@ -8,6 +8,10 @@ class ItemDao {
   final _uuid = const Uuid();
   Future<Database> get _db => DatabaseHelper.instance.database;
 
+  Future<DatabaseExecutor> _getExecutor(DatabaseExecutor? executor) async {
+    return executor ?? await _db;
+  }
+
   Future<List<Item>> getAllItems({String? category, String? searchQuery, String? sortBy}) async {
     final db = await _db;
     List<String> conditions = [];
@@ -73,16 +77,16 @@ class ItemDao {
     await db.delete('items', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<void> adjustStock(String itemId, double change) async {
-    final db = await _db;
+  Future<void> adjustStock(String itemId, double change, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     await db.rawUpdate(
         'UPDATE items SET stock = stock + ?, updated_at = ? WHERE id = ?',
         [change, DateTime.now().toIso8601String(), itemId]);
   }
 
   // Stock History
-  Future<void> insertStockHistory(StockHistory sh) async {
-    final db = await _db;
+  Future<void> insertStockHistory(StockHistory sh, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     await db.insert('stock_history', {
       ...sh.toMap(),
       'id': sh.id.isEmpty ? _uuid.v4() : sh.id,

@@ -42,6 +42,8 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     _ref.invalidate(areaProvider);
     _ref.invalidate(analyticsSummaryProvider);
     _ref.invalidate(searchProvider);
+    _ref.invalidate(pendingCustomersProvider);
+    _ref.invalidate(allCustomersProvider);
   }
 
   void search(String q) {

@@ -29,9 +29,6 @@ dependencies:
   # Charts
   fl_chart: ^0.69.0
 
-  # PDF & Printing
-  pdf: ^3.10.8
-  printing: ^5.13.1
 
   # Localization & Formatting
   intl: ^0.19.0

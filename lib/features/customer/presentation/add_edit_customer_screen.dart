@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import 'package:path/path.dart' as p;
+import '../../../core/database/database_helper.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -403,6 +404,18 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     try {
       final now = DateTime.now();
       final customerId = widget.customerId ?? const Uuid().v4();
+
+      final db = await DatabaseHelper.instance.database;
+      final phone = _phone1Con.text.trim();
+      final duplicateCheck = await db.query(
+        'customers',
+        columns: ['name'],
+        where: 'phone1 = ? AND id != ?',
+        whereArgs: [phone, customerId],
+      );
+      if (duplicateCheck.isNotEmpty) {
+        throw Exception('A customer named "${duplicateCheck.first['name']}" already has this phone number ($phone).');
+      }
 
       String finalPhotoPath = _photoPath;
       if (_photoPath.isNotEmpty) {

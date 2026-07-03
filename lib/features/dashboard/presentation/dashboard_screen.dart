@@ -50,11 +50,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
         ),
       ],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).pushNamed(AppRoutes.areas),
-        icon: const Icon(Icons.add_location_alt_rounded),
-        label: const Text('Areas / Order'),
-      ),
       body: summaryAsync.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(child: Text('Dashboard error: $e')),
@@ -67,6 +62,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ref.invalidate(inventoryProvider);
               ref.invalidate(lowStockProvider);
               ref.invalidate(dashboardOrdersProvider(params));
+              ref.invalidate(visitListProvider);
+              ref.invalidate(pendingCustomersProvider);
+              ref.invalidate(noteListNotifier);
+              ref.invalidate(notificationListProvider);
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -76,6 +75,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 children: [
                   // ── Welcome row ──────────────────────────────────────
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // App Logo
                       Container(
@@ -225,17 +225,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        _buildDashboardCard(
-                          context,
-                          title: "Today's Visits",
-                          icon: Icons.route_rounded,
-                          color: Colors.blue,
-                          providerValue: ref.watch(visitListProvider).maybeWhen(
-                            data: (list) => list.where((v) => v.date == AppFormatters.dateFromString(DateTime.now().toIso8601String().split('T').first)).length.toString(),
-                            orElse: () => '-',
-                          ),
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.visits),
-                        ),
+
                         _buildDashboardCard(
                           context,
                           title: 'Pending Dues',

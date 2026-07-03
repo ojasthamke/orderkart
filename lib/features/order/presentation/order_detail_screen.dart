@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/services.dart';
+import '../../../core/utils/external_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
@@ -264,7 +262,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Widget _buildItemsSection(AppOrder order, String currency) {
-    final items = order.items ?? [];
+    final items = order.items;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -425,7 +423,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Widget _buildPaymentsSection(AppOrder order, String currency) {
-    final payments = order.payments ?? [];
+    final payments = order.payments;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -521,32 +519,15 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           ),
           const SizedBox(height: 16),
         ],
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _printPdf(order, currency),
-                icon: const Icon(Icons.picture_as_pdf_rounded),
-                label: const Text('Print / PDF'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () => _shareBill(order, currency, isCustomer: true),
-                icon: const Icon(Icons.chat_rounded),
-                label: const Text('Customer WA'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-              ),
-            ),
-          ],
+        ElevatedButton.icon(
+          onPressed: () => _shareBill(order, currency, isCustomer: true),
+          icon: const Icon(Icons.chat_rounded),
+          label: const Text('Customer WA'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.success,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 50),
+          ),
         ),
         const SizedBox(height: 12),
         ElevatedButton.icon(
@@ -589,14 +570,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             notes:      notes,
             createdAt:  DateTime.now(),
           ));
-      ref.refresh(orderDetailProvider(widget.orderId));
+      ref.invalidate(orderDetailProvider(widget.orderId));
       if (mounted) SnackbarHelper.showSuccess(context, 'Payment of ₹$amount added');
     }
   }
 
   Future<void> _updateStatus(String orderId, String status) async {
     await ref.read(orderManagementProvider.notifier).updateDeliveryStatus(orderId, status);
-    ref.refresh(orderDetailProvider(widget.orderId));
+    ref.invalidate(orderDetailProvider(widget.orderId));
     if (mounted) SnackbarHelper.showSuccess(context, 'Order updated to ${status.toUpperCase()}');
   }
 
@@ -614,83 +595,23 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
   }
 
-  Future<void> _printPdf(AppOrder order, String currency) async {
-    final doc = pw.Document();
-    doc.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.roll80,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Center(
-                child: pw.Text('OrderKart Receipt',
-                    style: pw.TextStyle(
-                        fontWeight: pw.FontWeight.bold, fontSize: 16)),
-              ),
-              pw.Divider(),
-              pw.Text('Order: ${order.orderNoLabel}'),
-              pw.Text('Date: ${AppFormatters.dateTime(order.createdAt)}'),
-              pw.Text('Customer: ${order.customerName}'),
-              pw.Divider(),
-              pw.Text('Items:'),
-              ...?order.items?.map((it) => pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text(
-                          '${it.itemName} (${AppFormatters.quantity(it.quantity)} ${it.itemUnit})'),
-                      pw.Text('$currency${it.totalPrice.toStringAsFixed(2)}'),
-                    ],
-                  )),
-              pw.Divider(),
-              pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Total:'),
-                    pw.Text('$currency${order.grandTotal.toStringAsFixed(2)}'),
-                  ]),
-              pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Paid:'),
-                    pw.Text('$currency${order.paidAmount.toStringAsFixed(2)}'),
-                  ]),
-              pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Due:'),
-                    pw.Text(
-                        '$currency${order.remainingAmount.toStringAsFixed(2)}'),
-                  ]),
-              pw.Divider(),
-              pw.Center(child: pw.Text('Thank you for your business!')),
-            ],
-          );
-        },
-      ),
-    );
-    await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => doc.save());
-  }
-
   Future<void> _shareBill(AppOrder order, String currency, {required bool isCustomer}) async {
     final settings = ref.read(settingsProvider).value;
     final list = order.items
-            ?.map((it) => {
+            .map((it) => {
                   'item_name':   it.itemName,
                   'quantity':    it.quantity,
                   'item_unit':   it.itemUnit,
                   'unit_price':  it.unitPrice,
                   'total_price': it.totalPrice,
                 })
-            .toList() ??
-        [];
+            .toList();
 
     final text = BillTextGenerator.generate(
       businessName:    settings?.businessName ?? 'My Business',
-      customerName:    order.customerName ?? '',
+      customerName:    order.customerName ?? 'Walk-in Customer',
       customerAddress: order.customerAddress ?? '',
-      orderId:         order.id,
+      orderNoLabel:    order.orderNoLabel,
       orderDate:       order.createdAt,
       items:           list,
       subtotal:        order.subtotal,
@@ -699,7 +620,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       grandTotal:      order.grandTotal,
       paidAmount:      order.paidAmount,
       remainingAmount: order.remainingAmount,
-      paymentMethod:   order.payments?.firstOrNull?.method ?? 'cash',
+      paymentMethod:   order.payments.firstOrNull?.method ?? 'cash',
       ownerPhone:      settings?.phone ?? '',
       currency:        currency,
     );
@@ -708,15 +629,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     Uri? url;
 
     if (isCustomer) {
-      String phone = order.customerPhone ?? '';
-      String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-      if (cleanPhone.length == 10) cleanPhone = '91$cleanPhone'; // Default to +91 if 10 digits
-      
-      if (cleanPhone.isNotEmpty) {
-        url = Uri.parse('whatsapp://send?phone=$cleanPhone&text=$encodedText');
-      } else {
-        url = Uri.parse('whatsapp://send?text=$encodedText');
-      }
+      final phone = order.customerPhone ?? '';
+      await ExternalLauncher.launchWhatsApp(context, phone, text: text);
+      return;
     } else {
       // ── Telegram Sharing ───────────────────────────────────────────
       final staffLink = settings?.staffWhatsApp ?? '';
@@ -762,22 +677,6 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         Share.share(text);
       }
       return;
-    }
-
-    try {
-      // Try native whatsapp:// scheme first
-      if (url != null && await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-        return;
-      }
-      // Fallback to wa.me web link (opens WhatsApp or web.whatsapp.com)
-      final fallbackUrl = isCustomer && order.customerPhone != null && order.customerPhone!.isNotEmpty
-          ? Uri.parse('https://wa.me/${order.customerPhone!.replaceAll(RegExp(r'\D'), '')}?text=$encodedText')
-          : Uri.parse('https://wa.me/?text=$encodedText');
-      await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      // Last resort: OS share sheet
-      Share.share(text, subject: 'Invoice for Order ${order.orderNoLabel}');
     }
   }
 }

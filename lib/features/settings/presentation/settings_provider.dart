@@ -63,6 +63,7 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     await _dao.setValue(AppConstants.keyQrCustomImage,      settings.qrCustomImage);
     await _dao.setValue(AppConstants.keyStaffWhatsApp,      settings.staffWhatsApp);
     await _dao.setValue(AppConstants.keyLastDeliveryCharge, settings.lastDeliveryCharge.toString());
+    await _dao.setValue(AppConstants.keyNotifTime,          settings.notificationTime);
     state = AsyncValue.data(settings);
     _invalidateAll();
   }

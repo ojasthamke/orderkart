@@ -313,13 +313,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       .read(settingsProvider.notifier)
                       .update(settings.copyWith(notificationsEnabled: v)),
                 ),
-                SwitchListTile(
-                  secondary: const Icon(Icons.wb_sunny_rounded),
-                  title: const Text('Daily Morning Summary'),
-                  subtitle: const Text('Get a summary of dues & low stock at 6:00 AM'),
-                  value: settings.notificationsEnabled, // Ideally bind to actual daily_summary_enabled key if we add it to AppSettings model
-                  onChanged: settings.notificationsEnabled
-                      ? (v) { /* Update state logic if needed */ }
+                ListTile(
+                  leading: const Icon(Icons.wb_sunny_rounded),
+                  title: const Text('Daily Morning Summary Time'),
+                  subtitle: Text('Get summary of dues & low stock at ${settings.notificationTime}'),
+                  trailing: const Icon(Icons.access_time_rounded),
+                  onTap: settings.notificationsEnabled
+                      ? () async {
+                          final parts = settings.notificationTime.split(':');
+                          final currentHour = int.tryParse(parts[0]) ?? 6;
+                          final currentMin = int.tryParse(parts[1]) ?? 0;
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay(hour: currentHour, minute: currentMin),
+                          );
+                          if (picked != null) {
+                            final newHour = picked.hour.toString().padLeft(2, '0');
+                            final newMin = picked.minute.toString().padLeft(2, '0');
+                            final newTime = '$newHour:$newMin';
+                            ref.read(settingsProvider.notifier).update(
+                                  settings.copyWith(notificationTime: newTime),
+                                );
+                          }
+                        }
                       : null,
                 ),
                 SwitchListTile(

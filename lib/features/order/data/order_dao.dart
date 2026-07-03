@@ -11,6 +11,10 @@ class OrderDao {
   final _uuid = const Uuid();
   Future<Database> get _db => DatabaseHelper.instance.database;
 
+  Future<DatabaseExecutor> _getExecutor(DatabaseExecutor? executor) async {
+    return executor ?? await _db;
+  }
+
   /// Get all orders with optional filters and customer info via JOIN
   Future<List<AppOrder>> getAllOrders({
     String? status,
@@ -103,8 +107,8 @@ class OrderDao {
     return maps.map(Payment.fromMap).toList();
   }
 
-  Future<String> insertOrder(AppOrder order) async {
-    final db = await _db;
+  Future<String> insertOrder(AppOrder order, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     final id  = order.id.isEmpty ? _uuid.v4() : order.id;
     final now = DateTime.now().toIso8601String();
     await db.insert('orders', {
@@ -116,8 +120,8 @@ class OrderDao {
     return id;
   }
 
-  Future<void> insertOrderItem(OrderItem item) async {
-    final db = await _db;
+  Future<void> insertOrderItem(OrderItem item, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     final id = item.id.isEmpty ? _uuid.v4() : item.id;
     await db.insert('order_items', {
       ...item.toMap(),
@@ -125,13 +129,13 @@ class OrderDao {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<void> deleteOrderItems(String orderId) async {
-    final db = await _db;
+  Future<void> deleteOrderItems(String orderId, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     await db.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
   }
 
-  Future<void> updateOrder(AppOrder order) async {
-    final db = await _db;
+  Future<void> updateOrder(AppOrder order, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     await db.update(
       'orders',
       {...order.toMap(), 'updated_at': DateTime.now().toIso8601String()},
@@ -140,13 +144,13 @@ class OrderDao {
     );
   }
 
-  Future<void> deleteOrder(String id) async {
-    final db = await _db;
+  Future<void> deleteOrder(String id, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     await db.delete('orders', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<void> updateDeliveryStatus(String orderId, String status) async {
-    final db = await _db;
+  Future<void> updateDeliveryStatus(String orderId, String status, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     await db.update(
       'orders',
       {'delivery_status': status, 'updated_at': DateTime.now().toIso8601String()},
@@ -155,8 +159,8 @@ class OrderDao {
     );
   }
 
-  Future<void> insertPayment(Payment payment) async {
-    final db = await _db;
+  Future<void> insertPayment(Payment payment, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     await db.insert('payments', {
       ...payment.toMap(),
       'id': payment.id.isEmpty ? _uuid.v4() : payment.id,
@@ -164,8 +168,8 @@ class OrderDao {
   }
 
   Future<void> updateOrderPayment(
-      String orderId, double paidAmount, double remainingAmount) async {
-    final db = await _db;
+      String orderId, double paidAmount, double remainingAmount, {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
     await db.update(
       'orders',
       {

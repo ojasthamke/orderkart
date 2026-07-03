@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../notification/presentation/notification_center_screen.dart';
+import '../../inventory/presentation/inventory_screen.dart';
+import '../../expense/presentation/expense_screen.dart';
 import '../../note/presentation/notes_list_screen.dart';
-import '../../visit/presentation/visit_list_screen.dart';
 import 'dashboard_screen.dart';
 import '../../../core/services/permission_service.dart';
 
@@ -20,9 +20,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   final List<Widget> _screens = const [
     DashboardScreen(),
-    VisitListScreen(),
+    InventoryScreen(),
     NotesListScreen(),
-    NotificationCenterScreen(),
+    ExpenseScreen(),
   ];
 
   @override
@@ -78,9 +78,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             label: 'Dashboard',
           ),
           NavigationDestination(
-            icon: Icon(Icons.route_outlined),
-            selectedIcon: Icon(Icons.route_rounded),
-            label: 'Visits',
+            icon: Icon(Icons.inventory_2_outlined),
+            selectedIcon: Icon(Icons.inventory_2_rounded),
+            label: 'Inventory',
           ),
           NavigationDestination(
             icon: Icon(Icons.note_alt_outlined),
@@ -88,9 +88,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             label: 'Notes',
           ),
           NavigationDestination(
-            icon: Icon(Icons.notifications_outlined),
-            selectedIcon: Icon(Icons.notifications_rounded),
-            label: 'Alerts',
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Expenses',
           ),
         ],
       ),
