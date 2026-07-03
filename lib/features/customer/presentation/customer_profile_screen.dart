@@ -463,38 +463,24 @@ class CustomerProfileScreen extends ConsumerWidget {
       return;
     }
     final finalPhone = cleanPhone.length == 10 ? '91$cleanPhone' : cleanPhone;
-    final url = Uri.parse('whatsapp://send?phone=$finalPhone');
-    final fallbackUrl = Uri.parse('https://wa.me/$finalPhone');
+    final nativeUrl  = Uri.parse('whatsapp://send?phone=$finalPhone');
+    final webUrl     = Uri.parse('https://wa.me/$finalPhone');
 
     try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else if (await canLaunchUrl(fallbackUrl)) {
-        await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('WhatsApp Not Installed'),
-              content: const Text('WhatsApp is not installed on this device, and wa.me links failed to launch.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(_),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-        }
+      // Try native scheme first (works when WhatsApp is installed)
+      if (await canLaunchUrl(nativeUrl)) {
+        await launchUrl(nativeUrl, mode: LaunchMode.externalApplication);
+        return;
       }
+      // Fall back to wa.me web link — works even when native scheme is blocked
+      await launchUrl(webUrl, mode: LaunchMode.externalApplication);
     } catch (e) {
       if (context.mounted) {
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('WhatsApp Error'),
-            content: Text('Failed to open WhatsApp: $e'),
+            content: Text('Could not open WhatsApp for +$finalPhone.\n\nMake sure WhatsApp is installed.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(_),

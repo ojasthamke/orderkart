@@ -24,4 +24,26 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
+    <!-- Required on Android 11+ (API 30+) so canLaunchUrl() can detect installed apps -->
+    <queries>
+        <!-- WhatsApp native scheme -->
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <!-- Fallback: allow opening https:// links (wa.me) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <!-- Phone dialer -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        <!-- Maps / geo -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+    </queries>
 </manifest>

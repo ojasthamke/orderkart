@@ -758,22 +758,18 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
 
     try {
-      if (await canLaunchUrl(url)) {
+      // Try native whatsapp:// scheme first
+      if (url != null && await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        // Fallback to https://wa.me if the whatsapp:// scheme fails
-        final fallbackUrl = isCustomer && order.customerPhone != null && order.customerPhone!.isNotEmpty
-            ? Uri.parse('https://wa.me/${order.customerPhone!.replaceAll(RegExp(r'\D'), '')}?text=$encodedText')
-            : Uri.parse('https://wa.me/?text=$encodedText');
-            
-        if (await canLaunchUrl(fallbackUrl)) {
-          await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
-        } else {
-          // Ultimate fallback to generic OS Share sheet
-          Share.share(text, subject: 'Invoice for Order #${order.id.substring(0, 8).toUpperCase()}');
-        }
+        return;
       }
+      // Fallback to wa.me web link (opens WhatsApp or web.whatsapp.com)
+      final fallbackUrl = isCustomer && order.customerPhone != null && order.customerPhone!.isNotEmpty
+          ? Uri.parse('https://wa.me/${order.customerPhone!.replaceAll(RegExp(r'\D'), '')}?text=$encodedText')
+          : Uri.parse('https://wa.me/?text=$encodedText');
+      await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
     } catch (e) {
+      // Last resort: OS share sheet
       Share.share(text, subject: 'Invoice for Order #${order.id.substring(0, 8).toUpperCase()}');
     }
   }
