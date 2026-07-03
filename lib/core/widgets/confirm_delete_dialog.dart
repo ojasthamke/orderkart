@@ -7,14 +7,12 @@ class ConfirmDeleteDialog extends StatelessWidget {
   final String title;
   final String message;
   final String confirmLabel;
-  final VoidCallback onConfirm;
 
   const ConfirmDeleteDialog({
     super.key,
     required this.title,
     required this.message,
     this.confirmLabel = 'Delete',
-    required this.onConfirm,
   });
 
   static Future<bool> show(
@@ -29,7 +27,6 @@ class ConfirmDeleteDialog extends StatelessWidget {
             title: title,
             message: message,
             confirmLabel: confirmLabel,
-            onConfirm: () => Navigator.of(context).pop(true),
           ),
         ) ??
         false;
@@ -61,10 +58,7 @@ class ConfirmDeleteDialog extends StatelessWidget {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pop(true);
-            onConfirm();
-          },
+          onPressed: () => Navigator.of(context).pop(true),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.error,
             foregroundColor: Colors.white,
