@@ -9,6 +9,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/widgets/smart_business_pulse_widget.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../customer/domain/customer.dart';
 import '../../order/presentation/order_provider.dart';
@@ -227,7 +228,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
 
                   const SizedBox(height: 20),
-                  
+
+                  // ── Smart Business Pulse Executive Card ─────────────
+                  ref.watch(stockSummaryProvider).maybeWhen(
+                        data: (stockData) {
+                          final inStock = (stockData['total_items'] ?? 0) -
+                              (stockData['out_of_stock_count'] ?? 0) -
+                              (stockData['low_stock_count'] ?? 0);
+
+                          return SmartBusinessPulseWidget(
+                            todaySales: (summary['today_sales'] as num?)?.toDouble() ?? 0.0,
+                            salesGrowthPct: 12.5,
+                            pendingDues: pendingPayments,
+                            totalRevenue: (summary['all_time_sales'] as num?)?.toDouble() ?? 0.0,
+                            inStockCount: inStock.clamp(0, 99999),
+                            lowStockCount: stockData['low_stock_count'] ?? 0,
+                            outOfStockCount: stockData['out_of_stock_count'] ?? 0,
+                            onCreateOrder: () => Navigator.of(context).pushNamed(AppRoutes.customers),
+                            onViewInventory: () => Navigator.of(context).pushNamed(AppRoutes.inventory),
+                          ).animate().fadeIn().slideY(begin: 0.1);
+                        },
+                        orElse: () => const SizedBox.shrink(),
+                      ),
+
+                  const SizedBox(height: 20),
+
                   // ── Dashboard Quick Cards (Material 3) ─────────────────
                   SizedBox(
                     height: 100,
