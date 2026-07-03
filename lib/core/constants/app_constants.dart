@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:path/path.dart' as p;
+
 /// App Constants — Global configuration values
 
 class AppConstants {
@@ -5,6 +8,20 @@ class AppConstants {
 
   // App Documents Directory Path (initialized at startup)
   static String appDocsDir = '';
+
+  static File resolveFile(String originalPath) {
+    if (originalPath.isEmpty) return File('');
+    final file = File(originalPath);
+    if (file.existsSync()) return file;
+    if (appDocsDir.isNotEmpty) {
+      final filename = p.basename(originalPath);
+      final fallbackFile = File('$appDocsDir/customer_photos/$filename');
+      if (fallbackFile.existsSync()) {
+        return fallbackFile;
+      }
+    }
+    return file;
+  }
 
   // App Info
   static const String appName = 'OrderKart';

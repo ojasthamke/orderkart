@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -65,10 +66,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final picker = ImagePicker();
     final img = await picker.pickImage(source: ImageSource.gallery);
     if (img != null) {
-      await ref.read(settingsProvider.notifier).update(
-            current.copyWith(qrCustomImage: img.path),
-          );
-      if (mounted) SnackbarHelper.showSuccess(context, 'QR Code image uploaded');
+      final file = File(img.path);
+      if (file.existsSync()) {
+        final photosDir = Directory('${AppConstants.appDocsDir}/customer_photos');
+        if (!photosDir.existsSync()) {
+          await photosDir.create(recursive: true);
+        }
+        final ext = p.extension(img.path);
+        final destFile = File('${photosDir.path}/qr_custom_image$ext');
+
+        // Delete old QR image to prevent bloat
+        if (current.qrCustomImage.isNotEmpty) {
+          final oldFile = File(current.qrCustomImage);
+          if (oldFile.existsSync()) {
+            try { oldFile.deleteSync(); } catch (_) {}
+          }
+        }
+
+        await file.copy(destFile.path);
+
+        await ref.read(settingsProvider.notifier).update(
+              current.copyWith(qrCustomImage: destFile.path),
+            );
+        if (mounted) SnackbarHelper.showSuccess(context, 'QR Code image uploaded');
+      }
     }
   }
 
@@ -79,6 +100,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       message: 'Are you sure you want to delete the business QR code image?',
     );
     if (!ok) return;
+
+    if (current.qrCustomImage.isNotEmpty) {
+      final file = AppConstants.resolveFile(current.qrCustomImage);
+      if (file.existsSync()) {
+        try { file.deleteSync(); } catch (_) {}
+      }
+    }
+
     await ref.read(settingsProvider.notifier).update(
           current.copyWith(qrCustomImage: ''),
         );
@@ -201,7 +230,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           color: Colors.white,
                         ),
                         child: Image.file(
-                          File(settings.qrCustomImage),
+                          AppConstants.resolveFile(settings.qrCustomImage),
                           width: 150,
                           height: 150,
                           fit: BoxFit.contain,

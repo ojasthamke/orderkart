@@ -89,10 +89,12 @@ final settingsProvider =
         (ref) => SettingsNotifier(ref, SettingsDao()));
 
 final themeModeProvider = Provider<ThemeMode>((ref) {
-  final settings = ref.watch(settingsProvider).value;
-  switch (settings?.themeMode) {
-    case 'light':  return ThemeMode.light;
+  final settings = ref.watch(settingsProvider).valueOrNull;
+  if (settings == null) return ThemeMode.light;
+  switch (settings.themeMode) {
     case 'dark':   return ThemeMode.dark;
-    default:       return ThemeMode.system;
+    case 'system': return ThemeMode.system;
+    case 'light':
+    default:       return ThemeMode.light;
   }
 });

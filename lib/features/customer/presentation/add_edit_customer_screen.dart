@@ -454,6 +454,17 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
       final notifier = ref.read(customerListProvider(_streetId!).notifier);
       if (_isEdit) {
+        final existing = await ref.read(customerRepositoryProvider).getCustomerById(customerId);
+        if (existing != null && existing.photoPath.isNotEmpty && existing.photoPath != finalPhotoPath) {
+          final oldFile = File(existing.photoPath);
+          if (oldFile.existsSync()) {
+            try { oldFile.deleteSync(); } catch (_) {}
+          }
+          final fallbackOld = AppConstants.resolveFile(existing.photoPath);
+          if (fallbackOld.existsSync()) {
+            try { fallbackOld.deleteSync(); } catch (_) {}
+          }
+        }
         await notifier.update(customer);
       } else {
         await notifier.add(customer);

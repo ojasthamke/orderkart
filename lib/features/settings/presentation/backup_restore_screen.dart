@@ -231,9 +231,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         await dbDest.writeAsBytes(dbData);
 
         for (final file in archive) {
-          final filename = file.name;
-          if (file.isFile && filename.startsWith('customer_photos/')) {
-            final relativeName = p.basename(filename);
+          final normalizedPath = file.name.replaceAll('\\', '/');
+          if (file.isFile && normalizedPath.startsWith('customer_photos/')) {
+            final relativeName = p.basename(normalizedPath);
             final photoDest = File('${AppConstants.appDocsDir}/customer_photos/$relativeName');
             await photoDest.parent.create(recursive: true);
             await photoDest.writeAsBytes(file.content as List<int>);

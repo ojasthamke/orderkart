@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_constants.dart';
 import '../data/customer_dao.dart';
 import '../data/customer_repository_impl.dart';
 import '../domain/customer.dart';
@@ -64,6 +66,17 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
   }
 
   Future<void> delete(String id) async {
+    final customer = await _repo.getCustomerById(id);
+    if (customer != null && customer.photoPath.isNotEmpty) {
+      final file = File(customer.photoPath);
+      if (file.existsSync()) {
+        try { file.deleteSync(); } catch (_) {}
+      }
+      final fallback = AppConstants.resolveFile(customer.photoPath);
+      if (fallback.existsSync()) {
+        try { fallback.deleteSync(); } catch (_) {}
+      }
+    }
     await _repo.deleteCustomer(id);
     await load();
     _invalidateAll();

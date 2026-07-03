@@ -15,20 +15,7 @@ class CustomerAvatar extends StatelessWidget {
     this.radius = 24,
   });
 
-  File _resolveFile(String originalPath) {
-    final file = File(originalPath);
-    if (file.existsSync()) return file;
-    
-    // Check fallback folder if we have appDocsDir
-    if (AppConstants.appDocsDir.isNotEmpty) {
-      final filename = p.basename(originalPath);
-      final fallbackFile = File('${AppConstants.appDocsDir}/customer_photos/$filename');
-      if (fallbackFile.existsSync()) {
-        return fallbackFile;
-      }
-    }
-    return file;
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +50,7 @@ class CustomerAvatar extends StatelessWidget {
                 errorBuilder: (context, error, stackTrace) => fallback,
               )
             : Image.file(
-                _resolveFile(photoPath!),
+                AppConstants.resolveFile(photoPath!),
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => fallback,
               ),

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../constants/app_constants.dart';
 
 class QrFullScreenPreview extends StatelessWidget {
   final String? qrCustomImage;
@@ -35,7 +36,7 @@ class QrFullScreenPreview extends StatelessWidget {
               ),
               child: qrCustomImage != null && qrCustomImage!.isNotEmpty
                   ? Image.file(
-                      File(qrCustomImage!),
+                      AppConstants.resolveFile(qrCustomImage!),
                       fit: BoxFit.contain,
                     )
                   : QrImageView(
