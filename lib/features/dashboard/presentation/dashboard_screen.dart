@@ -423,6 +423,64 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             },
                           ),
                   ),
+                  
+                  // ── Areas Quick Access Section ───────────────────
+                  const SizedBox(height: 24),
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'GEOGRAPHIC REGIONS',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.areas),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppColors.primary.withOpacity(0.2),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.map_rounded,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Manage Areas & Streets',
+                                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 32),
                 ],
               ),
