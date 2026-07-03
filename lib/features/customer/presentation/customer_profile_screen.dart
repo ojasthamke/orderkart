@@ -69,38 +69,79 @@ class CustomerProfileScreen extends ConsumerWidget {
               // Profile Header Card
               _buildProfileHeader(context, ref, customer),
 
-              // ── Big "Create New Order" CTA ──────────────────────────────
+              // ── Big "Create New Order" CTA & Quick Reorder ──────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.of(context).pushNamed(
-                      AppRoutes.createOrder,
-                      arguments: {
-                        'customerId':   customer.id,
-                        'customerName': customer.name,
-                        'orderId':      null,
-                      },
-                    ).then((_) {
-                      ref.refresh(customerDetailProvider(customerId));
-                      ref.refresh(customerOrdersProvider(customerId));
-                    }),
-                    icon: const Icon(Icons.add_shopping_cart_rounded, size: 22),
-                    label: const Text(
-                      'Create New Order',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.of(context).pushNamed(
+                            AppRoutes.createOrder,
+                            arguments: {
+                              'customerId':   customer.id,
+                              'customerName': customer.name,
+                              'orderId':      null,
+                            },
+                          ).then((_) {
+                            ref.refresh(customerDetailProvider(customerId));
+                            ref.refresh(customerOrdersProvider(customerId));
+                          }),
+                          icon: const Icon(Icons.add_shopping_cart_rounded, size: 20),
+                          label: const Text(
+                            'Create Order',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    ordersAsync.maybeWhen(
+                      data: (orders) => orders.isNotEmpty
+                          ? SizedBox(
+                              height: 52,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  final latestOrder = orders.first;
+                                  Navigator.of(context).pushNamed(
+                                    AppRoutes.createOrder,
+                                    arguments: {
+                                      'customerId':   customer.id,
+                                      'customerName': customer.name,
+                                      'orderId':      latestOrder.id, // loads items into cart
+                                    },
+                                  ).then((_) {
+                                    ref.refresh(customerDetailProvider(customerId));
+                                    ref.refresh(customerOrdersProvider(customerId));
+                                  });
+                                },
+                                icon: const Icon(Icons.bolt_rounded, color: Colors.amber, size: 20),
+                                label: const Text(
+                                  'Reorder Last',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Colors.amber, width: 1.5),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                      orElse: () => const SizedBox.shrink(),
+                    ),
+                  ],
                 ),
               ),
 

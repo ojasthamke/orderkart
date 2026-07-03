@@ -140,6 +140,24 @@ class Customer {
   /// Display label shown before the customer name: '#3' or '' if unset
   String get serialLabel => serialNo > 0 ? '#$serialNo' : '';
 
+  /// Feature 12: Customer Tag Badge (VIP, Regular, New, Inactive)
+  String get tag {
+    if (totalOrders >= 8 || totalPaid >= 5000) return 'VIP';
+    if (totalOrders >= 3) return 'Regular';
+    final now = DateTime.now();
+    if (now.difference(customerSince).inDays <= 30) return 'New';
+    if (lastOrderDate.isNotEmpty) {
+      final lastDate = DateTime.tryParse(lastOrderDate);
+      if (lastDate != null && now.difference(lastDate).inDays > 30) {
+        return 'Inactive';
+      }
+    }
+    return 'Regular';
+  }
+
+  /// Feature 28: Advance Balance (Credit)
+  double get advanceBalance => outstandingBalance < 0 ? outstandingBalance.abs() : 0.0;
+
   @override
   bool operator ==(Object other) => other is Customer && other.id == id;
   @override

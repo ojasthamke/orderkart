@@ -177,13 +177,21 @@ class _CustomerCard extends StatelessWidget {
                             const SizedBox(width: 6),
                           ],
                           Expanded(
-                            child: Text(
-                              customer.name,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                              overflow: TextOverflow.ellipsis,
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    customer.name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                _buildTagBadge(customer.tag),
+                              ],
                             ),
                           ),
                           if (customer.outstandingBalance > 0)
@@ -303,6 +311,45 @@ class _CustomerCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTagBadge(String tag) {
+    Color color;
+    Color bg;
+    switch (tag) {
+      case 'VIP':
+        color = Colors.purple;
+        bg = Colors.purple.withOpacity(0.12);
+        break;
+      case 'New':
+        color = Colors.green;
+        bg = Colors.green.withOpacity(0.12);
+        break;
+      case 'Inactive':
+        color = Colors.grey;
+        bg = Colors.grey.withOpacity(0.15);
+        break;
+      default:
+        color = AppColors.primary;
+        bg = AppColors.primary.withOpacity(0.12);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.3), width: 0.8),
+      ),
+      child: Text(
+        tag,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
