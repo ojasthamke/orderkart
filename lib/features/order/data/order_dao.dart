@@ -71,7 +71,7 @@ class OrderDao {
         c.address AS customer_address,
         c.phone1  AS customer_phone
       FROM orders o
-      JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN customers c ON o.customer_id = c.id
       $where
       ORDER BY o.created_at DESC
       LIMIT $limit OFFSET $offset
@@ -84,7 +84,7 @@ class OrderDao {
     final db = await _getExecutor(executor);
     final maps = await db.rawQuery('''
       SELECT o.*, o.rowid AS order_number, c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone
-      FROM orders o JOIN customers c ON o.customer_id = c.id
+      FROM orders o LEFT JOIN customers c ON o.customer_id = c.id
       WHERE o.id = ?
     ''', [id]);
     if (maps.isEmpty) return null;
@@ -314,7 +314,7 @@ class OrderDao {
     final orderMaps = await db.rawQuery('''
       SELECT o.*, o.rowid AS order_number, c.name AS customer_name
       FROM orders o
-      JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN customers c ON o.customer_id = c.id
       WHERE DATE(o.created_at) = DATE(?)
       ORDER BY o.created_at DESC
     ''', [today]);

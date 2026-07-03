@@ -94,7 +94,7 @@ class SearchDao {
     final orders = await db.rawQuery('''
       SELECT o.*, o.rowid AS order_number, c.name AS customer_name
       FROM orders o
-      JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN customers c ON o.customer_id = c.id
       WHERE c.name LIKE ? OR o.id LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ? ${searchInt != null ? 'OR o.rowid = ?' : ''}
       LIMIT 15
     ''', [q, q, q, q, if (searchInt != null) searchInt]);

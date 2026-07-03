@@ -27,8 +27,10 @@ class DatabaseHelper {
       version: AppConstants.dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
-      // Enable WAL mode for better concurrent performance
-      onOpen: (db) => db.rawQuery('PRAGMA journal_mode=WAL'),
+      onOpen: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+        await db.execute('PRAGMA journal_mode = WAL');
+      },
     );
   }
 
