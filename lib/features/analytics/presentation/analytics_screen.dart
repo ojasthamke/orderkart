@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/stat_card.dart';
@@ -31,6 +32,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     return AppScaffold(
       title: 'Analytics & Reports',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.calculate_rounded),
+          tooltip: 'Profit & Loss Statement',
+          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.profitLoss),
+        ),
+      ],
       body: summaryAsync.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(child: Text('Error loading stats: $e')),

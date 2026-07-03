@@ -20,6 +20,7 @@ class AppRoutes {
   static const String expenses = '/expenses';
   static const String addEditExpense = '/add-edit-expense';
   static const String analytics = '/analytics';
+  static const String profitLoss = '/profit-loss';
   static const String settings = '/settings';
   static const String backupRestore = '/backup-restore';
   static const String search = '/search';

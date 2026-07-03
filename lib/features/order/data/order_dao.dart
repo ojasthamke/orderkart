@@ -263,6 +263,52 @@ class OrderDao {
     };
   }
 
+  /// Comprehensive Profit & Loss Statement calculation
+  Future<Map<String, dynamic>> getProfitLossStatement() async {
+    final db = await _db;
+    
+    // 1. Gross Revenue
+    final revenueRes = await db.rawQuery('SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders');
+    final totalRevenue = (revenueRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    // 2. Cost of Goods Sold (COGS)
+    final cogsRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0)), 0) AS v
+      FROM order_items oi
+      LEFT JOIN items i ON oi.item_id = i.id
+    ''');
+    final cogs = (cogsRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    // 3. Operating Expenses
+    final expensesRes = await db.rawQuery('SELECT COALESCE(SUM(amount), 0) AS v FROM expenses');
+    final totalExpenses = (expensesRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    // 4. Discounts Given
+    final discountRes = await db.rawQuery('SELECT COALESCE(SUM(discount), 0) AS v FROM orders');
+    final totalDiscounts = (discountRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    // 5. Delivery Income
+    final deliveryRes = await db.rawQuery('SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders');
+    final totalDeliveryIncome = (deliveryRes.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    // Calculations
+    final grossProfit = totalRevenue - cogs;
+    final netProfit = grossProfit - totalExpenses;
+    final profitMarginPct = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0.0;
+
+    return {
+      'total_revenue': totalRevenue,
+      'cogs': cogs,
+      'gross_profit': grossProfit,
+      'total_expenses': totalExpenses,
+      'total_discounts': totalDiscounts,
+      'delivery_income': totalDeliveryIncome,
+      'net_profit': netProfit,
+      'profit_margin_pct': profitMarginPct,
+      'is_profitable': netProfit >= 0,
+    };
+  }
+
   /// Weekly chart data
   Future<List<Map<String, dynamic>>> getWeeklySales() async {
     final db = await _db;

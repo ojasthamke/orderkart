@@ -145,6 +145,14 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                   _DrawerItem(
+                    icon: Icons.calculate_rounded,
+                    title: 'Profit & Loss Statement',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.profitLoss);
+                    },
+                  ),
+                  _DrawerItem(
                     icon: Icons.search_rounded,
                     title: 'Global Search',
                     onTap: () {

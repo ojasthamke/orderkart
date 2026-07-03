@@ -144,6 +144,10 @@ final todaysDetailedReportProvider = FutureProvider<Map<String, dynamic>>((ref) 
   return OrderDao().getTodaysDetailedReport();
 });
 
+final profitLossProvider = FutureProvider<Map<String, dynamic>>((ref) {
+  return OrderDao().getProfitLossStatement();
+});
+
 class DashboardOrdersParams {
   final String? filter;
   final DateTime? startDate;

@@ -23,6 +23,7 @@ import 'features/inventory/presentation/stock_adjustment_screen.dart';
 import 'features/expense/presentation/expense_screen.dart';
 import 'features/expense/presentation/add_edit_expense_screen.dart';
 import 'features/analytics/presentation/analytics_screen.dart';
+import 'features/analytics/presentation/profit_loss_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/settings/presentation/backup_restore_screen.dart';
 import 'features/search/presentation/search_screen.dart';
@@ -141,6 +142,9 @@ class OrderKartApp extends ConsumerWidget {
 
       case AppRoutes.analytics:
         return _slide(const AnalyticsScreen());
+
+      case AppRoutes.profitLoss:
+        return _slide(const ProfitLossScreen());
 
       case AppRoutes.settings:
         return _slide(const SettingsScreen());
