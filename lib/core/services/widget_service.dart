@@ -6,7 +6,7 @@ import '../utils/formatters.dart';
 class WidgetService {
   WidgetService._();
   
-  static const String appGroupId = 'com.freshflow.orderkart';
+  static const String appGroupId = 'com.example.orderkart';
   static const String androidWidgetName = 'OrderKartWidgetProvider';
 
   static Future<void> init() async {

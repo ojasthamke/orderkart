@@ -1,4 +1,4 @@
-package com.freshflow.orderkart
+package com.example.orderkart
 
 import android.appwidget.AppWidgetManager
 import android.content.Context

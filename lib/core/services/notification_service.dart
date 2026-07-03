@@ -21,7 +21,7 @@ class NotificationService {
       // Fallback
     }
 
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('icon'); // Ensure icon.png exists in drawable
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
     
     await flutterLocalNotificationsPlugin.initialize(
