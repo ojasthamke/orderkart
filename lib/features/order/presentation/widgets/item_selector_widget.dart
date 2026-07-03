@@ -22,17 +22,9 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
     with SingleTickerProviderStateMixin {
   String _search   = '';
   String _category = 'All';
-  double _qty = 1.0;
-  final _qtyController = TextEditingController(text: '1');
-  Item?  _selected;
+  final Map<String, (Item item, double qty)> _selections = {};
 
   final _categories = ['All', ...AppConstants.itemCategories];
-
-  @override
-  void dispose() {
-    _qtyController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +54,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Select Item',
+              child: Text('Select Items',
                   style: Theme.of(context).textTheme.titleLarge),
             ),
             const SizedBox(height: 8),
@@ -141,68 +133,139 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     itemBuilder: (_, i) {
                       final item = filtered[i];
-                      final isSelected = _selected?.id == item.id;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selected = item),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
+                      final selection = _selections[item.id];
+                      final isSelected = selection != null;
+
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primarySurface
+                              : AppColors.gray50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
                             color: isSelected
-                                ? AppColors.primarySurface
-                                : AppColors.gray50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.gray200,
-                              width: isSelected ? 2 : 1,
-                            ),
+                                ? AppColors.primary
+                                : AppColors.gray200,
+                            width: isSelected ? 2 : 1,
                           ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(item.name,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyMedium
-                                            ?.copyWith(
-                                                fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '₹${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Stock: ${AppFormatters.quantity(item.stock)}',
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.name,
                                       style: Theme.of(context)
                                           .textTheme
-                                          .bodySmall
+                                          .bodyMedium
                                           ?.copyWith(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                              fontWeight: FontWeight.w600)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '₹${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Stock: ${AppFormatters.quantity(item.stock)}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                  // Fractional price hints
+                                  ..._fractionalHints(context, item.sellingPrice, item.unit),
+                                  if (item.stock <= 0)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text('❌ Out of stock',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(
+                                                  color: AppColors.error,
+                                                  fontWeight: FontWeight.w700)),
+                                    )
+                                  else if (item.isLowStock)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text('⚠️ Low stock',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(
+                                                  color: AppColors.warning)),
                                     ),
-                                    // Fractional price hints
-                                    ..._fractionalHints(context, item.sellingPrice, item.unit),
-                                    if (item.isLowStock)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 2),
-                                        child: Text('⚠️ Low stock',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelSmall
-                                                ?.copyWith(
-                                                    color: AppColors.warning)),
-                                      ),
-                                  ],
-                                ),
+                                ],
                               ),
-                              if (isSelected)
-                                const Icon(Icons.check_circle_rounded,
-                                    color: AppColors.primary),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (!isSelected)
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _selections[item.id] = (item, 1.0);
+                                  });
+                                },
+                                icon: const Icon(Icons.add_rounded, size: 16),
+                                label: const Text('Add'),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                ),
+                              )
+                            else
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.remove_rounded, color: AppColors.error),
+                                    onPressed: () {
+                                      setState(() {
+                                        final currentQty = selection.$2;
+                                        final step = (item.unit.toLowerCase() == 'kg' ||
+                                                item.unit.toLowerCase() == 'liter' ||
+                                                item.unit.toLowerCase() == 'litre')
+                                            ? 0.25
+                                            : 1.0;
+                                        if (currentQty <= step) {
+                                          _selections.remove(item.id);
+                                        } else {
+                                          _selections[item.id] = (
+                                            item,
+                                            double.parse((currentQty - step).toStringAsFixed(2))
+                                          );
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  Text(
+                                    AppFormatters.quantity(selection.$2),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700, fontSize: 14),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_rounded, color: AppColors.primary),
+                                    onPressed: () {
+                                      setState(() {
+                                        final currentQty = selection.$2;
+                                        final step = (item.unit.toLowerCase() == 'kg' ||
+                                                item.unit.toLowerCase() == 'liter' ||
+                                                item.unit.toLowerCase() == 'litre')
+                                            ? 0.25
+                                            : 1.0;
+                                        _selections[item.id] = (
+                                          item,
+                                          double.parse((currentQty + step).toStringAsFixed(2))
+                                        );
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                          ],
                         ),
                       );
                     },
@@ -211,8 +274,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
               ),
             ),
 
-            // Quantity picker + confirm
-            if (_selected != null)
+            // Confirm selection button
+            if (_selections.isNotEmpty)
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                 decoration: BoxDecoration(
@@ -220,63 +283,25 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                       Theme.of(context).scaffoldBackgroundColor,
                   boxShadow: const [
                     BoxShadow(
-                        color: Colors.black26,
+                        color: Colors.black12,
                         blurRadius: 8,
                         offset: Offset(0, -2))
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Quantity (${_selected!.unit})',
-                        style: Theme.of(context).textTheme.labelMedium),
-                    const SizedBox(height: 8),
-                    // Preset chips
-                    Wrap(
-                      spacing: 8,
-                      children: AppConstants.quantityPresets.map((q) {
-                        return ChoiceChip(
-                          label: Text(AppFormatters.quantity(q)),
-                          selected: _qty == q,
-                          onSelected: (_) {
-                            setState(() {
-                              _qty = q;
-                              _qtyController.text = AppFormatters.quantity(q);
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _qtyController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'Custom qty',
-                              isDense: true,
-                            ),
-                            onChanged: (v) {
-                              final p = double.tryParse(v);
-                              if (p != null && p > 0) setState(() => _qty = p);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            widget.onItemSelected(_selected!, _qty);
-                            Navigator.of(context).pop();
-                          },
-                          icon: const Icon(Icons.add_rounded),
-                          label: const Text('Add to Order'),
-                        ),
-                      ],
-                    ),
-                  ],
+                child: ElevatedButton(
+                  onPressed: () {
+                    for (final sel in _selections.values) {
+                      widget.onItemSelected(sel.$1, sel.$2);
+                    }
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(
+                      'Add ${_selections.length} Item${_selections.length > 1 ? 's' : ''} to Order'),
                 ),
               ),
           ],

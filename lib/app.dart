@@ -69,10 +69,10 @@ class OrderKartApp extends ConsumerWidget {
         ));
 
       case AppRoutes.customers:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = settings.arguments as Map<String, dynamic>?;
         return _slide(CustomerListScreen(
-          streetId: args['streetId'] as String,
-          streetName: args['streetName'] as String,
+          streetId: args?['streetId'] as String?,
+          streetName: args?['streetName'] as String?,
         ));
 
       case AppRoutes.customerProfile:

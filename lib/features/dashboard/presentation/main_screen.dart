@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../inventory/presentation/inventory_screen.dart';
 import '../../expense/presentation/expense_screen.dart';
 import '../../note/presentation/notes_list_screen.dart';
+import '../../area/presentation/area_screen.dart';
 import 'dashboard_screen.dart';
 import '../../../core/services/permission_service.dart';
 
@@ -21,6 +22,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   final List<Widget> _screens = const [
     DashboardScreen(),
     InventoryScreen(),
+    AreaScreen(showBack: false),
     NotesListScreen(),
     ExpenseScreen(),
   ];
@@ -81,6 +83,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             icon: Icon(Icons.inventory_2_outlined),
             selectedIcon: Icon(Icons.inventory_2_rounded),
             label: 'Inventory',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map_rounded),
+            label: 'Areas',
           ),
           NavigationDestination(
             icon: Icon(Icons.note_alt_outlined),

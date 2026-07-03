@@ -220,8 +220,10 @@ class _ItemCard extends StatelessWidget {
         color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: item.isLowStock ? AppColors.warning.withOpacity(0.5) : AppColors.gray200,
-          width: item.isLowStock ? 1.5 : 1,
+          color: item.stock <= 0
+              ? AppColors.error.withOpacity(0.5)
+              : (item.isLowStock ? AppColors.warning.withOpacity(0.5) : AppColors.gray200),
+          width: item.stock <= 0 || item.isLowStock ? 1.5 : 1,
         ),
         boxShadow: AppColors.cardShadow,
       ),
@@ -252,7 +254,21 @@ class _ItemCard extends StatelessWidget {
                                 .titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w700)),
                       ),
-                      if (item.isLowStock)
+                      if (item.stock <= 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.errorSurface,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('Out of Stock',
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.w700)),
+                        )
+                      else if (item.isLowStock)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
@@ -290,11 +306,12 @@ class _ItemCard extends StatelessWidget {
                       Text(
                         'Stock: ${AppFormatters.quantity(item.stock)} ${item.unit}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: item.isLowStock
-                                  ? AppColors.warning
-                                  : AppColors.textSecondary,
-                              fontWeight:
-                                  item.isLowStock ? FontWeight.w700 : FontWeight.w400,
+                              color: item.stock <= 0
+                                  ? AppColors.error
+                                  : (item.isLowStock ? AppColors.warning : AppColors.textSecondary),
+                              fontWeight: item.stock <= 0 || item.isLowStock
+                                  ? FontWeight.w700
+                                  : FontWeight.w400,
                             ),
                       ),
                     ],

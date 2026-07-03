@@ -18,7 +18,8 @@ import 'dialogs/add_edit_area_dialog.dart';
 import 'widgets/area_card.dart';
 
 class AreaScreen extends ConsumerStatefulWidget {
-  const AreaScreen({super.key});
+  final bool showBack;
+  const AreaScreen({super.key, this.showBack = true});
 
   @override
   ConsumerState<AreaScreen> createState() => _AreaScreenState();
@@ -33,6 +34,7 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
 
     return AppScaffold(
       title: 'Areas',
+      showBack: widget.showBack,
       actions: [
         PopupMenuButton<String>(
           icon: const Icon(Icons.sort_rounded),
