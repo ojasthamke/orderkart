@@ -192,6 +192,9 @@ class OrderDao {
     final todaySales = await db.rawQuery(
         'SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE DATE(created_at) = DATE(?)',
         [today]);
+    final todayOrders = await db.rawQuery(
+        'SELECT COUNT(*) AS v FROM orders WHERE DATE(created_at) = DATE(?)',
+        [today]);
     final monthlySales = await db.rawQuery(
         "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ?",
         [month]);
@@ -241,6 +244,7 @@ class OrderDao {
 
     return {
       'today_sales':      (todaySales.first['v'] as num?)?.toDouble()    ?? 0,
+      'today_orders_count': todayOrders.first['v'] ?? 0,
       'monthly_sales':    (monthlySales.first['v'] as num?)?.toDouble()  ?? 0,
       'pending_payments': (pendingPayments.first['v'] as num?)?.toDouble()?? 0,
       'cash_received':    (cashReceived.first['v'] as num?)?.toDouble()  ?? 0,

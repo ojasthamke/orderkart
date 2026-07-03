@@ -114,6 +114,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "Today: ${summary['today_orders_count'] ?? 0} orders • ${AppFormatters.currency(summary['today_sales'] ?? 0)}",
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.success,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -225,7 +234,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-
+                        _buildDashboardCard(
+                          context,
+                          title: "Today's Orders",
+                          icon: Icons.shopping_bag_rounded,
+                          color: AppColors.primary,
+                          providerValue: summaryAsync.maybeWhen(
+                            data: (s) => (s['today_orders_count'] ?? 0).toString(),
+                            orElse: () => '0',
+                          ),
+                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.orderManagement),
+                        ),
                         _buildDashboardCard(
                           context,
                           title: 'Pending Dues',
