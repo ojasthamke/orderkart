@@ -97,3 +97,9 @@ final customerDetailProvider =
   final repo = ref.read(customerRepositoryProvider);
   return repo.getCustomerById(customerId);
 });
+
+// All customers who have outstanding balance > 0
+final pendingCustomersProvider = FutureProvider<List<Customer>>((ref) async {
+  final dao = CustomerDao();
+  return dao.getCustomersWithDue();
+});

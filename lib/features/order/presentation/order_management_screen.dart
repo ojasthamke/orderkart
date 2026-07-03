@@ -378,9 +378,9 @@ class _OrderCard extends ConsumerWidget {
                   data: (cust) {
                     if (cust == null) return const SizedBox.shrink();
                     final houseStr = [
-                      if (cust.mainHouseNumber.isNotEmpty) 'Main: ${cust.mainHouseNumber}',
-                      if (cust.subHouseNumber.isNotEmpty) 'No: ${cust.subHouseNumber}',
-                    ].join(' • ');
+                      if (cust.serialNo > 0) '#${cust.serialNo}',
+                      if (cust.houseNumber.isNotEmpty) cust.houseNumber,
+                    ].join(' · ');
                     return Padding(
                       padding: const EdgeInsets.only(top: 2, bottom: 2),
                       child: Text(

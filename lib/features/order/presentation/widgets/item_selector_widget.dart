@@ -36,9 +36,10 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
       minChildSize:     0.5,
       maxChildSize:     0.95,
       builder: (_, scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).bottomSheetTheme.backgroundColor ??
+              Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           children: [
@@ -164,22 +165,29 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                             .bodyMedium
                                             ?.copyWith(
                                                 fontWeight: FontWeight.w600)),
+                                    const SizedBox(height: 2),
                                     Text(
-                                      '₹${item.sellingPrice.toStringAsFixed(2)} / ${item.unit}  •  Stock: ${AppFormatters.quantity(item.stock)}',
+                                      '₹${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Stock: ${AppFormatters.quantity(item.stock)}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: AppColors.textSecondary,
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                     ),
+                                    // Fractional price hints
+                                    ..._fractionalHints(context, item.sellingPrice, item.unit),
                                     if (item.isLowStock)
-                                      Text('⚠️ Low stock',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelSmall
-                                              ?.copyWith(
-                                                  color: AppColors.warning)),
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Text('⚠️ Low stock',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                    color: AppColors.warning)),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -200,11 +208,12 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
             if (_selected != null)
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
+                decoration: BoxDecoration(
+                  color: Theme.of(context).bottomSheetTheme.backgroundColor ??
+                      Theme.of(context).scaffoldBackgroundColor,
+                  boxShadow: const [
                     BoxShadow(
-                        color: Colors.black12,
+                        color: Colors.black26,
                         blurRadius: 8,
                         offset: Offset(0, -2))
                   ],
@@ -262,5 +271,45 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
         ),
       ),
     );
+  }
+
+  /// Returns a row of small price-hint texts for common fractional quantities.
+  /// Calculated purely in memory — no DB calls, no schema changes.
+  List<Widget> _fractionalHints(BuildContext context, double price, String unit) {
+    final hintStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: AppColors.textSecondary,
+          height: 1.6,
+        );
+
+    List<(String label, double fraction)> fractions;
+    switch (unit.toLowerCase()) {
+      case 'kg':
+        fractions = [('250 gm', 0.25), ('500 gm', 0.50), ('750 gm', 0.75)];
+        break;
+      case 'liter':
+      case 'litre':
+      case 'l':
+        fractions = [('250 ml', 0.25), ('500 ml', 0.50), ('750 ml', 0.75)];
+        break;
+      case 'dozen':
+        fractions = [(' 3 pcs', 0.25), (' 6 pcs', 0.50), (' 9 pcs', 0.75)];
+        break;
+      default:
+        return []; // Piece / Packet / custom — no sub-unit hints
+    }
+
+    final String Function(double v) fmt = (v) => v == v.roundToDouble()
+        ? '\u20b9${v.toInt()}'
+        : '\u20b9${v.toStringAsFixed(1)}';
+
+    return [
+      const SizedBox(height: 4),
+      Wrap(
+        spacing: 10,
+        children: fractions
+            .map((f) => Text('${f.$1} = ${fmt(price * f.$2)}', style: hintStyle))
+            .toList(),
+      ),
+    ];
   }
 }

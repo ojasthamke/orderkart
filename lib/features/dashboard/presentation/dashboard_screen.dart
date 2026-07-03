@@ -9,6 +9,7 @@ import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../customer/presentation/customer_provider.dart';
+import '../../customer/domain/customer.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../order/domain/order.dart';
@@ -128,6 +129,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             loading: () => const SizedBox.shrink(),
                             error: (_, __) => const SizedBox.shrink(),
                           ),
+                      // ── Payment reminder bell ─────────────────────────
+                      ref.watch(pendingCustomersProvider).when(
+                        data: (pending) => pending.isNotEmpty
+                            ? Badge(
+                                label: Text('${pending.length}'),
+                                backgroundColor: AppColors.error,
+                                child: IconButton.filledTonal(
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: AppColors.errorSurface,
+                                  ),
+                                  icon: const Icon(Icons.notifications_rounded,
+                                      color: AppColors.error),
+                                  onPressed: () =>
+                                      _showPendingReminder(context, pending),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
                     ],
                   ),
 
@@ -302,11 +323,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildFilterChip(String value, String label) {
     final isSelected = _selectedFilter == value;
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
-        label: Text(label),
+        label: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : cs.onSurface.withOpacity(0.75),
+          ),
+        ),
         selected: isSelected,
+        selectedColor: AppColors.primary,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1A1A1A)
+            : AppColors.gray100,
+        side: BorderSide(
+          color: isSelected
+              ? AppColors.primary
+              : (Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF2A2A2A)
+                  : AppColors.gray300),
+          width: isSelected ? 1.5 : 1,
+        ),
         onSelected: (selected) {
           if (selected) {
             setState(() {
@@ -378,6 +419,177 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showPendingReminder(BuildContext context, List<Customer> pending) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.70,
+        minChildSize: 0.45,
+        maxChildSize: 0.92,
+        builder: (_, scroll) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).bottomSheetTheme.backgroundColor ??
+                Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 4),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.gray300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorSurface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.notifications_active_rounded,
+                          color: AppColors.error, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Payment Reminders',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          Text(
+                            '${pending.length} customer${pending.length > 1 ? 's have' : ' has'} pending dues',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 20),
+              // Customer list
+              Expanded(
+                child: ListView.builder(
+                  controller: scroll,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  itemCount: pending.length,
+                  itemBuilder: (_, i) {
+                    final c = pending[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardTheme.color,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.error.withOpacity(0.2),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.customerProfile,
+                            arguments: {'customerId': c.id},
+                          );
+                        },
+                        leading: CustomerAvatar(
+                          photoPath: c.photoPath,
+                          radius: 22,
+                        ),
+                        title: Text(
+                          c.name,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (c.phone1.isNotEmpty)
+                              Text(
+                                c.phone1,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: AppColors.textSecondary),
+                              ),
+                            if (c.serialNo > 0 || c.houseNumber.isNotEmpty)
+                              Text(
+                                [
+                                  if (c.serialNo > 0)
+                                    '#${c.serialNo}',
+                                  if (c.houseNumber.isNotEmpty)
+                                    c.houseNumber,
+                                ].join(' · '),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(color: AppColors.textHint),
+                              ),
+                          ],
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              AppFormatters.currency(c.outstandingBalance),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Due',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: AppColors.error),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.05);
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -54,18 +54,16 @@ class CustomerDao {
     );
     final customers = maps.map(Customer.fromMap).toList();
 
-    final order = await _getCustomerOrder(streetId);
-    if (order.isNotEmpty) {
-      customers.sort((a, b) {
-        int idxA = order.indexOf(a.id);
-        int idxB = order.indexOf(b.id);
-        if (idxA == -1) idxA = 999999;
-        if (idxB == -1) idxB = 999999;
-        return idxA.compareTo(idxB);
-      });
-    } else {
-      customers.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    }
+    // Sort: customers with serial_no > 0 appear first in ascending order.
+    // Customers with serial_no == 0 (unset) go to the end sorted by creation time.
+    customers.sort((a, b) {
+      final aNo = a.serialNo;
+      final bNo = b.serialNo;
+      if (aNo == 0 && bNo == 0) return a.createdAt.compareTo(b.createdAt);
+      if (aNo == 0) return 1;   // a goes after b
+      if (bNo == 0) return -1;  // a goes before b
+      return aNo.compareTo(bNo);
+    });
     return customers;
   }
 
@@ -85,6 +83,17 @@ class CustomerDao {
             OR c.house_number LIKE ? OR c.address LIKE ?
       LIMIT 50
     ''', [q, q, q, q, q]);
+    return maps.map(Customer.fromMap).toList();
+  }
+
+  /// Fetch all customers who have an outstanding balance > 0, sorted highest first
+  Future<List<Customer>> getCustomersWithDue() async {
+    final db = await _db;
+    final maps = await db.rawQuery('''
+      SELECT * FROM customers
+      WHERE outstanding_balance > 0
+      ORDER BY outstanding_balance DESC
+    ''');
     return maps.map(Customer.fromMap).toList();
   }
 

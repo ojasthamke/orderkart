@@ -20,7 +20,7 @@ class LoadingShimmer extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           height: 80,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardTheme.color ?? Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
           ),
         ),

@@ -11,7 +11,7 @@ class AppConstants {
 
   // Database
   static const String dbName = 'orderkart.db';
-  static const int dbVersion = 1;
+  static const int dbVersion = 2;
 
   // Defaults
   static const double defaultDeliveryCharge = 10.0;

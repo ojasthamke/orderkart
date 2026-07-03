@@ -32,8 +32,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   final _phone1Con   = TextEditingController();
   final _phone2Con   = TextEditingController();
   final _waCon        = TextEditingController();
-  final _houseCon    = TextEditingController();
-  final _mainHouseCon = TextEditingController();
+  final _serialNoCon = TextEditingController();  // replaces main house number
+  final _houseCon    = TextEditingController();  // house/flat number
   final _addressCon  = TextEditingController();
   final _notesCon    = TextEditingController();
   final _mapsCon     = TextEditingController();
@@ -59,17 +59,17 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         .getCustomerById(widget.customerId!);
     if (customer != null && mounted) {
       setState(() {
-        _streetId        = customer.streetId;
-        _nameCon.text    = customer.name;
-        _phone1Con.text  = customer.phone1;
-        _phone2Con.text  = customer.phone2;
-        _waCon.text       = customer.whatsapp;
-        _mainHouseCon.text = customer.mainHouseNumber;
-        _houseCon.text   = customer.subHouseNumber;
-        _addressCon.text = customer.address;
-        _notesCon.text   = customer.notes;
-        _mapsCon.text    = customer.mapsLocation;
-        _photoPath       = customer.photoPath;
+        _streetId         = customer.streetId;
+        _nameCon.text     = customer.name;
+        _phone1Con.text   = customer.phone1;
+        _phone2Con.text   = customer.phone2;
+        _waCon.text        = customer.whatsapp;
+        _serialNoCon.text  = customer.serialNo > 0 ? '${customer.serialNo}' : '';
+        _houseCon.text    = customer.houseNumber;
+        _addressCon.text  = customer.address;
+        _notesCon.text    = customer.notes;
+        _mapsCon.text     = customer.mapsLocation;
+        _photoPath        = customer.photoPath;
       });
     }
   }
@@ -77,7 +77,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   @override
   void dispose() {
     _nameCon.dispose(); _phone1Con.dispose(); _phone2Con.dispose();
-    _waCon.dispose(); _houseCon.dispose(); _mainHouseCon.dispose();
+    _waCon.dispose(); _serialNoCon.dispose(); _houseCon.dispose();
     _addressCon.dispose(); _notesCon.dispose(); _mapsCon.dispose();
     super.dispose();
   }
@@ -178,14 +178,25 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
               Row(
                 children: [
-                  Expanded(
+                  // Serial Number
+                  SizedBox(
+                    width: 120,
                     child: TextFormField(
-                      controller: _mainHouseCon,
+                      controller: _serialNoCon,
+                      keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Main House Number',
-                        prefixIcon: Icon(Icons.home_rounded),
+                        labelText: 'Serial No.',
+                        prefixIcon: Icon(Icons.format_list_numbered_rounded),
+                        hintText: 'e.g. 1',
                       ),
-                      textCapitalization: TextCapitalization.characters,
+                      validator: (v) {
+                        if (v != null && v.trim().isNotEmpty) {
+                          if (int.tryParse(v.trim()) == null || int.parse(v.trim()) < 1) {
+                            return 'Must be ≥ 1';
+                          }
+                        }
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -194,7 +205,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                       controller: _houseCon,
                       decoration: const InputDecoration(
                         labelText: 'House / Flat Number',
-                        prefixIcon: Icon(Icons.tag_rounded),
+                        prefixIcon: Icon(Icons.home_rounded),
                       ),
                       textCapitalization: TextCapitalization.characters,
                     ),
@@ -396,9 +407,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         phone1:             _phone1Con.text.trim(),
         phone2:             _phone2Con.text.trim(),
         whatsapp:           _waCon.text.trim(),
-        houseNumber:        _mainHouseCon.text.trim().isNotEmpty
-            ? '${_mainHouseCon.text.trim()}|${_houseCon.text.trim()}'
-            : _houseCon.text.trim(),
+        houseNumber:        _houseCon.text.trim(),
+        serialNo:           int.tryParse(_serialNoCon.text.trim()) ?? 0,
         address:            _addressCon.text.trim(),
         notes:              _notesCon.text.trim(),
         mapsLocation:       _mapsCon.text.trim(),

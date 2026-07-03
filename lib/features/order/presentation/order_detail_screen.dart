@@ -230,9 +230,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   data: (cust) {
                     if (cust == null) return const SizedBox.shrink();
                     final houseStr = [
-                      if (cust.mainHouseNumber.isNotEmpty) 'Main: ${cust.mainHouseNumber}',
-                      if (cust.subHouseNumber.isNotEmpty) 'No: ${cust.subHouseNumber}',
-                    ].join(' • ');
+                      if (cust.serialNo > 0) '#${cust.serialNo}',
+                      if (cust.houseNumber.isNotEmpty) cust.houseNumber,
+                    ].join(' · ');
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

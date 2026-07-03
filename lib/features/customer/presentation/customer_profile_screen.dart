@@ -70,6 +70,43 @@ class CustomerProfileScreen extends ConsumerWidget {
               // Profile Header Card
               _buildProfileHeader(context, ref, customer),
 
+              // ── Big "Create New Order" CTA ──────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).pushNamed(
+                      AppRoutes.createOrder,
+                      arguments: {
+                        'customerId':   customer.id,
+                        'customerName': customer.name,
+                        'orderId':      null,
+                      },
+                    ).then((_) {
+                      ref.refresh(customerDetailProvider(customerId));
+                      ref.refresh(customerOrdersProvider(customerId));
+                    }),
+                    icon: const Icon(Icons.add_shopping_cart_rounded, size: 22),
+                    label: const Text(
+                      'Create New Order',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
               // Tabs / Quick Actions Row
               _buildQuickActions(context, ref, customer),
 
@@ -180,14 +217,13 @@ class CustomerProfileScreen extends ConsumerWidget {
                           .bodyMedium
                           ?.copyWith(color: AppColors.textSecondary),
                     ),
-                    if (customer.mainHouseNumber.isNotEmpty ||
-                        customer.subHouseNumber.isNotEmpty) ...[
+                    if (customer.serialNo > 0 || customer.houseNumber.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         [
-                          if (customer.mainHouseNumber.isNotEmpty) 'Main: ${customer.mainHouseNumber}',
-                          if (customer.subHouseNumber.isNotEmpty) 'No: ${customer.subHouseNumber}',
-                        ].join(' • '),
+                          if (customer.serialNo > 0) '#${customer.serialNo}',
+                          if (customer.houseNumber.isNotEmpty) customer.houseNumber,
+                        ].join(' · '),
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
@@ -319,24 +355,6 @@ class CustomerProfileScreen extends ConsumerWidget {
               color: Colors.blue,
               onTap: () => _openMap(context, customer.mapsLocation),
             ),
-          // Create Order
-          _actionBtn(
-            context: context,
-            icon: Icons.add_shopping_cart_rounded,
-            label: 'New Order',
-            color: AppColors.primary,
-            onTap: () => Navigator.of(context).pushNamed(
-              AppRoutes.createOrder,
-              arguments: {
-                'customerId':   customer.id,
-                'customerName': customer.name,
-                'orderId':      null,
-              },
-            ).then((_) {
-              ref.refresh(customerDetailProvider(customerId));
-              ref.refresh(customerOrdersProvider(customerId));
-            }),
-          ),
           // Record Payment
           if (customer.outstandingBalance > 0)
             _actionBtn(

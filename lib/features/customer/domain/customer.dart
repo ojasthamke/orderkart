@@ -7,11 +7,12 @@ class Customer {
   final String phone1;
   final String phone2;
   final String whatsapp;
-  final String houseNumber;
+  final String houseNumber;   // legacy field kept for backward compat / address display
   final String address;
   final String notes;
   final String mapsLocation;
   final String photoPath;
+  final int    serialNo;       // ordering number shown before customer name (0 = unset)
   final double outstandingBalance;
   final int    totalOrders;
   final double totalPaid;
@@ -33,6 +34,7 @@ class Customer {
     this.notes          = '',
     this.mapsLocation   = '',
     this.photoPath      = '',
+    this.serialNo       = 0,
     this.outstandingBalance = 0,
     this.totalOrders    = 0,
     this.totalPaid      = 0,
@@ -55,6 +57,7 @@ class Customer {
     String? notes,
     String? mapsLocation,
     String? photoPath,
+    int?    serialNo,
     double? outstandingBalance,
     int?    totalOrders,
     double? totalPaid,
@@ -76,6 +79,7 @@ class Customer {
       notes:              notes              ?? this.notes,
       mapsLocation:       mapsLocation       ?? this.mapsLocation,
       photoPath:          photoPath          ?? this.photoPath,
+      serialNo:           serialNo           ?? this.serialNo,
       outstandingBalance: outstandingBalance ?? this.outstandingBalance,
       totalOrders:        totalOrders        ?? this.totalOrders,
       totalPaid:          totalPaid          ?? this.totalPaid,
@@ -99,6 +103,7 @@ class Customer {
         'notes':               notes,
         'maps_location':       mapsLocation,
         'photo_path':          photoPath,
+        'serial_no':           serialNo,
         'outstanding_balance': outstandingBalance,
         'total_orders':        totalOrders,
         'total_paid':          totalPaid,
@@ -121,6 +126,7 @@ class Customer {
         notes:               map['notes']               as String? ?? '',
         mapsLocation:        map['maps_location']       as String? ?? '',
         photoPath:           map['photo_path']          as String? ?? '',
+        serialNo:            map['serial_no']           as int?    ?? 0,
         outstandingBalance:  (map['outstanding_balance'] as num?)?.toDouble() ?? 0,
         totalOrders:         map['total_orders']        as int?    ?? 0,
         totalPaid:           (map['total_paid']          as num?)?.toDouble() ?? 0,
@@ -131,22 +137,8 @@ class Customer {
         updatedAt:           DateTime.parse(map['updated_at']    as String),
       );
 
-  String get mainHouseNumber {
-    if (houseNumber.contains('|')) {
-      final parts = houseNumber.split('|');
-      if (parts.isNotEmpty) return parts[0].trim();
-    }
-    return '';
-  }
-
-  String get subHouseNumber {
-    if (houseNumber.contains('|')) {
-      final parts = houseNumber.split('|');
-      if (parts.length > 1) return parts[1].trim();
-      return '';
-    }
-    return houseNumber;
-  }
+  /// Display label shown before the customer name: '#3' or '' if unset
+  String get serialLabel => serialNo > 0 ? '#$serialNo' : '';
 
   @override
   bool operator ==(Object other) => other is Customer && other.id == id;

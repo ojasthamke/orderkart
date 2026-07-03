@@ -147,6 +147,28 @@ class _CustomerCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
+                          // Serial number badge
+                          if (customer.serialNo > 0) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '#${customer.serialNo}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
                           Expanded(
                             child: Text(
                               customer.name,
@@ -190,7 +212,12 @@ class _CustomerCard extends StatelessWidget {
                       if (customer.houseNumber.isNotEmpty ||
                           customer.address.isNotEmpty)
                         Text(
-                          '${customer.mainHouseNumber.isNotEmpty ? 'Main: ${customer.mainHouseNumber}, No: ${customer.subHouseNumber}' : customer.subHouseNumber}${customer.address.isNotEmpty ? ', ${customer.address}' : ''}',
+                          [
+                            if (customer.houseNumber.isNotEmpty)
+                              customer.houseNumber,
+                            if (customer.address.isNotEmpty)
+                              customer.address,
+                          ].join(', '),
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall

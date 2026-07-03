@@ -40,8 +40,11 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Future migrations go here
-    // if (oldVersion < 2) { await db.execute('ALTER TABLE ...'); }
+    if (oldVersion < 2) {
+      // Add serial_no column (integer, default 0 = unset)
+      await db.execute(
+          'ALTER TABLE customers ADD COLUMN serial_no INTEGER DEFAULT 0');
+    }
   }
 
   Future<void> _createTables(Database db) async {
@@ -83,6 +86,7 @@ class DatabaseHelper {
         notes               TEXT DEFAULT '',
         maps_location       TEXT DEFAULT '',
         photo_path          TEXT DEFAULT '',
+        serial_no           INTEGER DEFAULT 0,
         outstanding_balance REAL DEFAULT 0,
         total_orders        INTEGER DEFAULT 0,
         total_paid          REAL DEFAULT 0,

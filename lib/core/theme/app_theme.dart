@@ -128,8 +128,9 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.gray100,
-        selectedColor: AppColors.primarySurface,
-        labelStyle: GoogleFonts.inter(fontSize: 13),
+        selectedColor: AppColors.primary,
+        labelStyle: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+        secondaryLabelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.white),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -204,6 +205,16 @@ class AppTheme {
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: Colors.white,
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFF1A1A1A),
+        selectedColor: AppColors.primary,
+        labelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
+        secondaryLabelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: Color(0xFF2A2A2A)),
         ),
       ),
       scaffoldBackgroundColor: Colors.black,
