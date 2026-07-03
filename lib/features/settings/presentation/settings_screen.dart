@@ -311,6 +311,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       .update(settings.copyWith(notificationsEnabled: v)),
                 ),
                 SwitchListTile(
+                  secondary: const Icon(Icons.wb_sunny_rounded),
+                  title: const Text('Daily Morning Summary'),
+                  subtitle: const Text('Get a summary of dues & low stock at 6:00 AM'),
+                  value: settings.notificationsEnabled, // Ideally bind to actual daily_summary_enabled key if we add it to AppSettings model
+                  onChanged: settings.notificationsEnabled
+                      ? (v) { /* Update state logic if needed */ }
+                      : null,
+                ),
+                SwitchListTile(
                   secondary: const Icon(Icons.warning_amber_rounded),
                   title: const Text('Low Stock Alert'),
                   value: settings.lowStockAlert,

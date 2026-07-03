@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/constants/app_routes.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/presentation/settings_provider.dart';
+import 'features/dashboard/presentation/main_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/area/presentation/area_screen.dart';
 import 'features/street/presentation/street_screen.dart';
@@ -23,6 +24,13 @@ import 'features/analytics/presentation/analytics_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/settings/presentation/backup_restore_screen.dart';
 import 'features/search/presentation/search_screen.dart';
+import 'features/notification/presentation/notification_center_screen.dart';
+import 'features/note/presentation/notes_list_screen.dart';
+import 'features/note/presentation/add_edit_note_screen.dart';
+import 'features/visit/presentation/visit_list_screen.dart';
+import 'features/visit/presentation/add_edit_visit_screen.dart';
+import 'features/note/domain/app_note.dart';
+import 'features/visit/domain/app_visit.dart';
 
 class OrderKartApp extends ConsumerWidget {
   const OrderKartApp({super.key});
@@ -46,7 +54,7 @@ class OrderKartApp extends ConsumerWidget {
   Route<dynamic>? _generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case AppRoutes.dashboard:
-        return _slide(const DashboardScreen());
+        return _slide(const MainScreen());
 
       case AppRoutes.areas:
         return _slide(const AreaScreen());
@@ -132,8 +140,25 @@ class OrderKartApp extends ConsumerWidget {
       case AppRoutes.search:
         return _slide(const SearchScreen());
 
+      case AppRoutes.notifications:
+        return _slide(const NotificationCenterScreen());
+
+      case AppRoutes.notes:
+        return _slide(const NotesListScreen());
+
+      case AppRoutes.addEditNote:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return _slide(AddEditNoteScreen(existingNote: args?['note'] as AppNote?));
+
+      case AppRoutes.visits:
+        return _slide(const VisitListScreen());
+
+      case AppRoutes.addEditVisit:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return _slide(AddEditVisitScreen(visit: args?['visit'] as AppVisit?));
+
       default:
-        return _slide(const DashboardScreen());
+        return _slide(const MainScreen());
     }
   }
 

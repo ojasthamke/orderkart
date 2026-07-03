@@ -11,10 +11,10 @@ import 'app.dart';
 import 'core/database/database_helper.dart';
 import 'core/constants/app_constants.dart';
 import 'package:path_provider/path_provider.dart';
+import 'core/services/widget_service.dart';
 
-/// Global notification plugin instance
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+import 'core/services/notification_service.dart';
+import 'core/services/background_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,12 +43,14 @@ Future<void> main() async {
     // Initialize SQLite database
     await DatabaseHelper.instance.database;
 
-    // Initialize local notifications
-    const AndroidInitializationSettings androidInit =
-        AndroidInitializationSettings('ic_launcher');
-    const InitializationSettings initSettings =
-        InitializationSettings(android: androidInit);
-    await flutterLocalNotificationsPlugin.initialize(initSettings);
+    // Initialize new robust Notification & Background Services
+    await NotificationService.instance.init();
+    await BackgroundService.instance.init();
+    BackgroundService.instance.registerDailyTask();
+
+    // Initialize Home Widget
+    await WidgetService.init();
+    await WidgetService.updateWidgetData();
 
     runApp(
       const ProviderScope(

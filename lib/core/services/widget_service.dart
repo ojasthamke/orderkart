@@ -1,0 +1,45 @@
+import 'package:home_widget/home_widget.dart';
+import '../database/database_helper.dart';
+import 'background_service.dart';
+import '../utils/formatters.dart';
+
+class WidgetService {
+  WidgetService._();
+  
+  static const String appGroupId = 'com.freshflow.orderkart';
+  static const String androidWidgetName = 'OrderKartWidgetProvider';
+
+  static Future<void> init() async {
+    await HomeWidget.setAppGroupId(appGroupId);
+  }
+
+  static Future<void> updateWidgetData() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final todayStr = '${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}';
+      
+      // Get today's orders count
+      final orders = await db.rawQuery("SELECT COUNT(*) as count FROM orders WHERE strftime('%Y-%m-%d', created_at) = ?", [todayStr]);
+      final todaysOrders = SqfliteUtils.firstIntValue(orders) ?? 0;
+
+      // Get pending total
+      final pendingCustomers = await db.rawQuery('SELECT SUM(outstanding_balance) as total FROM customers WHERE outstanding_balance > 0');
+      final pendingTotal = (pendingCustomers.first['total'] as num?)?.toDouble() ?? 0.0;
+
+      // Get low stock count
+      final lowStockItems = await db.rawQuery('SELECT COUNT(*) as count FROM items WHERE stock <= min_stock');
+      final lowStockCount = SqfliteUtils.firstIntValue(lowStockItems) ?? 0;
+
+      await HomeWidget.saveWidgetData<String>('widget_orders', todaysOrders.toString());
+      await HomeWidget.saveWidgetData<String>('widget_due', AppFormatters.currency(pendingTotal));
+      await HomeWidget.saveWidgetData<String>('widget_stock', lowStockCount.toString());
+
+      await HomeWidget.updateWidget(
+        name: androidWidgetName,
+        androidName: androidWidgetName,
+      );
+    } catch (e) {
+      // Handle error gracefully
+    }
+  }
+}

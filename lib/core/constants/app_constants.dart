@@ -14,7 +14,7 @@ class AppConstants {
 
   // Database
   static const String dbName = 'orderkart.db';
-  static const int dbVersion = 2;
+  static const int dbVersion = 3;
 
   // Defaults
   static const double defaultDeliveryCharge = 10.0;
@@ -98,10 +98,19 @@ class AppConstants {
   static const String keyThemeMode       = 'theme_mode';
   static const String keyQrContent       = 'qr_content';
   static const String keyQrCustomImage   = 'qr_custom_image';
+  
+  // Notification Settings Keys
   static const String keyNotifications   = 'notifications_enabled';
+  static const String keyDailySummary    = 'daily_summary_enabled';
   static const String keyLowStockAlert   = 'low_stock_alert';
   static const String keyPendingAlert    = 'pending_alert';
+  static const String keyVisitAlert      = 'visit_alert_enabled';
+  static const String keyNoteReminders   = 'note_reminders_enabled';
+  static const String keyNotifTime       = 'notification_time';
+  static const String keyNotifSound      = 'notification_sound';
+  static const String keyNotifVibration  = 'notification_vibration';
   static const String keyBackupReminder  = 'backup_reminder';
+  
   static const String keyStaffWhatsApp   = 'staff_whatsapp';
   static const String keyLastDeliveryCharge = 'last_delivery_charge';
 

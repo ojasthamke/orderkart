@@ -45,6 +45,61 @@ class DatabaseHelper {
       await db.execute(
           'ALTER TABLE customers ADD COLUMN serial_no INTEGER DEFAULT 0');
     }
+    if (oldVersion < 3) {
+      await _createV3Tables(db);
+    }
+  }
+
+  Future<void> _createV3Tables(Database db) async {
+    // Notifications
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notifications (
+        id           TEXT PRIMARY KEY,
+        title        TEXT NOT NULL,
+        body         TEXT NOT NULL,
+        category     TEXT NOT NULL,
+        related_id   TEXT DEFAULT '',
+        is_read      INTEGER DEFAULT 0,
+        priority     INTEGER DEFAULT 0,
+        created_at   TEXT NOT NULL
+      )
+    ''');
+
+    // Notes
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notes (
+        id           TEXT PRIMARY KEY,
+        title        TEXT NOT NULL,
+        content      TEXT NOT NULL,
+        remind_at    TEXT DEFAULT '',
+        priority     INTEGER DEFAULT 0,
+        color_label  INTEGER DEFAULT 0,
+        is_pinned    INTEGER DEFAULT 0,
+        is_completed INTEGER DEFAULT 0,
+        is_archived  INTEGER DEFAULT 0,
+        created_at   TEXT NOT NULL,
+        updated_at   TEXT NOT NULL
+      )
+    ''');
+
+    // Visits (Route Planner)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS visits (
+        id           TEXT PRIMARY KEY,
+        date         TEXT NOT NULL,
+        area_id      TEXT NOT NULL,
+        street_id    TEXT DEFAULT '',
+        notes        TEXT DEFAULT '',
+        priority     INTEGER DEFAULT 0,
+        status       TEXT NOT NULL DEFAULT 'pending',
+        created_at   TEXT NOT NULL
+      )
+    ''');
+    
+    // V3 Indexes
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_notes_created ON notes(created_at)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_visits_date ON visits(date)');
   }
 
   Future<void> _createTables(Database db) async {
@@ -201,6 +256,8 @@ class DatabaseHelper {
         value TEXT NOT NULL
       )
     ''');
+
+    await _createV3Tables(db);
   }
 
   Future<void> _createIndexes(Database db) async {
@@ -229,8 +286,14 @@ class DatabaseHelper {
       AppConstants.keyCurrency:       '₹',
       AppConstants.keyThemeMode:      'system',
       AppConstants.keyNotifications:  'true',
+      AppConstants.keyDailySummary:   'true',
       AppConstants.keyLowStockAlert:  'true',
       AppConstants.keyPendingAlert:   'true',
+      AppConstants.keyVisitAlert:     'true',
+      AppConstants.keyNoteReminders:  'true',
+      AppConstants.keyNotifTime:      '06:00',
+      AppConstants.keyNotifSound:     'true',
+      AppConstants.keyNotifVibration: 'true',
       AppConstants.keyBackupReminder: 'true',
       AppConstants.keyQrContent:      '',
       AppConstants.keyStaffWhatsApp:  '',

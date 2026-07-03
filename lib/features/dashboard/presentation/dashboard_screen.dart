@@ -13,6 +13,9 @@ import '../../customer/domain/customer.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../order/domain/order.dart';
+import '../../visit/presentation/visit_provider.dart';
+import '../../note/presentation/note_provider.dart';
+import '../../notification/presentation/notification_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -149,6 +152,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
       ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.of(context).pushNamed(AppRoutes.areas),
+        icon: const Icon(Icons.add_location_alt_rounded),
+        label: const Text('Areas / Order'),
+      ),
       body: summaryAsync.when(
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(child: Text('Dashboard error: $e')),
@@ -310,6 +318,74 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     error: (_, __) => const SizedBox.shrink(),
                   ),
 
+
+                  const SizedBox(height: 20),
+                  
+                  // ── Dashboard Quick Cards (Material 3) ─────────────────
+                  SizedBox(
+                    height: 100,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _buildDashboardCard(
+                          context,
+                          title: "Today's Visits",
+                          icon: Icons.route_rounded,
+                          color: Colors.blue,
+                          providerValue: ref.watch(visitListProvider).maybeWhen(
+                            data: (list) => list.where((v) => v.date == AppFormatters.dateFromString(DateTime.now().toIso8601String().split('T').first)).length.toString(),
+                            orElse: () => '-',
+                          ),
+                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.visits),
+                        ),
+                        _buildDashboardCard(
+                          context,
+                          title: 'Pending Dues',
+                          icon: Icons.account_balance_wallet_rounded,
+                          color: AppColors.error,
+                          providerValue: ref.watch(pendingCustomersProvider).maybeWhen(
+                            data: (list) => list.length.toString(),
+                            orElse: () => '-',
+                          ),
+                          onTap: () {},
+                        ),
+                        _buildDashboardCard(
+                          context,
+                          title: 'Low Stock',
+                          icon: Icons.inventory_rounded,
+                          color: AppColors.warning,
+                          providerValue: ref.watch(lowStockProvider).maybeWhen(
+                            data: (list) => list.length.toString(),
+                            orElse: () => '-',
+                          ),
+                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.inventory),
+                        ),
+                        _buildDashboardCard(
+                          context,
+                          title: 'Upcoming Notes',
+                          icon: Icons.note_alt_rounded,
+                          color: Colors.purple,
+                          providerValue: ref.watch(noteListNotifier).maybeWhen(
+                            data: (list) => list.where((n) => n.remindAt.isNotEmpty).length.toString(),
+                            orElse: () => '-',
+                          ),
+                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.notes),
+                        ),
+                        _buildDashboardCard(
+                          context,
+                          title: 'Unread Alerts',
+                          icon: Icons.notifications_active_rounded,
+                          color: Colors.teal,
+                          providerValue: ref.watch(notificationListProvider).maybeWhen(
+                            data: (list) => list.where((n) => !n.isRead).length.toString(),
+                            orElse: () => '-',
+                          ),
+                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.notifications),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 20),
 
                   // ── Money Remained Tracker ─────────────────────────────
@@ -465,6 +541,53 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildDashboardCard(BuildContext context, {required String title, required IconData icon, required Color color, required String providerValue, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 140,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.2), width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(icon, color: color, size: 24),
+                Text(
+                  providerValue,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              title,
+              style: TextStyle(
+                color: color.withOpacity(0.9),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }

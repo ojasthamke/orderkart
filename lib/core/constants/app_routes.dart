@@ -22,4 +22,15 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String backupRestore = '/backup-restore';
   static const String search = '/search';
+
+  // Notes
+  static const String notes         = '/notes';
+  static const String addEditNote   = '/add-edit-note';
+
+  // Visits
+  static const String visits        = '/visits';
+  static const String addEditVisit  = '/add-edit-visit';
+
+  // Notification Center
+  static const String notifications = '/notifications';
 }
