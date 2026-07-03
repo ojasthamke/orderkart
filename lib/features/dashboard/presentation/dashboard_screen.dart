@@ -129,7 +129,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             loading: () => const SizedBox.shrink(),
                             error: (_, __) => const SizedBox.shrink(),
                           ),
-                      // ── Payment reminder bell ─────────────────────────
+                      // ── Payment warning button ─────────────────────────
                       ref.watch(pendingCustomersProvider).when(
                         data: (pending) => pending.isNotEmpty
                             ? Badge(
@@ -139,7 +139,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   style: IconButton.styleFrom(
                                     backgroundColor: AppColors.errorSurface,
                                   ),
-                                  icon: const Icon(Icons.notifications_rounded,
+                                  icon: const Icon(Icons.warning_amber_rounded,
                                       color: AppColors.error),
                                   onPressed: () =>
                                       _showPendingReminder(context, pending),
@@ -150,6 +150,67 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         error: (_, __) => const SizedBox.shrink(),
                       ),
                     ],
+                  ),
+
+                  // ── Pending Payments Warning Banner ───────────────────
+                  ref.watch(pendingCustomersProvider).when(
+                    data: (pending) => pending.isNotEmpty
+                        ? Container(
+                            margin: const EdgeInsets.only(top: 16),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.error.withOpacity(0.18),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.warning_rounded,
+                                    color: AppColors.error, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    '${pending.length} customer${pending.length > 1 ? 's have' : ' has'} unpaid remaining money.',
+                                    style: const TextStyle(
+                                      color: AppColors.error,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      _showPendingReminder(context, pending),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    backgroundColor:
+                                        AppColors.error.withOpacity(0.12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'TRACK',
+                                    style: TextStyle(
+                                      color: AppColors.error,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
                   ),
 
                   const SizedBox(height: 20),

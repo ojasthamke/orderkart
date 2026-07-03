@@ -552,10 +552,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         const SizedBox(height: 12),
         ElevatedButton.icon(
           onPressed: () => _shareBill(order, currency, isCustomer: false),
-          icon: const Icon(Icons.groups_rounded),
-          label: const Text('Share to Staff Group'),
+          icon: const Icon(Icons.send_rounded),
+          label: const Text('Share to Staff Telegram'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF128C7E), // WhatsApp Teal
+            backgroundColor: const Color(0xFF229ED9), // Telegram Blue
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 50),
           ),
@@ -693,6 +693,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       paidAmount:      order.paidAmount,
       remainingAmount: order.remainingAmount,
       paymentMethod:   order.payments?.firstOrNull?.method ?? 'cash',
+      ownerPhone:      settings?.phone ?? '',
       currency:        currency,
     );
 
@@ -710,49 +711,48 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         url = Uri.parse('whatsapp://send?text=$encodedText');
       }
     } else {
+      // ── Telegram Sharing ───────────────────────────────────────────
       final staffLink = settings?.staffWhatsApp ?? '';
-      if (staffLink.trim().isEmpty) {
-        if (context.mounted) {
-          showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('Staff Group Link Missing'),
-              content: const Text(
-                'Please configure the Staff WhatsApp Group Link in Settings first.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(_),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-        }
-        return;
-      }
-
+      
+      // Copy to clipboard as first priority to guarantee it's on the keypad pasteboard
       await Clipboard.setData(ClipboardData(text: text));
       if (context.mounted) {
-        SnackbarHelper.showInfo(context, 'Bill text copied to clipboard');
+        SnackbarHelper.showInfo(context, 'Receipt copied to clipboard');
       }
 
-      Uri? groupUri;
+      Uri telegramUri;
+      if (staffLink.trim().isNotEmpty) {
+        var cleanLink = staffLink.trim();
+        if (cleanLink.startsWith('@')) {
+          cleanLink = cleanLink.substring(1);
+        }
+        if (cleanLink.contains('t.me/')) {
+          cleanLink = cleanLink.substring(cleanLink.indexOf('t.me/') + 5);
+        }
+        telegramUri = Uri.parse('tg://resolve?domain=$cleanLink');
+      } else {
+        telegramUri = Uri.parse('tg://msg_url?url=&text=$encodedText');
+      }
+
       try {
-        groupUri = Uri.parse(staffLink.trim());
+        if (await canLaunchUrl(telegramUri)) {
+          await launchUrl(telegramUri, mode: LaunchMode.externalApplication);
+          return;
+        }
       } catch (_) {}
 
-      if (groupUri != null) {
-        try {
-          if (await canLaunchUrl(groupUri)) {
-            await launchUrl(groupUri, mode: LaunchMode.externalApplication);
-            return;
-          }
-        } catch (_) {}
-      }
+      // Fallback Telegram link
+      final fallbackUrl = staffLink.trim().isNotEmpty
+          ? Uri.parse(staffLink.trim().startsWith('http')
+              ? staffLink.trim()
+              : 'https://t.me/${staffLink.trim().replaceAll('@', '')}')
+          : Uri.parse('https://t.me/share/url?url=&text=$encodedText');
 
-      if (context.mounted) {
-        SnackbarHelper.showError(context, 'Could not open the configured Staff Group Link');
+      try {
+        await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        // Last resort: OS share sheet
+        Share.share(text);
       }
       return;
     }

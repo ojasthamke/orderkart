@@ -1,4 +1,5 @@
-/// BillTextGenerator — Generates plain-text bill for WhatsApp/clipboard sharing
+/// BillTextGenerator — Generates plain-text bill for sharing
+/// Clean, sophisticated style, with no emojis (except warning), no footer, and optional owner phone.
 
 import '../constants/app_constants.dart';
 import 'formatters.dart';
@@ -20,19 +21,25 @@ class BillTextGenerator {
     required double paidAmount,
     required double remainingAmount,
     required String paymentMethod,
+    required String ownerPhone,
     String currency = AppConstants.defaultCurrency,
   }) {
     final buf = StringBuffer();
     final sep = '─' * 30;
 
-    buf.writeln('🛒 *$businessName*');
+    buf.writeln('*$businessName*');
     buf.writeln(sep);
-    buf.writeln('📋 Order #${orderId.substring(0, 8).toUpperCase()}');
-    buf.writeln('📅 ${AppFormatters.dateTime(orderDate)}');
-    buf.writeln('👤 $customerName');
-    if (customerAddress.isNotEmpty) buf.writeln('📍 $customerAddress');
+    buf.writeln('Order #${orderId.substring(0, 8).toUpperCase()}');
+    buf.writeln('Date: ${AppFormatters.dateTime(orderDate)}');
+    buf.writeln('Customer: $customerName');
+    if (customerAddress.isNotEmpty) {
+      buf.writeln('Address: $customerAddress');
+    }
+    if (ownerPhone.trim().isNotEmpty) {
+      buf.writeln('Contact: ${ownerPhone.trim()}');
+    }
     buf.writeln(sep);
-    buf.writeln('*ITEMS*');
+    buf.writeln('ITEMS');
 
     for (final item in items) {
       final name  = item['item_name']  as String;
@@ -50,19 +57,16 @@ class BillTextGenerator {
     if (discount > 0) {
       buf.writeln('Discount:        - $currency${discount.toStringAsFixed(2)}');
     }
-    if (deliveryCharge > 0) {
-      buf.writeln('Delivery:        + $currency${deliveryCharge.toStringAsFixed(2)}');
-    }
+    // Delivery charge line mention is removed as requested
     buf.writeln('*Grand Total:      $currency${grandTotal.toStringAsFixed(2)}*');
     buf.writeln(sep);
     buf.writeln('Paid:              $currency${paidAmount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(paymentMethod)})');
     if (remainingAmount > 0) {
       buf.writeln('⚠️ Remaining:    $currency${remainingAmount.toStringAsFixed(2)}');
     } else {
-      buf.writeln('✅ Fully Paid');
+      buf.writeln('Fully Paid');
     }
     buf.writeln(sep);
-    buf.writeln('_Powered by OrderKart_');
 
     return buf.toString();
   }

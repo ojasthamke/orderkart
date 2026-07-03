@@ -19,11 +19,13 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   String _topCustomersSort = 'purchase'; // 'purchase', 'orders', 'pending'
+  String _chartRange = 'weekly';         // 'weekly', 'monthly'
 
   @override
   Widget build(BuildContext context) {
     final summaryAsync = ref.watch(analyticsSummaryProvider);
     final weeklySalesAsync = ref.watch(weeklyChartProvider);
+    final monthlySalesAsync = ref.watch(monthlyChartProvider);
     final topCustomersAsync = ref.watch(topCustomersProvider);
 
     return AppScaffold(
@@ -40,6 +42,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           final double onlineReceived  = summary['online_received'] ?? 0;
           final int    customerCount   = summary['customer_count'] ?? 0;
           final int    orderCount      = summary['order_count'] ?? 0;
+          final int    deliveredCount  = summary['delivered_count'] ?? 0;
+          final int    pendingCount    = summary['pending_count'] ?? 0;
+          final int    cancelledCount  = summary['cancelled_count'] ?? 0;
+          final double allTimeSales    = summary['all_time_sales'] ?? 0;
+          final double deliveryFees    = summary['delivery_fees'] ?? 0;
 
           final topItems = summary['top_items'] as List<dynamic>? ?? [];
 
@@ -47,6 +54,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             onRefresh: () async {
               ref.invalidate(analyticsSummaryProvider);
               ref.invalidate(weeklyChartProvider);
+              ref.invalidate(monthlyChartProvider);
               ref.invalidate(topCustomersProvider);
             },
             child: SingleChildScrollView(
@@ -92,13 +100,37 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
                   const SizedBox(height: 24),
 
-                  // ── Weekly Chart ──────────────────────────────────────
-                  Text(
-                    'Sales Trend (Last 7 Days)',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                  // ── Sales Trend Chart with Switcher ───────────────────
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _chartRange == 'weekly' ? 'Sales Trend (Last 7 Days)' : 'Sales Trend (Last 6 Months)',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Weekly'),
+                            selected: _chartRange == 'weekly',
+                            onSelected: (val) {
+                              if (val) setState(() => _chartRange = 'weekly');
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Monthly'),
+                            selected: _chartRange == 'monthly',
+                            onSelected: (val) {
+                              if (val) setState(() => _chartRange = 'monthly');
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Container(
@@ -109,12 +141,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.gray200),
                     ),
-                    child: weeklySalesAsync.when(
+                    child: (_chartRange == 'weekly' ? weeklySalesAsync : monthlySalesAsync).when(
                       loading: () => const Center(child: CircularProgressIndicator()),
                       error: (e, _) => Center(child: Text('Chart error: $e')),
-                      data: (weekly) => weekly.isEmpty
+                      data: (chartData) => chartData.isEmpty
                           ? const Center(child: Text('Not enough sales data'))
-                          : _buildLineChart(weekly),
+                          : _buildLineChart(chartData, isMonthly: _chartRange == 'monthly'),
                     ),
                   ),
 
@@ -152,6 +184,89 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                           onlineReceived,
                           cashReceived + onlineReceived,
                           AppColors.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Performance Breakdown ──────────────────────────────
+                  Text(
+                    'Performance Breakdown',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.gray200),
+                    ),
+                    child: Column(
+                      children: [
+                        _detailRow('All-Time Sales', AppFormatters.currency(allTimeSales)),
+                        const Divider(height: 24),
+                        _detailRow('Average Order Value (AOV)', 
+                            AppFormatters.currency(orderCount > 0 ? (allTimeSales / orderCount) : 0)),
+                        const Divider(height: 24),
+                        _detailRow('Delivery Charges Collected', AppFormatters.currency(deliveryFees)),
+                        const Divider(height: 24),
+                        _detailRow('Net Cashflow (Payments - Expenses)', 
+                            AppFormatters.currency(cashReceived + onlineReceived - totalExpenses),
+                            valueColor: (cashReceived + onlineReceived - totalExpenses) >= 0 
+                                ? AppColors.success 
+                                : AppColors.error),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Order Status Distribution ─────────────────────────
+                  Text(
+                    'Order Status Distribution',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.gray200),
+                    ),
+                    child: Column(
+                      children: [
+                        _paymentSplitRow(
+                          context,
+                          'Delivered Orders',
+                          deliveredCount.toDouble(),
+                          orderCount.toDouble(),
+                          AppColors.success,
+                        ),
+                        const SizedBox(height: 14),
+                        _paymentSplitRow(
+                          context,
+                          'Pending Orders',
+                          pendingCount.toDouble(),
+                          orderCount.toDouble(),
+                          AppColors.pending,
+                        ),
+                        const SizedBox(height: 14),
+                        _paymentSplitRow(
+                          context,
+                          'Cancelled Orders',
+                          cancelledCount.toDouble(),
+                          orderCount.toDouble(),
+                          AppColors.cancelled,
                         ),
                       ],
                     ),
@@ -363,15 +478,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildLineChart(List<Map<String, dynamic>> data) {
+  Widget _buildLineChart(List<Map<String, dynamic>> data, {bool isMonthly = false}) {
     final List<FlSpot> spots = [];
     final List<String> labels = [];
 
     for (int i = 0; i < data.length; i++) {
       final total = (data[i]['total'] as num?)?.toDouble() ?? 0.0;
-      final String day = data[i]['day'] ?? '';
+      final String day = isMonthly ? (data[i]['month'] ?? '') : (data[i]['day'] ?? '');
       spots.add(FlSpot(i.toDouble(), total));
-      labels.add(day.length >= 8 ? day.substring(5) : day); // MM-DD
+      labels.add(day.length >= 7 && !isMonthly ? day.substring(5) : day); // MM-DD or YYYY-MM
     }
 
     return LineChart(
@@ -416,6 +531,25 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
+  Widget _detailRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: valueColor ?? AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _paymentSplitRow(BuildContext context, String label, double amount,
       double total, Color color) {
     final double pct = total > 0 ? (amount / total) : 0.0;
@@ -428,7 +562,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           children: [
             Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
             Text(
-              '${AppFormatters.currency(amount)} (${(pct * 100).toStringAsFixed(0)}%)',
+              total > 0 && amount > 0
+                  ? '${label.contains('Orders') ? amount.toInt() : AppFormatters.currency(amount)} (${(pct * 100).toStringAsFixed(0)}%)'
+                  : (label.contains('Orders') ? '${amount.toInt()}' : AppFormatters.currency(amount)),
               style: TextStyle(fontWeight: FontWeight.w700, color: color),
             ),
           ],

@@ -218,6 +218,22 @@ class OrderDao {
     final lowStock = await db.rawQuery(
         'SELECT * FROM items WHERE min_stock > 0 AND stock <= min_stock ORDER BY stock ASC LIMIT 10');
 
+    // Status counts
+    final deliveredOrders = await db.rawQuery(
+        "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'delivered'");
+    final pendingOrders = await db.rawQuery(
+        "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'pending'");
+    final cancelledOrders = await db.rawQuery(
+        "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'cancelled'");
+
+    // All-time sales
+    final allTimeSales = await db.rawQuery(
+        'SELECT COALESCE(SUM(grand_total),0) AS v FROM orders');
+
+    // Delivery fees collected
+    final allTimeDelivery = await db.rawQuery(
+        'SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders');
+
     return {
       'today_sales':      (todaySales.first['v'] as num?)?.toDouble()    ?? 0,
       'monthly_sales':    (monthlySales.first['v'] as num?)?.toDouble()  ?? 0,
@@ -230,6 +246,11 @@ class OrderDao {
       'item_count':       itemCount.first['v']     ?? 0,
       'top_items':        topItems,
       'low_stock':        lowStock,
+      'delivered_count':  deliveredOrders.first['v'] ?? 0,
+      'pending_count':    pendingOrders.first['v'] ?? 0,
+      'cancelled_count':  cancelledOrders.first['v'] ?? 0,
+      'all_time_sales':   (allTimeSales.first['v'] as num?)?.toDouble() ?? 0,
+      'delivery_fees':    (allTimeDelivery.first['v'] as num?)?.toDouble() ?? 0,
     };
   }
 
