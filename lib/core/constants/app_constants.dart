@@ -3,6 +3,9 @@
 class AppConstants {
   AppConstants._();
 
+  // App Documents Directory Path (initialized at startup)
+  static String appDocsDir = '';
+
   // App Info
   static const String appName = 'OrderKart';
   static const String appTagline = 'Smart Delivery Management';

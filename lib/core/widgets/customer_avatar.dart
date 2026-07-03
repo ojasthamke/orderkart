@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_constants.dart';
+import 'package:path/path.dart' as p;
 
 class CustomerAvatar extends StatelessWidget {
   final String? photoPath;
@@ -12,6 +14,21 @@ class CustomerAvatar extends StatelessWidget {
     required this.photoPath,
     this.radius = 24,
   });
+
+  File _resolveFile(String originalPath) {
+    final file = File(originalPath);
+    if (file.existsSync()) return file;
+    
+    // Check fallback folder if we have appDocsDir
+    if (AppConstants.appDocsDir.isNotEmpty) {
+      final filename = p.basename(originalPath);
+      final fallbackFile = File('${AppConstants.appDocsDir}/customer_photos/$filename');
+      if (fallbackFile.existsSync()) {
+        return fallbackFile;
+      }
+    }
+    return file;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +63,7 @@ class CustomerAvatar extends StatelessWidget {
                 errorBuilder: (context, error, stackTrace) => fallback,
               )
             : Image.file(
-                File(photoPath!),
+                _resolveFile(photoPath!),
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => fallback,
               ),

@@ -5,9 +5,13 @@ import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import 'package:path/path.dart' as p;
+import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -34,8 +38,8 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             children: [
               _ActionTile(
                 icon:     Icons.storage_rounded,
-                title:    'Export Database File',
-                subtitle: 'Share the SQLite .db file',
+                title:    'Export Backup File',
+                subtitle: 'Share database and customer photos (.zip)',
                 onTap:    _exportDatabase,
                 loading:  _loading,
               ),
@@ -50,7 +54,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
               _ActionTile(
                 icon:     Icons.folder_open_rounded,
                 title:    'Restore from File',
-                subtitle: 'Pick a .db backup file',
+                subtitle: 'Pick a .db or .zip backup file',
                 onTap:    _importDatabase,
                 loading:  _loading,
               ),
@@ -81,14 +85,36 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         SnackbarHelper.showError(context, 'Database file not found');
         return;
       }
-      // Copy to application documents directory
-      final dir  = await getApplicationDocumentsDirectory();
-      final dest = File('${dir.path}/orderkart_backup.db');
-      await dbFile.copy(dest.path);
-      await Share.shareXFiles([XFile(dest.path)],
-          subject: 'OrderKart Database Backup');
-      if (mounted)
-        SnackbarHelper.showSuccess(context, 'Database exported');
+
+      final dir = await getTemporaryDirectory();
+      final zipFile = File('${dir.path}/orderkart_backup.zip');
+      if (zipFile.existsSync()) {
+        zipFile.deleteSync();
+      }
+
+      final encoder = ZipFileEncoder();
+      encoder.create(zipFile.path);
+      encoder.addFile(dbFile, 'orderkart.db');
+
+      // Zip the photos if they exist
+      final photosDir = Directory('${AppConstants.appDocsDir}/customer_photos');
+      if (photosDir.existsSync()) {
+        final entities = photosDir.listSync(recursive: true);
+        for (final entity in entities) {
+          if (entity is File) {
+            final relPath = 'customer_photos/${p.basename(entity.path)}';
+            encoder.addFile(entity, relPath);
+          }
+        }
+      }
+
+      await encoder.close();
+
+      await Share.shareXFiles([XFile(zipFile.path)],
+          subject: 'OrderKart Backup');
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Backup file exported successfully');
+      }
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Export failed: $e');
     } finally {
@@ -108,20 +134,42 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       }
       final srcPath = result.files.first.path!;
       final dbPath  = await DatabaseHelper.instance.database.then((db) => db.path);
-      final dest    = File(dbPath);
 
-      // Close the current connection first
-      await DatabaseHelper.instance.close();
+      if (srcPath.toLowerCase().endsWith('.zip')) {
+        final bytes = await File(srcPath).readAsBytes();
+        final archive = ZipDecoder().decodeBytes(bytes);
 
-      // Copy file
-      await File(srcPath).copy(dest.path);
+        // Close connection first
+        await DatabaseHelper.instance.close();
 
-      // Reinitialize connection
-      await DatabaseHelper.instance.database;
+        for (final file in archive) {
+          final filename = file.name;
+          if (file.isFile) {
+            final data = file.content as List<int>;
+            if (filename == 'orderkart.db') {
+              final dbDest = File(dbPath);
+              await dbDest.writeAsBytes(data);
+            } else if (filename.startsWith('customer_photos/')) {
+              final relativeName = p.basename(filename);
+              final photoDest = File('${AppConstants.appDocsDir}/customer_photos/$relativeName');
+              await photoDest.parent.create(recursive: true);
+              await photoDest.writeAsBytes(data);
+            }
+          }
+        }
+
+        // Reinitialize connection
+        await DatabaseHelper.instance.database;
+      } else {
+        // Fallback for legacy raw .db imports
+        await DatabaseHelper.instance.close();
+        await File(srcPath).copy(dbPath);
+        await DatabaseHelper.instance.database;
+      }
 
       if (mounted) {
         SnackbarHelper.showSuccess(
-            context, 'Database restored successfully!');
+            context, 'Backup restored successfully!');
       }
     } catch (e) {
       if (mounted)

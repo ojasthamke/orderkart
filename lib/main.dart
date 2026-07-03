@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'app.dart';
 import 'core/database/database_helper.dart';
+import 'core/constants/app_constants.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Global notification plugin instance
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -33,6 +35,10 @@ Future<void> main() async {
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
+
+    // Initialize App Documents Directory path
+    final docDir = await getApplicationDocumentsDirectory();
+    AppConstants.appDocsDir = docDir.path;
 
     // Initialize SQLite database
     await DatabaseHelper.instance.database;

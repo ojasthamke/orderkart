@@ -5,6 +5,8 @@ import 'package:uuid/uuid.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
+import 'package:path/path.dart' as p;
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -400,8 +402,27 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
     try {
       final now = DateTime.now();
+      final customerId = widget.customerId ?? const Uuid().v4();
+
+      String finalPhotoPath = _photoPath;
+      if (_photoPath.isNotEmpty) {
+        final file = File(_photoPath);
+        if (file.existsSync()) {
+          final photosDir = Directory('${AppConstants.appDocsDir}/customer_photos');
+          if (!photosDir.existsSync()) {
+            await photosDir.create(recursive: true);
+          }
+          if (!p.isWithin(photosDir.path, _photoPath)) {
+            final ext = p.extension(_photoPath);
+            final destFile = File('${photosDir.path}/$customerId$ext');
+            await file.copy(destFile.path);
+            finalPhotoPath = destFile.path;
+          }
+        }
+      }
+
       final customer = Customer(
-        id:                 widget.customerId ?? const Uuid().v4(),
+        id:                 customerId,
         streetId:           _streetId!,
         name:               _nameCon.text.trim(),
         phone1:             _phone1Con.text.trim(),
@@ -412,7 +433,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         address:            _addressCon.text.trim(),
         notes:              _notesCon.text.trim(),
         mapsLocation:       _mapsCon.text.trim(),
-        photoPath:          _photoPath,
+        photoPath:          finalPhotoPath,
         customerSince:      now,
         createdAt:          now,
         updatedAt:          now,
