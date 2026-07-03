@@ -96,14 +96,54 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       encoder.create(zipFile.path);
       encoder.addFile(dbFile, 'orderkart.db');
 
-      // Zip the photos if they exist
+      // Zip the photos. First, query all photos referenced in database.
+      final Set<String> addedFilenames = {};
+      try {
+        final db = await DatabaseHelper.instance.database;
+        final List<Map<String, dynamic>> rows = await db.query(
+          'customers',
+          columns: ['photo_path'],
+          where: "photo_path IS NOT NULL AND photo_path != ''",
+        );
+        for (final row in rows) {
+          final pathVal = row['photo_path'] as String;
+          if (pathVal.isEmpty) continue;
+          
+          File? file;
+          final origFile = File(pathVal);
+          if (origFile.existsSync()) {
+            file = origFile;
+          } else {
+            final filename = p.basename(pathVal);
+            final fallbackFile = File('${AppConstants.appDocsDir}/customer_photos/$filename');
+            if (fallbackFile.existsSync()) {
+              file = fallbackFile;
+            }
+          }
+          
+          if (file != null) {
+            final filename = p.basename(file.path);
+            if (!addedFilenames.contains(filename)) {
+              encoder.addFile(file, 'customer_photos/$filename');
+              addedFilenames.add(filename);
+            }
+          }
+        }
+      } catch (e) {
+        print('Error querying customer photos for backup: $e');
+      }
+
+      // Second, zip any files inside the permanent customer_photos folder not already added
       final photosDir = Directory('${AppConstants.appDocsDir}/customer_photos');
       if (photosDir.existsSync()) {
         final entities = photosDir.listSync(recursive: true);
         for (final entity in entities) {
           if (entity is File) {
-            final relPath = 'customer_photos/${p.basename(entity.path)}';
-            encoder.addFile(entity, relPath);
+            final filename = p.basename(entity.path);
+            if (!addedFilenames.contains(filename)) {
+              encoder.addFile(entity, 'customer_photos/$filename');
+              addedFilenames.add(filename);
+            }
           }
         }
       }
