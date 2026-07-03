@@ -85,13 +85,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: AppColors.cardShadow,
-                          color: AppColors.primarySurface,
+                          color: Colors.white,
                           border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 1.5),
                         ),
-                        child: const Icon(
-                          Icons.local_mall_rounded,
-                          color: AppColors.primary,
-                          size: 32,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.asset(
+                            'assets/logo.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.local_mall_rounded,
+                              color: AppColors.primary,
+                              size: 32,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),

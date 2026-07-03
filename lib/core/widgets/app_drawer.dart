@@ -24,10 +24,23 @@ class AppDrawer extends ConsumerWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                      boxShadow: AppColors.cardShadow,
                     ),
-                    child: const Icon(Icons.inventory_2_rounded, color: AppColors.primary, size: 24),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: Image.asset(
+                        'assets/logo.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.inventory_2_rounded,
+                          color: AppColors.primary,
+                          size: 24,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   const Text(
