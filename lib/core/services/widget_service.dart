@@ -18,15 +18,34 @@ class WidgetService {
 
   static Future<void> checkWidgetLaunch(GlobalKey<NavigatorState> navigatorKey) async {
     try {
-      final uri = await HomeWidget.initiallyLaunchedFromHomeWidget();
-      if (uri != null && (uri.host == 'add-expense' || uri.host == 'expenses')) {
-        Future.microtask(() {
-          navigatorKey.currentState?.pushNamed(AppRoutes.addEditExpense);
-        });
+      void navigateToAddExpense() {
+        int attempts = 0;
+        void tryPush() {
+          final state = navigatorKey.currentState;
+          if (state != null) {
+            state.pushNamed(AppRoutes.addEditExpense);
+          } else if (attempts < 15) {
+            attempts++;
+            Future.delayed(const Duration(milliseconds: 200), tryPush);
+          }
+        }
+        tryPush();
       }
+
+      final uri = await HomeWidget.initiallyLaunchedFromHomeWidget();
+      if (uri != null) {
+        final uriStr = uri.toString().toLowerCase();
+        if (uriStr.contains('expense') || uri.host.contains('expense')) {
+          navigateToAddExpense();
+        }
+      }
+
       HomeWidget.widgetClicked.listen((uri) {
-        if (uri != null && (uri.host == 'add-expense' || uri.host == 'expenses')) {
-          navigatorKey.currentState?.pushNamed(AppRoutes.addEditExpense);
+        if (uri != null) {
+          final uriStr = uri.toString().toLowerCase();
+          if (uriStr.contains('expense') || uri.host.contains('expense')) {
+            navigateToAddExpense();
+          }
         }
       });
     } catch (_) {}

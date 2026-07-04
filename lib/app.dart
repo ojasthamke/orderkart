@@ -51,7 +51,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       WidgetService.checkWidgetLaunch(navigatorKey);
     });
   }
