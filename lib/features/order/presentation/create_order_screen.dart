@@ -12,6 +12,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/smart_rounding.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../inventory/domain/item.dart';
@@ -670,6 +671,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       }
     }
 
+    AppHaptics.primarySave();
     setState(() => _saving = true);
 
     final now     = DateTime.now();

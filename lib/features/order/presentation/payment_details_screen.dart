@@ -5,6 +5,7 @@ import 'dart:io';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/haptics.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/customer_avatar.dart';
 import 'package:orderkart/features/customer/presentation/customer_provider.dart';
@@ -52,6 +53,7 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
 
   void _onRecord() {
     if (_amount <= 0) return;
+    AppHaptics.primarySave();
     Navigator.of(context).pop({
       'amount': _amount,
       'method': _method,

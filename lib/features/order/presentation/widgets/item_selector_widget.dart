@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/haptics.dart';
 import '../../../../core/widgets/custom_search_bar.dart';
 import '../../../inventory/domain/item.dart';
 import '../../../inventory/presentation/inventory_provider.dart';
@@ -306,6 +307,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                           onSelected: disabled
                               ? null
                               : (_) {
+                                  AppHaptics.selection();
                                   setState(() {
                                     _qty = q;
                                     _qtyController.text = AppFormatters.quantity(q);
@@ -361,6 +363,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                   );
                                 }
                               : () {
+                                  AppHaptics.itemAdded();
                                   widget.onItemSelected(_selected!, _qty);
                                   
                                   // Success feedback SnackBar
