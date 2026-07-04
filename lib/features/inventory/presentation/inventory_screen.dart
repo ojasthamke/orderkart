@@ -16,6 +16,8 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
 import '../data/item_dao.dart';
+import '../../expense/domain/expense.dart';
+import '../../expense/data/expense_dao.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final bool showBack;
@@ -620,56 +622,174 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
   void _showStockAdjustDialog(BuildContext context, Item item) {
     final qtyCon = TextEditingController();
-    bool isAdd = true;
+    final reasonCon = TextEditingController();
+    String mode = 'add'; // 'add', 'reduce', 'wastage'
+    bool autoLogExpense = true;
 
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setStateDialog) => AlertDialog(
-          title: Text('Adjust Stock — ${item.name}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Current stock: ${AppFormatters.quantity(item.stock, unit: item.unit)}'),
-              const SizedBox(height: 16),
-              SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(value: true, label: Text('+ Add Stock')),
-                  ButtonSegment(value: false, label: Text('- Reduce Stock')),
+        builder: (ctx, setStateDialog) {
+          final qtyVal = double.tryParse(qtyCon.text.trim()) ?? 0;
+          final costLoss = qtyVal * item.sellingPrice;
+
+          return AlertDialog(
+            title: Text('Adjust Stock — ${item.name}'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Current Stock: ${AppFormatters.quantity(item.stock, unit: item.unit)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Mode Selector Chips
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('+ Add Stock'),
+                        selected: mode == 'add',
+                        selectedColor: AppColors.success.withOpacity(0.2),
+                        onSelected: (s) => setStateDialog(() => mode = 'add'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('- Reduce Stock'),
+                        selected: mode == 'reduce',
+                        selectedColor: AppColors.error.withOpacity(0.2),
+                        onSelected: (s) => setStateDialog(() => mode = 'reduce'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('🍏 Wastage / Spoilage'),
+                        selected: mode == 'wastage',
+                        selectedColor: Colors.amber.withOpacity(0.3),
+                        onSelected: (s) => setStateDialog(() => mode = 'wastage'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: qtyCon,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: mode == 'wastage' ? 'Wastage Quantity (${item.unit})' : 'Quantity (${item.unit})',
+                      prefixIcon: Icon(
+                        mode == 'add'
+                            ? Icons.add_circle_outline_rounded
+                            : (mode == 'wastage' ? Icons.delete_outline_rounded : Icons.remove_circle_outline_rounded),
+                        color: mode == 'add' ? AppColors.success : (mode == 'wastage' ? Colors.amber.shade800 : AppColors.error),
+                      ),
+                    ),
+                    autofocus: true,
+                    onChanged: (_) => setStateDialog(() {}),
+                  ),
+
+                  if (mode == 'wastage') ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: reasonCon,
+                      decoration: const InputDecoration(
+                        labelText: 'Wastage Reason (Optional)',
+                        hintText: 'e.g. Rotten mandi batch, Transport damage',
+                        prefixIcon: Icon(Icons.note_alt_rounded),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Wastage Loss Summary Banner
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.amber.shade900, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Estimated Loss Value: ${AppFormatters.currency(costLoss)}',
+                              style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade900, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Auto-log Expense under 🍏 Spoilage & Damaged Goods', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      value: autoLogExpense,
+                      onChanged: (v) => setStateDialog(() => autoLogExpense = v ?? true),
+                      controlAffinity: ListTileControlAffinity.leading,
+                    ),
+                  ],
                 ],
-                selected: {isAdd},
-                onSelectionChanged: (s) => setStateDialog(() => isAdd = s.first),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: qtyCon,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Quantity'),
-                autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final qty = double.tryParse(qtyCon.text.trim());
+                  if (qty == null || qty <= 0) return;
+
+                  AppHaptics.primarySave();
+
+                  if (mode == 'wastage') {
+                    final reason = reasonCon.text.trim().isEmpty ? 'Wastage / Spoilage loss' : reasonCon.text.trim();
+                    await ref.read(inventoryProvider.notifier).adjustStock(
+                      item.id,
+                      -qty,
+                      'Wastage: $reason',
+                    );
+
+                    if (autoLogExpense && costLoss > 0) {
+                      await ExpenseDao().insertExpense(
+                        Expense(
+                          id: '',
+                          name: 'Wastage: ${item.name} (${AppFormatters.quantity(qty, unit: item.unit)})',
+                          category: AppConstants.expSpoilageLoss,
+                          amount: costLoss,
+                          date: DateTime.now(),
+                          notes: 'Item wastage recorded: $reason',
+                          paymentMethod: 'cash',
+                          createdAt: DateTime.now(),
+                          updatedAt: DateTime.now(),
+                        ),
+                      );
+                    }
+                    if (ctx.mounted) {
+                      SnackbarHelper.showSuccess(context, 'Recorded ${AppFormatters.quantity(qty, unit: item.unit)} wastage for ${item.name}');
+                      Navigator.pop(ctx);
+                    }
+                  } else {
+                    final isAddMode = mode == 'add';
+                    final change = isAddMode ? qty : -qty;
+                    await ref.read(inventoryProvider.notifier).adjustStock(
+                      item.id,
+                      change,
+                      isAddMode ? 'Stock added' : 'Stock reduced',
+                    );
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  }
+                },
+                child: const Text('Save'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final qty = double.tryParse(qtyCon.text.trim());
-                if (qty == null || qty <= 0) return;
-                final change = isAdd ? qty : -qty;
-                await ref.read(inventoryProvider.notifier).adjustStock(
-                  item.id,
-                  change,
-                  isAdd ? 'Stock added' : 'Stock reduced',
-                );
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

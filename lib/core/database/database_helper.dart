@@ -32,6 +32,7 @@ class DatabaseHelper {
         await db.rawQuery('PRAGMA journal_mode = WAL');
         await _ensureVipColumns(db);
         await _ensurePriceHistoryTables(db);
+        await _ensureAreaAndStreetColumns(db);
       },
     );
   }
@@ -381,5 +382,20 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_price_hist_date ON item_price_history(date)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_price_hist_item ON item_price_history(item_id)');
+  }
+
+  Future<void> _ensureAreaAndStreetColumns(Database db) async {
+    try {
+      await db.execute("ALTER TABLE areas ADD COLUMN photo_path TEXT DEFAULT ''");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE areas ADD COLUMN maps_location TEXT DEFAULT ''");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE streets ADD COLUMN photo_path TEXT DEFAULT ''");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE streets ADD COLUMN maps_location TEXT DEFAULT ''");
+    } catch (_) {}
   }
 }

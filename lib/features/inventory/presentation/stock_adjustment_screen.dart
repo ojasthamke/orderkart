@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import 'inventory_provider.dart';
+import '../data/item_dao.dart';
+import '../../expense/domain/expense.dart';
+import '../../expense/data/expense_dao.dart';
 
 class StockAdjustmentScreen extends ConsumerStatefulWidget {
   final String itemId;
@@ -20,12 +25,15 @@ class StockAdjustmentScreen extends ConsumerStatefulWidget {
 class _StockAdjustmentScreenState
     extends ConsumerState<StockAdjustmentScreen> {
   final _changeCon  = TextEditingController();
+  final _reasonCon  = TextEditingController();
   double _change    = 0;
-  bool   _isAdd     = true; // true = add stock, false = remove
+  String _mode      = 'add'; // 'add', 'remove', 'wastage'
+  bool   _autoLogExpense = true;
 
   @override
   void dispose() {
     _changeCon.dispose();
+    _reasonCon.dispose();
     super.dispose();
   }
 
@@ -59,26 +67,27 @@ class _StockAdjustmentScreenState
             ),
             const SizedBox(height: 24),
 
-            // Add / Remove toggle
+            // Mode Selector Chips (Add / Remove / Wastage)
             Row(
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _isAdd = true),
+                    onTap: () {
+                      AppHaptics.selection();
+                      setState(() => _mode = 'add');
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: _isAdd
-                            ? AppColors.success
-                            : AppColors.gray100,
+                        color: _mode == 'add' ? AppColors.success : AppColors.gray100,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
                         child: Text(
-                          '+ Add Stock',
+                          '+ Add',
                           style: TextStyle(
-                            color: _isAdd ? Colors.white : AppColors.textSecondary,
+                            color: _mode == 'add' ? Colors.white : AppColors.textSecondary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -86,22 +95,51 @@ class _StockAdjustmentScreenState
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _isAdd = false),
+                    onTap: () {
+                      AppHaptics.selection();
+                      setState(() => _mode = 'remove');
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: !_isAdd ? AppColors.error : AppColors.gray100,
+                        color: _mode == 'remove' ? AppColors.error : AppColors.gray100,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
                         child: Text(
-                          '- Remove Stock',
+                          '- Remove',
                           style: TextStyle(
-                            color: !_isAdd ? Colors.white : AppColors.textSecondary,
+                            color: _mode == 'remove' ? Colors.white : AppColors.textSecondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      AppHaptics.selection();
+                      setState(() => _mode = 'wastage');
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _mode == 'wastage' ? Colors.amber.shade800 : AppColors.gray100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '🍏 Wastage',
+                          style: TextStyle(
+                            color: _mode == 'wastage' ? Colors.white : AppColors.textSecondary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -118,17 +156,36 @@ class _StockAdjustmentScreenState
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: 'Quantity',
+                labelText: _mode == 'wastage' ? 'Wastage Quantity' : 'Quantity',
                 prefixIcon: Icon(
-                  _isAdd
+                  _mode == 'add'
                       ? Icons.add_circle_outline_rounded
-                      : Icons.remove_circle_outline_rounded,
-                  color: _isAdd ? AppColors.success : AppColors.error,
+                      : (_mode == 'wastage' ? Icons.delete_outline_rounded : Icons.remove_circle_outline_rounded),
+                  color: _mode == 'add' ? AppColors.success : (_mode == 'wastage' ? Colors.amber.shade800 : AppColors.error),
                 ),
               ),
               onChanged: (v) =>
                   setState(() => _change = double.tryParse(v) ?? 0),
             ),
+            if (_mode == 'wastage') ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _reasonCon,
+                decoration: const InputDecoration(
+                  labelText: 'Wastage Reason (Optional)',
+                  hintText: 'e.g. Rotten mandi batch, Transport loss',
+                  prefixIcon: Icon(Icons.note_alt_rounded),
+                ),
+              ),
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Auto-log Expense under 🍏 Spoilage & Damaged Goods', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                value: _autoLogExpense,
+                onChanged: (v) => setState(() => _autoLogExpense = v ?? true),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ],
             const SizedBox(height: 12),
 
             // Stock history
@@ -177,10 +234,10 @@ class _StockAdjustmentScreenState
         color: Colors.white,
         child: ElevatedButton.icon(
           onPressed: _change > 0 ? _adjust : null,
-          icon: Icon(_isAdd ? Icons.add_rounded : Icons.remove_rounded),
-          label: Text(_isAdd ? 'Add Stock' : 'Remove Stock'),
+          icon: Icon(_mode == 'add' ? Icons.add_rounded : (_mode == 'wastage' ? Icons.delete_outline_rounded : Icons.remove_rounded)),
+          label: Text(_mode == 'add' ? 'Add Stock' : (_mode == 'wastage' ? 'Record Wastage' : 'Remove Stock')),
           style: ElevatedButton.styleFrom(
-            backgroundColor: _isAdd ? AppColors.success : AppColors.error,
+            backgroundColor: _mode == 'add' ? AppColors.success : (_mode == 'wastage' ? Colors.amber.shade800 : AppColors.error),
             minimumSize: const Size(double.infinity, 52),
           ),
         ),
@@ -189,13 +246,44 @@ class _StockAdjustmentScreenState
   }
 
   Future<void> _adjust() async {
-    final change = _isAdd ? _change : -_change;
-    await ref
-        .read(inventoryProvider.notifier)
-        .adjustStock(widget.itemId, change, 'manual');
-    if (mounted) {
-      SnackbarHelper.showSuccess(context, 'Stock updated');
-      Navigator.of(context).pop();
+    AppHaptics.primarySave();
+    if (_mode == 'wastage') {
+      final reason = _reasonCon.text.trim().isEmpty ? 'Wastage / Spoilage loss' : _reasonCon.text.trim();
+      await ref.read(inventoryProvider.notifier).adjustStock(widget.itemId, -_change, 'Wastage: $reason');
+      
+      if (_autoLogExpense) {
+        final itemObj = await ItemDao().getItemById(widget.itemId);
+        final rate = itemObj?.sellingPrice ?? 0.0;
+        final costLoss = _change * rate;
+        if (costLoss > 0) {
+          await ExpenseDao().insertExpense(
+            Expense(
+              id: '',
+              name: 'Wastage: ${widget.itemName} (${AppFormatters.quantity(_change)})',
+              category: AppConstants.expSpoilageLoss,
+              amount: costLoss,
+              date: DateTime.now(),
+              notes: 'Item wastage recorded: $reason',
+              paymentMethod: 'cash',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          );
+        }
+      }
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Wastage of ${AppFormatters.quantity(_change)} recorded');
+        Navigator.of(context).pop();
+      }
+    } else {
+      final change = _mode == 'add' ? _change : -_change;
+      await ref
+          .read(inventoryProvider.notifier)
+          .adjustStock(widget.itemId, change, _mode == 'add' ? 'Stock added' : 'Stock reduced');
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Stock updated');
+        Navigator.of(context).pop();
+      }
     }
   }
 }

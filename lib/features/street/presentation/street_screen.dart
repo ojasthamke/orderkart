@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/app_drawer.dart';
@@ -83,77 +86,131 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
   }
 
   void _showAddEdit(BuildContext context, Street? street) {
-    final nameCon  = TextEditingController(text: street?.name ?? '');
-    final descCon  = TextEditingController(text: street?.description ?? '');
-    final formKey  = GlobalKey<FormState>();
+    final nameCon     = TextEditingController(text: street?.name ?? '');
+    final descCon     = TextEditingController(text: street?.description ?? '');
+    final locationCon = TextEditingController(text: street?.mapsLocation ?? '');
+    String photoPath  = street?.photoPath ?? '';
+    final formKey     = GlobalKey<FormState>();
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(street == null ? 'Add Street' : 'Edit Street'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameCon,
-                decoration: const InputDecoration(
-                  labelText: 'Street Name *',
-                  prefixIcon: Icon(Icons.turn_slight_right_rounded),
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty)
-                    return 'Street name is required';
-                  return null;
-                },
-                textCapitalization: TextCapitalization.words,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) => AlertDialog(
+          title: Text(street == null ? 'Add Street' : 'Edit Street'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Photo Picker
+                  GestureDetector(
+                    onTap: () async {
+                      final picker = ImagePicker();
+                      final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+                      if (file != null) {
+                        setDlgState(() => photoPath = file.path);
+                      }
+                    },
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.gray100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.gray300),
+                        image: (photoPath.isNotEmpty && File(photoPath).existsSync())
+                            ? DecorationImage(image: FileImage(File(photoPath)), fit: BoxFit.cover)
+                            : null,
+                      ),
+                      child: (photoPath.isEmpty || !File(photoPath).existsSync())
+                          ? Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.add_a_photo_rounded, color: AppColors.gray500, size: 24),
+                                SizedBox(height: 2),
+                                Text('Photo', style: TextStyle(fontSize: 10, color: AppColors.gray600)),
+                              ],
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  TextFormField(
+                    controller: nameCon,
+                    decoration: const InputDecoration(
+                      labelText: 'Street Name *',
+                      prefixIcon: Icon(Icons.turn_slight_right_rounded),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty)
+                        return 'Street name is required';
+                      return null;
+                    },
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: descCon,
+                    decoration: const InputDecoration(
+                      labelText: 'Description (Full visibility enabled)',
+                      prefixIcon: Icon(Icons.notes_rounded),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: locationCon,
+                    decoration: const InputDecoration(
+                      labelText: 'Street Location / Maps Link',
+                      hintText: 'e.g. Near Market or maps link',
+                      prefixIcon: Icon(Icons.location_on_rounded),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: descCon,
-                decoration: const InputDecoration(
-                  labelText: 'Description (optional)',
-                  prefixIcon: Icon(Icons.notes_rounded),
-                ),
-              ),
-            ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.of(context).pop();
+                final notifier =
+                    ref.read(streetProviderFamily(widget.areaId).notifier);
+                final now = DateTime.now();
+                if (street == null) {
+                  await notifier.add(Street(
+                    id:           const Uuid().v4(),
+                    areaId:       widget.areaId,
+                    name:         nameCon.text.trim(),
+                    description:  descCon.text.trim(),
+                    photoPath:    photoPath,
+                    mapsLocation: locationCon.text.trim(),
+                    createdAt:    now,
+                  ));
+                  if (mounted)
+                    SnackbarHelper.showSuccess(context, 'Street added');
+                } else {
+                  await notifier.update(street.copyWith(
+                    name:         nameCon.text.trim(),
+                    description:  descCon.text.trim(),
+                    photoPath:    photoPath,
+                    mapsLocation: locationCon.text.trim(),
+                  ));
+                  if (mounted)
+                    SnackbarHelper.showSuccess(context, 'Street updated');
+                }
+              },
+              child: Text(street == null ? 'Add' : 'Update'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              Navigator.of(context).pop();
-              final notifier =
-                  ref.read(streetProviderFamily(widget.areaId).notifier);
-              final now = DateTime.now();
-              if (street == null) {
-                await notifier.add(Street(
-                  id:          const Uuid().v4(),
-                  areaId:      widget.areaId,
-                  name:        nameCon.text.trim(),
-                  description: descCon.text.trim(),
-                  createdAt:   now,
-                ));
-                if (mounted)
-                  SnackbarHelper.showSuccess(context, 'Street added');
-              } else {
-                await notifier.update(street.copyWith(
-                  name:        nameCon.text.trim(),
-                  description: descCon.text.trim(),
-                ));
-                if (mounted)
-                  SnackbarHelper.showSuccess(context, 'Street updated');
-              }
-            },
-            child: Text(street == null ? 'Add' : 'Update'),
-          ),
-        ],
       ),
     );
   }
@@ -194,46 +251,113 @@ class _StreetTile extends StatelessWidget {
         border: Border.all(color: AppColors.gray200),
         boxShadow: AppColors.cardShadow,
       ),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.primarySurface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.turn_slight_right_rounded,
-              color: AppColors.primary),
-        ),
-        title: Text(street.name,
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontWeight: FontWeight.w700)),
-        subtitle: Text(
-          '${street.customerCount} customers',
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: AppColors.textSecondary),
-        ),
-        trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert_rounded, color: AppColors.gray500),
-          onSelected: (v) {
-            if (v == 'edit')   onEdit();
-            if (v == 'delete') onDelete();
-          },
-          itemBuilder: (_) => [
-            const PopupMenuItem(value: 'edit',   child: Text('Edit')),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Text('Delete', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Photo or Icon Avatar
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius: BorderRadius.circular(12),
+                  image: (street.photoPath.isNotEmpty && File(street.photoPath).existsSync())
+                      ? DecorationImage(image: FileImage(File(street.photoPath)), fit: BoxFit.cover)
+                      : null,
+                ),
+                child: (street.photoPath.isEmpty || !File(street.photoPath).existsSync())
+                    ? const Icon(Icons.turn_slight_right_rounded, color: AppColors.primary, size: 24)
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      street.name,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    if (street.description.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        street.description,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${street.customerCount} customers',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
+                          ),
+                        ),
+                        if (street.mapsLocation.isNotEmpty)
+                          InkWell(
+                            onTap: () async {
+                              final loc = street.mapsLocation.trim();
+                              Uri uri;
+                              if (loc.startsWith('http://') || loc.startsWith('https://')) {
+                                uri = Uri.parse(loc);
+                              } else {
+                                uri = Uri.parse('https://maps.google.com/?q=${Uri.encodeComponent(loc)}');
+                              }
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.deepOrange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.location_on_rounded, size: 12, color: Colors.deepOrange),
+                                  SizedBox(width: 4),
+                                  Text('📍 Location', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.deepOrange)),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert_rounded, color: AppColors.gray500),
+                onSelected: (v) {
+                  if (v == 'edit')   onEdit();
+                  if (v == 'delete') onDelete();
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit',   child: Text('Edit')),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Delete', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

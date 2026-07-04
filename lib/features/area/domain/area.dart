@@ -14,11 +14,16 @@ class Area {
   final int orderCount;
   final double totalRevenue;
 
+  final String photoPath;
+  final String mapsLocation;
+
   const Area({
     required this.id,
     required this.name,
     this.description = '',
     this.color = 0xFF1565C0,
+    this.photoPath = '',
+    this.mapsLocation = '',
     required this.createdAt,
     required this.updatedAt,
     this.streetCount = 0,
@@ -32,6 +37,8 @@ class Area {
     String? name,
     String? description,
     int? color,
+    String? photoPath,
+    String? mapsLocation,
     DateTime? createdAt,
     DateTime? updatedAt,
     int? streetCount,
@@ -44,6 +51,8 @@ class Area {
       name: name ?? this.name,
       description: description ?? this.description,
       color: color ?? this.color,
+      photoPath: photoPath ?? this.photoPath,
+      mapsLocation: mapsLocation ?? this.mapsLocation,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       streetCount: streetCount ?? this.streetCount,
@@ -54,21 +63,25 @@ class Area {
   }
 
   Map<String, dynamic> toMap() => {
-        'id':          id,
-        'name':        name,
-        'description': description,
-        'color':       color,
-        'created_at':  createdAt.toIso8601String(),
-        'updated_at':  updatedAt.toIso8601String(),
+        'id':            id,
+        'name':          name,
+        'description':   description,
+        'color':         color,
+        'photo_path':    photoPath,
+        'maps_location': mapsLocation,
+        'created_at':    createdAt.toIso8601String(),
+        'updated_at':    updatedAt.toIso8601String(),
       };
 
   factory Area.fromMap(Map<String, dynamic> map) => Area(
-        id:          map['id'] as String,
-        name:        map['name'] as String,
-        description: map['description'] as String? ?? '',
-        color:       map['color'] as int? ?? 0xFF1565C0,
-        createdAt:   DateTime.parse(map['created_at'] as String),
-        updatedAt:   DateTime.parse(map['updated_at'] as String),
+        id:           map['id'] as String,
+        name:         map['name'] as String,
+        description:  map['description'] as String? ?? '',
+        color:        map['color'] as int? ?? 0xFF1565C0,
+        photoPath:    map['photo_path'] as String? ?? '',
+        mapsLocation: map['maps_location'] as String? ?? '',
+        createdAt:    DateTime.parse(map['created_at'] as String),
+        updatedAt:    DateTime.parse(map['updated_at'] as String),
         streetCount:  map['street_count']   as int?    ?? 0,
         customerCount:map['customer_count'] as int?    ?? 0,
         orderCount:   map['order_count']    as int?    ?? 0,

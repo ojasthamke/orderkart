@@ -1,6 +1,8 @@
 /// AreaCard — Single area list item
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../domain/area.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
@@ -43,15 +45,23 @@ class AreaCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Color avatar
+                // Color / Image avatar
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(14),
+                    image: (area.photoPath.isNotEmpty && File(area.photoPath).existsSync())
+                        ? DecorationImage(
+                            image: FileImage(File(area.photoPath)),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: Icon(Icons.map_rounded, color: color, size: 24),
+                  child: (area.photoPath.isEmpty || !File(area.photoPath).existsSync())
+                      ? Icon(Icons.map_rounded, color: color, size: 26)
+                      : null,
                 ),
                 const SizedBox(width: 14),
                 // Info
@@ -66,23 +76,38 @@ class AreaCard extends StatelessWidget {
                             ),
                       ),
                       if (area.description.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
                           area.description,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: AppColors.textSecondary,
                               ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                       const SizedBox(height: 8),
-                      // Stats row
-                      Row(
+                      // Stats & Location row
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           _chip(context, '${area.streetCount} Streets', Icons.turn_slight_right_rounded, AppColors.primary),
-                          const SizedBox(width: 8),
                           _chip(context, '${area.customerCount} Customers', Icons.people_rounded, AppColors.success),
+                          if (area.mapsLocation.isNotEmpty)
+                            InkWell(
+                              onTap: () async {
+                                final loc = area.mapsLocation.trim();
+                                Uri uri;
+                                if (loc.startsWith('http://') || loc.startsWith('https://')) {
+                                  uri = Uri.parse(loc);
+                                } else {
+                                  uri = Uri.parse('https://maps.google.com/?q=${Uri.encodeComponent(loc)}');
+                                }
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              child: _chip(context, '📍 Location', Icons.location_on_rounded, Colors.deepOrange),
+                            ),
                         ],
                       ),
                     ],

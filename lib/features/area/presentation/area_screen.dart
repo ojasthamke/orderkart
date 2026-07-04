@@ -109,24 +109,28 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
       context: context,
       builder: (_) => AddEditAreaDialog(
         area: area,
-        onSave: (name, description, color) async {
+        onSave: (name, description, color, photoPath, mapsLocation) async {
           final now = DateTime.now();
           if (area == null) {
             await ref.read(areaProvider.notifier).addArea(Area(
-                  id:          const Uuid().v4(),
-                  name:        name,
-                  description: description,
-                  color:       color,
-                  createdAt:   now,
-                  updatedAt:   now,
+                  id:           const Uuid().v4(),
+                  name:         name,
+                  description:  description,
+                  color:        color,
+                  photoPath:    photoPath,
+                  mapsLocation: mapsLocation,
+                  createdAt:    now,
+                  updatedAt:    now,
                 ));
             if (mounted) SnackbarHelper.showSuccess(context, 'Area added successfully');
           } else {
             await ref.read(areaProvider.notifier).updateArea(area.copyWith(
-                  name:        name,
-                  description: description,
-                  color:       color,
-                  updatedAt:   now,
+                  name:         name,
+                  description:  description,
+                  color:        color,
+                  photoPath:    photoPath,
+                  mapsLocation: mapsLocation,
+                  updatedAt:    now,
                 ));
             if (mounted) SnackbarHelper.showSuccess(context, 'Area updated');
           }
