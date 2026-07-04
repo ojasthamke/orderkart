@@ -233,6 +233,65 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     error: (_, __) => const SizedBox.shrink(),
                   ),
 
+                  // ── Overpaid / Remaining Money Return Reminder Banner ────────────────
+                  ref.watch(overpaidCustomersProvider).when(
+                    data: (overpaid) => overpaid.isNotEmpty
+                        ? Container(
+                            margin: const EdgeInsets.only(top: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0284C7).withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFF0284C7).withOpacity(0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.account_balance_wallet_rounded,
+                                    color: Color(0xFF0284C7), size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    '${overpaid.length} customer${overpaid.length > 1 ? 's have' : ' has'} overpaid balance to return.',
+                                    style: const TextStyle(
+                                      color: Color(0xFF0284C7),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => _showOverpaidReminder(context, overpaid),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    backgroundColor:
+                                        const Color(0xFF0284C7).withOpacity(0.12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'RETURN',
+                                    style: TextStyle(
+                                      color: Color(0xFF0284C7),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
 
                   const SizedBox(height: 20),
 
@@ -288,7 +347,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             data: (list) => list.length.toString(),
                             orElse: () => '-',
                           ),
-                          onTap: () {},
+                          onTap: () {
+                            ref.read(pendingCustomersProvider).whenData((pending) {
+                              if (pending.isNotEmpty) {
+                                _showPendingReminder(context, pending);
+                              } else {
+                                SnackbarHelper.showInfo(context, 'No customers currently have pending dues');
+                              }
+                            });
+                          },
                         ),
                         _buildDashboardCard(
                           context,
@@ -838,7 +905,139 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
      );
    }
 
-   void _showActiveCustomers(BuildContext context) {
+  void _showOverpaidReminder(BuildContext context, List<Customer> overpaid) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        builder: (_, controller) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.gray300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7).withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.account_balance_wallet_rounded,
+                        color: Color(0xFF0284C7), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Overpaid / Remaining Change to Return',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          '${overpaid.length} customer${overpaid.length > 1 ? 's' : ''} paid extra money',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  controller: controller,
+                  itemCount: overpaid.length,
+                  itemBuilder: (_, i) {
+                    final c = overpaid[i];
+                    final returnAmount = c.advanceBalance;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardTheme.color,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF0284C7).withOpacity(0.2),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: ListTile(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.customerProfile,
+                            arguments: {'customerId': c.id},
+                          );
+                        },
+                        leading: CustomerAvatar(
+                          photoPath: c.photoPath,
+                          radius: 22,
+                        ),
+                        title: Text(
+                          c.name,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          c.phone1.isNotEmpty ? c.phone1 : c.address,
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              AppFormatters.currency(returnAmount),
+                              style: const TextStyle(
+                                color: Color(0xFF0284C7),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const Text(
+                              'Return Change',
+                              style: TextStyle(fontSize: 10, color: Color(0xFF0284C7)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showActiveCustomers(BuildContext context) {
      showModalBottomSheet(
        context: context,
        isScrollControlled: true,

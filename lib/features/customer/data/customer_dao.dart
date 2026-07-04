@@ -109,6 +109,17 @@ class CustomerDao {
     return maps.map(Customer.fromMap).toList();
   }
 
+  /// Fetch all customers who have overpaid / advance balance (paid_amount > total_spent)
+  Future<List<Customer>> getCustomersWithOverpayment() async {
+    final db = await _db;
+    final maps = await db.rawQuery('''
+      SELECT * FROM customers
+      WHERE paid_amount > total_spent
+      ORDER BY (paid_amount - total_spent) DESC
+    ''');
+    return maps.map(Customer.fromMap).toList();
+  }
+
   Future<String> insertCustomer(Customer customer) async {
     final db = await _db;
     final id  = customer.id.isEmpty ? _uuid.v4() : customer.id;

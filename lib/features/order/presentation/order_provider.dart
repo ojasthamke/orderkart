@@ -51,6 +51,8 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
     _ref.invalidate(customerDetailProvider);
     _ref.invalidate(inventoryProvider);
     _ref.invalidate(lowStockProvider);
+    _ref.invalidate(stockSummaryProvider);
+    _ref.invalidate(outOfStockProvider);
     _ref.invalidate(stockHistoryProvider);
     _ref.invalidate(analyticsSummaryProvider);
     _ref.invalidate(weeklyChartProvider);
@@ -59,6 +61,7 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
     _ref.invalidate(topCustomersProvider);
     _ref.invalidate(dashboardOrdersProvider);
     _ref.invalidate(pendingCustomersProvider);
+    _ref.invalidate(overpaidCustomersProvider);
     _ref.invalidate(allCustomersProvider);
   }
 

@@ -120,6 +120,12 @@ final pendingCustomersProvider = FutureProvider<List<Customer>>((ref) async {
   return dao.getCustomersWithDue();
 });
 
+// All customers who have advance / overpaid balance > 0 (remaining money to return)
+final overpaidCustomersProvider = FutureProvider<List<Customer>>((ref) async {
+  final dao = CustomerDao();
+  return dao.getCustomersWithOverpayment();
+});
+
 // All customers list
 final allCustomersProvider = FutureProvider<List<Customer>>((ref) async {
   final db = await DatabaseHelper.instance.database;
