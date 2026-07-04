@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/utils/external_launcher.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
@@ -18,6 +20,8 @@ import '../../order/presentation/order_provider.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
 import '../../order/domain/order.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../settings/presentation/settings_provider.dart';
 
 class CustomerProfileScreen extends ConsumerWidget {
   final String customerId;
@@ -150,6 +154,12 @@ class CustomerProfileScreen extends ConsumerWidget {
 
               // Tabs / Quick Actions Row
               _buildQuickActions(context, ref, customer),
+
+              // Customer Savings Tracker Card & WhatsApp Share
+              ordersAsync.maybeWhen(
+                data: (orders) => _buildSavingsTrackerCard(context, ref, customer, orders),
+                orElse: () => const SizedBox.shrink(),
+              ),
 
               // Orders title
               Padding(
@@ -378,6 +388,122 @@ class CustomerProfileScreen extends ConsumerWidget {
               ?.copyWith(color: AppColors.textSecondary),
         ),
       ],
+    );
+  }
+
+  Widget _buildSavingsTrackerCard(BuildContext context, WidgetRef ref, Customer customer, List<AppOrder> orders) {
+    double totalSavings = 0;
+    double monthlySavings = 0;
+    final now = DateTime.now();
+
+    for (final o in orders) {
+      final s = o.discount;
+      totalSavings += s;
+      if (o.createdAt.year == now.year && o.createdAt.month == now.month) {
+        monthlySavings += s;
+      }
+    }
+
+    final currency = ref.watch(settingsProvider).value?.currency ?? AppConstants.defaultCurrency;
+    final businessName = ref.watch(settingsProvider).value?.businessName ?? 'OrderKart';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF047857), Color(0xFF10B981)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: const [
+                  Text('🎉', style: TextStyle(fontSize: 20)),
+                  SizedBox(width: 8),
+                  Text(
+                    'SAVINGS TRACKER',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  AppHaptics.buttonClick();
+                  final msg = StringBuffer();
+                  msg.writeln('🎉 *CONGRATULATIONS ${customer.name.toUpperCase()}!* 🥳✨');
+                  msg.writeln();
+                  msg.writeln('You have saved *${AppFormatters.currency(monthlySavings, symbol: currency)}* this month and a total of *${AppFormatters.currency(totalSavings, symbol: currency)}* overall by shopping with us at *$businessName*! 🛒');
+                  msg.writeln();
+                  msg.writeln('Thank you for your valuable trust & business! 🙏');
+
+                  final cleanPhone = customer.whatsapp.isNotEmpty ? customer.whatsapp : customer.phone1;
+                  final phone = cleanPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+                  final url = 'https://wa.me/$phone?text=${Uri.encodeComponent(msg.toString())}';
+                  final uri = Uri.parse(url);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } else {
+                    SnackbarHelper.showError(context, 'Could not open WhatsApp');
+                  }
+                },
+                icon: const Icon(Icons.share_rounded, size: 14, color: Colors.green),
+                label: const Text('Share Savings'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.green.shade900,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('This Month\'s Savings', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(
+                    AppFormatters.currency(monthlySavings, symbol: currency),
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Total All-Time Savings', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(
+                    AppFormatters.currency(totalSavings, symbol: currency),
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

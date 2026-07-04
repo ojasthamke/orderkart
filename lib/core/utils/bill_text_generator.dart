@@ -68,6 +68,12 @@ class BillTextGenerator {
     }
     buf.writeln(sep);
 
+    final totalSavings = discount;
+    if (totalSavings > 0) {
+      buf.writeln('🎉 *CONGRATULATIONS!* You saved *$currency${totalSavings.toStringAsFixed(2)}* on this order by shopping with us! 🥳✨');
+      buf.writeln(sep);
+    }
+
     return buf.toString();
   }
 }
