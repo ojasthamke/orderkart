@@ -15,6 +15,7 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../customer/presentation/customer_provider.dart';
+import '../../inventory/presentation/inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../domain/order.dart';
 import '../domain/payment.dart';
@@ -339,6 +340,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Widget _buildSummarySection(AppOrder order, String currency) {
     final totalSavings = order.discount;
+    // Compute market price savings from current inventory
+    final inventoryAsync = ref.watch(inventoryProvider);
+    final itemsList = inventoryAsync.valueOrNull ?? [];
+    double marketSavings = 0.0;
+    for (final oi in order.items) {
+      final inv = itemsList.where((i) => i.id == oi.itemId).firstOrNull;
+      if (inv != null && inv.marketPrice > oi.unitPrice) {
+        marketSavings += (inv.marketPrice - oi.unitPrice) * oi.quantity;
+      }
+    }
+    final totalCombinedSavings = totalSavings + marketSavings;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -368,59 +380,102 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             _sumRow('Due Amount',     '$currency${order.remainingAmount.toStringAsFixed(2)}',
                 color: AppColors.warning, isBold: true),
 
-          // Congratulatory Savings Banner at receipt end
-          if (totalSavings > 0) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF059669), Color(0xFF10B981)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          // ── Daily Savings Banner — always shown on every receipt ──
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: totalCombinedSavings > 0
+                  ? const LinearGradient(
+                      colors: [Color(0xFF059669), Color(0xFF10B981)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFF0F766E), Color(0xFF14B8A6)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF10B981).withOpacity(0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF10B981).withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const Text('🎉', style: TextStyle(fontSize: 26)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'CONGRATULATIONS!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                            letterSpacing: 1.0,
+              ],
+            ),
+            child: totalCombinedSavings > 0
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text('🎉', style: TextStyle(fontSize: 22)),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'CONGRATULATIONS!',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      if (totalSavings > 0 && marketSavings > 0) ...[
+                        Text(
+                          '💰 Order Discount: $currency${totalSavings.toStringAsFixed(2)}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'You saved $currency${totalSavings.toStringAsFixed(2)} on this order by shopping with us! 🥳✨',
+                          '🏷️ vs. Market Price: $currency${marketSavings.toStringAsFixed(2)}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Total Savings: $currency${totalCombinedSavings.toStringAsFixed(2)} 🥳✨',
                           style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ] else if (marketSavings > 0) ...[
+                        Text(
+                          'You saved $currency${marketSavings.toStringAsFixed(2)} vs. market price by shopping with us! 🥳✨',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                      ] else ...[
+                        Text(
+                          'You saved $currency${totalSavings.toStringAsFixed(2)} on this order by shopping with us! 🥳✨',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                      ],
+                    ],
+                  )
+                : Row(
+                    children: [
+                      const Text('💚', style: TextStyle(fontSize: 20)),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Thank you for shopping with us! Come back soon. 🙏',
+                          style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 13,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
@@ -663,6 +718,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Future<void> _shareBill(AppOrder order, String currency, {required bool isCustomer}) async {
     final settings = ref.read(settingsProvider).value;
+    final itemsList = ref.read(inventoryProvider).valueOrNull ?? [];
+    double marketSavings = 0.0;
+    for (final oi in order.items) {
+      final inv = itemsList.where((i) => i.id == oi.itemId).firstOrNull;
+      if (inv != null && inv.marketPrice > oi.unitPrice) {
+        marketSavings += (inv.marketPrice - oi.unitPrice) * oi.quantity;
+      }
+    }
     final list = order.items
             .map((it) => {
                   'item_name':   it.itemName,
@@ -688,6 +751,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       remainingAmount: order.remainingAmount,
       paymentMethod:   order.payments.firstOrNull?.method ?? 'cash',
       ownerPhone:      settings?.phone ?? '',
+      marketSavings:   marketSavings,
       currency:        currency,
     );
 

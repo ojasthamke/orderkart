@@ -479,10 +479,12 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
   String _plan = 'Gold VIP';
   double _fee = 499.0;
   double _discountPct = 10.0;
-  double _markupPct = 5.0; // 5% price markup for 10% discount
+  double _markupPct = 5.0;
   bool _freeDelivery = true;
   bool _priorityDelivery = true;
   int _durationDays = 365;
+  String _customerSearch = '';
+  final _customerSearchCon = TextEditingController();
 
   @override
   void initState() {
@@ -496,6 +498,12 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
       _freeDelivery = widget.existingCustomer!.vipFreeDelivery;
       _priorityDelivery = widget.existingCustomer!.vipPriorityDelivery;
     }
+  }
+
+  @override
+  void dispose() {
+    _customerSearchCon.dispose();
+    super.dispose();
   }
 
   @override
@@ -539,24 +547,113 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
 
             // Select Customer if new
             if (widget.existingCustomer == null) ...[
-              const Text('Select Customer', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              const Text('Search & Select Customer', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               const SizedBox(height: 6),
-              customersAsync.when(
-                data: (list) => DropdownButtonFormField<Customer>(
-                  value: _selectedCustomer,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  hint: const Text('Choose customer...'),
-                  items: list
-                      .map((c) => DropdownMenuItem(
-                            value: c,
-                            child: Text('${c.name} (${c.phone1})'),
-                          ))
-                      .toList(),
-                  onChanged: (c) => setState(() => _selectedCustomer = c),
+              TextField(
+                controller: _customerSearchCon,
+                decoration: InputDecoration(
+                  hintText: 'Search by name or phone...',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  suffixIcon: _customerSearch.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded),
+                          onPressed: () {
+                            _customerSearchCon.clear();
+                            setState(() => _customerSearch = '');
+                          },
+                        )
+                      : null,
                 ),
+                onChanged: (v) => setState(() => _customerSearch = v.trim().toLowerCase()),
+              ),
+              const SizedBox(height: 8),
+              if (_selectedCustomer != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD700).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_rounded, color: Color(0xFFB45309), size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${_selectedCustomer!.name}  •  ${_selectedCustomer!.phone1}',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _selectedCustomer = null),
+                        child: const Icon(Icons.close_rounded, size: 18, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              customersAsync.when(
+                data: (list) {
+                  final filtered = _customerSearch.isEmpty
+                      ? <Customer>[]
+                      : list.where((c) {
+                          return c.name.toLowerCase().contains(_customerSearch) ||
+                              c.phone1.contains(_customerSearch);
+                        }).take(8).toList();
+                  if (filtered.isEmpty && _customerSearch.isNotEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text('No customers found for "$_customerSearch"',
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    );
+                  }
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filtered.length,
+                    itemBuilder: (ctx, i) {
+                      final c = filtered[i];
+                      final isSelected = _selectedCustomer?.id == c.id;
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            _selectedCustomer = c;
+                            _customerSearch = '';
+                            _customerSearchCon.clear();
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFFFFD700).withOpacity(0.15)
+                                : Theme.of(context).cardTheme.color,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFFFFD700) : AppColors.gray200,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.person_rounded, size: 18, color: AppColors.textSecondary),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text('${c.name}  •  ${c.phone1}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                              ),
+                              if (isSelected)
+                                const Icon(Icons.check_rounded, size: 18, color: Color(0xFFB45309)),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
                 loading: () => const LinearProgressIndicator(),
                 error: (e, _) => Text('Error: $e'),
               ),

@@ -36,9 +36,6 @@ import 'features/visit/presentation/add_edit_visit_screen.dart';
 import 'features/note/domain/app_note.dart';
 import 'features/visit/domain/app_visit.dart';
 
-import 'core/services/widget_service.dart';
-
-final navigatorKey = GlobalKey<NavigatorState>();
 
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
@@ -48,20 +45,12 @@ class OrderKartApp extends ConsumerStatefulWidget {
 }
 
 class _OrderKartAppState extends ConsumerState<OrderKartApp> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetService.checkWidgetLaunch(navigatorKey);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
-      navigatorKey: navigatorKey,
       title: 'OrderKart',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,

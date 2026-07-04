@@ -12,6 +12,7 @@ import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/customer.dart';
+import '../../../core/constants/app_routes.dart';
 import 'customer_provider.dart';
 
 class AddEditCustomerScreen extends ConsumerStatefulWidget {
@@ -471,9 +472,51 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       }
 
       if (!mounted) return;
-      SnackbarHelper.showSuccess(
-          context, _isEdit ? 'Customer details updated' : 'Customer added');
-      Navigator.of(context).pop();
+      if (_isEdit) {
+        SnackbarHelper.showSuccess(context, 'Customer details updated');
+        Navigator.of(context).pop();
+      } else {
+        SnackbarHelper.showSuccess(context, 'Customer added successfully');
+        // Offer VIP upgrade for new customers
+        final upgradeToVip = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700), size: 28),
+                SizedBox(width: 10),
+                Text('Upgrade to VIP?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              ],
+            ),
+            content: Text(
+              'Would you like to enroll ${_nameCon.text.trim()} in a VIP membership plan?\n\nVIP members enjoy exclusive discounts, free delivery, and priority handling.',
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Not Now'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.workspace_premium_rounded, size: 18),
+                label: const Text('Yes, Upgrade!'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFD700),
+                  foregroundColor: const Color(0xFF0F172A),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        if (upgradeToVip == true) {
+          Navigator.of(context).pushNamed(AppRoutes.vipDashboard);
+        }
+      }
     } catch (e) {
       if (mounted)
         SnackbarHelper.showError(context, 'Failed to save customer: $e');

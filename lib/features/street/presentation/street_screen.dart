@@ -107,9 +107,31 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                   GestureDetector(
                     onTap: () async {
                       final picker = ImagePicker();
-                      final file = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-                      if (file != null) {
-                        setDlgState(() => photoPath = file.path);
+                      final source = await showModalBottomSheet<ImageSource>(
+                        context: dlgCtx,
+                        builder: (ctx) => SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.camera_alt_rounded),
+                                title: const Text('Take a Photo'),
+                                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.photo_library_rounded),
+                                title: const Text('Choose from Gallery'),
+                                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                      if (source != null) {
+                        final file = await picker.pickImage(source: source, imageQuality: 85);
+                        if (file != null) {
+                          setDlgState(() => photoPath = file.path);
+                        }
                       }
                     },
                     child: Container(

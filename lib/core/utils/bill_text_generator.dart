@@ -22,6 +22,7 @@ class BillTextGenerator {
     required double remainingAmount,
     required String paymentMethod,
     required String ownerPhone,
+    double marketSavings = 0.0, // savings vs market price
     String currency = AppConstants.defaultCurrency,
   }) {
     final buf = StringBuffer();
@@ -64,13 +65,25 @@ class BillTextGenerator {
     if (remainingAmount > 0) {
       buf.writeln('⚠️ Remaining:    $currency${remainingAmount.toStringAsFixed(2)}');
     } else {
-      buf.writeln('Fully Paid');
+      buf.writeln('Fully Paid ✅');
     }
     buf.writeln(sep);
 
-    final totalSavings = discount;
+    // ── Daily Savings Banner — always shown ──────────────────────────
+    final totalSavings = discount + marketSavings;
     if (totalSavings > 0) {
-      buf.writeln('🎉 *CONGRATULATIONS!* You saved *$currency${totalSavings.toStringAsFixed(2)}* on this order by shopping with us! 🥳✨');
+      buf.writeln('🎉 *CONGRATULATIONS!*');
+      if (discount > 0 && marketSavings > 0) {
+        buf.writeln('You saved *$currency${discount.toStringAsFixed(2)}* (order discount) + *$currency${marketSavings.toStringAsFixed(2)}* (vs. market price)');
+        buf.writeln('🏷️ *Total savings: $currency${totalSavings.toStringAsFixed(2)}* by shopping with us! 🥳✨');
+      } else if (marketSavings > 0) {
+        buf.writeln('You saved *$currency${marketSavings.toStringAsFixed(2)}* vs. market price by shopping with us! 🥳✨');
+      } else {
+        buf.writeln('You saved *$currency${discount.toStringAsFixed(2)}* on this order by shopping with us! 🥳✨');
+      }
+      buf.writeln(sep);
+    } else {
+      buf.writeln('💚 Thank you for shopping with *$businessName*!');
       buf.writeln(sep);
     }
 

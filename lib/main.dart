@@ -11,7 +11,6 @@ import 'app.dart';
 import 'core/database/database_helper.dart';
 import 'core/constants/app_constants.dart';
 import 'package:path_provider/path_provider.dart';
-import 'core/services/widget_service.dart';
 
 import 'core/services/notification_service.dart';
 import 'core/services/background_service.dart';
@@ -48,9 +47,6 @@ Future<void> main() async {
     await BackgroundService.instance.init();
     BackgroundService.instance.registerDailyTask();
 
-    // Initialize Home Widget
-    await WidgetService.init();
-    await WidgetService.updateWidgetData();
 
     runApp(
       const ProviderScope(
