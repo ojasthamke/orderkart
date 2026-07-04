@@ -204,7 +204,7 @@ class _CustomerCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: AppColors.errorSurface,
+                                color: AppColors.warningSurface,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -214,7 +214,7 @@ class _CustomerCard extends StatelessWidget {
                                     .textTheme
                                     .labelSmall
                                     ?.copyWith(
-                                      color: AppColors.error,
+                                      color: AppColors.warning,
                                       fontWeight: FontWeight.w700,
                                     ),
                               ),

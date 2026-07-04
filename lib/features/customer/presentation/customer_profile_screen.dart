@@ -327,7 +327,7 @@ class CustomerProfileScreen extends ConsumerWidget {
               _headerStat(context, 'Outstanding',
                   AppFormatters.currency(customer.outstandingBalance),
                   color: customer.outstandingBalance > 0
-                      ? AppColors.error
+                      ? AppColors.warning
                       : AppColors.success),
               _headerStat(context, 'Total Orders', '${customer.totalOrders}'),
               _headerStat(context, 'Total Paid',

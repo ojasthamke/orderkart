@@ -342,7 +342,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           context,
                           title: 'Pending Dues',
                           icon: Icons.account_balance_wallet_rounded,
-                          color: AppColors.error,
+                          color: AppColors.warning,
                           providerValue: ref.watch(pendingCustomersProvider).maybeWhen(
                             data: (list) => list.length.toString(),
                             orElse: () => '-',
@@ -402,13 +402,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF3F121F)
-                          : const Color(0xFFFFF1F2),
+                          ? const Color(0xFF2E1C00)
+                          : const Color(0xFFFFFBEB),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF9F1239)
-                            : const Color(0xFFFECDD3),
+                            ? const Color(0xFF78350F)
+                            : const Color(0xFFFDE68A),
                         width: 1.5,
                       ),
                       boxShadow: AppColors.cardShadow,
@@ -422,7 +422,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             const Text(
                               'MONEY REMAINED',
                               style: TextStyle(
-                                color: Color(0xFF9F1239),
+                                color: Color(0xFFB45309),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1.2,
@@ -431,12 +431,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF9F1239).withOpacity(0.12),
+                                color: const Color(0xFFD97706).withOpacity(0.12),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
                                 Icons.account_balance_wallet_rounded,
-                                color: Color(0xFF9F1239),
+                                color: Color(0xFFD97706),
                                 size: 18,
                               ),
                             ),
@@ -445,8 +445,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         const SizedBox(height: 10),
                         Text(
                           AppFormatters.currency(pendingPayments),
-                          style: const TextStyle(
-                            color: Color(0xFF881337),
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFFFBBF24)
+                                : const Color(0xFF92400E),
                             fontSize: 28,
                             fontWeight: FontWeight.w900,
                           ),
@@ -455,7 +457,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         const Text(
                           'Total outstanding dues from orders.',
                           style: TextStyle(
-                            color: Color(0xFF9F1239),
+                            color: Color(0xFFB45309),
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),

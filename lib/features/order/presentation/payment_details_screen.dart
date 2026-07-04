@@ -123,9 +123,9 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.errorSurface,
+                color: AppColors.warningSurface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.error.withOpacity(0.2)),
+                border: Border.all(color: AppColors.warning.withOpacity(0.3)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -135,7 +135,7 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.error,
+                      color: AppColors.warning,
                     ),
                   ),
                   Text(
@@ -144,7 +144,7 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 24,
-                      color: AppColors.error,
+                      color: AppColors.warning,
                     ),
                   ),
                 ],

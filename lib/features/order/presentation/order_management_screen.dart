@@ -419,7 +419,7 @@ class _OrderCard extends ConsumerWidget {
                     if (order.remainingAmount > 0)
                       _amountChip(context, 'Due',
                           '\u20b9${order.remainingAmount.toStringAsFixed(2)}',
-                          AppColors.error),
+                          AppColors.warning),
                   ],
                 ),
 

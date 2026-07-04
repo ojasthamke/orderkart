@@ -366,7 +366,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               color: AppColors.success),
           if (order.remainingAmount > 0)
             _sumRow('Due Amount',     '$currency${order.remainingAmount.toStringAsFixed(2)}',
-                color: AppColors.error, isBold: true),
+                color: AppColors.warning, isBold: true),
 
           // Congratulatory Savings Banner at receipt end
           if (totalSavings > 0) ...[
