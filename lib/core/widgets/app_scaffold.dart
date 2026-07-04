@@ -55,10 +55,10 @@ class AppScaffold extends StatelessWidget {
         bottom: bottom,
       ),
       body: body,
+      drawer: drawer,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       bottomSheet: bottomSheet,
-      drawer: drawer,
     );
   }
 }

@@ -23,6 +23,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   final _nameCon      = TextEditingController();
   final _costCon      = TextEditingController();
   final _sellCon      = TextEditingController();
+  final _marketCon    = TextEditingController();
   final _stockCon     = TextEditingController();
   final _minStockCon  = TextEditingController();
   final _barcodeCon   = TextEditingController();
@@ -48,6 +49,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _nameCon.text     = item.name;
         _costCon.text     = item.costPrice.toString();
         _sellCon.text     = item.sellingPrice.toString();
+        _marketCon.text   = item.marketPrice.toString();
         _stockCon.text    = item.stock.toString();
         _minStockCon.text = item.minStock.toString();
         _barcodeCon.text  = item.barcode;
@@ -59,7 +61,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
 
   @override
   void dispose() {
-    _nameCon.dispose(); _costCon.dispose(); _sellCon.dispose();
+    _nameCon.dispose(); _costCon.dispose(); _sellCon.dispose(); _marketCon.dispose();
     _stockCon.dispose(); _minStockCon.dispose(); _barcodeCon.dispose();
     super.dispose();
   }
@@ -151,6 +153,19 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // Market Retail Price (for Customer Savings Calculation)
+              TextFormField(
+                controller: _marketCon,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Market Retail Price (MRP for Savings Calc)',
+                  prefixText: '₹ ',
+                  prefixIcon: Icon(Icons.store_rounded),
+                  helperText: 'Used to calculate customer savings against market rates',
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -250,6 +265,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         category:     _category,
         costPrice:    double.tryParse(_costCon.text) ?? 0,
         sellingPrice: double.tryParse(_sellCon.text) ?? 0,
+        marketPrice:  double.tryParse(_marketCon.text) ?? 0,
         stock:        double.tryParse(_stockCon.text) ?? 0,
         minStock:     double.tryParse(_minStockCon.text) ?? 0,
         unit:         _unit,

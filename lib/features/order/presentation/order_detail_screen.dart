@@ -54,6 +54,16 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
         return AppScaffold(
           title: 'Order Details',
+          onBack: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              Navigator.of(context).pushReplacementNamed(
+                AppRoutes.customerProfile,
+                arguments: {'customerId': order.customerId},
+              );
+            }
+          },
           actions: [
             PopupMenuButton<String>(
               onSelected: (v) {
@@ -338,6 +348,46 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       ),
       child: Column(
         children: [
+          if (order.discount > 0)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Text('🎉', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'CONGRATULATIONS!',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        Text(
+                          'You saved $currency${order.discount.toStringAsFixed(2)} on this order!',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           _sumRow('Subtotal',         '$currency${order.subtotal.toStringAsFixed(2)}'),
           if (order.discount > 0)
             _sumRow('Discount',       '- $currency${order.discount.toStringAsFixed(2)}',

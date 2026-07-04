@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
@@ -34,6 +35,7 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
 
     return AppScaffold(
       title: 'Areas',
+      drawer: const AppDrawer(),
       showBack: widget.showBack,
       actions: [
         PopupMenuButton<String>(

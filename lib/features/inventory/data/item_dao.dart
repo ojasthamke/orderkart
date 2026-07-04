@@ -53,12 +53,15 @@ class ItemDao {
     final db = await _db;
     final id  = item.id.isEmpty ? _uuid.v4() : item.id;
     final now = DateTime.now().toIso8601String();
+    final itemWithId = item.copyWith(id: id);
     await db.insert('items', {
-      ...item.toMap(),
+      ...itemWithId.toMap(),
       'id':         id,
       'created_at': now,
       'updated_at': now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+    await _recordDailyPriceSnapshot(itemWithId);
     return id;
   }
 
@@ -70,6 +73,41 @@ class ItemDao {
       where: 'id = ?',
       whereArgs: [item.id],
     );
+
+    await _recordDailyPriceSnapshot(item);
+  }
+
+  Future<void> _recordDailyPriceSnapshot(Item item) async {
+    final db = await _db;
+    final dateKey = DateTime.now().toIso8601String().substring(0, 10);
+    await db.rawInsert('''
+      INSERT OR REPLACE INTO item_price_history (id, item_id, date, selling_price, market_price, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    ''', [
+      '${item.id}_$dateKey',
+      item.id,
+      dateKey,
+      item.sellingPrice,
+      item.marketPrice,
+      DateTime.now().toIso8601String(),
+    ]);
+  }
+
+  Future<List<Map<String, dynamic>>> getPriceHistoryByDate(String date) async {
+    final db = await _db;
+    return await db.rawQuery('''
+      SELECT h.*, i.name, i.unit, i.category
+      FROM item_price_history h
+      JOIN items i ON h.item_id = i.id
+      WHERE h.date = ?
+      ORDER BY i.name ASC
+    ''', [date]);
+  }
+
+  Future<List<Map<String, dynamic>>> getItemPriceHistory(String itemId) async {
+    final db = await _db;
+    return await db.query('item_price_history',
+        where: 'item_id = ?', whereArgs: [itemId], orderBy: 'date DESC');
   }
 
   Future<void> deleteItem(String id) async {

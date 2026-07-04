@@ -31,6 +31,7 @@ class DatabaseHelper {
         await db.execute('PRAGMA foreign_keys = ON');
         await db.rawQuery('PRAGMA journal_mode = WAL');
         await _ensureVipColumns(db);
+        await _ensurePriceHistoryTables(db);
       },
     );
   }
@@ -360,5 +361,25 @@ class DatabaseHelper {
         // Column already exists, ignore
       }
     }
+  }
+
+  Future<void> _ensurePriceHistoryTables(Database db) async {
+    try {
+      await db.execute('ALTER TABLE items ADD COLUMN market_price REAL DEFAULT 0');
+    } catch (_) {}
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS item_price_history (
+        id            TEXT PRIMARY KEY,
+        item_id       TEXT NOT NULL,
+        date          TEXT NOT NULL,
+        selling_price REAL NOT NULL,
+        market_price  REAL DEFAULT 0,
+        created_at    TEXT NOT NULL,
+        FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_price_hist_date ON item_price_history(date)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_price_hist_item ON item_price_history(item_id)');
   }
 }

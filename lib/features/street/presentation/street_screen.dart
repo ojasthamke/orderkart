@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
@@ -30,6 +31,7 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
 
     return AppScaffold(
       title: widget.areaName,
+      drawer: const AppDrawer(),
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_street',
         onPressed: () => _showAddEdit(context, null),

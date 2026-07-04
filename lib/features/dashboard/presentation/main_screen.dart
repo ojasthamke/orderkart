@@ -45,6 +45,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         onPopInvokedWithResult: (didPop, _) async {
           if (didPop) return;
 
+          if (_currentIndex != 0) {
+            setState(() => _currentIndex = 0);
+            return;
+          }
+
           final now = DateTime.now();
           if (_lastBackPressTime == null || 
               now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {

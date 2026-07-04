@@ -6,6 +6,7 @@ class Item {
   final String category;
   final double costPrice;
   final double sellingPrice;
+  final double marketPrice;   // Average Market Retail Price
   final double stock;
   final double minStock;
   final String unit;
@@ -15,6 +16,8 @@ class Item {
 
   bool get isLowStock => stock <= minStock && minStock > 0;
   double get profitMargin => sellingPrice > 0 ? ((sellingPrice - costPrice) / sellingPrice) * 100 : 0;
+  double get customerSavings => marketPrice > sellingPrice ? marketPrice - sellingPrice : 0.0;
+  double get customerSavingsPct => marketPrice > 0 ? (customerSavings / marketPrice) * 100 : 0.0;
 
   const Item({
     required this.id,
@@ -22,6 +25,7 @@ class Item {
     required this.category,
     this.costPrice    = 0,
     this.sellingPrice = 0,
+    this.marketPrice  = 0,
     this.stock        = 0,
     this.minStock     = 0,
     required this.unit,
@@ -36,6 +40,7 @@ class Item {
     String? category,
     double? costPrice,
     double? sellingPrice,
+    double? marketPrice,
     double? stock,
     double? minStock,
     String? unit,
@@ -49,6 +54,7 @@ class Item {
       category:     category     ?? this.category,
       costPrice:    costPrice    ?? this.costPrice,
       sellingPrice: sellingPrice ?? this.sellingPrice,
+      marketPrice:  marketPrice  ?? this.marketPrice,
       stock:        stock        ?? this.stock,
       minStock:     minStock     ?? this.minStock,
       unit:         unit         ?? this.unit,
@@ -64,6 +70,7 @@ class Item {
         'category':      category,
         'cost_price':    costPrice,
         'selling_price': sellingPrice,
+        'market_price':  marketPrice,
         'stock':         stock,
         'min_stock':     minStock,
         'unit':          unit,
@@ -78,10 +85,11 @@ class Item {
         category:     map['category']      as String,
         costPrice:    (map['cost_price']    as num?)?.toDouble() ?? 0,
         sellingPrice: (map['selling_price'] as num?)?.toDouble() ?? 0,
-        stock:        (map['stock']         as num?)?.toDouble() ?? 0,
-        minStock:     (map['min_stock']     as num?)?.toDouble() ?? 0,
-        unit:         map['unit']           as String,
-        barcode:      map['barcode']        as String? ?? '',
+        marketPrice:  (map['market_price']  as num?)?.toDouble() ?? 0,
+        stock:        (map['stock']        as num?)?.toDouble() ?? 0,
+        minStock:     (map['min_stock']    as num?)?.toDouble() ?? 0,
+        unit:         map['unit']          as String,
+        barcode:      map['barcode']       as String? ?? '',
         createdAt:    DateTime.parse(map['created_at'] as String),
         updatedAt:    DateTime.parse(map['updated_at'] as String),
       );
