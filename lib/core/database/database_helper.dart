@@ -30,6 +30,7 @@ class DatabaseHelper {
       onOpen: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
         await db.rawQuery('PRAGMA journal_mode = WAL');
+        await _ensureVipColumns(db);
       },
     );
   }
@@ -335,6 +336,29 @@ class DatabaseHelper {
     if (_db != null && _db!.isOpen) {
       await _db!.close();
       _db = null;
+    }
+  }
+
+  Future<void> _ensureVipColumns(Database db) async {
+    final cols = [
+      'ALTER TABLE customers ADD COLUMN is_vip INTEGER DEFAULT 0',
+      "ALTER TABLE customers ADD COLUMN vip_plan TEXT DEFAULT 'Gold VIP'",
+      "ALTER TABLE customers ADD COLUMN vip_start_date TEXT DEFAULT ''",
+      "ALTER TABLE customers ADD COLUMN vip_expiry_date TEXT DEFAULT ''",
+      'ALTER TABLE customers ADD COLUMN vip_subscription_fee REAL DEFAULT 0',
+      "ALTER TABLE customers ADD COLUMN vip_notes TEXT DEFAULT ''",
+      'ALTER TABLE customers ADD COLUMN vip_auto_renewal INTEGER DEFAULT 0',
+      'ALTER TABLE customers ADD COLUMN vip_free_delivery INTEGER DEFAULT 1',
+      'ALTER TABLE customers ADD COLUMN vip_discount_pct REAL DEFAULT 10.0',
+      'ALTER TABLE customers ADD COLUMN vip_markup_pct REAL DEFAULT 5.0',
+      'ALTER TABLE customers ADD COLUMN vip_priority_delivery INTEGER DEFAULT 1',
+    ];
+    for (final col in cols) {
+      try {
+        await db.execute(col);
+      } catch (_) {
+        // Column already exists, ignore
+      }
     }
   }
 }

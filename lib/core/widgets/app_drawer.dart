@@ -75,6 +75,14 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                   _DrawerItem(
+                    icon: Icons.workspace_premium_rounded,
+                    title: 'VIP Membership Club',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.vipDashboard);
+                    },
+                  ),
+                  _DrawerItem(
                     icon: Icons.shopping_cart_rounded,
                     title: 'Orders & Sales',
                     onTap: () {

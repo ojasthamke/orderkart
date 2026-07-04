@@ -191,17 +191,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 SwitchListTile(
-                  secondary: const Icon(Icons.auto_fix_high_rounded),
-                  title: const Text('Smart Bill Rounding'),
-                  subtitle: const Text('Rounds bill to nearest 5/10'),
+                  secondary: const Icon(Icons.auto_awesome_rounded),
+                  title: const Text('Smart Rounding'),
+                  subtitle: const Text('Round total bill amount (e.g. ₹58 → ₹60)'),
                   value: settings.smartRounding,
-                  onChanged: (v) => ref
-                      .read(settingsProvider.notifier)
-                      .update(settings.copyWith(smartRounding: v)),
+                  onChanged: (v) {
+                    ref
+                        .read(settingsProvider.notifier)
+                        .update(settings.copyWith(smartRounding: v));
+                  },
                 ),
               ]),
 
               const SizedBox(height: 20),
+
+              // ── VIP Membership Settings ──────────────────────────────
+              _sectionHeader('VIP Membership & Pricing Settings', Icons.workspace_premium_rounded),
+              _card([
+                SwitchListTile(
+                  secondary: const Icon(Icons.percent_rounded, color: Color(0xFFFFD700)),
+                  title: const Text('Custom VIP Price Markup'),
+                  subtitle: const Text('Adjust item prices (+5% / +10%) for VIP members so realization matches margins while displaying full VIP discount on receipts.'),
+                  value: settings.enableVipPriceMarkup,
+                  onChanged: (v) {
+                    ref.read(settingsProvider.notifier).update(
+                        settings.copyWith(enableVipPriceMarkup: v));
+                  },
+                ),
+              ]),  const SizedBox(height: 20),
 
               // ── QR Code ──────────────────────────────────────────────
               _sectionHeader('Business QR Code', Icons.qr_code_rounded),

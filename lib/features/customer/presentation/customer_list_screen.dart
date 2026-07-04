@@ -11,6 +11,7 @@ import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/customer_avatar.dart';
+import '../../../core/widgets/vip_glow_avatar.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
 
@@ -142,8 +143,9 @@ class _CustomerCard extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                CustomerAvatar(
+                VipGlowAvatar(
                   photoPath: customer.photoPath,
+                  isVip: customer.isVipActive,
                   radius: 26,
                 ),
                 const SizedBox(width: 14),
@@ -190,7 +192,10 @@ class _CustomerCard extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 6),
-                                _buildTagBadge(customer.tag),
+                                if (customer.isVipActive)
+                                  VipGoldBadgeChip(planName: customer.vipPlan)
+                                else
+                                  _buildTagBadge(customer.tag),
                               ],
                             ),
                           ),

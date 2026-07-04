@@ -293,28 +293,25 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
           ],
         ),
       ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, -4),
-              )
-            ],
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -4),
+            )
+          ],
+        ),
+        child: FilledButton(
+          onPressed: _amount > 0 ? _onRecord : null,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(double.infinity, 56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          child: FilledButton(
-            onPressed: _amount > 0 ? _onRecord : null,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            child: const Text('Record Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
+          child: const Text('Record Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );

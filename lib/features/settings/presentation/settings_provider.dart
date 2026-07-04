@@ -64,6 +64,7 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     await _dao.setValue(AppConstants.keyStaffWhatsApp,      settings.staffWhatsApp);
     await _dao.setValue(AppConstants.keyLastDeliveryCharge, settings.lastDeliveryCharge.toString());
     await _dao.setValue(AppConstants.keyNotifTime,          settings.notificationTime);
+    await _dao.setValue(AppConstants.keyEnableVipPriceMarkup, settings.enableVipPriceMarkup.toString());
     state = AsyncValue.data(settings);
     _invalidateAll();
   }

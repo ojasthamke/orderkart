@@ -7,20 +7,33 @@ class Customer {
   final String phone1;
   final String phone2;
   final String whatsapp;
-  final String houseNumber;   // legacy field kept for backward compat / address display
+  final String houseNumber;
   final String address;
   final String notes;
   final String mapsLocation;
   final String photoPath;
-  final int    serialNo;       // ordering number shown before customer name (0 = unset)
+  final int    serialNo;
   final double outstandingBalance;
   final int    totalOrders;
   final double totalPaid;
   final double totalPending;
   final DateTime customerSince;
-  final String  lastOrderDate;   // ISO string, may be empty
+  final String  lastOrderDate;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  // VIP Membership Fields
+  final bool   isVip;
+  final String vipPlan;             // 'Gold', 'Platinum', 'Custom', etc.
+  final String vipStartDate;        // ISO string
+  final String vipExpiryDate;       // ISO string
+  final double vipSubscriptionFee;
+  final String vipNotes;
+  final bool   vipAutoRenewal;
+  final bool   vipFreeDelivery;
+  final double vipDiscountPct;      // 5%, 10%, 15%, 20%, or Custom %
+  final double vipMarkupPct;        // 5% price markup for 10% discount, 10% for 20%
+  final bool   vipPriorityDelivery;
 
   const Customer({
     required this.id,
@@ -43,6 +56,18 @@ class Customer {
     this.lastOrderDate  = '',
     required this.createdAt,
     required this.updatedAt,
+    // VIP Defaults
+    this.isVip               = false,
+    this.vipPlan             = 'Gold VIP',
+    this.vipStartDate        = '',
+    this.vipExpiryDate       = '',
+    this.vipSubscriptionFee  = 0.0,
+    this.vipNotes            = '',
+    this.vipAutoRenewal      = false,
+    this.vipFreeDelivery     = true,
+    this.vipDiscountPct      = 10.0,
+    this.vipMarkupPct        = 5.0,
+    this.vipPriorityDelivery = true,
   });
 
   Customer copyWith({
@@ -66,6 +91,17 @@ class Customer {
     String?   lastOrderDate,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool?   isVip,
+    String? vipPlan,
+    String? vipStartDate,
+    String? vipExpiryDate,
+    double? vipSubscriptionFee,
+    String? vipNotes,
+    bool?   vipAutoRenewal,
+    bool?   vipFreeDelivery,
+    double? vipDiscountPct,
+    double? vipMarkupPct,
+    bool?   vipPriorityDelivery,
   }) {
     return Customer(
       id:                 id                 ?? this.id,
@@ -88,6 +124,17 @@ class Customer {
       lastOrderDate:      lastOrderDate      ?? this.lastOrderDate,
       createdAt:          createdAt          ?? this.createdAt,
       updatedAt:          updatedAt          ?? this.updatedAt,
+      isVip:               isVip               ?? this.isVip,
+      vipPlan:             vipPlan             ?? this.vipPlan,
+      vipStartDate:        vipStartDate        ?? this.vipStartDate,
+      vipExpiryDate:       vipExpiryDate       ?? this.vipExpiryDate,
+      vipSubscriptionFee:  vipSubscriptionFee  ?? this.vipSubscriptionFee,
+      vipNotes:            vipNotes            ?? this.vipNotes,
+      vipAutoRenewal:      vipAutoRenewal      ?? this.vipAutoRenewal,
+      vipFreeDelivery:     vipFreeDelivery     ?? this.vipFreeDelivery,
+      vipDiscountPct:      vipDiscountPct      ?? this.vipDiscountPct,
+      vipMarkupPct:        vipMarkupPct        ?? this.vipMarkupPct,
+      vipPriorityDelivery: vipPriorityDelivery ?? this.vipPriorityDelivery,
     );
   }
 
@@ -112,6 +159,17 @@ class Customer {
         'last_order_date':     lastOrderDate,
         'created_at':          createdAt.toIso8601String(),
         'updated_at':          updatedAt.toIso8601String(),
+        'is_vip':               isVip ? 1 : 0,
+        'vip_plan':             vipPlan,
+        'vip_start_date':       vipStartDate,
+        'vip_expiry_date':      vipExpiryDate,
+        'vip_subscription_fee': vipSubscriptionFee,
+        'vip_notes':            vipNotes,
+        'vip_auto_renewal':      vipAutoRenewal ? 1 : 0,
+        'vip_free_delivery':     vipFreeDelivery ? 1 : 0,
+        'vip_discount_pct':      vipDiscountPct,
+        'vip_markup_pct':        vipMarkupPct,
+        'vip_priority_delivery': vipPriorityDelivery ? 1 : 0,
       };
 
   factory Customer.fromMap(Map<String, dynamic> map) => Customer(
@@ -135,13 +193,50 @@ class Customer {
         lastOrderDate:       map['last_order_date']     as String? ?? '',
         createdAt:           DateTime.parse(map['created_at']    as String),
         updatedAt:           DateTime.parse(map['updated_at']    as String),
+        isVip:               (map['is_vip'] as int? ?? 0) == 1,
+        vipPlan:             map['vip_plan']            as String? ?? 'Gold VIP',
+        vipStartDate:        map['vip_start_date']       as String? ?? '',
+        vipExpiryDate:       map['vip_expiry_date']      as String? ?? '',
+        vipSubscriptionFee:  (map['vip_subscription_fee'] as num?)?.toDouble() ?? 0.0,
+        vipNotes:            map['vip_notes']           as String? ?? '',
+        vipAutoRenewal:      (map['vip_auto_renewal'] as int? ?? 0) == 1,
+        vipFreeDelivery:     (map['vip_free_delivery'] as int? ?? 1) == 1,
+        vipDiscountPct:      (map['vip_discount_pct'] as num?)?.toDouble() ?? 10.0,
+        vipMarkupPct:        (map['vip_markup_pct'] as num?)?.toDouble() ?? 5.0,
+        vipPriorityDelivery: (map['vip_priority_delivery'] as int? ?? 1) == 1,
       );
 
-  /// Display label shown before the customer name: '#3' or '' if unset
   String get serialLabel => serialNo > 0 ? '#$serialNo' : '';
 
-  /// Feature 12: Customer Tag Badge (VIP, Regular, New, Inactive)
+  /// VIP Active Status calculation
+  bool get isVipActive {
+    if (!isVip) return false;
+    if (vipExpiryDate.isEmpty) return true;
+    final exp = DateTime.tryParse(vipExpiryDate);
+    if (exp == null) return true;
+    return exp.isAfter(DateTime.now());
+  }
+
+  /// Check if VIP membership is expiring within 7 days
+  bool get isVipExpiringSoon {
+    if (!isVipActive) return false;
+    if (vipExpiryDate.isEmpty) return false;
+    final exp = DateTime.tryParse(vipExpiryDate);
+    if (exp == null) return false;
+    final diff = exp.difference(DateTime.now()).inDays;
+    return diff >= 0 && diff <= 7;
+  }
+
+  int get daysUntilVipExpiry {
+    if (vipExpiryDate.isEmpty) return 999;
+    final exp = DateTime.tryParse(vipExpiryDate);
+    if (exp == null) return 999;
+    return exp.difference(DateTime.now()).inDays;
+  }
+
+  /// Tag Badge (VIP, Regular, New, Inactive)
   String get tag {
+    if (isVipActive) return 'VIP';
     if (totalOrders >= 8 || totalPaid >= 5000) return 'VIP';
     if (totalOrders >= 3) return 'Regular';
     final now = DateTime.now();
@@ -155,7 +250,6 @@ class Customer {
     return 'Regular';
   }
 
-  /// Feature 28: Advance Balance (Credit)
   double get advanceBalance => outstandingBalance < 0 ? outstandingBalance.abs() : 0.0;
 
   @override

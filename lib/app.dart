@@ -10,6 +10,7 @@ import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/area/presentation/area_screen.dart';
 import 'features/street/presentation/street_screen.dart';
 import 'features/customer/presentation/customer_list_screen.dart';
+import 'features/customer/presentation/vip_dashboard_screen.dart';
 import 'features/customer/presentation/customer_profile_screen.dart';
 import 'features/customer/presentation/add_edit_customer_screen.dart';
 import 'features/order/presentation/create_order_screen.dart';
@@ -164,6 +165,9 @@ class OrderKartApp extends ConsumerWidget {
 
       case AppRoutes.notifications:
         return _slide(const NotificationCenterScreen());
+
+      case AppRoutes.vipDashboard:
+        return _slide(const VipDashboardScreen());
 
       case AppRoutes.notes:
         return _slide(const NotesListScreen());

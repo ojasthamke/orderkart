@@ -19,6 +19,8 @@ import '../../inventory/presentation/inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../../settings/domain/app_settings.dart';
 import '../../../core/widgets/qr_full_screen_preview.dart';
+import '../../customer/presentation/customer_provider.dart';
+import '../../../core/widgets/vip_glow_avatar.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
 import '../domain/payment.dart';
@@ -215,35 +217,76 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // ── Customer header ──────────────────────────────────────────────────────────
   Widget _buildCustomerHeader(String currency) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primarySurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.person_rounded, color: AppColors.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              widget.customerName,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+    final customerAsync = ref.watch(customerDetailProvider(widget.customerId));
+    final customer = customerAsync.valueOrNull;
+    final isVip = customer?.isVipActive ?? false;
+
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isVip ? const Color(0xFFFFD700).withOpacity(0.12) : AppColors.primarySurface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isVip ? const Color(0xFFFFD700) : AppColors.primary.withOpacity(0.2),
+              width: isVip ? 1.5 : 1.0,
             ),
           ),
-          Text(
-            '${_cart.length} items',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.primary,
+          child: Row(
+            children: [
+              VipGlowAvatar(
+                photoPath: customer?.photoPath ?? '',
+                isVip: isVip,
+                radius: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            widget.customerName,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: isVip ? const Color(0xFFB45309) : AppColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isVip) ...[
+                          const SizedBox(width: 6),
+                          VipGoldBadgeChip(planName: customer?.vipPlan ?? 'VIP'),
+                        ],
+                      ],
+                    ),
+                    if (isVip)
+                      Text(
+                        'Benefits: ${customer!.vipFreeDelivery ? 'Free Delivery • ' : ''}${customer.vipDiscountPct.toStringAsFixed(0)}% Off',
+                        style: const TextStyle(
+                          color: Color(0xFFB45309),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                  ],
                 ),
+              ),
+              Text(
+                '${_cart.length} items',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -744,11 +787,19 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 );
                 return;
               }
+              double unitPrice = item.sellingPrice;
+              final customer = ref.read(customerDetailProvider(widget.customerId)).value;
+              final settings = ref.read(settingsProvider).valueOrNull;
+              final enableMarkup = settings?.enableVipPriceMarkup ?? true;
+              if (enableMarkup && customer != null && customer.isVipActive && customer.vipMarkupPct > 0) {
+                unitPrice = double.parse((item.sellingPrice * (1 + (customer.vipMarkupPct / 100))).toStringAsFixed(2));
+              }
+
               _cart.add(_CartItem(
                 itemId:   item.id,
                 name:     item.name,
                 unit:     item.unit,
-                price:    item.sellingPrice,
+                price:    unitPrice,
                 quantity: qty,
               ));
             }

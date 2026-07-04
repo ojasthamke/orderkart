@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/customer_avatar.dart';
+import '../../../core/widgets/vip_glow_avatar.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
@@ -225,16 +226,28 @@ class CustomerProfileScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
-        boxShadow: AppColors.cardShadow,
+        border: Border.all(
+          color: customer.isVipActive ? const Color(0xFFFFD700) : AppColors.gray200,
+          width: customer.isVipActive ? 1.5 : 1.0,
+        ),
+        boxShadow: customer.isVipActive
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFFFD700).withOpacity(0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : AppColors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              CustomerAvatar(
+              VipGlowAvatar(
                 photoPath: customer.photoPath,
+                isVip: customer.isVipActive,
                 radius: 36,
               ),
               const SizedBox(width: 16),
@@ -242,12 +255,22 @@ class CustomerProfileScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      customer.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            customer.name,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (customer.isVipActive)
+                          VipGoldBadgeChip(planName: customer.vipPlan),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(

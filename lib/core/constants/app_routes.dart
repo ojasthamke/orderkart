@@ -8,6 +8,7 @@ class AppRoutes {
   static const String areas = '/areas';
   static const String streets = '/streets';
   static const String customers = '/customers';
+  static const String vipDashboard = '/vip-dashboard';
   static const String customerProfile = '/customer-profile';
   static const String addEditCustomer = '/add-edit-customer';
   static const String createOrder = '/create-order';

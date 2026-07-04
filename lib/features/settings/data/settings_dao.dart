@@ -45,6 +45,7 @@ class SettingsDao {
       staffWhatsApp:        m[AppConstants.keyStaffWhatsApp]   ?? '',
       lastDeliveryCharge:   double.tryParse(m[AppConstants.keyLastDeliveryCharge] ?? '10') ?? 10,
       notificationTime:     m[AppConstants.keyNotifTime]       ?? '06:00',
+      enableVipPriceMarkup: (m[AppConstants.keyEnableVipPriceMarkup] ?? 'true') == 'true',
     );
   }
 }

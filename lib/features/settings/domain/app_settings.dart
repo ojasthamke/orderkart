@@ -18,6 +18,7 @@ class AppSettings {
   final String staffWhatsApp;
   final double lastDeliveryCharge;
   final String notificationTime;
+  final bool   enableVipPriceMarkup;
 
   const AppSettings({
     this.businessName      = 'My Business',
@@ -37,6 +38,7 @@ class AppSettings {
     this.staffWhatsApp     = '',
     this.lastDeliveryCharge= 10.0,
     this.notificationTime  = '06:00',
+    this.enableVipPriceMarkup = true,
   });
 
   AppSettings copyWith({
@@ -57,6 +59,7 @@ class AppSettings {
     String? staffWhatsApp,
     double? lastDeliveryCharge,
     String? notificationTime,
+    bool?   enableVipPriceMarkup,
   }) {
     return AppSettings(
       businessName:       businessName       ?? this.businessName,
@@ -76,6 +79,7 @@ class AppSettings {
       staffWhatsApp:      staffWhatsApp      ?? this.staffWhatsApp,
       lastDeliveryCharge: lastDeliveryCharge ?? this.lastDeliveryCharge,
       notificationTime:   notificationTime   ?? this.notificationTime,
+      enableVipPriceMarkup: enableVipPriceMarkup ?? this.enableVipPriceMarkup,
     );
   }
 }

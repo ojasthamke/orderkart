@@ -8,6 +8,7 @@ import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/customer_avatar.dart';
+import '../../../core/widgets/vip_glow_avatar.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../domain/search_result.dart';
@@ -209,8 +210,9 @@ class _SearchResultTile extends ConsumerWidget {
     if (result.type == SearchResultType.customer) {
       final customerAsync = ref.watch(customerDetailProvider(result.id));
       leadingWidget = customerAsync.when(
-        data: (customer) => CustomerAvatar(
-          photoPath: customer?.photoPath,
+        data: (customer) => VipGlowAvatar(
+          photoPath: customer?.photoPath ?? '',
+          isVip: customer?.isVipActive ?? false,
           radius: 19,
         ),
         loading: () => const CircleAvatar(
@@ -222,7 +224,7 @@ class _SearchResultTile extends ConsumerWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        error: (_, __) => const CustomerAvatar(photoPath: '', radius: 19),
+        error: (_, __) => const VipGlowAvatar(photoPath: '', isVip: false, radius: 19),
       );
     }
 
