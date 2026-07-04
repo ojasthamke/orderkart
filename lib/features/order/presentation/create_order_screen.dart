@@ -143,8 +143,22 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   // Cart Items
                   _buildCartSection(context, currency),
 
+                  // Reorder from Past Orders
+                  if (widget.orderId == null) ...[
+                    OutlinedButton.icon(
+                      onPressed: () => _showPastOrdersReorderSheet(context),
+                      icon: const Icon(Icons.history_rounded, color: AppColors.primary),
+                      label: const Text('Reorder from Customer\'s Past Orders'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 46),
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+
                   // Add Item button
-                  const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () => _showItemSelector(context),
                     icon: const Icon(Icons.add_shopping_cart_rounded),
@@ -762,6 +776,95 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       setState(() => _saving = false);
       if (mounted) SnackbarHelper.showError(context, 'Failed to save order: $e');
     }
+  }
+
+  void _showPastOrdersReorderSheet(BuildContext context) {
+    AppHaptics.selection();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Consumer(
+        builder: (ctx, ref, _) {
+          final ordersAsync = ref.watch(customerOrdersProvider(widget.customerId));
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.65,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Reorder Past Order for ${widget.customerName}',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: ordersAsync.when(
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('Error loading past orders: $e')),
+                    data: (pastOrders) {
+                      if (pastOrders.isEmpty) {
+                        return const Center(child: Text('No previous orders found for this customer.'));
+                      }
+                      return ListView.builder(
+                        itemCount: pastOrders.length,
+                        itemBuilder: (_, i) {
+                          final o = pastOrders[i];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              title: Text('Order ${o.orderNoLabel} — ${AppFormatters.currency(o.grandTotal)}'),
+                              subtitle: Text(
+                                '${AppFormatters.date(o.createdAt)} • ${o.items.length} items (${o.items.map((it) => it.itemName).join(', ')})',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: ElevatedButton(
+                                onPressed: () {
+                                  AppHaptics.itemAdded();
+                                  setState(() {
+                                    _cart.clear();
+                                    for (final it in o.items) {
+                                      _cart.add(_CartItem(
+                                        itemId: it.itemId,
+                                        name: it.itemName,
+                                        unit: it.itemUnit,
+                                        price: it.unitPrice,
+                                        quantity: it.quantity,
+                                      ));
+                                    }
+                                  });
+                                  Navigator.pop(ctx);
+                                  SnackbarHelper.showSuccess(context, 'Reordered ${o.items.length} items from past order');
+                                },
+                                child: const Text('Reorder'),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showItemSelector(BuildContext context) {

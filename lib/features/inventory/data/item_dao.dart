@@ -104,6 +104,17 @@ class ItemDao {
     ''', [date]);
   }
 
+  Future<List<Map<String, dynamic>>> getPriceHistoryDateRange(String startDate, String endDate) async {
+    final db = await _db;
+    return await db.rawQuery('''
+      SELECT h.*, i.name, i.unit, i.category
+      FROM item_price_history h
+      JOIN items i ON h.item_id = i.id
+      WHERE h.date >= ? AND h.date <= ?
+      ORDER BY h.date DESC, i.name ASC
+    ''', [startDate, endDate]);
+  }
+
   Future<List<Map<String, dynamic>>> getItemPriceHistory(String itemId) async {
     final db = await _db;
     return await db.query('item_price_history',

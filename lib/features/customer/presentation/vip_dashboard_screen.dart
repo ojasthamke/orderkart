@@ -19,6 +19,13 @@ class VipDashboardScreen extends ConsumerStatefulWidget {
 class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
   String _searchQuery = '';
   String _selectedFilter = 'all'; // 'all', 'active', 'expiring', 'expired'
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +34,11 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
     return AppScaffold(
       title: 'VIP Memberships',
       actions: [
+        IconButton(
+          icon: const Icon(Icons.search_rounded),
+          tooltip: 'Search VIP Members',
+          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
+        ),
         IconButton(
           icon: const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700)),
           onPressed: () => _showAddEditVipDialog(context),
@@ -144,10 +156,20 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
 
                   // ── Search & Filter Chips ─────────────────────────────
                   TextField(
+                    controller: _searchController,
                     onChanged: (v) => setState(() => _searchQuery = v),
                     decoration: InputDecoration(
-                      hintText: 'Search VIP members, plans...',
+                      hintText: 'Search VIP members by name, phone, plan...',
                       prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(

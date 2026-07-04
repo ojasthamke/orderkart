@@ -40,8 +40,8 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _amount = widget.remainingAmount;
-    _amountCon.text = widget.remainingAmount.toStringAsFixed(2);
+    _amount = 0;
+    _amountCon.text = '';
   }
 
   @override
@@ -323,6 +323,7 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
     return Expanded(
       child: OutlinedButton(
         onPressed: () {
+          AppHaptics.selection();
           setState(() => _amount = amount);
           _amountCon.text = amount.toStringAsFixed(2);
         },
@@ -340,7 +341,10 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
     return FilterChip(
       label: Text(label),
       selected: isSelected,
-      onSelected: (_) => setState(() => _method = value),
+      onSelected: (_) {
+        AppHaptics.selection();
+        setState(() => _method = value);
+      },
       showCheckmark: false,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       labelStyle: TextStyle(

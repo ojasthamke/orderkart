@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
@@ -30,6 +31,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   String _category = 'All';
   final _categories = ['All', ...AppConstants.itemCategories];
   DateTime _selectedHistoryDate = DateTime.now();
+  DateTimeRange? _priceHistoryRange;
 
   @override
   void initState() {
@@ -360,62 +362,94 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
   // ── TAB 3: Daily Price History Tracker (Date-to-Date) ──────────────────────
   Widget _buildPriceHistoryTab(BuildContext context) {
-    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedHistoryDate);
+    final hasRange = _priceHistoryRange != null;
+    final startDateStr = hasRange
+        ? DateFormat('yyyy-MM-dd').format(_priceHistoryRange!.start)
+        : DateFormat('yyyy-MM-dd').format(_selectedHistoryDate);
+    final endDateStr = hasRange
+        ? DateFormat('yyyy-MM-dd').format(_priceHistoryRange!.end)
+        : DateFormat('yyyy-MM-dd').format(_selectedHistoryDate);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date Selector Header
+          // Date Range & Single Date Selector Header Card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.gray200),
+              boxShadow: AppColors.cardShadow,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('HISTORICAL PRICE TRACKER', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.textSecondary)),
-                    const SizedBox(height: 2),
-                    Text(
-                      AppFormatters.date(_selectedHistoryDate),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('HISTORICAL PRICE LOG & REPORT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.textSecondary)),
+                        const SizedBox(height: 4),
+                        Text(
+                          hasRange
+                              ? '${AppFormatters.date(_priceHistoryRange!.start)} - ${AppFormatters.date(_priceHistoryRange!.end)}'
+                              : AppFormatters.date(_selectedHistoryDate),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        AppHaptics.buttonClick();
+                        final picked = await showDateRangePicker(
+                          context: context,
+                          initialDateRange: _priceHistoryRange ??
+                              DateTimeRange(
+                                start: DateTime.now().subtract(const Duration(days: 7)),
+                                end: DateTime.now(),
+                              ),
+                          firstDate: DateTime(2024),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          setState(() => _priceHistoryRange = picked);
+                        }
+                      },
+                      icon: const Icon(Icons.date_range_rounded, size: 18),
+                      label: Text(hasRange ? 'Change Range' : 'Pick Range'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
                   ],
                 ),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _selectedHistoryDate,
-                      firstDate: DateTime(2024),
-                      lastDate: DateTime.now(),
-                    );
-                    if (picked != null) {
-                      setState(() => _selectedHistoryDate = picked);
-                    }
-                  },
-                  icon: const Icon(Icons.calendar_month_rounded, size: 18),
-                  label: const Text('Pick Date'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                if (hasRange) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        AppHaptics.selection();
+                        setState(() => _priceHistoryRange = null);
+                      },
+                      icon: const Icon(Icons.refresh_rounded, size: 16),
+                      label: const Text('Reset to Single Date'),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
           const SizedBox(height: 16),
 
-          // Fetch historical price log for selected date
+          // Fetch historical price log & generate report
           FutureBuilder<List<Map<String, dynamic>>>(
-            future: ItemDao().getPriceHistoryByDate(dateStr),
+            future: ItemDao().getPriceHistoryDateRange(startDateStr, endDateStr),
             builder: (ctx, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const LoadingShimmer(count: 3);
@@ -430,7 +464,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                         const Icon(Icons.history_toggle_off_rounded, size: 48, color: AppColors.gray400),
                         const SizedBox(height: 8),
                         Text(
-                          'No Price Snapshot on ${AppFormatters.date(_selectedHistoryDate)}',
+                          hasRange
+                              ? 'No Price Snapshots in selected range (${AppFormatters.date(_priceHistoryRange!.start)} - ${AppFormatters.date(_priceHistoryRange!.end)})'
+                              : 'No Price Snapshot on ${AppFormatters.date(_selectedHistoryDate)}',
+                          textAlign: TextAlign.center,
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 4),
@@ -445,46 +482,134 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 );
               }
 
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: list.length,
-                itemBuilder: (_, i) {
-                  final row = list[i];
-                  final name = row['name'] as String? ?? 'Item';
-                  final unit = row['unit'] as String? ?? '';
-                  final sellPrice = (row['selling_price'] as num?)?.toDouble() ?? 0.0;
-                  final mktPrice = (row['market_price'] as num?)?.toDouble() ?? 0.0;
+              // On-Page Report Calculations
+              double avgSelling = 0;
+              double avgMarket = 0;
+              final datesSet = <String>{};
+              for (final row in list) {
+                avgSelling += (row['selling_price'] as num?)?.toDouble() ?? 0;
+                avgMarket += (row['market_price'] as num?)?.toDouble() ?? 0;
+                datesSet.add(row['date'] as String? ?? '');
+              }
+              avgSelling = list.isNotEmpty ? avgSelling / list.length : 0;
+              avgMarket = list.isNotEmpty ? avgMarket / list.length : 0;
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // On-Page Price History Summary Report Panel
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.gray200),
+                      gradient: LinearGradient(
+                        colors: [AppColors.primary.withOpacity(0.9), AppColors.primary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppColors.cardShadow,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                         Row(
                           children: [
-                            if (mktPrice > 0)
-                              Text(
-                                'MRP: ${AppFormatters.currency(mktPrice)} ',
-                                style: const TextStyle(fontSize: 12, decoration: TextDecoration.lineThrough, color: AppColors.textSecondary),
-                              ),
+                            const Icon(Icons.analytics_rounded, color: Colors.white, size: 22),
+                            const SizedBox(width: 8),
                             Text(
-                              '${AppFormatters.currency(sellPrice)} / $unit',
-                              style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 14),
+                              'PRICE HISTORY REPORT (${datesSet.length} DAYS LOGGED)',
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Avg Store Rate', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                Text(AppFormatters.currency(avgSelling), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Avg Market Rate', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                Text(AppFormatters.currency(avgMarket), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Total Snapshots', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                Text('${list.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                              ],
                             ),
                           ],
                         ),
                       ],
                     ),
-                  );
-                },
+                  ),
+                  const SizedBox(height: 16),
+
+                  Text('Price Logs & History', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: list.length,
+                    itemBuilder: (_, i) {
+                      final row = list[i];
+                      final name = row['name'] as String? ?? 'Item';
+                      final unit = row['unit'] as String? ?? '';
+                      final dateVal = row['date'] as String? ?? '';
+                      final sellPrice = (row['selling_price'] as num?)?.toDouble() ?? 0.0;
+                      final mktPrice = (row['market_price'] as num?)?.toDouble() ?? 0.0;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.gray200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                                Text(
+                                  AppFormatters.dateFromString(dateVal),
+                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                if (mktPrice > 0)
+                                  Text(
+                                    'MRP: ${AppFormatters.currency(mktPrice)} ',
+                                    style: const TextStyle(fontSize: 12, decoration: TextDecoration.lineThrough, color: AppColors.textSecondary),
+                                  ),
+                                Text(
+                                  '${AppFormatters.currency(sellPrice)} / $unit',
+                                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
               );
             },
           ),

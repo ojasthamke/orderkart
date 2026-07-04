@@ -401,16 +401,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.error.withOpacity(0.85),
-                          AppColors.error.withOpacity(0.70),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF3F121F)
+                          : const Color(0xFFFFF1F2),
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: AppColors.elevatedShadow,
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF9F1239)
+                            : const Color(0xFFFECDD3),
+                        width: 1.5,
+                      ),
+                      boxShadow: AppColors.cardShadow,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,16 +422,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             const Text(
                               'MONEY REMAINED',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: Color(0xFF9F1239),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1.2,
                               ),
                             ),
-                            const Icon(
-                              Icons.account_balance_wallet_rounded,
-                              color: Colors.white,
-                              size: 20,
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF9F1239).withOpacity(0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.account_balance_wallet_rounded,
+                                color: Color(0xFF9F1239),
+                                size: 18,
+                              ),
                             ),
                           ],
                         ),
@@ -438,7 +446,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         Text(
                           AppFormatters.currency(pendingPayments),
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF881337),
                             fontSize: 28,
                             fontWeight: FontWeight.w900,
                           ),
@@ -447,7 +455,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         const Text(
                           'Total outstanding dues from orders.',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: Color(0xFF9F1239),
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),

@@ -83,12 +83,17 @@ class AppConstants {
   ];
 
   // Expense Categories
-  static const String expTransport   = 'Transport';
-  static const String expSalary      = 'Salary';
-  static const String expUtilities   = 'Utilities';
-  static const String expPackaging   = 'Packaging';
-  static const String expMaintenance = 'Maintenance';
-  static const String expOther       = 'Other';
+  static const String expTransport      = 'Transport';
+  static const String expSalary         = 'Salary';
+  static const String expUtilities      = 'Utilities';
+  static const String expPackaging      = 'Packaging';
+  static const String expMaintenance    = 'Maintenance';
+  static const String expFreight        = '🚚 Freight & Tempo';
+  static const String expSpoilageLoss   = '🍏 Spoilage & Damaged Goods';
+  static const String expMandiFees      = '🏪 Mandi Tax & APMC Fees';
+  static const String expStoreUtilities = '💡 Electricity & Store Rent';
+  static const String expPackagingCrates= '📦 Packaging, Bags & Crates';
+  static const String expOther          = 'Other';
 
   static const List<String> expenseCategories = [
     expTransport,
@@ -96,6 +101,11 @@ class AppConstants {
     expUtilities,
     expPackaging,
     expMaintenance,
+    expFreight,
+    expSpoilageLoss,
+    expMandiFees,
+    expStoreUtilities,
+    expPackagingCrates,
     expOther,
   ];
 

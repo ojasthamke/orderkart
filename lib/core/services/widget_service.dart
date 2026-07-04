@@ -1,4 +1,6 @@
+import 'package:flutter/widgets.dart';
 import 'package:home_widget/home_widget.dart';
+import '../constants/app_routes.dart';
 import '../database/database_helper.dart';
 import 'background_service.dart';
 import '../utils/formatters.dart';
@@ -8,9 +10,26 @@ class WidgetService {
   
   static const String appGroupId = 'com.example.orderkart';
   static const String androidWidgetName = 'OrderKartWidgetProvider';
+  static const String expenseWidgetName = 'ExpenseWidgetProvider';
 
   static Future<void> init() async {
     await HomeWidget.setAppGroupId(appGroupId);
+  }
+
+  static Future<void> checkWidgetLaunch(GlobalKey<NavigatorState> navigatorKey) async {
+    try {
+      final uri = await HomeWidget.initiallyLaunchedFromHomeWidget();
+      if (uri != null && (uri.host == 'add-expense' || uri.host == 'expenses')) {
+        Future.microtask(() {
+          navigatorKey.currentState?.pushNamed(AppRoutes.addEditExpense);
+        });
+      }
+      HomeWidget.widgetClicked.listen((uri) {
+        if (uri != null && (uri.host == 'add-expense' || uri.host == 'expenses')) {
+          navigatorKey.currentState?.pushNamed(AppRoutes.addEditExpense);
+        }
+      });
+    } catch (_) {}
   }
 
   static Future<void> updateWidgetData() async {
