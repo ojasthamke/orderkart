@@ -42,14 +42,20 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
       initialChildSize: 0.85,
       minChildSize:     0.5,
       maxChildSize:     0.95,
-      builder: (_, scrollController) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).bottomSheetTheme.backgroundColor ??
-              Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
+      builder: (_, scrollController) {
+        final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        return AnimatedPadding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).bottomSheetTheme.backgroundColor ??
+                  Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
             // Handle
             Container(
               margin: const EdgeInsets.only(top: 12, bottom: 8),
@@ -394,7 +400,9 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
         ),
       ),
     );
-  }
+  },
+);
+}
 
   /// Returns a row of small price-hint texts for common fractional quantities.
   /// Calculated purely in memory — no DB calls, no schema changes.

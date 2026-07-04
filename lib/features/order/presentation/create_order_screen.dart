@@ -55,6 +55,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   final _noteCon         = TextEditingController();
   final _discountCon     = TextEditingController();
   final _paidCon         = TextEditingController();
+  AppOrder? _existingOrder;
   bool   _saving         = false;
 
   // Calculated
@@ -85,6 +86,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final order = await ref.read(orderDetailProvider(orderId).future);
     if (order != null && mounted) {
       setState(() {
+        _existingOrder = order;
         _discount = order.discount;
         _deliveryCharge = order.deliveryCharge;
         _deliveryEnabled = order.deliveryCharge > 0;
@@ -722,7 +724,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       paidAmount:         _paidAmount,
       remainingAmount:    _remaining,
       notes:              _noteCon.text.trim(),
-      createdAt:          now,
+      createdAt:          _existingOrder?.createdAt ?? now,
       updatedAt:          now,
     );
 
@@ -926,6 +928,18 @@ class _QtyPickerState extends State<_QtyPicker> {
   }
 
   @override
+  void didUpdateWidget(_QtyPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.quantity != widget.quantity) {
+      _qty = widget.quantity;
+      final formatted = AppFormatters.quantity(_qty);
+      if (_ctrl.text != formatted) {
+        _ctrl.text = formatted;
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _ctrl.dispose();
     super.dispose();
@@ -977,8 +991,10 @@ class _QtyPickerState extends State<_QtyPicker> {
           ),
         ),
         onChanged: (v) {
-          final parsed = double.tryParse(v);
-          if (parsed != null && parsed > 0) {
+          final clean = v.trim();
+          if (clean.isEmpty) return;
+          final parsed = double.tryParse(clean);
+          if (parsed != null && parsed >= 0) {
             _qty = parsed;
             widget.onChanged(_qty);
           }
