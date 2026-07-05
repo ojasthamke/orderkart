@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../constants/app_constants.dart';
 import '../database/database_helper.dart';
 import '../utils/security_helper.dart';
+import '../security/app_mode_service.dart';
 
 class PackageValidationResult {
   final bool isValid;
