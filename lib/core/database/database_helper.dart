@@ -404,10 +404,55 @@ class DatabaseHelper {
     } catch (_) {}
   }
 
+  /// Helper to check if a table is selected for modular import
+  bool _isTableSelected(String table, List<String>? selectedModules) {
+    if (selectedModules == null || selectedModules.isEmpty) return true;
+    if (selectedModules.contains('entire_db')) return true;
+
+    switch (table) {
+      case 'areas':
+        return selectedModules.contains('areas') || selectedModules.contains('entire_db');
+      case 'streets':
+        return selectedModules.contains('streets') || selectedModules.contains('entire_db');
+      case 'customers':
+      case 'vip_membership':
+        return selectedModules.contains('customers') || selectedModules.contains('entire_db');
+      case 'items':
+      case 'item_price_history':
+        return selectedModules.contains('items') || selectedModules.contains('entire_db');
+      case 'orders':
+      case 'order_items':
+      case 'payments':
+        return selectedModules.contains('orders') || selectedModules.contains('entire_db');
+      case 'expenses':
+        return selectedModules.contains('expenses') || selectedModules.contains('entire_db');
+      case 'notes':
+        return selectedModules.contains('notes') || selectedModules.contains('entire_db');
+      case 'visits':
+        return selectedModules.contains('visits') || selectedModules.contains('streets') || selectedModules.contains('entire_db');
+      case 'notifications':
+        return selectedModules.contains('notifications') || selectedModules.contains('entire_db');
+      case 'workers':
+      case 'worker_assignments':
+      case 'worker_reports':
+      case 'commission_history':
+        return selectedModules.contains('workers') || selectedModules.contains('entire_db');
+      case 'business_profile':
+      case 'settings':
+        return selectedModules.contains('settings') || selectedModules.contains('entire_db');
+      default:
+        return false;
+    }
+  }
+
   /// Smart Non-Destructive Merge Import Specification:
   /// Performs topological merge across database tables with LWW (Last-Write-Wins) timestamp conflict resolution.
   /// Returns a detailed map per table: {'inserted': int, 'updated': int, 'skipped': int, 'conflicted': int}.
-  Future<Map<String, Map<String, int>>> mergeDatabaseFromPath(String incomingDbPath) async {
+  Future<Map<String, Map<String, int>>> mergeDatabaseFromPath(
+    String incomingDbPath, {
+    List<String>? selectedModules,
+    bool dryRun = false,
+  }) async {
     final targetDb = await database;
     final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
 
@@ -416,7 +461,9 @@ class DatabaseHelper {
       'areas',
       'streets',
       'customers',
+      'vip_membership',
       'items',
+      'item_price_history',
       'orders',
       'order_items',
       'payments',
@@ -424,7 +471,12 @@ class DatabaseHelper {
       'notes',
       'visits',
       'notifications',
-      'item_price_history'
+      'workers',
+      'worker_assignments',
+      'worker_reports',
+      'commission_history',
+      'business_profile',
+      'settings'
     ];
 
     final Map<String, Map<String, int>> resultStats = {};
@@ -435,25 +487,58 @@ class DatabaseHelper {
       int skipped = 0;
       int conflicted = 0;
 
+      // Skip this table if it is not selected for merge
+      if (!_isTableSelected(table, selectedModules)) {
+        resultStats[table] = {
+          'inserted': 0,
+          'updated': 0,
+          'skipped': 0,
+          'conflicted': 0,
+        };
+        continue;
+      }
+
       try {
         final incomingRows = await incomingDb.query(table);
         for (final row in incomingRows) {
-          final id = row['id']?.toString() ?? '';
+          final id = row['id']?.toString() ?? row['key']?.toString() ?? '';
           if (id.isEmpty) {
             skipped++;
             continue;
           }
 
-          final existing = await targetDb.query(table, where: 'id = ?', whereArgs: [id]);
+          List<Map<String, dynamic>> existing;
+          if (table == 'settings') {
+            existing = await targetDb.query(table, where: 'key = ?', whereArgs: [id]);
+          } else {
+            existing = await targetDb.query(table, where: 'id = ?', whereArgs: [id]);
+          }
+
           if (existing.isEmpty) {
             try {
-              await targetDb.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+              if (!dryRun) {
+                await targetDb.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+              }
               inserted++;
             } catch (_) {
               conflicted++;
             }
           } else {
-            // Compare timestamps (LWW - Last-Write-Wins)
+            // Compare values or timestamps (LWW - Last-Write-Wins)
+            if (table == 'settings') {
+              final existingVal = existing.first['value']?.toString() ?? '';
+              final incomingVal = row['value']?.toString() ?? '';
+              if (existingVal != incomingVal) {
+                if (!dryRun) {
+                  await targetDb.update(table, row, where: 'key = ?', whereArgs: [id]);
+                }
+                updated++;
+              } else {
+                skipped++;
+              }
+              continue;
+            }
+
             final existingUpdated = existing.first['updated_at']?.toString() ?? existing.first['created_at']?.toString() ?? '';
             final incomingUpdated = row['updated_at']?.toString() ?? row['created_at']?.toString() ?? '';
 
@@ -462,12 +547,15 @@ class DatabaseHelper {
               final exDt  = DateTime.tryParse(existingUpdated);
 
               if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
-                await targetDb.update(table, row, where: 'id = ?', whereArgs: [id]);
+                if (!dryRun) {
+                  if (table == 'settings') {
+                    await targetDb.update(table, row, where: 'key = ?', whereArgs: [id]);
+                  } else {
+                    await targetDb.update(table, row, where: 'id = ?', whereArgs: [id]);
+                  }
+                }
                 updated++;
-              } else if (incDt != null && exDt != null && incDt.isBefore(exDt)) {
-                skipped++;
               } else {
-                // Exact same timestamp or identical record - Idempotent skip
                 skipped++;
               }
             } else {
@@ -488,7 +576,110 @@ class DatabaseHelper {
     }
 
     await incomingDb.close();
+
+    if (!dryRun) {
+      await _runRecalculations(targetDb);
+    }
+
     return resultStats;
+  }
+
+  /// Recalculates outstanding balances, VIP memberships, worker stats/commissions upon import
+  Future<void> _runRecalculations(Database db) async {
+    // 1. Recalculate customer statistics
+    await db.rawUpdate('''
+      UPDATE customers SET
+        total_orders = (
+          SELECT COUNT(*) FROM orders 
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+        ),
+        total_paid = (
+          SELECT COALESCE(SUM(paid_amount), 0) FROM orders 
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+        ),
+        total_pending = (
+          SELECT COALESCE(SUM(remaining_amount), 0) FROM orders 
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+        ),
+        outstanding_balance = (
+          SELECT COALESCE(SUM(remaining_amount), 0) FROM orders 
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+        ),
+        last_order_date = COALESCE((
+          SELECT MAX(created_at) FROM orders 
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+        ), '')
+    ''');
+
+    // 2. Recalculate Worker Reports and Worker Commissions
+    final workers = await db.query('workers');
+    for (final w in workers) {
+      final workerId = w['id'] as String;
+      final commTypeStr = w['commission_type'] as String? ?? 'pct_order';
+      final commValue = (w['commission_value'] as num?)?.toDouble() ?? 5.0;
+
+      final datesResult = await db.rawQuery('''
+        SELECT DISTINCT DATE(created_at) as d FROM orders WHERE assigned_worker_id = ?
+        UNION
+        SELECT DISTINCT DATE(created_at) as d FROM payments WHERE order_id IN (SELECT id FROM orders WHERE assigned_worker_id = ?)
+      ''', [workerId, workerId]);
+
+      for (final dr in datesResult) {
+        final dateStr = dr['d'] as String?;
+        if (dateStr == null || dateStr.isEmpty) continue;
+
+        final ordersRes = await db.rawQuery('''
+          SELECT COUNT(*) as count, SUM(grand_total) as sales, SUM(paid_amount) as paid, SUM(remaining_amount) as pending
+          FROM orders
+          WHERE assigned_worker_id = ? AND DATE(created_at) = DATE(?) AND delivery_status != 'cancelled'
+        ''', [workerId, dateStr]);
+
+        final paymentsRes = await db.rawQuery('''
+          SELECT SUM(amount) as collected
+          FROM payments
+          WHERE order_id IN (SELECT id FROM orders WHERE assigned_worker_id = ?) AND DATE(created_at) = DATE(?)
+        ''', [workerId, dateStr]);
+
+        final expensesRes = await db.rawQuery('''
+          SELECT SUM(amount) as expenses FROM expenses WHERE assigned_worker_id = ? AND date = ?
+        ''', [workerId, dateStr]);
+
+        final customersRes = await db.rawQuery('''
+          SELECT COUNT(*) as count FROM customers WHERE created_by = ? AND DATE(created_at) = DATE(?)
+        ''', [workerId, dateStr]);
+
+        final ordersCount = (ordersRes.first['count'] as num?)?.toInt() ?? 0;
+        final salesTotal = (ordersRes.first['sales'] as num?)?.toDouble() ?? 0.0;
+        final collectionTotal = (paymentsRes.first['collected'] as num?)?.toDouble() ?? 0.0;
+        final pendingTotal = (ordersRes.first['pending'] as num?)?.toDouble() ?? 0.0;
+        final expensesTotal = (expensesRes.first['expenses'] as num?)?.toDouble() ?? 0.0;
+        final customersAdded = (customersRes.first['count'] as num?)?.toInt() ?? 0;
+
+        double commissionEarned = 0.0;
+        if (commTypeStr == 'fixed') {
+          commissionEarned = ordersCount * commValue;
+        } else if (commTypeStr == 'pct_collection') {
+          commissionEarned = (collectionTotal * commValue) / 100.0;
+        } else {
+          commissionEarned = (salesTotal * commValue) / 100.0;
+        }
+
+        final reportId = '${workerId}_$dateStr';
+        await db.insert('worker_reports', {
+          'id': reportId,
+          'worker_id': workerId,
+          'report_date': dateStr,
+          'orders_count': ordersCount,
+          'sales_total': salesTotal,
+          'collection_total': collectionTotal,
+          'pending_total': pendingTotal,
+          'commission_earned': commissionEarned,
+          'expenses_total': expensesTotal,
+          'customers_added': customersAdded,
+          'created_at': DateTime.now().toIso8601String(),
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    }
   }
 
   Future<void> _createV4Tables(Database db) async {
