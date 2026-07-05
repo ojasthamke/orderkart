@@ -15,13 +15,17 @@ void main() {
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
+  setUpAll(() {
+    DatabaseHelper.dbNameOverride = 'orderkart_test_services.db';
+  });
+
   group('Worker Database Services Tests', () {
     final workerId = 'worker-test-123';
     
     setUp(() async {
       await DatabaseHelper.instance.close();
       final dbPath = await databaseFactory.getDatabasesPath();
-      final path = '$dbPath/orderkart.db';
+      final path = '$dbPath/${DatabaseHelper.dbNameOverride}';
       await databaseFactory.deleteDatabase(path);
     });
 

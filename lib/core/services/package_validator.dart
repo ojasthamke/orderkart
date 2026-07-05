@@ -7,6 +7,7 @@ import '../constants/app_constants.dart';
 import '../database/database_helper.dart';
 import '../utils/security_helper.dart';
 import '../security/app_mode_service.dart';
+import 'package:sqflite/sqflite.dart';
 
 class PackageValidationResult {
   final bool isValid;
@@ -69,6 +70,27 @@ class PackageValidator {
       final Map<String, List<int>> photoFiles = {};
       final Map<String, List<int>> logoFiles = {};
       final Map<String, List<int>> qrFiles = {};
+      final Map<String, List<int>> jsonFiles = {};
+
+      final jsonMappings = {
+        'worker.json': 'workers',
+        'permissions.json': 'worker_permissions',
+        'assignments.json': 'worker_assignments',
+        'areas.json': 'areas',
+        'streets.json': 'streets',
+        'customers.json': 'customers',
+        'inventory.json': 'items',
+        'price_list.json': 'item_price_history',
+        'business_profile.json': 'business_profile',
+        'settings.json': 'settings',
+        'orders.json': 'orders',
+        'order_items.json': 'order_items',
+        'payments.json': 'payments',
+        'expenses.json': 'expenses',
+        'notes.json': 'notes',
+        'visits.json': 'visits',
+        'worker_reports.json': 'worker_reports'
+      };
 
       for (final f in archive) {
         if (!f.isFile) continue;
@@ -86,6 +108,8 @@ class PackageValidator {
           logoFiles[normName] = f.content as List<int>;
         } else if (normName.startsWith('qr/')) {
           qrFiles[normName] = f.content as List<int>;
+        } else if (jsonMappings.containsKey(normName)) {
+          jsonFiles[normName] = f.content as List<int>;
         }
       }
 
@@ -96,9 +120,6 @@ class PackageValidator {
       if (checksumHash == null) {
         return _fail('Missing signature checksum.sha256 file.');
       }
-      if (dbEncData == null) {
-        return _fail('Missing database.enc file inside package.');
-      }
 
       // 2. Validate manifest.json signature using checksum.sha256
       final actualManifestHash = sha256.convert(manifestData).toString();
@@ -108,6 +129,12 @@ class PackageValidator {
 
       // 3. Parse manifest JSON
       final Map<String, dynamic> manifest = jsonDecode(utf8.decode(manifestData));
+      final String packageType = manifest['package_type']?.toString() ?? 'backup';
+
+      // Verify that the required files for the package type exist
+      if (packageType == 'backup' && dbEncData == null) {
+        return _fail('Missing database.enc file inside backup package.');
+      }
 
       // 3a. Check Expiry
       final expiresAtStr = manifest['expires_at']?.toString() ?? '';
@@ -227,13 +254,6 @@ class PackageValidator {
       // 4. Verify all individual file checksums inside manifest
       final fileHashes = manifest['file_hashes'] as Map<String, dynamic>? ?? {};
 
-      // Verify database.enc hash
-      final actualDbEncHash = sha256.convert(dbEncData).toString();
-      final expectedDbEncHash = fileHashes['database.enc']?.toString() ?? '';
-      if (actualDbEncHash != expectedDbEncHash) {
-        return _fail('Database integrity check failed (SHA-256 mismatch). File might be corrupted.');
-      }
-
       // Verify photos hashes
       for (final p in photoList(archive)) {
         final expectedHash = fileHashes[p] ?? '';
@@ -243,19 +263,69 @@ class PackageValidator {
         }
       }
 
-      // 5. Decrypt database.enc to database.db
-      List<int> dbData;
-      try {
-        dbData = SecurityHelper.decryptBytes(dbEncData, secretKey);
-      } catch (e) {
-        return _fail('Failed to decrypt database: key mismatch or corrupted file. ($e)');
-      }
-
-      // Extract decrypted database.db to temp folder for the wizard preview/merge
       final tempDir = await getTemporaryDirectory();
       final tempDbFile = File('${tempDir.path}/wizard_incoming.db');
       if (tempDbFile.existsSync()) tempDbFile.deleteSync();
-      await tempDbFile.writeAsBytes(dbData);
+
+      if (packageType == 'backup') {
+        // Verify database.enc hash
+        final actualDbEncHash = sha256.convert(dbEncData!).toString();
+        final expectedDbEncHash = fileHashes['database.enc']?.toString() ?? '';
+        if (actualDbEncHash != expectedDbEncHash) {
+          return _fail('Database integrity check failed (SHA-256 mismatch). File might be corrupted.');
+        }
+
+        // 5. Decrypt database.enc to database.db
+        List<int> dbData;
+        try {
+          dbData = SecurityHelper.decryptBytes(dbEncData, secretKey);
+        } catch (e) {
+          return _fail('Failed to decrypt database: key mismatch or corrupted file. ($e)');
+        }
+        await tempDbFile.writeAsBytes(dbData);
+      } else {
+        // Construct SQLite database on the fly from decrypted JSON records
+        final tempDb = await openDatabase(tempDbFile.path);
+        await DatabaseHelper.instance.createSchema(tempDb);
+        await tempDb.execute('PRAGMA foreign_keys = OFF');
+
+        for (final entry in jsonFiles.entries) {
+          final filename = entry.key;
+          final fileData = entry.value;
+
+          // Verify file hash
+          final actualHash = sha256.convert(fileData).toString();
+          final expectedHash = fileHashes[filename]?.toString() ?? '';
+          if (actualHash != expectedHash) {
+            await tempDb.close();
+            return _fail('File integrity check failed for $filename (SHA-256 mismatch).');
+          }
+
+          // Decrypt file
+          List<int> decryptedBytes;
+          try {
+            decryptedBytes = SecurityHelper.decryptBytes(fileData, secretKey);
+          } catch (e) {
+            await tempDb.close();
+            return _fail('Failed to decrypt $filename: key mismatch or corrupted file. ($e)');
+          }
+
+          final jsonStr = utf8.decode(decryptedBytes);
+          final dynamic decodedData = jsonDecode(jsonStr);
+
+          final tableName = jsonMappings[filename]!;
+          if (decodedData is List) {
+            for (final row in decodedData) {
+              if (row is Map<String, dynamic>) {
+                await tempDb.insert(tableName, row, conflictAlgorithm: ConflictAlgorithm.replace);
+              }
+            }
+          }
+        }
+
+        await tempDb.execute('PRAGMA foreign_keys = ON');
+        await tempDb.close();
+      }
 
       // Extract files safely
       for (final p in photoList(archive)) {

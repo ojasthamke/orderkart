@@ -12,6 +12,8 @@ class DatabaseHelper {
   DatabaseHelper._();
   static final DatabaseHelper instance = DatabaseHelper._();
 
+  static String? dbNameOverride;
+
   Database? _db;
 
   /// Returns the open database, initialising it if needed
@@ -20,9 +22,22 @@ class DatabaseHelper {
     return _db!;
   }
 
+  /// Sets up full schema on any target database (e.g. temporary in-memory database)
+  Future<void> createSchema(Database db) async {
+    await _createTables(db);
+    await _createIndexes(db);
+    await _createV3Tables(db);
+    await _createV4Tables(db);
+    await _ensureVipColumns(db);
+    await _ensurePriceHistoryTables(db);
+    await _ensureAreaAndStreetColumns(db);
+    await _ensureV4Columns(db);
+  }
+
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, AppConstants.dbName);
+    final name = dbNameOverride ?? AppConstants.dbName;
+    final path = join(dbPath, name);
 
     return openDatabase(
       path,
@@ -1040,6 +1055,9 @@ class DatabaseHelper {
       "ALTER TABLE workers ADD COLUMN leave_status TEXT DEFAULT 'active'",
       "ALTER TABLE workers ADD COLUMN remarks TEXT DEFAULT ''",
       "ALTER TABLE workers ADD COLUMN pin_hash TEXT DEFAULT ''",
+      "ALTER TABLE workers ADD COLUMN last_package_generated TEXT DEFAULT ''",
+      "ALTER TABLE workers ADD COLUMN package_version INTEGER DEFAULT 0",
+      "ALTER TABLE workers ADD COLUMN is_package_outdated INTEGER DEFAULT 1",
     ];
     for (final col in workerCols) {
       try { await db.execute(col); } catch (_) {}

@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
 import '../database/database_helper.dart';
 import '../utils/security_helper.dart';
+import 'package_validator.dart';
 
 class PackageExporter {
   PackageExporter._();
@@ -36,7 +37,9 @@ class PackageExporter {
     String workerId = '',
     String workerName = '',
   }) async {
-    final dbPath = await DatabaseHelper.instance.database.then((db) => db.path);
+    final mainDb = await DatabaseHelper.instance.database;
+    await mainDb.rawQuery('PRAGMA wal_checkpoint(FULL);');
+    final dbPath = mainDb.path;
     final dbFile = File(dbPath);
     if (!dbFile.existsSync()) throw Exception('Database file not found');
 
@@ -191,7 +194,6 @@ class PackageExporter {
 
     // Determine secretKey before building and encrypting the database file
     String secretKey = '';
-    final mainDb = await DatabaseHelper.instance.database;
     
     // Get active key version (default to '1')
     final List<Map<String, dynamic>> activeKeyVerRow = await mainDb.query(
@@ -203,7 +205,28 @@ class PackageExporter {
         ? activeKeyVerRow.first['value']?.toString() ?? '1'
         : '1';
 
-    if (workerId.isNotEmpty) {
+    if (selectedModules.contains('entire_db')) {
+      // Full backup: always sign with owner secret key!
+      final List<Map<String, dynamic>> verKeyRow = await mainDb.query(
+        'settings',
+        where: 'key = ?',
+        whereArgs: ['owner_secret_v$activeKeyVersion'],
+      );
+      if (verKeyRow.isNotEmpty) {
+        secretKey = verKeyRow.first['value']?.toString() ?? '';
+      }
+      if (secretKey.isEmpty) {
+        secretKey = await SecurityHelper.getOrInitializeOwnerSecret();
+        await mainDb.insert(
+          'settings',
+          {
+            'key': 'owner_secret_v$activeKeyVersion',
+            'value': secretKey,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    } else if (workerId.isNotEmpty) {
       // Owner provisioning a worker: retrieve the worker's own secret key from worker_security table
       final List<Map<String, dynamic>> res = await mainDb.query(
         'worker_security',
@@ -216,8 +239,8 @@ class PackageExporter {
       }
     }
     
-    // If not set yet, check if this device is a worker device (meaning we sign as a worker)
-    if (secretKey.isEmpty) {
+    // If not set yet and not a full backup, check if this device is a worker device (meaning we sign as a worker)
+    if (secretKey.isEmpty && !selectedModules.contains('entire_db')) {
       final List<Map<String, dynamic>> localWorkers = await mainDb.query('workers', limit: 1);
       if (localWorkers.isNotEmpty) {
         final List<Map<String, dynamic>> resSec = await mainDb.query(
@@ -327,6 +350,7 @@ class PackageExporter {
     final packageId = const Uuid().v4();
     final manifest = <String, dynamic>{
       'package_id': packageId,
+      'package_type': selectedModules.contains('entire_db') ? 'backup' : 'modular',
       'package_version': '1.0.0',
       'minimum_supported_version': '1.0.0',
       'current_version': '1.0.0',
@@ -362,7 +386,8 @@ class PackageExporter {
     await checksumFile.writeAsString(manifestHash);
 
     // Create the final zip archive containing the structured folders
-    final zipFile = File('${tempDir.path}/OrderKartPackage.zip');
+    final zipFilename = selectedModules.contains('entire_db') ? 'BusinessBackup.orderkart' : 'OrderKartPackage.zip';
+    final zipFile = File('${tempDir.path}/$zipFilename');
     if (zipFile.existsSync()) zipFile.deleteSync();
 
     final encoder = ZipFileEncoder();
@@ -385,12 +410,18 @@ class PackageExporter {
 
     await encoder.close();
 
+    // Verify package using PackageValidator before sharing
+    final valRes = await PackageValidator.validatePackage(zipFile.path);
+    if (!valRes.isValid) {
+      throw Exception('Post-export verification failed: ${valRes.errorMessage}');
+    }
+
     // Log the Export in Export History table
     final targetDbMain = await DatabaseHelper.instance.database;
     await targetDbMain.insert('export_history', {
       'id': const Uuid().v4(),
       'package_id': packageId,
-      'package_type': selectedModules.contains('entire_db') ? 'full' : 'modular',
+      'package_type': selectedModules.contains('entire_db') ? 'backup' : 'modular',
       'modules': selectedModules.join(','),
       'exported_at': DateTime.now().toIso8601String(),
       'destination': 'local_share',
@@ -402,6 +433,6 @@ class PackageExporter {
     if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
     if (tempDbFile.existsSync()) tempDbFile.deleteSync();
 
-    await Share.shareXFiles([XFile(zipFile.path)], subject: 'OrderKart Export Package');
+    await Share.shareXFiles([XFile(zipFile.path)], subject: selectedModules.contains('entire_db') ? 'OrderKart Full Business Backup' : 'OrderKart Export Package');
   }
 }

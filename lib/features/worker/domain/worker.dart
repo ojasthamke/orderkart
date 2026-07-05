@@ -28,11 +28,17 @@ class Worker {
   final double joiningSalary;
   final String leaveStatus;
   final String remarks;
+  final String lastPackageGenerated;
+  final int packageVersion;
+  final bool isPackageOutdated;
 
   // Computed/Joined
   final int assignedCustomersCount;
   final int assignedAreasCount;
   final int assignedStreetsCount;
+  final int assignedCategoriesCount;
+  final int assignedItemsCount;
+  final int assignedRoutesCount;
   final double totalCollection;
   final double totalCommissionEarned;
 
@@ -60,9 +66,15 @@ class Worker {
     this.joiningSalary = 0.0,
     this.leaveStatus = 'active',
     this.remarks = '',
+    this.lastPackageGenerated = '',
+    this.packageVersion = 0,
+    this.isPackageOutdated = true,
     this.assignedCustomersCount = 0,
     this.assignedAreasCount = 0,
     this.assignedStreetsCount = 0,
+    this.assignedCategoriesCount = 0,
+    this.assignedItemsCount = 0,
+    this.assignedRoutesCount = 0,
     this.totalCollection = 0.0,
     this.totalCommissionEarned = 0.0,
   });
@@ -91,9 +103,15 @@ class Worker {
     double? joiningSalary,
     String? leaveStatus,
     String? remarks,
+    String? lastPackageGenerated,
+    int? packageVersion,
+    bool? isPackageOutdated,
     int? assignedCustomersCount,
     int? assignedAreasCount,
     int? assignedStreetsCount,
+    int? assignedCategoriesCount,
+    int? assignedItemsCount,
+    int? assignedRoutesCount,
     double? totalCollection,
     double? totalCommissionEarned,
   }) {
@@ -121,9 +139,15 @@ class Worker {
       joiningSalary: joiningSalary ?? this.joiningSalary,
       leaveStatus: leaveStatus ?? this.leaveStatus,
       remarks: remarks ?? this.remarks,
+      lastPackageGenerated: lastPackageGenerated ?? this.lastPackageGenerated,
+      packageVersion: packageVersion ?? this.packageVersion,
+      isPackageOutdated: isPackageOutdated ?? this.isPackageOutdated,
       assignedCustomersCount: assignedCustomersCount ?? this.assignedCustomersCount,
       assignedAreasCount: assignedAreasCount ?? this.assignedAreasCount,
       assignedStreetsCount: assignedStreetsCount ?? this.assignedStreetsCount,
+      assignedCategoriesCount: assignedCategoriesCount ?? this.assignedCategoriesCount,
+      assignedItemsCount: assignedItemsCount ?? this.assignedItemsCount,
+      assignedRoutesCount: assignedRoutesCount ?? this.assignedRoutesCount,
       totalCollection: totalCollection ?? this.totalCollection,
       totalCommissionEarned: totalCommissionEarned ?? this.totalCommissionEarned,
     );
@@ -153,6 +177,9 @@ class Worker {
         'joining_salary': joiningSalary,
         'leave_status': leaveStatus,
         'remarks': remarks,
+        'last_package_generated': lastPackageGenerated,
+        'package_version': packageVersion,
+        'is_package_outdated': isPackageOutdated ? 1 : 0,
       };
 
   factory Worker.fromMap(Map<String, dynamic> map) {
@@ -194,9 +221,15 @@ class Worker {
       joiningSalary: (map['joining_salary'] as num?)?.toDouble() ?? 0.0,
       leaveStatus: map['leave_status'] as String? ?? 'active',
       remarks: map['remarks'] as String? ?? '',
+      lastPackageGenerated: map['last_package_generated'] as String? ?? '',
+      packageVersion: map['package_version'] as int? ?? 0,
+      isPackageOutdated: (map['is_package_outdated'] as int? ?? 1) == 1,
       assignedCustomersCount: map['assigned_customers_count'] as int? ?? 0,
       assignedAreasCount: map['assigned_areas_count'] as int? ?? 0,
       assignedStreetsCount: map['assigned_streets_count'] as int? ?? 0,
+      assignedCategoriesCount: map['assigned_categories_count'] as int? ?? 0,
+      assignedItemsCount: map['assigned_items_count'] as int? ?? 0,
+      assignedRoutesCount: map['assigned_routes_count'] as int? ?? 0,
       totalCollection: (map['total_collection'] as num?)?.toDouble() ?? 0.0,
       totalCommissionEarned: (map['total_commission'] as num?)?.toDouble() ?? 0.0,
     );

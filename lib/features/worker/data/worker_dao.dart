@@ -14,20 +14,29 @@ class WorkerDao {
 
     for (final m in maps) {
       final id = m['id'] as String;
-      final custRes = await db.rawQuery('SELECT COUNT(*) as v FROM customers WHERE assigned_worker_id = ?', [id]);
-      final areaRes = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "area"', [id]);
-      final streetRes = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"', [id]);
-      final collRes = await db.rawQuery('SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?', [id]);
+      final custRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "customer"', [id]);
+      final areaRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "area"', [id]);
+      final streetRes   = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"', [id]);
+      final catRes      = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "category"', [id]);
+      final itemRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "item"', [id]);
+      final routeRes    = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "route"', [id]);
+      final collRes     = await db.rawQuery('SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?', [id]);
 
       final custCount   = (custRes.first['v'] as num?)?.toInt() ?? 0;
       final areaCount   = (areaRes.first['v'] as num?)?.toInt() ?? 0;
       final streetCount = (streetRes.first['v'] as num?)?.toInt() ?? 0;
+      final catCount    = (catRes.first['v'] as num?)?.toInt() ?? 0;
+      final itemCount   = (itemRes.first['v'] as num?)?.toInt() ?? 0;
+      final routeCount  = (routeRes.first['v'] as num?)?.toInt() ?? 0;
       final collTotal   = (collRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
       final w = Worker.fromMap(m).copyWith(
         assignedCustomersCount: custCount,
         assignedAreasCount: areaCount,
         assignedStreetsCount: streetCount,
+        assignedCategoriesCount: catCount,
+        assignedItemsCount: itemCount,
+        assignedRoutesCount: routeCount,
         totalCollection: collTotal,
       );
       result.add(w);
@@ -39,7 +48,25 @@ class WorkerDao {
     final db = await _db;
     final maps = await db.query('workers', where: 'id = ?', whereArgs: [id]);
     if (maps.isEmpty) return null;
-    return Worker.fromMap(maps.first);
+
+    final m = maps.first;
+    final custRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "customer"', [id]);
+    final areaRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "area"', [id]);
+    final streetRes   = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"', [id]);
+    final catRes      = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "category"', [id]);
+    final itemRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "item"', [id]);
+    final routeRes    = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "route"', [id]);
+    final collRes     = await db.rawQuery('SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?', [id]);
+
+    return Worker.fromMap(m).copyWith(
+      assignedCustomersCount: (custRes.first['v'] as num?)?.toInt() ?? 0,
+      assignedAreasCount: (areaRes.first['v'] as num?)?.toInt() ?? 0,
+      assignedStreetsCount: (streetRes.first['v'] as num?)?.toInt() ?? 0,
+      assignedCategoriesCount: (catRes.first['v'] as num?)?.toInt() ?? 0,
+      assignedItemsCount: (itemRes.first['v'] as num?)?.toInt() ?? 0,
+      assignedRoutesCount: (routeRes.first['v'] as num?)?.toInt() ?? 0,
+      totalCollection: (collRes.first['v'] as num?)?.toDouble() ?? 0.0,
+    );
   }
 
   Future<String> insertWorker(Worker worker) async {
@@ -92,6 +119,77 @@ class WorkerDao {
   }
 
   // ── Assignments ───────────────────────────────────────────────────────────
+  Future<void> setWorkerAssignments({
+    required String workerId,
+    required String entityType,
+    required List<String> entityIds,
+  }) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'worker_assignments',
+        where: 'worker_id = ? AND entity_type = ?',
+        whereArgs: [workerId, entityType],
+      );
+
+      for (final id in entityIds) {
+        await txn.insert('worker_assignments', {
+          'id': _uuid.v4(),
+          'worker_id': workerId,
+          'entity_type': entityType,
+          'entity_id': id,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+
+      if (entityType == 'customer') {
+        await txn.update(
+          'customers',
+          {'assigned_worker_id': ''},
+          where: 'assigned_worker_id = ?',
+          whereArgs: [workerId],
+        );
+        for (final custId in entityIds) {
+          await txn.update(
+            'customers',
+            {'assigned_worker_id': workerId},
+            where: 'id = ?',
+            whereArgs: [custId],
+          );
+        }
+      }
+
+      // Mark worker package as outdated since assignments changed!
+      await txn.update(
+        'workers',
+        {'is_package_outdated': 1, 'updated_at': DateTime.now().toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [workerId],
+      );
+    });
+  }
+
+  Future<void> markPackageGenerated(String workerId) async {
+    final db = await _db;
+    final w = await getWorkerById(workerId);
+    if (w == null) return;
+
+    final nextVer = w.packageVersion + 1;
+    final nowStr = DateTime.now().toIso8601String();
+
+    await db.update(
+      'workers',
+      {
+        'package_version': nextVer,
+        'last_package_generated': nowStr,
+        'is_package_outdated': 0,
+        'updated_at': nowStr,
+      },
+      where: 'id = ?',
+      whereArgs: [workerId],
+    );
+  }
+
   Future<void> assignEntity(String workerId, String entityType, String entityId) async {
     final db = await _db;
     await db.insert('worker_assignments', {

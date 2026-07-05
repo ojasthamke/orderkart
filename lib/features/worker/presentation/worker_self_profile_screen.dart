@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/services/package_exporter.dart';
+import '../../../core/services/worker_package_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -270,24 +271,29 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                 ),
                 const SizedBox(height: 24),
 
-                // --- EXPORT WORKER BACKUP FOR OWNER BUTTON ---
+                // --- GENERATE WORKER REPORT PACKAGE ---
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton.icon(
                     onPressed: () async {
                       AppHaptics.buttonClick();
-                      await PackageExporter.exportPackage(
-                        selectedModules: ['customers', 'orders', 'payments', 'expenses', 'notes', 'photos'],
-                        workerId: worker.id,
-                        workerName: worker.name,
-                      );
-                      if (context.mounted) {
-                        SnackbarHelper.showSuccess(context, 'Exported Backup Package for Owner!');
+                      try {
+                        await WorkerPackageService.generateWorkerReportPackage(
+                          workerId: worker.id,
+                          workerName: worker.name,
+                        );
+                        if (context.mounted) {
+                          SnackbarHelper.showSuccess(context, 'Exported Report Package for Owner!');
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          SnackbarHelper.showError(context, 'Export failed: $e');
+                        }
                       }
                     },
                     icon: const Icon(Icons.share_rounded),
-                    label: const Text('Export My Backup Package for Owner', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    label: const Text('Export My Report Package for Owner', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

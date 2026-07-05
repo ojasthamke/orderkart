@@ -15,6 +15,7 @@ import 'package:path/path.dart' as p;
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'dialogs/export_wizard_dialog.dart';
+import '../../../core/services/package_exporter.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -39,6 +40,14 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             icon:     Icons.upload_rounded,
             iconColor: AppColors.success,
             children: [
+              _ActionTile(
+                icon:     Icons.backup_rounded,
+                title:    'Full Business Backup',
+                subtitle: 'Export entire database and files (.orderkart backup)',
+                onTap:    _exportBusinessBackup,
+                loading:  _loading,
+              ),
+              const Divider(height: 1),
               _ActionTile(
                 icon:     Icons.drive_folder_upload_rounded,
                 title:    'Modular Package Export',
@@ -87,130 +96,23 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     );
   }
 
-  Future<void> _exportDatabase() async {
+  Future<void> _exportBusinessBackup() async {
     setState(() => _loading = true);
     try {
-      final dbPath = await DatabaseHelper.instance.database.then((db) => db.path);
-      final dbFile = File(dbPath);
-      if (!dbFile.existsSync()) {
-        SnackbarHelper.showError(context, 'Database file not found');
-        return;
-      }
-
-      final dir = await getTemporaryDirectory();
-      final zipFile = File('${dir.path}/orderkart_backup.zip');
-      if (zipFile.existsSync()) {
-        zipFile.deleteSync();
-      }
-
-      final encoder = ZipFileEncoder();
-      encoder.create(zipFile.path);
-      encoder.addFile(dbFile, 'orderkart.db');
-
-      // Zip the photos. First, query all photos referenced in database.
-      final Set<String> addedFilenames = {};
-      try {
-        final db = await DatabaseHelper.instance.database;
-        final List<Map<String, dynamic>> rows = await db.query(
-          'customers',
-          columns: ['photo_path'],
-          where: "photo_path IS NOT NULL AND photo_path != ''",
-        );
-        for (final row in rows) {
-          final pathVal = row['photo_path'] as String;
-          if (pathVal.isEmpty) continue;
-          
-          File? file;
-          final origFile = File(pathVal);
-          if (origFile.existsSync()) {
-            file = origFile;
-          } else {
-            final filename = p.basename(pathVal);
-            final fallbackFile = File('${AppConstants.appDocsDir}/customer_photos/$filename');
-            if (fallbackFile.existsSync()) {
-              file = fallbackFile;
-            }
-          }
-          
-          if (file != null) {
-            final filename = p.basename(file.path);
-            if (!addedFilenames.contains(filename)) {
-              encoder.addFile(file, 'customer_photos/$filename');
-              addedFilenames.add(filename);
-            }
-          }
-        }
-      } catch (e) {
-        print('Error querying customer photos for backup: $e');
-      }
-
-      // Second, zip any files inside the permanent customer_photos folder not already added
-      final photosDir = Directory('${AppConstants.appDocsDir}/customer_photos');
-      if (photosDir.existsSync()) {
-        final entities = photosDir.listSync(recursive: true);
-        for (final entity in entities) {
-          if (entity is File) {
-            final filename = p.basename(entity.path);
-            if (!addedFilenames.contains(filename)) {
-              encoder.addFile(entity, 'customer_photos/$filename');
-              addedFilenames.add(filename);
-            }
-          }
-        }
-      }
-
-      await encoder.close();
-
-      // --- RUN ENTERPRISE BACKUP VERIFICATION ---
-      final verifyBytes = await zipFile.readAsBytes();
-      final verifyArchive = ZipDecoder().decodeBytes(verifyBytes);
-      bool dbFound = false;
-      List<int>? dbData;
-      int photosChecked = 0;
-
-      for (final f in verifyArchive) {
-        if (!f.isFile) continue;
-        if (f.name == 'orderkart.db') {
-          dbFound = true;
-          dbData = f.content as List<int>;
-        } else if (f.name.startsWith('customer_photos/')) {
-          final fileData = f.content as List<int>;
-          if (fileData.isNotEmpty) {
-            photosChecked++;
-          }
-        }
-      }
-
-      if (!dbFound || dbData == null) {
-        throw Exception('Database file not found inside backup ZIP.');
-      }
-
-      // Test opening the database and running health check
-      final verifyTempDir = await getTemporaryDirectory();
-      final verifyTempDbFile = File('${verifyTempDir.path}/verify_backup_temp.db');
-      if (verifyTempDbFile.existsSync()) verifyTempDbFile.deleteSync();
-      await verifyTempDbFile.writeAsBytes(dbData);
-
-      try {
-        final testDb = await openDatabase(verifyTempDbFile.path, readOnly: true);
-        final list = await testDb.rawQuery('PRAGMA integrity_check(1)');
-        if (list.isEmpty || list.first.values.first?.toString().toLowerCase() != 'ok') {
-          throw Exception('PRAGMA integrity_check failed on backup database.');
-        }
-        await testDb.close();
-      } finally {
-        if (verifyTempDbFile.existsSync()) verifyTempDbFile.deleteSync();
-      }
-
-      await Share.shareXFiles([XFile(zipFile.path)],
-          subject: 'OrderKart Backup');
+      await PackageExporter.exportPackage(
+        selectedModules: ['entire_db', 'photos', 'settings'],
+      );
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Backup verified successfully and shared!');
+        SnackbarHelper.showSuccess(context, 'Full Business Backup created and verified successfully!');
       }
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Export failed: $e');
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Export failed: $e');
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
