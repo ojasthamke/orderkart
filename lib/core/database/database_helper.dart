@@ -862,6 +862,35 @@ class DatabaseHelper {
       )
     ''');
 
+    // Export History
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS export_history (
+        id           TEXT PRIMARY KEY,
+        package_id   TEXT NOT NULL,
+        package_type TEXT NOT NULL,
+        modules      TEXT DEFAULT '',
+        exported_at  TEXT NOT NULL,
+        destination  TEXT DEFAULT '',
+        record_count INTEGER DEFAULT 0,
+        status       TEXT DEFAULT 'success',
+        error_log    TEXT DEFAULT ''
+      )
+    ''');
+
+    // Import History
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS import_history (
+        id           TEXT PRIMARY KEY,
+        package_id   TEXT NOT NULL,
+        imported_at  TEXT NOT NULL,
+        worker_name  TEXT DEFAULT '',
+        device_name  TEXT DEFAULT '',
+        record_count INTEGER DEFAULT 0,
+        status       TEXT DEFAULT 'success',
+        error_log    TEXT DEFAULT ''
+      )
+    ''');
+
     // Indexes for V4 performance
     await db.execute('CREATE INDEX IF NOT EXISTS idx_worker_assign_wid ON worker_assignments(worker_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_worker_rep_wid ON worker_reports(worker_id)');
@@ -875,6 +904,7 @@ class DatabaseHelper {
       "ALTER TABLE customers ADD COLUMN created_by TEXT DEFAULT 'owner'",
       "ALTER TABLE customers ADD COLUMN updated_by TEXT DEFAULT 'owner'",
       "ALTER TABLE customers ADD COLUMN device_id TEXT DEFAULT ''",
+      "ALTER TABLE customers ADD COLUMN is_archived INTEGER DEFAULT 0",
     ];
     for (final col in customerCols) {
       try { await db.execute(col); } catch (_) {}
@@ -887,6 +917,7 @@ class DatabaseHelper {
       "ALTER TABLE orders ADD COLUMN order_source TEXT DEFAULT 'owner'",
       "ALTER TABLE orders ADD COLUMN commission_rate REAL DEFAULT 0.0",
       "ALTER TABLE orders ADD COLUMN commission_type TEXT DEFAULT ''",
+      "ALTER TABLE orders ADD COLUMN is_archived INTEGER DEFAULT 0",
     ];
     for (final col in orderCols) {
       try { await db.execute(col); } catch (_) {}
@@ -895,6 +926,7 @@ class DatabaseHelper {
     final itemCols = [
       "ALTER TABLE items ADD COLUMN assigned_worker_id TEXT DEFAULT ''",
       "ALTER TABLE items ADD COLUMN updated_by TEXT DEFAULT 'owner'",
+      "ALTER TABLE items ADD COLUMN is_archived INTEGER DEFAULT 0",
     ];
     for (final col in itemCols) {
       try { await db.execute(col); } catch (_) {}
@@ -903,8 +935,17 @@ class DatabaseHelper {
     final expenseCols = [
       "ALTER TABLE expenses ADD COLUMN created_by TEXT DEFAULT 'owner'",
       "ALTER TABLE expenses ADD COLUMN assigned_worker_id TEXT DEFAULT ''",
+      "ALTER TABLE expenses ADD COLUMN is_archived INTEGER DEFAULT 0",
     ];
     for (final col in expenseCols) {
+      try { await db.execute(col); } catch (_) {}
+    }
+
+    final otherCols = [
+      "ALTER TABLE areas ADD COLUMN is_archived INTEGER DEFAULT 0",
+      "ALTER TABLE streets ADD COLUMN is_archived INTEGER DEFAULT 0",
+    ];
+    for (final col in otherCols) {
       try { await db.execute(col); } catch (_) {}
     }
   }

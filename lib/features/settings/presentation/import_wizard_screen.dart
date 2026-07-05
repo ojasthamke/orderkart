@@ -1,18 +1,36 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/services/package_validator.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import 'settings_provider.dart';
+
+class MergeConflict {
+  final String table;
+  final String id;
+  final String name;
+  final String field;
+  final String localValue;
+  final String incomingValue;
+  String resolution; // 'keep_owner', 'accept_worker', 'merge'
+
+  MergeConflict({
+    required this.table,
+    required this.id,
+    required this.name,
+    required this.field,
+    required this.localValue,
+    required this.incomingValue,
+    this.resolution = 'keep_owner',
+  });
+}
 
 class ImportWizardScreen extends ConsumerStatefulWidget {
   const ImportWizardScreen({super.key});
@@ -25,7 +43,6 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
   int _currentStep = 0;
   bool _loading = false;
 
-  File? _selectedFile;
   Map<String, dynamic> _manifest = {};
   Map<String, Map<String, int>> _previewStats = {};
   String _dbFileToMerge = '';
@@ -42,6 +59,10 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
   bool _importWorkers = true;
   bool _importSettings = true;
 
+  // Interactive Conflicts
+  List<MergeConflict> _conflicts = [];
+  bool _applyToAllSimilar = false;
+
   Future<void> _pickFile() async {
     setState(() => _loading = true);
     try {
@@ -52,60 +73,50 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       }
 
       final srcPath = result.files.first.path!;
-      _selectedFile = File(srcPath);
-      final tempDir = await getTemporaryDirectory();
-      _incomingPhotosCount = 0;
 
-      if (srcPath.toLowerCase().endsWith('.zip')) {
-        final bytes = await _selectedFile!.readAsBytes();
-        final archive = ZipDecoder().decodeBytes(bytes);
-
-        List<int>? dbData;
-        String? manifestStr;
-
-        for (final f in archive) {
-          if (f.name == 'orderkart.db' && f.isFile) {
-            dbData = f.content as List<int>;
-          } else if (f.name == 'manifest.json' && f.isFile) {
-            manifestStr = utf8.decode(f.content as List<int>);
-          }
+      // --- 1. RUN ENTERPRISE PACKAGE VALIDATION ---
+      final valResult = await PackageValidator.validatePackage(srcPath);
+      if (!valResult.isValid) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.error_outline_rounded, color: AppColors.error),
+                  SizedBox(width: 8),
+                  Text('Validation Rejected'),
+                ],
+              ),
+              content: Text(valResult.errorMessage),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
         }
-
-        if (dbData == null) throw Exception('Invalid package: zip missing orderkart.db');
-
-        final tempDb = File('${tempDir.path}/wizard_incoming.db');
-        await tempDb.writeAsBytes(dbData);
-        _dbFileToMerge = tempDb.path;
-
-        if (manifestStr != null) {
-          _manifest = jsonDecode(manifestStr) as Map<String, dynamic>;
-        }
-
-        // Count photo files & extract them
-        for (final f in archive) {
-          final norm = f.name.replaceAll('\\', '/');
-          if (f.isFile && norm.startsWith('customer_photos/')) {
-            _incomingPhotosCount++;
-            final filename = p.basename(norm);
-            final dest = File('${AppConstants.appDocsDir}/customer_photos/$filename');
-            if (!dest.existsSync()) {
-              await dest.parent.create(recursive: true);
-              await dest.writeAsBytes(f.content as List<int>);
-            }
-          }
-        }
-      } else {
-        _dbFileToMerge = srcPath;
+        setState(() => _loading = false);
+        return;
       }
 
-      // Generate preview counts (DRY RUN - does not write to target db!)
+      _manifest = valResult.manifest;
+      _dbFileToMerge = valResult.dbPath;
+      _incomingPhotosCount = valResult.photosCount;
+
+      // Generate preview counts (dry run)
       _previewStats = await DatabaseHelper.instance.mergeDatabaseFromPath(
         _dbFileToMerge,
         dryRun: true,
       );
 
+      // Check for conflicts
+      _conflicts = await _checkConflicts(_dbFileToMerge);
+
       setState(() {
-        _currentStep = 1; // Move to Step 2: Database Preview
+        _currentStep = 1; // Step 2: Preview
       });
     } catch (e) {
       SnackbarHelper.showError(context, 'Failed to parse package: $e');
@@ -114,12 +125,126 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
     }
   }
 
+  Future<List<MergeConflict>> _checkConflicts(String incomingDbPath) async {
+    final targetDb = await DatabaseHelper.instance.database;
+    final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
+
+    final List<MergeConflict> list = [];
+
+    // 1. Check Items
+    try {
+      final incomingItems = await incomingDb.query('items');
+      for (final row in incomingItems) {
+        final id = row['id'] as String;
+        final name = row['name'] as String? ?? 'Item';
+        final local = await targetDb.query('items', where: 'id = ?', whereArgs: [id]);
+        if (local.isNotEmpty) {
+          final localPrice = (local.first['selling_price'] as num?)?.toDouble() ?? 0.0;
+          final incomingPrice = (row['selling_price'] as num?)?.toDouble() ?? 0.0;
+          if (localPrice != incomingPrice) {
+            list.add(MergeConflict(
+              table: 'items',
+              id: id,
+              name: name,
+              field: 'Price',
+              localValue: '₹${localPrice.toStringAsFixed(0)}',
+              incomingValue: '₹${incomingPrice.toStringAsFixed(0)}',
+            ));
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Check Customers
+    try {
+      final incomingCustomers = await incomingDb.query('customers');
+      for (final row in incomingCustomers) {
+        final id = row['id'] as String;
+        final name = row['name'] as String? ?? 'Customer';
+        final local = await targetDb.query('customers', where: 'id = ?', whereArgs: [id]);
+        if (local.isNotEmpty) {
+          final localBal = (local.first['outstanding_balance'] as num?)?.toDouble() ?? 0.0;
+          final incomingBal = (row['outstanding_balance'] as num?)?.toDouble() ?? 0.0;
+          if (localBal != incomingBal) {
+            list.add(MergeConflict(
+              table: 'customers',
+              id: id,
+              name: name,
+              field: 'Outstanding Balance',
+              localValue: '₹${localBal.toStringAsFixed(0)}',
+              incomingValue: '₹${incomingBal.toStringAsFixed(0)}',
+            ));
+          }
+        }
+      }
+    } catch (_) {}
+
+    await incomingDb.close();
+    return list;
+  }
+
+  /// Backup current database file for transaction rollback safety
+  Future<File> _backupDatabase() async {
+    final dbPath = await DatabaseHelper.instance.database.then((db) => db.path);
+    final dbFile = File(dbPath);
+    final backupFile = File('${dbFile.parent.path}/orderkart_backup.db');
+    if (backupFile.existsSync()) backupFile.deleteSync();
+    await dbFile.copy(backupFile.path);
+    return backupFile;
+  }
+
+  Future<void> _restoreDatabase(File backupFile) async {
+    final dbPath = await DatabaseHelper.instance.database.then((db) => db.path);
+    final dbFile = File(dbPath);
+    await DatabaseHelper.instance.close();
+    if (dbFile.existsSync()) dbFile.deleteSync();
+    await backupFile.copy(dbFile.path);
+    if (backupFile.existsSync()) backupFile.deleteSync();
+  }
+
   Future<void> _executeMerge() async {
     setState(() => _loading = true);
+    File? backupFile;
+
     try {
       AppHaptics.buttonClick();
 
-      // Compile selected modules for actual merge
+      // Take a backup copy of current database before starting
+      backupFile = await _backupDatabase();
+
+      // Open temporary merge database to apply conflict resolutions first
+      final tempDb = await openDatabase(_dbFileToMerge);
+      final targetDb = await DatabaseHelper.instance.database;
+
+      for (final c in _conflicts) {
+        final resolution = _applyToAllSimilar ? _conflicts.first.resolution : c.resolution;
+        
+        if (resolution == 'keep_owner') {
+          // Update temp DB row to match owner local DB values (so merge keeps local value)
+          final localRecord = await targetDb.query(c.table, where: 'id = ?', whereArgs: [c.id]);
+          if (localRecord.isNotEmpty) {
+            await tempDb.update(c.table, localRecord.first, where: 'id = ?', whereArgs: [c.id]);
+          }
+        } else if (resolution == 'merge') {
+          // Averaging merge values logic for prices/balances
+          final localRecord = await targetDb.query(c.table, where: 'id = ?', whereArgs: [c.id]);
+          if (localRecord.isNotEmpty) {
+            final double localNum = double.tryParse(c.localValue.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+            final double incomingNum = double.tryParse(c.incomingValue.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+            final double mergedVal = (localNum + incomingNum) / 2;
+
+            final keyToUpdate = c.field == 'Price' ? 'selling_price' : 'outstanding_balance';
+            final Map<String, dynamic> updatedRow = Map.from(localRecord.first);
+            updatedRow[keyToUpdate] = mergedVal;
+            updatedRow['updated_at'] = DateTime.now().toIso8601String();
+
+            await tempDb.update(c.table, updatedRow, where: 'id = ?', whereArgs: [c.id]);
+          }
+        }
+      }
+      await tempDb.close();
+
+      // Compile selected modules for merge
       final selectedModules = <String>[];
       if (_importEntireDb) selectedModules.add('entire_db');
       if (_importAreas) selectedModules.add('areas');
@@ -131,21 +256,44 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       if (_importWorkers) selectedModules.add('workers');
       if (_importSettings) selectedModules.add('settings');
 
-      // Execute merge (dryRun = false)
+      // Execute merge onto target database
       final finalStats = await DatabaseHelper.instance.mergeDatabaseFromPath(
         _dbFileToMerge,
         selectedModules: selectedModules,
         dryRun: false,
       );
 
+      // Log import into Import History table
+      final packageId = _manifest['package_id']?.toString() ?? const Uuid().v4();
+      final workerName = _manifest['generated_by_worker_name']?.toString() ?? '';
+      final deviceName = _manifest['device_name']?.toString() ?? '';
+      
+      await targetDb.insert('import_history', {
+        'id': const Uuid().v4(),
+        'package_id': packageId,
+        'imported_at': DateTime.now().toIso8601String(),
+        'worker_name': workerName,
+        'device_name': deviceName,
+        'record_count': selectedModules.length,
+        'status': 'success',
+      });
+
+      // Successful merge, delete backup copy
+      if (backupFile.existsSync()) backupFile.deleteSync();
+
       ref.read(settingsProvider.notifier).load();
 
       setState(() {
         _previewStats = finalStats;
-        _currentStep = 3; // Step 4: Merge complete
+        _currentStep = 3; // Step 4: Finish Summary
       });
+
     } catch (e) {
-      SnackbarHelper.showError(context, 'Merge failed: $e');
+      // Transaction failed -> Automatic rollback database file restore!
+      if (backupFile != null && backupFile.existsSync()) {
+        await _restoreDatabase(backupFile);
+      }
+      SnackbarHelper.showError(context, 'Import failed. Database rolled back safely. Error: $e');
     } finally {
       setState(() => _loading = false);
     }
@@ -161,7 +309,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
               currentStep: _currentStep,
               onStepContinue: () {
                 if (_currentStep == 1) {
-                  setState(() => _currentStep = 2); // Step 3: Module Selection
+                  setState(() => _currentStep = 2); // Step 3: Module & Conflict options
                 } else if (_currentStep == 2) {
                   _executeMerge();
                 } else if (_currentStep == 3) {
@@ -207,12 +355,12 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Choose a database package (.zip or .db) to begin synchronization:'),
+                      const Text('Choose an OrderKartPackage zip to verify and import:'),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _loading ? null : _pickFile,
                         icon: const Icon(Icons.folder_open_rounded),
-                        label: const Text('Browse Package File'),
+                        label: const Text('Browse Package ZIP'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -249,7 +397,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                           const SizedBox(height: 12),
                           if (_manifest.isNotEmpty) ...[
                             const Divider(),
-                            Text('Exported By: ${_manifest['worker_name'] ?? _manifest['device_name']}',
+                            Text('Exported By: ${_manifest['generated_by_worker_name'] ?? _manifest['device_name']}',
                                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ],
                         ],
@@ -259,15 +407,73 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                   isActive: _currentStep >= 1,
                 ),
 
-                // Step 3: Module Selection for Import
+                // Step 3: Module & Conflict Resolution Settings
                 Step(
-                  title: const Text('Step 3: Select Modules to Import'),
+                  title: const Text('Step 3: Configurations & Conflict Resolution'),
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Choose what data you want to merge into your database:',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 12),
+                      // Conflicts header
+                      if (_conflicts.isNotEmpty) ...[
+                        const Text('Conflicts Detected:',
+                            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.error, fontSize: 14)),
+                        const SizedBox(height: 8),
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 180),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _conflicts.length,
+                            itemBuilder: (ctx, index) {
+                              final c = _conflicts[index];
+                              return Card(
+                                elevation: 0,
+                                margin: const EdgeInsets.symmetric(vertical: 4),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  side: BorderSide(color: Colors.grey.shade200),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('${c.name} (${c.field})',
+                                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text('Local: ${c.localValue}', style: const TextStyle(fontSize: 11)),
+                                          Text('Incoming: ${c.incomingValue}', style: const TextStyle(fontSize: 11)),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          _resolutionOption(c, 'keep_owner', 'Keep Owner'),
+                                          _resolutionOption(c, 'accept_worker', 'Accept Worker'),
+                                          _resolutionOption(c, 'merge', 'Merge'),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        SwitchListTile(
+                          dense: true,
+                          title: const Text('Apply resolution decision to all conflicts', style: TextStyle(fontSize: 12)),
+                          value: _applyToAllSimilar,
+                          onChanged: (v) => setState(() => _applyToAllSimilar = v),
+                        ),
+                        const Divider(),
+                      ],
+
+                      const Text('Choose Modules to Import:',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                      const SizedBox(height: 8),
                       CheckboxListTile(
                         dense: true,
                         title: const Text('Import Entire Database',
@@ -322,7 +528,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                          'Outstanding balances, stock, benefits, worker earnings, and analytics dashboards have been recalculated automatically.'),
+                          'Outstanding balances, stock values, worker earnings, and analytics dashboards have been recalculated automatically.'),
                       const SizedBox(height: 12),
                       const Text('Merge Results:', style: TextStyle(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
@@ -361,6 +567,46 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       value: val,
       onChanged: onChanged,
       activeColor: AppColors.primary,
+    );
+  }
+
+  Widget _resolutionOption(MergeConflict c, String value, String label) {
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            if (_applyToAllSimilar) {
+              for (final x in _conflicts) {
+                x.resolution = value;
+              }
+            } else {
+              c.resolution = value;
+            }
+          });
+        },
+        child: Row(
+          children: [
+            Radio<String>(
+              value: value,
+              groupValue: _applyToAllSimilar ? _conflicts.first.resolution : c.resolution,
+              onChanged: (v) {
+                setState(() {
+                  if (_applyToAllSimilar) {
+                    for (final x in _conflicts) {
+                      x.resolution = value;
+                    }
+                  } else {
+                    c.resolution = value;
+                  }
+                });
+              },
+              activeColor: AppColors.primary,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            Expanded(child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600))),
+          ],
+        ),
+      ),
     );
   }
 }

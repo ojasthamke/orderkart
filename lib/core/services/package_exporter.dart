@@ -1,15 +1,24 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive_io.dart';
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
 import '../database/database_helper.dart';
 
 class PackageExporter {
   PackageExporter._();
+
+  /// Helper to compute SHA-256 hash of a file
+  static Future<String> calculateFileHash(File file) async {
+    if (!file.existsSync()) return '';
+    final bytes = await file.readAsBytes();
+    return sha256.convert(bytes).toString();
+  }
 
   /// Export a scoped zip package with selective database cloning, modular pruning, and manifest metadata
   static Future<void> exportPackage({
@@ -162,7 +171,6 @@ class PackageExporter {
       }
 
       // --- 4. Post-Filter Cascading Cleanup ---
-      // Ensure order_items and payments match existing orders remaining in db
       await tempDb.delete('order_items', where: 'order_id NOT IN (SELECT id FROM orders)');
       await tempDb.delete('payments', where: 'order_id NOT IN (SELECT id FROM orders)');
 
@@ -172,50 +180,138 @@ class PackageExporter {
       await tempDb.close();
     }
 
-    // Now construct zip archive from the filtered temporary database
-    final zipFile = File('${tempDir.path}/orderkart_modular_package.zip');
-    if (zipFile.existsSync()) zipFile.deleteSync();
+    // Now build package folder structure
+    final packageDir = Directory('${tempDir.path}/OrderKartPackage');
+    if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
+    packageDir.createSync();
 
-    final encoder = ZipFileEncoder();
-    encoder.create(zipFile.path);
+    // Copy DB file
+    final destDb = File('${packageDir.path}/database.db');
+    await tempDbFile.copy(destDb.path);
 
-    // 1. Add Filtered DB File
-    encoder.addFile(tempDbFile, 'orderkart.db');
+    // Create directories
+    final photosDir = Directory('${packageDir.path}/photos')..createSync();
+    final qrDir = Directory('${packageDir.path}/qr')..createSync();
+    final logoDir = Directory('${packageDir.path}/logo')..createSync();
 
-    // 2. Add Manifest JSON
-    final manifest = {
-      'package_type': selectedModules.contains('entire_db') ? 'full' : 'modular',
-      'selected_modules': selectedModules,
-      'business_name': AppConstants.appName,
-      'worker_id': workerId,
-      'worker_name': workerName,
-      'device_name': Platform.operatingSystem,
-      'app_version': AppConstants.appVersion,
-      'db_version': AppConstants.dbVersion,
-      'export_timestamp': DateTime.now().toIso8601String(),
-    };
-
-    final manifestFile = File('${tempDir.path}/manifest.json');
-    await manifestFile.writeAsString(jsonEncode(manifest));
-    encoder.addFile(manifestFile, 'manifest.json');
-
-    // 3. Add customer photos if selected & directory exists
+    // 1. Export photos if selected
+    final isEntireDb = selectedModules.contains('entire_db');
     if (selectedModules.contains('photos') || isEntireDb) {
-      final photoDir = Directory('${AppConstants.appDocsDir}/customer_photos');
-      if (photoDir.existsSync()) {
-        final files = photoDir.listSync();
+      final srcPhotoDir = Directory('${AppConstants.appDocsDir}/customer_photos');
+      if (srcPhotoDir.existsSync()) {
+        final files = srcPhotoDir.listSync();
         for (final f in files) {
           if (f is File) {
-            encoder.addFile(f, 'customer_photos/${p.basename(f.path)}');
+            await f.copy('${photosDir.path}/${p.basename(f.path)}');
           }
         }
       }
     }
 
-    await encoder.close();
+    // 2. Export business settings logo/qr
+    if (selectedModules.contains('settings') || isEntireDb) {
+      final srcLogo = File('${AppConstants.appDocsDir}/business_logo.png');
+      if (srcLogo.existsSync()) {
+        await srcLogo.copy('${logoDir.path}/logo.png');
+      }
+      final srcQr = File('${AppConstants.appDocsDir}/payment_qr.png');
+      if (srcQr.existsSync()) {
+        await srcQr.copy('${qrDir.path}/qr.png');
+      }
+    }
+
+    // Calculate file hashes for manifest
+    final fileHashes = <String, String>{};
+    fileHashes['database.db'] = await calculateFileHash(destDb);
+
+    final photoList = photosDir.listSync();
+    for (final f in photoList) {
+      if (f is File) {
+        fileHashes['photos/${p.basename(f.path)}'] = await calculateFileHash(f);
+      }
+    }
+
+    final logoList = logoDir.listSync();
+    for (final f in logoList) {
+      if (f is File) {
+        fileHashes['logo/${p.basename(f.path)}'] = await calculateFileHash(f);
+      }
+    }
+
+    final qrList = qrDir.listSync();
+    for (final f in qrList) {
+      if (f is File) {
+        fileHashes['qr/${p.basename(f.path)}'] = await calculateFileHash(f);
+      }
+    }
+
+    // Construct manifest JSON metadata
+    final packageId = const Uuid().v4();
+    final manifest = {
+      'package_id': packageId,
+      'package_version': '1.0.0',
+      'db_version': AppConstants.dbVersion.toString(),
+      'schema_version': '4',
+      'export_version': '1',
+      'selected_modules': selectedModules,
+      'business_name': AppConstants.appName,
+      'generated_by_worker_id': workerId,
+      'generated_by_worker_name': workerName,
+      'device_name': Platform.localHostname,
+      'device_model': Platform.operatingSystem,
+      'android_id': 'mock_android_id_${Platform.operatingSystem.hashCode.abs()}',
+      'app_version': AppConstants.appVersion,
+      'export_timestamp': DateTime.now().toIso8601String(),
+      'file_hashes': fileHashes,
+    };
+
+    final manifestFile = File('${packageDir.path}/manifest.json');
+    await manifestFile.writeAsString(jsonEncode(manifest));
+
+    // Calculate master signature hash (hash of manifest.json)
+    final manifestHash = await calculateFileHash(manifestFile);
+    final checksumFile = File('${packageDir.path}/checksum.sha256');
+    await checksumFile.writeAsString(manifestHash);
+
+    // Create the final zip archive containing the structured folders
+    final zipFile = File('${tempDir.path}/OrderKartPackage.zip');
+    if (zipFile.existsSync()) zipFile.deleteSync();
+
+    final encoder = ZipFileEncoder();
+    encoder.create(zipFile.path);
     
-    // Cleanup manifest and temporary db from disk
-    if (manifestFile.existsSync()) manifestFile.deleteSync();
+    // Add all files recursively maintaining directories
+    encoder.addFile(manifestFile, 'manifest.json');
+    encoder.addFile(checksumFile, 'checksum.sha256');
+    encoder.addFile(destDb, 'database.db');
+    
+    for (final f in photoList) {
+      if (f is File) encoder.addFile(f, 'photos/${p.basename(f.path)}');
+    }
+    for (final f in logoList) {
+      if (f is File) encoder.addFile(f, 'logo/${p.basename(f.path)}');
+    }
+    for (final f in qrList) {
+      if (f is File) encoder.addFile(f, 'qr/${p.basename(f.path)}');
+    }
+
+    await encoder.close();
+
+    // Log the Export in Export History table
+    final targetDbMain = await DatabaseHelper.instance.database;
+    await targetDbMain.insert('export_history', {
+      'id': const Uuid().v4(),
+      'package_id': packageId,
+      'package_type': selectedModules.contains('entire_db') ? 'full' : 'modular',
+      'modules': selectedModules.join(','),
+      'exported_at': DateTime.now().toIso8601String(),
+      'destination': 'local_share',
+      'record_count': selectedModules.length,
+      'status': 'success',
+    });
+
+    // Cleanup temp dirs
+    if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
     if (tempDbFile.existsSync()) tempDbFile.deleteSync();
 
     await Share.shareXFiles([XFile(zipFile.path)], subject: 'OrderKart Export Package');

@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/database/database_helper.dart';
 import '../../../../core/services/package_exporter.dart';
 import '../../../../core/utils/haptics.dart';
@@ -49,6 +52,14 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
   bool _filterByDate = false;
   DateTime? _startDate;
   DateTime? _endDate;
+
+  // Preview States
+  bool _showPreview = false;
+  int _areaCount = 0;
+  int _customerCount = 0;
+  int _orderCount = 0;
+  int _inventoryCount = 0;
+  double _estimatedSize = 0.0;
 
   @override
   void initState() {
@@ -107,6 +118,84 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
     }
   }
 
+  Future<void> _generatePreview() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+
+      // Count matching areas
+      int areas = 0;
+      if (_exportAreas || _exportEntireDb) {
+        if (_selectedAreaId != null) {
+          areas = 1;
+        } else {
+          areas = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM areas WHERE is_archived = 0')) ?? 0;
+        }
+      }
+
+      // Count matching customers
+      int customers = 0;
+      if (_exportCustomers || _exportEntireDb) {
+        String where = 'is_archived = 0';
+        List<dynamic> args = [];
+        if (_selectedAreaId != null) {
+          where += ' AND street_id IN (SELECT id FROM streets WHERE area_id = ?)';
+          args.add(_selectedAreaId);
+        }
+        customers = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM customers WHERE $where', args)) ?? 0;
+      }
+
+      // Count matching orders
+      int orders = 0;
+      if (_exportOrders || _exportEntireDb) {
+        String where = 'is_archived = 0';
+        List<dynamic> args = [];
+        if (_selectedAreaId != null) {
+          where += ' AND customer_id IN (SELECT id FROM customers WHERE street_id IN (SELECT id FROM streets WHERE area_id = ?))';
+          args.add(_selectedAreaId);
+        }
+        if (_filterByDate) {
+          if (_startDate != null) {
+            where += ' AND created_at >= ?';
+            args.add(_startDate!.toIso8601String());
+          }
+          if (_endDate != null) {
+            where += ' AND created_at <= ?';
+            args.add(_endDate!.toIso8601String());
+          }
+        }
+        orders = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM orders WHERE $where', args)) ?? 0;
+      }
+
+      // Count matching items
+      int items = 0;
+      if (_exportInventory || _exportEntireDb) {
+        items = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM items WHERE is_archived = 0')) ?? 0;
+      }
+
+      // Estimated size
+      double sizeMB = 1.2;
+      if (_exportPhotos || _exportEntireDb) {
+        final photoDir = Directory('${AppConstants.appDocsDir}/customer_photos');
+        if (photoDir.existsSync()) {
+          final count = photoDir.listSync().length;
+          sizeMB += (count * 0.12); // ~120KB per photo file
+        }
+      }
+
+      setState(() {
+        _areaCount = areas;
+        _customerCount = customers;
+        _orderCount = orders;
+        _inventoryCount = items;
+        _estimatedSize = sizeMB;
+        _showPreview = true;
+      });
+
+    } catch (e) {
+      SnackbarHelper.showError(context, 'Failed to calculate export preview: $e');
+    }
+  }
+
   Future<void> _startExport() async {
     AppHaptics.buttonClick();
     setState(() => _exporting = true);
@@ -120,7 +209,7 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
       if (_exportOrders) selectedModules.add('orders');
       if (_exportPayments) selectedModules.add('payments');
       if (_exportExpenses) selectedModules.add('expenses');
-      if (_exportInventory) selectedModules.add('items'); // item module key
+      if (_exportInventory) selectedModules.add('items');
       if (_exportPrices) selectedModules.add('prices');
       if (_exportVip) selectedModules.add('vip');
       if (_exportNotes) selectedModules.add('notes');
@@ -150,6 +239,10 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showPreview) {
+      return _buildPreviewLayout();
+    }
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
@@ -313,20 +406,95 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
             SizedBox(
               width: double.infinity,
               height: 50,
-              child: ElevatedButton.icon(
-                onPressed: _exporting ? null : _startExport,
-                icon: _exporting
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.ios_share_rounded),
-                label: Text(_exporting ? 'Generating Package...' : 'Export Package'),
+              child: ElevatedButton(
+                onPressed: _generatePreview,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
+                child: const Text('Prepare Export Summary'),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewLayout() {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 480, maxWidth: 420),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.analytics_rounded, color: AppColors.primary, size: 28),
+                const SizedBox(width: 10),
+                const Text('Export Summary', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _previewRowItem('Areas', _areaCount),
+            _previewRowItem('Customers', _customerCount),
+            _previewRowItem('Orders', _orderCount),
+            _previewRowItem('Inventory', _inventoryCount),
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Estimated Size', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text('${_estimatedSize.toStringAsFixed(1)} MB',
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
+              ],
+            ),
+            const Spacer(),
+            const Text('Continue?', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _exporting ? null : _startExport,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _exporting
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white))
+                        : const Text('YES'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => setState(() => _showPreview = false),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('NO'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _previewRowItem(String label, int value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('$label :', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+          Text('$value', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        ],
       ),
     );
   }
