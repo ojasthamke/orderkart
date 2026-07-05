@@ -56,6 +56,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
   bool _importOrders = true;
   bool _importItems = true;
   bool _importExpenses = true;
+  bool _importNotes = true;
   bool _importWorkers = true;
   bool _importSettings = true;
 
@@ -253,6 +254,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       if (_importOrders) selectedModules.add('orders');
       if (_importItems) selectedModules.add('items');
       if (_importExpenses) selectedModules.add('expenses');
+      if (_importNotes) selectedModules.add('notes');
       if (_importWorkers) selectedModules.add('workers');
       if (_importSettings) selectedModules.add('settings');
 
@@ -504,6 +506,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                         _moduleCheck('Import Orders & Payments', _importOrders, (v) => setState(() => _importOrders = v!)),
                         _moduleCheck('Import Items', _importItems, (v) => setState(() => _importItems = v!)),
                         _moduleCheck('Import Expenses', _importExpenses, (v) => setState(() => _importExpenses = v!)),
+                        _moduleCheck('Import Field Visit Notes', _importNotes, (v) => setState(() => _importNotes = v!)),
                         _moduleCheck('Import Workers & Reports', _importWorkers, (v) => setState(() => _importWorkers = v!)),
                         _moduleCheck('Import Settings & UPI Details', _importSettings, (v) => setState(() => _importSettings = v!)),
                       ],

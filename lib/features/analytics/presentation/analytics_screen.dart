@@ -99,12 +99,60 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         color: AppColors.error,
                       ),
                       StatCard(
-                        label: 'Outstandings',
+                        label: 'Pending Dues',
                         value: AppFormatters.currency(pendingPayments),
-                        icon: Icons.assignment_late_rounded,
-                        color: AppColors.warning,
+                        icon: Icons.pending_actions_rounded,
+                        color: AppColors.error,
                       ),
                     ],
+                  ),
+
+                  // ── Worker Performance Banner ────────────────────────
+                  Container(
+                    margin: const EdgeInsets.only(top: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, Color(0xFF1E40AF)],
+                        begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppColors.cardShadow,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.badge_rounded, color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Worker Analytics & Leaderboard',
+                                  style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 15)),
+                              const SizedBox(height: 2),
+                              Text('Track collections, commissions & sales per worker',
+                                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.8))),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.workerAnalytics),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: const Text('View', style: TextStyle(fontWeight: FontWeight.w800)),
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 24),

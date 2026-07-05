@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -21,6 +22,13 @@ class WorkerManagementScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Worker Management',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.analytics_rounded),
+          tooltip: 'Worker Analytics',
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.workerAnalytics),
+        ),
+      ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           AppHaptics.buttonClick();

@@ -45,6 +45,8 @@ class AppRoutes {
   static const String activityTimeline= '/activity-timeline';
   static const String businessProfile = '/business-profile';
 
+  static const String workerAnalytics = '/worker-analytics';
+
   // Notifications
   static const String notifications   = '/notifications';
 }

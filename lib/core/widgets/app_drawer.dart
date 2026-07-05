@@ -231,6 +231,17 @@ class AppDrawer extends ConsumerWidget {
                       },
                     ),
                     _DrawerItem(
+                      icon: Icons.badge_rounded,
+                      title: 'Worker Analytics',
+                      iconColor: AppColors.primary,
+                      onTap: () async {
+                        Navigator.pop(context);
+                        if (await OwnerPinDialog.verify(context, title: 'Worker Analytics')) {
+                          Navigator.pushNamed(context, AppRoutes.workerAnalytics);
+                        }
+                      },
+                    ),
+                    _DrawerItem(
                       icon: Icons.history_rounded,
                       title: 'Activity Timeline',
                       onTap: () {
