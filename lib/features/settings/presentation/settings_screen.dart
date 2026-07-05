@@ -13,6 +13,7 @@ import '../../../core/services/worker_session.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/database/database_seeder.dart';
 import '../domain/app_settings.dart';
 import 'settings_provider.dart';
 
@@ -516,6 +517,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: const Text('Backup & Restore'),
                     trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                     onTap: () => Navigator.of(context).pushNamed(AppRoutes.backupRestore),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.dataset_rounded, color: AppColors.primary),
+                    title: const Text('Seed Full Demo Dataset'),
+                    subtitle: const Text('Insert 30 Vegetables, 10 Fruits, 500 Customers, 10 Areas, 50 Streets, 200 VIPs'),
+                    onTap: () async {
+                      SnackbarHelper.showInfo(context, 'Seeding 500 Customers, 40 Items, 50 Streets, 200 VIPs...');
+                      await DatabaseSeeder.seedAll(clearExisting: true);
+                      if (mounted) {
+                        SnackbarHelper.showSuccess(context, 'Seeded 30 Vegetables, 10 Fruits, 500 Customers, 10 Areas, 50 Streets & 200 VIP Memberships!');
+                      }
+                    },
                   ),
                 ]),
 
