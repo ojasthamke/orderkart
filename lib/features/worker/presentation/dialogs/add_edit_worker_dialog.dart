@@ -1,7 +1,8 @@
+// lib/features/worker/presentation/dialogs/add_edit_worker_dialog.dart
+
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/haptics.dart';
-import '../../../../core/widgets/snackbar_helper.dart';
 import '../../domain/worker.dart';
 
 class AddEditWorkerDialog extends StatefulWidget {
@@ -30,9 +31,17 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
   late TextEditingController _salaryCon;
   late TextEditingController _targetCon;
   late TextEditingController _notesCon;
+  
+  // New Controllers
+  late TextEditingController _aadhaarCon;
+  late TextEditingController _emergencyContactCon;
+  late TextEditingController _bankDetailsCon;
+  late TextEditingController _joiningSalaryCon;
+  late TextEditingController _remarksCon;
 
   CommissionType _commType = CommissionType.pctOrder;
   String _status = 'active';
+  String _leaveStatus = 'active';
 
   @override
   void initState() {
@@ -44,11 +53,19 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
     _empIdCon = TextEditingController(text: w?.employeeId ?? '');
     _commValCon = TextEditingController(text: (w?.commissionValue ?? 5.0).toString());
     _salaryCon = TextEditingController(text: (w?.salary ?? 0.0).toString());
-    _targetCon = TextEditingController(text: '50000');
+    _targetCon = TextEditingController(text: (w?.target ?? 50000.0).toStringAsFixed(0));
     _notesCon = TextEditingController(text: w?.notes ?? '');
+    
+    _aadhaarCon = TextEditingController(text: w?.aadhaarId ?? '');
+    _emergencyContactCon = TextEditingController(text: w?.emergencyContact ?? '');
+    _bankDetailsCon = TextEditingController(text: w?.bankDetails ?? '');
+    _joiningSalaryCon = TextEditingController(text: (w?.joiningSalary ?? 0.0).toString());
+    _remarksCon = TextEditingController(text: w?.remarks ?? '');
+
     if (w != null) {
       _commType = w.commissionType;
       _status = w.status;
+      _leaveStatus = w.leaveStatus;
     }
   }
 
@@ -62,6 +79,11 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
     _salaryCon.dispose();
     _targetCon.dispose();
     _notesCon.dispose();
+    _aadhaarCon.dispose();
+    _emergencyContactCon.dispose();
+    _bankDetailsCon.dispose();
+    _joiningSalaryCon.dispose();
+    _remarksCon.dispose();
     super.dispose();
   }
 
@@ -77,10 +99,18 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
       address: _addressCon.text.trim(),
       employeeId: _empIdCon.text.trim(),
       status: _status,
+      pinHash: widget.worker?.pinHash ?? '',
       commissionType: _commType,
       commissionValue: double.tryParse(_commValCon.text.trim()) ?? 5.0,
       salary: double.tryParse(_salaryCon.text.trim()) ?? 0.0,
       notes: _notesCon.text.trim(),
+      aadhaarId: _aadhaarCon.text.trim(),
+      emergencyContact: _emergencyContactCon.text.trim(),
+      bankDetails: _bankDetailsCon.text.trim(),
+      target: double.tryParse(_targetCon.text.trim()) ?? 0.0,
+      joiningSalary: double.tryParse(_joiningSalaryCon.text.trim()) ?? 0.0,
+      leaveStatus: _leaveStatus,
+      remarks: _remarksCon.text.trim(),
       createdAt: widget.worker?.createdAt ?? now,
       updatedAt: now,
     );
@@ -168,6 +198,44 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _aadhaarCon,
+                      decoration: const InputDecoration(
+                        labelText: 'Aadhaar ID / Govt Card',
+                        prefixIcon: Icon(Icons.credit_card_rounded),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _emergencyContactCon,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Emergency Contact',
+                        prefixIcon: Icon(Icons.contact_phone_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _bankDetailsCon,
+                decoration: const InputDecoration(
+                  labelText: 'Bank Account Details / UPI ID',
+                  prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                  border: OutlineInputBorder(),
+                ),
+              ),
               const SizedBox(height: 16),
 
               const Text('Commission & Earnings Rule',
@@ -220,19 +288,63 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _joiningSalaryCon,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Joining Salary (₹)',
+                        prefixIcon: Icon(Icons.monetization_on_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _remarksCon,
+                      decoration: const InputDecoration(
+                        labelText: 'Remarks',
+                        prefixIcon: Icon(Icons.edit_note_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Status:', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const Text('Account Status:', style: TextStyle(fontWeight: FontWeight.w700)),
                   SegmentedButton<String>(
                     segments: const [
                       ButtonSegment(value: 'active', label: Text('Active')),
-                      ButtonSegment(value: 'inactive', label: Text('Inactive')),
+                      ButtonSegment(value: 'inactive', label: Text('Suspended')),
                     ],
                     selected: {_status},
                     onSelectionChanged: (set) => setState(() => _status = set.first),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Leave Status:', style: TextStyle(fontWeight: FontWeight.w700)),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'active', label: Text('On Duty')),
+                      ButtonSegment(value: 'leave', label: Text('On Leave')),
+                    ],
+                    selected: {_leaveStatus},
+                    onSelectionChanged: (set) => setState(() => _leaveStatus = set.first),
                   ),
                 ],
               ),

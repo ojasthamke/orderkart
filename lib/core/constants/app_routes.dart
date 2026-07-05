@@ -46,7 +46,9 @@ class AppRoutes {
   static const String businessProfile = '/business-profile';
 
   static const String workerAnalytics = '/worker-analytics';
+  static const String workerSelfProfile = '/worker-self-profile';
 
   // Notifications
   static const String notifications   = '/notifications';
+  static const String pinLock         = '/pin-lock';
 }

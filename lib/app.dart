@@ -37,7 +37,9 @@ import 'features/visit/presentation/add_edit_visit_screen.dart';
 import 'features/note/domain/app_note.dart';
 import 'features/visit/domain/app_visit.dart';
 import 'features/auth/presentation/mode_selection_screen.dart';
+import 'features/auth/presentation/pin_lock_screen.dart';
 import 'features/worker/presentation/worker_management_screen.dart';
+import 'features/worker/presentation/worker_self_profile_screen.dart';
 import 'features/dashboard/presentation/worker_dashboard_screen.dart';
 import 'features/sync/presentation/pending_sync_screen.dart';
 import 'features/settings/presentation/import_wizard_screen.dart';
@@ -203,6 +205,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
       case AppRoutes.modeSelection:
         return _slide(const ModeSelectionScreen());
 
+      case AppRoutes.pinLock:
+        return _slide(const PinLockScreen());
+
       case AppRoutes.workers:
         return _slide(const WorkerManagementScreen());
 
@@ -226,6 +231,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.workerAnalytics:
         return _slide(const WorkerAnalyticsScreen());
+
+      case AppRoutes.workerSelfProfile:
+        return _slide(const WorkerSelfProfileScreen());
 
       default:
         return _slide(const AppStartupScreen());
@@ -282,10 +290,14 @@ class AppStartupScreen extends ConsumerWidget {
         }
 
         if (mode == AppMode.worker) {
-          return const WorkerDashboardScreen();
+          return const PinLockScreen();
         }
 
-        return const MainScreen();
+        if (AppModeService.isOwnerSessionActive) {
+          return const MainScreen();
+        }
+
+        return const PinLockScreen();
       },
     );
   }

@@ -2,6 +2,8 @@
 /// Uses singleton pattern for single database connection
 /// Designed for future cloud sync — all IDs are UUIDs (string), not auto-increment
 
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../constants/app_constants.dart';
@@ -35,6 +37,8 @@ class DatabaseHelper {
         await _ensureAreaAndStreetColumns(db);
         await _createV4Tables(db);
         await _ensureV4Columns(db);
+        await _runStartupHealthCheck(db);
+        await _runAutoCleanup(db);
       },
     );
   }
@@ -453,6 +457,7 @@ class DatabaseHelper {
     String incomingDbPath, {
     List<String>? selectedModules,
     bool dryRun = false,
+    Function(double progress, int processed, int total)? onProgress,
   }) async {
     final targetDb = await database;
     final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
@@ -481,45 +486,64 @@ class DatabaseHelper {
       'settings'
     ];
 
-    final Map<String, Map<String, int>> resultStats = {};
-
+    // First count total rows to calculate progress
+    int totalRows = 0;
+    final Map<String, List<Map<String, dynamic>>> incomingData = {};
     for (final table in tables) {
-      int inserted = 0;
-      int updated = 0;
-      int skipped = 0;
-      int conflicted = 0;
-
-      // Skip this table if it is not selected for merge
-      if (!_isTableSelected(table, selectedModules)) {
-        resultStats[table] = {
-          'inserted': 0,
-          'updated': 0,
-          'skipped': 0,
-          'conflicted': 0,
-        };
-        continue;
-      }
-
+      if (!_isTableSelected(table, selectedModules)) continue;
       try {
-        final incomingRows = await incomingDb.query(table);
+        final rows = await incomingDb.query(table);
+        incomingData[table] = rows;
+        totalRows += rows.length;
+      } catch (_) {}
+    }
+
+    final Map<String, Map<String, int>> resultStats = {};
+    int processedRows = 0;
+    final safeTotalRows = totalRows == 0 ? 1 : totalRows;
+
+    Future<void> runMerge(DatabaseExecutor dbExecutor) async {
+      for (final table in tables) {
+        int inserted = 0;
+        int updated = 0;
+        int skipped = 0;
+        int conflicted = 0;
+
+        if (!_isTableSelected(table, selectedModules)) {
+          resultStats[table] = {
+            'inserted': 0,
+            'updated': 0,
+            'skipped': 0,
+            'conflicted': 0,
+          };
+          continue;
+        }
+
+        final incomingRows = incomingData[table] ?? [];
         for (final row in incomingRows) {
-          final id = row['id']?.toString() ?? row['key']?.toString() ?? '';
+          final id = row['id']?.toString() ?? 
+                     row['key']?.toString() ?? 
+                     row['worker_id']?.toString() ?? '';
           if (id.isEmpty) {
             skipped++;
+            processedRows++;
+            onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
             continue;
           }
 
           List<Map<String, dynamic>> existing;
           if (table == 'settings') {
-            existing = await targetDb.query(table, where: 'key = ?', whereArgs: [id]);
+            existing = await dbExecutor.query(table, where: 'key = ?', whereArgs: [id]);
+          } else if (table == 'worker_permissions') {
+            existing = await dbExecutor.query(table, where: 'worker_id = ?', whereArgs: [id]);
           } else {
-            existing = await targetDb.query(table, where: 'id = ?', whereArgs: [id]);
+            existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
           }
 
           if (existing.isEmpty) {
             try {
               if (!dryRun) {
-                await targetDb.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+                await dbExecutor.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
               }
               inserted++;
             } catch (_) {
@@ -532,12 +556,14 @@ class DatabaseHelper {
               final incomingVal = row['value']?.toString() ?? '';
               if (existingVal != incomingVal) {
                 if (!dryRun) {
-                  await targetDb.update(table, row, where: 'key = ?', whereArgs: [id]);
+                  await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
                 }
                 updated++;
               } else {
                 skipped++;
               }
+              processedRows++;
+              onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
               continue;
             }
 
@@ -551,9 +577,11 @@ class DatabaseHelper {
               if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
                 if (!dryRun) {
                   if (table == 'settings') {
-                    await targetDb.update(table, row, where: 'key = ?', whereArgs: [id]);
+                    await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
+                  } else if (table == 'worker_permissions') {
+                    await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
                   } else {
-                    await targetDb.update(table, row, where: 'id = ?', whereArgs: [id]);
+                    await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);
                   }
                 }
                 updated++;
@@ -564,30 +592,34 @@ class DatabaseHelper {
               skipped++;
             }
           }
+          processedRows++;
+          onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
         }
-      } catch (_) {
-        // Table missing in legacy schema backup
-      }
 
-      resultStats[table] = {
-        'inserted': inserted,
-        'updated': updated,
-        'skipped': skipped,
-        'conflicted': conflicted,
-      };
+        resultStats[table] = {
+          'inserted': inserted,
+          'updated': updated,
+          'skipped': skipped,
+          'conflicted': conflicted,
+        };
+      }
+    }
+
+    if (dryRun) {
+      await runMerge(targetDb);
+    } else {
+      await targetDb.transaction((txn) async {
+        await runMerge(txn);
+        await _runRecalculations(txn);
+      });
     }
 
     await incomingDb.close();
-
-    if (!dryRun) {
-      await _runRecalculations(targetDb);
-    }
-
     return resultStats;
   }
 
   /// Recalculates outstanding balances, VIP memberships, worker stats/commissions upon import
-  Future<void> _runRecalculations(Database db) async {
+  Future<void> _runRecalculations(DatabaseExecutor db) async {
     // 1. Recalculate customer statistics
     await db.rawUpdate('''
       UPDATE customers SET
@@ -688,22 +720,40 @@ class DatabaseHelper {
     // Workers
     await db.execute('''
       CREATE TABLE IF NOT EXISTS workers (
-        id               TEXT PRIMARY KEY,
-        name             TEXT NOT NULL,
-        photo_path       TEXT DEFAULT '',
-        phone            TEXT DEFAULT '',
-        address          TEXT DEFAULT '',
-        joining_date     TEXT DEFAULT '',
-        employee_id      TEXT DEFAULT '',
-        status           TEXT NOT NULL DEFAULT 'active',
-        pin              TEXT DEFAULT '',
-        commission_type  TEXT NOT NULL DEFAULT 'pct_order',
-        commission_value REAL DEFAULT 5.0,
-        salary           REAL DEFAULT 0,
-        bonus            REAL DEFAULT 0,
-        notes            TEXT DEFAULT '',
-        created_at       TEXT NOT NULL,
-        updated_at       TEXT NOT NULL
+        id                TEXT PRIMARY KEY,
+        name              TEXT NOT NULL,
+        photo_path        TEXT DEFAULT '',
+        phone             TEXT DEFAULT '',
+        address           TEXT DEFAULT '',
+        joining_date      TEXT DEFAULT '',
+        employee_id       TEXT DEFAULT '',
+        status            TEXT NOT NULL DEFAULT 'active',
+        pin_hash          TEXT DEFAULT '',
+        commission_type   TEXT NOT NULL DEFAULT 'pct_order',
+        commission_value  REAL DEFAULT 5.0,
+        salary            REAL DEFAULT 0,
+        bonus             REAL DEFAULT 0,
+        notes             TEXT DEFAULT '',
+        aadhaar_id        TEXT DEFAULT '',
+        emergency_contact TEXT DEFAULT '',
+        bank_details      TEXT DEFAULT '',
+        target            REAL DEFAULT 0.0,
+        joining_salary    REAL DEFAULT 0.0,
+        leave_status      TEXT DEFAULT 'active',
+        remarks           TEXT DEFAULT '',
+        created_at        TEXT NOT NULL,
+        updated_at        TEXT NOT NULL
+      )
+    ''');
+
+    // Worker Security (isolated key storage)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS worker_security (
+        worker_id     TEXT PRIMARY KEY,
+        worker_secret TEXT NOT NULL,
+        created_at    TEXT NOT NULL,
+        updated_at    TEXT NOT NULL,
+        FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE CASCADE
       )
     ''');
 
@@ -800,20 +850,23 @@ class DatabaseHelper {
     // Business Profile
     await db.execute('''
       CREATE TABLE IF NOT EXISTS business_profile (
-        id             TEXT PRIMARY KEY,
-        business_name  TEXT NOT NULL DEFAULT 'OrderKart',
-        owner_name     TEXT DEFAULT '',
-        phone          TEXT DEFAULT '',
-        whatsapp       TEXT DEFAULT '',
-        email          TEXT DEFAULT '',
-        address        TEXT DEFAULT '',
-        gst_number     TEXT DEFAULT '',
-        upi_id         TEXT DEFAULT '',
-        logo_path      TEXT DEFAULT '',
-        qr_path        TEXT DEFAULT '',
-        invoice_footer TEXT DEFAULT '',
-        created_at     TEXT NOT NULL,
-        updated_at     TEXT NOT NULL
+        id               TEXT PRIMARY KEY,
+        business_name    TEXT NOT NULL DEFAULT 'OrderKart',
+        owner_name       TEXT DEFAULT '',
+        phone            TEXT DEFAULT '',
+        whatsapp         TEXT DEFAULT '',
+        email            TEXT DEFAULT '',
+        address          TEXT DEFAULT '',
+        gst_number       TEXT DEFAULT '',
+        upi_id           TEXT DEFAULT '',
+        logo_path        TEXT DEFAULT '',
+        qr_path          TEXT DEFAULT '',
+        invoice_footer   TEXT DEFAULT '',
+        bank_details     TEXT DEFAULT '',
+        support_number   TEXT DEFAULT '',
+        terms_conditions TEXT DEFAULT '',
+        created_at       TEXT NOT NULL,
+        updated_at       TEXT NOT NULL
       )
     ''');
 
@@ -896,25 +949,27 @@ class DatabaseHelper {
     // Worker Permissions
     await db.execute('''
       CREATE TABLE IF NOT EXISTS worker_permissions (
-        worker_id        TEXT PRIMARY KEY,
-        add_customer     INTEGER DEFAULT 1,
-        edit_customer    INTEGER DEFAULT 1,
-        delete_customer  INTEGER DEFAULT 0,
-        create_order     INTEGER DEFAULT 1,
-        edit_order       INTEGER DEFAULT 1,
-        cancel_order     INTEGER DEFAULT 0,
-        receive_payment  INTEGER DEFAULT 1,
-        change_stock     INTEGER DEFAULT 1,
-        change_prices    INTEGER DEFAULT 0,
-        change_inventory INTEGER DEFAULT 0,
-        add_expenses     INTEGER DEFAULT 1,
-        export_data      INTEGER DEFAULT 1,
-        import_data      INTEGER DEFAULT 0,
-        view_reports     INTEGER DEFAULT 1,
-        edit_notes       INTEGER DEFAULT 1,
-        manage_vip       INTEGER DEFAULT 0,
-        backup_restore   INTEGER DEFAULT 0,
-        updated_at       TEXT NOT NULL
+        worker_id           TEXT PRIMARY KEY,
+        add_customer        INTEGER DEFAULT 1,
+        edit_customer       INTEGER DEFAULT 1,
+        delete_customer     INTEGER DEFAULT 0,
+        create_order        INTEGER DEFAULT 1,
+        edit_order          INTEGER DEFAULT 1,
+        cancel_order        INTEGER DEFAULT 0,
+        receive_payment     INTEGER DEFAULT 1,
+        edit_stock_quantity INTEGER DEFAULT 1,
+        edit_selling_price  INTEGER DEFAULT 1,
+        edit_cost_price     INTEGER DEFAULT 0,
+        add_new_item        INTEGER DEFAULT 0,
+        delete_item         INTEGER DEFAULT 0,
+        add_expenses        INTEGER DEFAULT 1,
+        export_data         INTEGER DEFAULT 1,
+        import_data         INTEGER DEFAULT 0,
+        view_reports        INTEGER DEFAULT 1,
+        edit_notes          INTEGER DEFAULT 1,
+        manage_vip          INTEGER DEFAULT 0,
+        backup_restore      INTEGER DEFAULT 0,
+        updated_at          TEXT NOT NULL
       )
     ''');
 
@@ -974,6 +1029,129 @@ class DatabaseHelper {
     ];
     for (final col in otherCols) {
       try { await db.execute(col); } catch (_) {}
+    }
+
+    final workerCols = [
+      "ALTER TABLE workers ADD COLUMN aadhaar_id TEXT DEFAULT ''",
+      "ALTER TABLE workers ADD COLUMN emergency_contact TEXT DEFAULT ''",
+      "ALTER TABLE workers ADD COLUMN bank_details TEXT DEFAULT ''",
+      "ALTER TABLE workers ADD COLUMN target REAL DEFAULT 0.0",
+      "ALTER TABLE workers ADD COLUMN joining_salary REAL DEFAULT 0.0",
+      "ALTER TABLE workers ADD COLUMN leave_status TEXT DEFAULT 'active'",
+      "ALTER TABLE workers ADD COLUMN remarks TEXT DEFAULT ''",
+      "ALTER TABLE workers ADD COLUMN pin_hash TEXT DEFAULT ''",
+    ];
+    for (final col in workerCols) {
+      try { await db.execute(col); } catch (_) {}
+    }
+
+    try {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS worker_security (
+          worker_id     TEXT PRIMARY KEY,
+          worker_secret TEXT NOT NULL,
+          created_at    TEXT NOT NULL,
+          updated_at    TEXT NOT NULL,
+          FOREIGN KEY(worker_id) REFERENCES workers(id) ON DELETE CASCADE
+        )
+      ''');
+    } catch (_) {}
+
+    final permissionCols = [
+      "ALTER TABLE worker_permissions ADD COLUMN edit_stock_quantity INTEGER DEFAULT 1",
+      "ALTER TABLE worker_permissions ADD COLUMN edit_selling_price INTEGER DEFAULT 1",
+      "ALTER TABLE worker_permissions ADD COLUMN edit_cost_price INTEGER DEFAULT 0",
+      "ALTER TABLE worker_permissions ADD COLUMN add_new_item INTEGER DEFAULT 0",
+      "ALTER TABLE worker_permissions ADD COLUMN delete_item INTEGER DEFAULT 0",
+    ];
+    for (final col in permissionCols) {
+      try { await db.execute(col); } catch (_) {}
+    }
+
+    final businessProfileCols = [
+      "ALTER TABLE business_profile ADD COLUMN bank_details TEXT DEFAULT ''",
+      "ALTER TABLE business_profile ADD COLUMN support_number TEXT DEFAULT ''",
+      "ALTER TABLE business_profile ADD COLUMN terms_conditions TEXT DEFAULT ''",
+    ];
+    for (final col in businessProfileCols) {
+      try { await db.execute(col); } catch (_) {}
+    }
+  }
+
+  Future<void> _runStartupHealthCheck(Database db) async {
+    try {
+      // 1. Check integrity
+      final List<Map<String, dynamic>> integrityRes = await db.rawQuery('PRAGMA integrity_check(10)');
+      String integrityStatus = 'ok';
+      if (integrityRes.isNotEmpty) {
+        final firstVal = integrityRes.first.values.first?.toString() ?? '';
+        if (firstVal.toLowerCase() != 'ok') {
+          integrityStatus = integrityRes.map((r) => r.values.join(',')).join('; ');
+        }
+      }
+      
+      if (integrityStatus != 'ok') {
+        final id = DateTime.now().millisecondsSinceEpoch.toString();
+        await db.insert('repair_logs', {
+          'id': 'integrity_$id',
+          'date': DateTime.now().toIso8601String(),
+          'issue_type': 'Integrity Violation',
+          'details': 'Integrity check failed: $integrityStatus',
+          'action_taken': 'Logged'
+        });
+      }
+
+      // 2. Check foreign keys
+      final List<Map<String, dynamic>> fkRes = await db.rawQuery('PRAGMA foreign_key_check');
+      if (fkRes.isNotEmpty) {
+        final details = fkRes.map((r) => 'Table: ${r['table']}, Rowid: ${r['rowid']}, Parent: ${r['parent']}, Fkid: ${r['fkid']}').join('; ');
+        final id = DateTime.now().millisecondsSinceEpoch.toString();
+        await db.insert('repair_logs', {
+          'id': 'fk_$id',
+          'date': DateTime.now().toIso8601String(),
+          'issue_type': 'Foreign Key Violation',
+          'details': details,
+          'action_taken': 'Logged'
+        });
+      }
+    } catch (e) {
+      print('Database health check failed: $e');
+    }
+  }
+
+  Future<void> _runAutoCleanup(Database db) async {
+    try {
+      final cutoffDate = DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
+      
+      // Clean old audit logs
+      await db.delete('audit_logs', where: 'created_at < ?', whereArgs: [cutoffDate]);
+      
+      // Clean old sync history
+      await db.delete('sync_history', where: 'sync_date < ?', whereArgs: [cutoffDate]);
+      
+      // Clean old repair logs
+      await db.delete('repair_logs', where: 'date < ?', whereArgs: [cutoffDate]);
+      
+      // Clean temporary ZIP files in getTemporaryDirectory
+      try {
+        final tempDir = await getTemporaryDirectory();
+        if (tempDir.existsSync()) {
+          final List<FileSystemEntity> files = tempDir.listSync();
+          for (final file in files) {
+            if (file is File && file.path.endsWith('.zip')) {
+              // Delete old zip files (older than 1 day)
+              final lastMod = file.lastModifiedSync();
+              if (DateTime.now().difference(lastMod).inDays >= 1) {
+                file.deleteSync();
+              }
+            }
+          }
+        }
+      } catch (_) {
+        // Silent catch — temporary directory may not be initialized in unit tests
+      }
+    } catch (e) {
+      print('Auto-cleanup database error: $e');
     }
   }
 }

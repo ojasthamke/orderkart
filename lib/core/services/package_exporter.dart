@@ -9,6 +9,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
 import '../database/database_helper.dart';
+import '../utils/security_helper.dart';
 
 class PackageExporter {
   PackageExporter._();
@@ -92,6 +93,7 @@ class PackageExporter {
         }
         if (!selectedModules.contains('workers')) {
           await tempDb.delete('workers');
+          await tempDb.delete('worker_security');
           await tempDb.delete('worker_assignments');
           await tempDb.delete('worker_reports');
           await tempDb.delete('commission_history');
@@ -130,6 +132,7 @@ class PackageExporter {
       if (selectedWorkerIds != null && selectedWorkerIds.isNotEmpty) {
         final list = sqlInClause(selectedWorkerIds);
         await tempDb.delete('workers', where: 'id NOT IN ($list)');
+        await tempDb.delete('worker_security', where: 'worker_id NOT IN ($list)');
         await tempDb.delete('worker_assignments', where: 'worker_id NOT IN ($list)');
         await tempDb.delete('worker_reports', where: 'worker_id NOT IN ($list)');
         await tempDb.delete('commission_history', where: 'worker_id NOT IN ($list)');
@@ -174,10 +177,83 @@ class PackageExporter {
       await tempDb.delete('order_items', where: 'order_id NOT IN (SELECT id FROM orders)');
       await tempDb.delete('payments', where: 'order_id NOT IN (SELECT id FROM orders)');
 
+      // --- 4b. Remove Sensitive Settings ---
+      // The Owner's private signing secret should never be distributed to worker devices.
+      if (workerId.isNotEmpty) {
+        await tempDb.delete('settings', where: 'key = ?', whereArgs: [AppConstants.keyOwnerSecret]);
+      }
+
     } finally {
       // Re-enable foreign key constraints & close
       await tempDb.execute('PRAGMA foreign_keys = ON');
       await tempDb.close();
+    }
+
+    // Determine secretKey before building and encrypting the database file
+    String secretKey = '';
+    final mainDb = await DatabaseHelper.instance.database;
+    
+    // Get active key version (default to '1')
+    final List<Map<String, dynamic>> activeKeyVerRow = await mainDb.query(
+      'settings',
+      where: 'key = ?',
+      whereArgs: ['active_key_version'],
+    );
+    final String activeKeyVersion = activeKeyVerRow.isNotEmpty
+        ? activeKeyVerRow.first['value']?.toString() ?? '1'
+        : '1';
+
+    if (workerId.isNotEmpty) {
+      // Owner provisioning a worker: retrieve the worker's own secret key from worker_security table
+      final List<Map<String, dynamic>> res = await mainDb.query(
+        'worker_security',
+        columns: ['worker_secret'],
+        where: 'worker_id = ?',
+        whereArgs: [workerId],
+      );
+      if (res.isNotEmpty) {
+        secretKey = res.first['worker_secret']?.toString() ?? '';
+      }
+    }
+    
+    // If not set yet, check if this device is a worker device (meaning we sign as a worker)
+    if (secretKey.isEmpty) {
+      final List<Map<String, dynamic>> localWorkers = await mainDb.query('workers', limit: 1);
+      if (localWorkers.isNotEmpty) {
+        final List<Map<String, dynamic>> resSec = await mainDb.query(
+          'worker_security',
+          columns: ['worker_secret'],
+          where: 'worker_id = ?',
+          whereArgs: [localWorkers.first['id']],
+        );
+        if (resSec.isNotEmpty) {
+          secretKey = resSec.first['worker_secret']?.toString() ?? '';
+        }
+      }
+    }
+    
+    // Fallback: Sign with owner secret key (e.g. Owner exporting backup)
+    if (secretKey.isEmpty) {
+      // Try to get key specific to this version, e.g. 'owner_secret_v1'
+      final List<Map<String, dynamic>> verKeyRow = await mainDb.query(
+        'settings',
+        where: 'key = ?',
+        whereArgs: ['owner_secret_v$activeKeyVersion'],
+      );
+      if (verKeyRow.isNotEmpty) {
+        secretKey = verKeyRow.first['value']?.toString() ?? '';
+      }
+      if (secretKey.isEmpty) {
+        secretKey = await SecurityHelper.getOrInitializeOwnerSecret();
+        await mainDb.insert(
+          'settings',
+          {
+            'key': 'owner_secret_v$activeKeyVersion',
+            'value': secretKey,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
     }
 
     // Now build package folder structure
@@ -185,9 +261,11 @@ class PackageExporter {
     if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
     packageDir.createSync();
 
-    // Copy DB file
-    final destDb = File('${packageDir.path}/database.db');
-    await tempDbFile.copy(destDb.path);
+    // Encrypt and write the DB file
+    final destDbEnc = File('${packageDir.path}/database.enc');
+    final dbBytes = await tempDbFile.readAsBytes();
+    final encryptedDbBytes = SecurityHelper.encryptBytes(dbBytes, secretKey);
+    await destDbEnc.writeAsBytes(encryptedDbBytes);
 
     // Create directories
     final photosDir = Directory('${packageDir.path}/photos')..createSync();
@@ -222,7 +300,7 @@ class PackageExporter {
 
     // Calculate file hashes for manifest
     final fileHashes = <String, String>{};
-    fileHashes['database.db'] = await calculateFileHash(destDb);
+    fileHashes['database.enc'] = await calculateFileHash(destDbEnc);
 
     final photoList = photosDir.listSync();
     for (final f in photoList) {
@@ -245,11 +323,13 @@ class PackageExporter {
       }
     }
 
-    // Construct manifest JSON metadata
+    // Construct manifest JSON metadata with versioning, expiry and device binding
     final packageId = const Uuid().v4();
-    final manifest = {
+    final manifest = <String, dynamic>{
       'package_id': packageId,
       'package_version': '1.0.0',
+      'minimum_supported_version': '1.0.0',
+      'current_version': '1.0.0',
       'db_version': AppConstants.dbVersion.toString(),
       'schema_version': '4',
       'export_version': '1',
@@ -258,13 +338,20 @@ class PackageExporter {
       'generated_by_worker_id': workerId,
       'generated_by_worker_name': workerName,
       'is_worker_provisioning_package': workerId.isNotEmpty,
+      if (workerId.isNotEmpty) 'worker_secret': secretKey,
       'device_name': Platform.localHostname,
-      'device_model': Platform.operatingSystem,
-      'android_id': 'mock_android_id_${Platform.operatingSystem.hashCode.abs()}',
+      'platform': Platform.operatingSystem,
+      'device_id': 'mock_device_id_${Platform.operatingSystem.hashCode.abs()}',
+      'key_version': activeKeyVersion,
       'app_version': AppConstants.appVersion,
       'export_timestamp': DateTime.now().toIso8601String(),
+      'expires_at': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
+      'revoked': false,
       'file_hashes': fileHashes,
     };
+
+    final hmacSignature = SecurityHelper.signManifest(manifest, secretKey);
+    manifest['signature'] = hmacSignature;
 
     final manifestFile = File('${packageDir.path}/manifest.json');
     await manifestFile.writeAsString(jsonEncode(manifest));
@@ -284,7 +371,7 @@ class PackageExporter {
     // Add all files recursively maintaining directories
     encoder.addFile(manifestFile, 'manifest.json');
     encoder.addFile(checksumFile, 'checksum.sha256');
-    encoder.addFile(destDb, 'database.db');
+    encoder.addFile(destDbEnc, 'database.enc');
     
     for (final f in photoList) {
       if (f is File) encoder.addFile(f, 'photos/${p.basename(f.path)}');

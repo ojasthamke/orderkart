@@ -134,6 +134,15 @@ class AppDrawer extends ConsumerWidget {
                   
                   if (isWorker) ...[
                     _DrawerItem(
+                      icon: Icons.person_rounded,
+                      title: 'My Worker Profile',
+                      iconColor: AppColors.primary,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.workerSelfProfile);
+                      },
+                    ),
+                    _DrawerItem(
                       icon: Icons.note_alt_rounded,
                       title: 'Field Visit Notes',
                       onTap: () {

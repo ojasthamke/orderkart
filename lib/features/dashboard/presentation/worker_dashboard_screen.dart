@@ -176,6 +176,23 @@ class WorkerDashboardScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            AppHaptics.buttonClick();
+                            Navigator.of(context).pushNamed(AppRoutes.workerSelfProfile);
+                          },
+                          icon: const Icon(Icons.person_rounded, color: Color(0xFF0284C7)),
+                          label: const Text('My Profile'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF0284C7),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 10),
                       IconButton(
                         onPressed: () => _showCustomerPickerForOrder(context, ref),

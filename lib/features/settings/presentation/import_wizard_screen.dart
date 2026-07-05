@@ -64,6 +64,35 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
   List<MergeConflict> _conflicts = [];
   bool _applyToAllSimilar = false;
 
+  // Progress indicators
+  double _importProgress = 0.0;
+  int _processedCount = 0;
+  int _totalCount = 0;
+  int _duplicatePhonesCount = 0;
+  bool _isImporting = false;
+
+  Future<int> _countDuplicatePhones(String incomingDbPath) async {
+    int duplicates = 0;
+    try {
+      final targetDb = await DatabaseHelper.instance.database;
+      final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
+      final incomingCustomers = await incomingDb.query('customers', columns: ['id', 'phone']);
+      
+      for (final row in incomingCustomers) {
+        final phone = row['phone']?.toString() ?? '';
+        final id = row['id']?.toString() ?? '';
+        if (phone.isEmpty || id.isEmpty) continue;
+        
+        final local = await targetDb.query('customers', where: 'phone = ? AND id != ?', whereArgs: [phone, id]);
+        if (local.isNotEmpty) {
+          duplicates++;
+        }
+      }
+      await incomingDb.close();
+    } catch (_) {}
+    return duplicates;
+  }
+
   Future<void> _pickFile() async {
     setState(() => _loading = true);
     try {
@@ -112,6 +141,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
         _dbFileToMerge,
         dryRun: true,
       );
+
+      _duplicatePhonesCount = await _countDuplicatePhones(_dbFileToMerge);
 
       // Check for conflicts
       _conflicts = await _checkConflicts(_dbFileToMerge);
@@ -204,7 +235,13 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
   }
 
   Future<void> _executeMerge() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _isImporting = true;
+      _importProgress = 0.0;
+      _processedCount = 0;
+      _totalCount = 0;
+    });
     File? backupFile;
 
     try {
@@ -263,6 +300,13 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
         _dbFileToMerge,
         selectedModules: selectedModules,
         dryRun: false,
+        onProgress: (progress, processed, total) {
+          setState(() {
+            _importProgress = progress;
+            _processedCount = processed;
+            _totalCount = total;
+          });
+        },
       );
 
       // Log import into Import History table
@@ -287,6 +331,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
 
       setState(() {
         _previewStats = finalStats;
+        _isImporting = false;
         _currentStep = 3; // Step 4: Finish Summary
       });
 
@@ -295,14 +340,98 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       if (backupFile != null && backupFile.existsSync()) {
         await _restoreDatabase(backupFile);
       }
+      setState(() {
+        _isImporting = false;
+      });
       SnackbarHelper.showError(context, 'Import failed. Database rolled back safely. Error: $e');
     } finally {
       setState(() => _loading = false);
     }
   }
 
+  Widget _detailedPreviewRow(String title, String tableKey) {
+    final stats = _previewStats[tableKey] ?? {'inserted': 0, 'updated': 0, 'skipped': 0, 'conflicted': 0};
+    final ins = stats['inserted'] ?? 0;
+    final upd = stats['updated'] ?? 0;
+    final skp = stats['skipped'] ?? 0;
+    final con = stats['conflicted'] ?? 0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('New: +$ins', style: const TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w600)),
+              Text('Updated: +$upd', style: const TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600)),
+              Text('Skipped: $skp', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              if (con > 0)
+                Text('Conflicts: $con', style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const Divider(height: 12),
+        ],
+      ),
+    );
+  }
+
+  Widget _previewPhotosRow(int count) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('New Customer Photos:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
+          Text('+$count', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isImporting) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0F172A),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: AppColors.primary),
+                const SizedBox(height: 24),
+                const Text(
+                  'Merging Database...',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  value: _importProgress,
+                  backgroundColor: Colors.white10,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${(_importProgress * 100).toStringAsFixed(0)}% completed',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$_processedCount / $_totalCount records processed',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return AppScaffold(
       title: 'Import Wizard',
       body: _loading
@@ -390,12 +519,33 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                           const Text('Database Preview',
                               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                           const SizedBox(height: 12),
-                          _previewRow('Customers', _previewStats['customers']?['inserted'] ?? 0),
-                          _previewRow('Orders', _previewStats['orders']?['inserted'] ?? 0),
-                          _previewRow('Payments', _previewStats['payments']?['inserted'] ?? 0),
-                          _previewRow('Items', _previewStats['items']?['inserted'] ?? 0),
-                          _previewRow('Expenses', _previewStats['expenses']?['inserted'] ?? 0),
-                          _previewRow('Photos', _incomingPhotosCount),
+                          _detailedPreviewRow('Customers', 'customers'),
+                          _detailedPreviewRow('Orders', 'orders'),
+                          _detailedPreviewRow('Payments', 'payments'),
+                          _detailedPreviewRow('Items', 'items'),
+                          _detailedPreviewRow('Expenses', 'expenses'),
+                          _previewPhotosRow(_incomingPhotosCount),
+                          const Divider(),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Duplicate Phone Numbers:', style: TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w600)),
+                                Text('$_duplicatePhonesCount', style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w800)),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Deleted Records:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                const Text('0 (Preserved)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           if (_manifest.isNotEmpty) ...[
                             const Divider(),

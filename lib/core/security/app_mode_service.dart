@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 
 enum AppMode { owner, worker }
@@ -12,9 +13,11 @@ class AppModeService {
   static const String keyOwnerPinHash = 'owner_pin_hash';
   static const String keyOwnerPinSalt = 'owner_pin_salt';
   static const String keyIsInitialized = 'app_initialized';
+  static const String keyFailedAttempts = 'owner_failed_pin_attempts';
+  static const String keyLockoutUntil = 'owner_pin_lockout_until';
 
   /// Session state: once logged in as Owner, true until explicit Logout!
-  static bool isOwnerSessionActive = true;
+  static bool isOwnerSessionActive = false;
 
   static void loginOwnerSuccess() {
     isOwnerSessionActive = true;
@@ -91,8 +94,44 @@ class AppModeService {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  /// Get remaining lockout time in seconds. Returns 0 if not locked.
+  static Future<int> getRemainingLockoutTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lockoutUntil = prefs.getInt(keyLockoutUntil) ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (lockoutUntil > now) {
+      return ((lockoutUntil - now) / 1000).ceil();
+    }
+    return 0;
+  }
+
+  /// Registers a failed PIN entry.
+  static Future<void> registerFailedAttempt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentFailed = (prefs.getInt(keyFailedAttempts) ?? 0) + 1;
+    await prefs.setInt(keyFailedAttempts, currentFailed);
+
+    if (currentFailed >= 10) {
+      final lockoutTime = DateTime.now().millisecondsSinceEpoch + (5 * 60 * 1000); // 5 minutes
+      await prefs.setInt(keyLockoutUntil, lockoutTime);
+    } else if (currentFailed >= 5) {
+      final lockoutTime = DateTime.now().millisecondsSinceEpoch + (30 * 1000); // 30 seconds
+      await prefs.setInt(keyLockoutUntil, lockoutTime);
+    }
+  }
+
+  /// Reset failed attempts.
+  static Future<void> resetFailedAttempts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(keyFailedAttempts);
+    await prefs.remove(keyLockoutUntil);
+  }
+
   /// Validate entered Owner PIN against stored hash
   static Future<bool> verifyOwnerPin(String pin) async {
+    final remainingLock = await getRemainingLockoutTime();
+    if (remainingLock > 0) return false;
+
     final db = await DatabaseHelper.instance.database;
     final hashRes = await db.query('settings', where: 'key = ?', whereArgs: [keyOwnerPinHash]);
     final saltRes = await db.query('settings', where: 'key = ?', whereArgs: [keyOwnerPinSalt]);
@@ -103,7 +142,14 @@ class AppModeService {
 
     if (storedHash.isEmpty || storedSalt.isEmpty) return false;
     final inputHash = _hashPin(pin.trim(), storedSalt);
-    return inputHash == storedHash;
+    final isValid = inputHash == storedHash;
+
+    if (isValid) {
+      await resetFailedAttempts();
+    } else {
+      await registerFailedAttempt();
+    }
+    return isValid;
   }
 
   /// Check specific worker permission configured by Owner

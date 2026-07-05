@@ -10,6 +10,7 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../../core/services/package_validator.dart';
+import '../../../core/services/worker_session.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 
@@ -338,13 +339,18 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
         selectedModules: ['entire_db'],
       );
 
+      final workerId = validation.manifest['generated_by_worker_id'] as String?;
+      if (workerId != null) {
+        await WorkerSession.instance.setWorker(workerId);
+      }
+
       await AppModeService.setAppMode(AppMode.worker);
       await AppModeService.setAppInitialized(true);
 
       if (!mounted) return;
       ref.invalidate(appModeProvider);
-      SnackbarHelper.showSuccess(context, '🎉 Worker Device Provisioned! Logged in as $workerName');
-      Navigator.of(context).pushReplacementNamed(AppRoutes.workerDashboard);
+      SnackbarHelper.showSuccess(context, '🎉 Worker Device Provisioned! Setup your security PIN.');
+      Navigator.of(context).pushReplacementNamed(AppRoutes.pinLock);
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Provisioning import failed: $e');
     } finally {

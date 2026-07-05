@@ -4,6 +4,8 @@ import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
 import '../constants/app_constants.dart';
+import '../database/database_helper.dart';
+import '../utils/security_helper.dart';
 
 class PackageValidationResult {
   final bool isValid;
@@ -24,6 +26,23 @@ class PackageValidationResult {
 class PackageValidator {
   PackageValidator._();
 
+  /// Helper to compare two semantic versions. Returns true if appVer >= minSupportedVer.
+  static bool isVersionCompatible(String appVer, String minSupportedVer) {
+    try {
+      final appParts = appVer.split('.').map(int.parse).toList();
+      final minParts = minSupportedVer.split('.').map(int.parse).toList();
+      for (int i = 0; i < 3; i++) {
+        final aVal = i < appParts.length ? appParts[i] : 0;
+        final mVal = i < minParts.length ? minParts[i] : 0;
+        if (aVal > mVal) return true;
+        if (aVal < mVal) return false;
+      }
+      return true;
+    } catch (_) {
+      return appVer == minSupportedVer;
+    }
+  }
+
   /// Reads and verifies a zip package's integrity, hashes, signatures, and version compatibility
   static Future<PackageValidationResult> validatePackage(String zipPath) async {
     try {
@@ -41,7 +60,7 @@ class PackageValidator {
       final bytes = await zipFile.readAsBytes();
       final archive = ZipDecoder().decodeBytes(bytes);
 
-      List<int>? dbData;
+      List<int>? dbEncData;
       List<int>? manifestData;
       String? checksumHash;
 
@@ -54,8 +73,8 @@ class PackageValidator {
         if (!f.isFile) continue;
         final normName = f.name.replaceAll('\\', '/');
 
-        if (normName == 'database.db') {
-          dbData = f.content as List<int>;
+        if (normName == 'database.enc') {
+          dbEncData = f.content as List<int>;
         } else if (normName == 'manifest.json') {
           manifestData = f.content as List<int>;
         } else if (normName == 'checksum.sha256') {
@@ -76,8 +95,8 @@ class PackageValidator {
       if (checksumHash == null) {
         return _fail('Missing signature checksum.sha256 file.');
       }
-      if (dbData == null) {
-        return _fail('Missing database.db file inside package.');
+      if (dbEncData == null) {
+        return _fail('Missing database.enc file inside package.');
       }
 
       // 2. Validate manifest.json signature using checksum.sha256
@@ -89,25 +108,129 @@ class PackageValidator {
       // 3. Parse manifest JSON
       final Map<String, dynamic> manifest = jsonDecode(utf8.decode(manifestData));
 
-      // Validate version parameters
-      final dbVer = manifest['db_version']?.toString() ?? '';
-      final schemaVer = manifest['schema_version']?.toString() ?? '';
-
-      if (schemaVer != '4') {
-        return _fail('Incompatible schema version: $schemaVer (Required: 4).');
+      // 3a. Check Expiry
+      final expiresAtStr = manifest['expires_at']?.toString() ?? '';
+      if (expiresAtStr.isNotEmpty) {
+        final expiresAt = DateTime.tryParse(expiresAtStr);
+        if (expiresAt != null && expiresAt.isBefore(DateTime.now())) {
+          return _fail('This package has expired and is no longer valid.');
+        }
       }
-      if (dbVer != AppConstants.dbVersion.toString()) {
-        return _fail('Incompatible database version: $dbVer (Expected: ${AppConstants.dbVersion}).');
+
+      // 3b. Check Revocation
+      if (manifest['revoked'] == true) {
+        return _fail('This package has been revoked by the owner.');
+      }
+
+      // 3c. Check Version Compatibility
+      final minSuppVer = manifest['minimum_supported_version']?.toString() ?? '1.0.0';
+      if (!isVersionCompatible(AppConstants.appVersion, minSuppVer)) {
+        return _fail('Your app version (${AppConstants.appVersion}) is too old. Please update to at least $minSuppVer.');
+      }
+
+      final schemaVer = manifest['schema_version']?.toString() ?? '';
+      if (schemaVer != '4') {
+        return _fail('Incompatible database schema version: $schemaVer. Expected: 4.');
+      }
+
+      final db = await DatabaseHelper.instance.database;
+
+      // 3d. Check if package has already been imported
+      final packageId = manifest['package_id']?.toString() ?? '';
+      if (packageId.isNotEmpty) {
+        final List<Map<String, dynamic>> existingImport = await db.query('import_history', where: 'package_id = ?', whereArgs: [packageId]);
+        if (existingImport.isNotEmpty) {
+          return _fail('This package has already been imported on ${existingImport.first['imported_at']}. Re-importing is blocked to prevent duplicate transactions.');
+        }
+      }
+
+      // 3e. Check Device Binding for Worker Mode
+      final currentMode = await AppModeService.getAppMode();
+      if (currentMode == AppMode.worker) {
+        final localDeviceId = 'mock_device_id_${Platform.operatingSystem.hashCode.abs()}';
+        final packageDeviceId = manifest['device_id']?.toString() ?? manifest['android_id']?.toString() ?? '';
+        if (packageDeviceId.isNotEmpty && packageDeviceId != localDeviceId) {
+          return _fail('This package belongs to another device. Owner approval is required to re-bind.');
+        }
+      }
+
+      // 3f. Retrieve Secret Key for Decryption and HMAC validation
+      final generatedByWorkerId = manifest['generated_by_worker_id']?.toString() ?? '';
+      final isWorkerProvisioning = manifest['is_worker_provisioning_package'] as bool? ?? false;
+      final packageKeyVersion = manifest['key_version']?.toString() ?? '1';
+      
+      String secretKey = '';
+
+      if (isWorkerProvisioning && manifest.containsKey('worker_secret')) {
+        secretKey = manifest['worker_secret']?.toString() ?? '';
+      } else if (generatedByWorkerId.isNotEmpty) {
+        final List<Map<String, dynamic>> localWorker = await db.query(
+          'worker_security',
+          columns: ['worker_secret'],
+          where: 'worker_id = ?',
+          whereArgs: [generatedByWorkerId],
+        );
+        if (localWorker.isNotEmpty) {
+          secretKey = localWorker.first['worker_secret']?.toString() ?? '';
+        }
+      } else {
+        // Owner backup: select correct key according to packageKeyVersion
+        final List<Map<String, dynamic>> res = await db.query(
+          'settings',
+          columns: ['value'],
+          where: 'key = ?',
+          whereArgs: ['owner_secret_v$packageKeyVersion'],
+        );
+        if (res.isNotEmpty) {
+          secretKey = res.first['value']?.toString() ?? '';
+        }
+        
+        // Fallback to default owner_secret if the versioned key isn't stored separately yet
+        if (secretKey.isEmpty) {
+          final List<Map<String, dynamic>> fallbackRes = await db.query(
+            'settings',
+            columns: ['value'],
+            where: 'key = ?',
+            whereArgs: [AppConstants.keyOwnerSecret],
+          );
+          if (fallbackRes.isNotEmpty) {
+            secretKey = fallbackRes.first['value']?.toString() ?? '';
+          }
+        }
+      }
+
+      if (secretKey.isEmpty && !isWorkerProvisioning) {
+        return _fail('Package authenticity check failed: No secret key found.');
+      }
+
+      // Validate HMAC signature
+      if (secretKey.isNotEmpty) {
+        final signature = manifest['signature']?.toString() ?? '';
+        final isValidSig = SecurityHelper.verifyManifest(manifest, signature, secretKey);
+        if (!isValidSig) {
+          return _fail('Package authenticity check failed (HMAC signature mismatch). File might be from an unauthorized owner or tampered.');
+        }
+      }
+
+      // 3g. Check if the worker is active locally
+      if (generatedByWorkerId.isNotEmpty) {
+        final List<Map<String, dynamic>> workerRes = await db.query('workers', where: 'id = ?', whereArgs: [generatedByWorkerId]);
+        if (workerRes.isNotEmpty) {
+          final status = workerRes.first['status']?.toString() ?? '';
+          if (status == 'inactive') {
+            return _fail('This package was generated by a disabled worker.');
+          }
+        }
       }
 
       // 4. Verify all individual file checksums inside manifest
       final fileHashes = manifest['file_hashes'] as Map<String, dynamic>? ?? {};
 
-      // Verify database.db hash
-      final actualDbHash = sha256.convert(dbData).toString();
-      final expectedDbHash = fileHashes['database.db']?.toString() ?? '';
-      if (actualDbHash != expectedDbHash) {
-        return _fail('Database integrity check failed (SHA-256 mismatch). file might be corrupted.');
+      // Verify database.enc hash
+      final actualDbEncHash = sha256.convert(dbEncData).toString();
+      final expectedDbEncHash = fileHashes['database.enc']?.toString() ?? '';
+      if (actualDbEncHash != expectedDbEncHash) {
+        return _fail('Database integrity check failed (SHA-256 mismatch). File might be corrupted.');
       }
 
       // Verify photos hashes
@@ -119,7 +242,15 @@ class PackageValidator {
         }
       }
 
-      // Extract database.db to temp folder for the wizard preview/merge
+      // 5. Decrypt database.enc to database.db
+      List<int> dbData;
+      try {
+        dbData = SecurityHelper.decryptBytes(dbEncData, secretKey);
+      } catch (e) {
+        return _fail('Failed to decrypt database: key mismatch or corrupted file. ($e)');
+      }
+
+      // Extract decrypted database.db to temp folder for the wizard preview/merge
       final tempDir = await getTemporaryDirectory();
       final tempDbFile = File('${tempDir.path}/wizard_incoming.db');
       if (tempDbFile.existsSync()) tempDbFile.deleteSync();

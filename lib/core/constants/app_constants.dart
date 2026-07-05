@@ -141,6 +141,7 @@ class AppConstants {
   static const String keyStaffWhatsApp   = 'staff_whatsapp';
   static const String keyLastDeliveryCharge = 'last_delivery_charge';
   static const String keyEnableVipPriceMarkup = 'enable_vip_price_markup';
+  static const String keyOwnerSecret = 'owner_secret';
 
   // Pagination
   static const int pageSize = 30;

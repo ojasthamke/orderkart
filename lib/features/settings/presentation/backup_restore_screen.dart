@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'package:sqflite/sqflite.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
@@ -160,10 +161,51 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
 
       await encoder.close();
 
+      // --- RUN ENTERPRISE BACKUP VERIFICATION ---
+      final verifyBytes = await zipFile.readAsBytes();
+      final verifyArchive = ZipDecoder().decodeBytes(verifyBytes);
+      bool dbFound = false;
+      List<int>? dbData;
+      int photosChecked = 0;
+
+      for (final f in verifyArchive) {
+        if (!f.isFile) continue;
+        if (f.name == 'orderkart.db') {
+          dbFound = true;
+          dbData = f.content as List<int>;
+        } else if (f.name.startsWith('customer_photos/')) {
+          final fileData = f.content as List<int>;
+          if (fileData.isNotEmpty) {
+            photosChecked++;
+          }
+        }
+      }
+
+      if (!dbFound || dbData == null) {
+        throw Exception('Database file not found inside backup ZIP.');
+      }
+
+      // Test opening the database and running health check
+      final verifyTempDir = await getTemporaryDirectory();
+      final verifyTempDbFile = File('${verifyTempDir.path}/verify_backup_temp.db');
+      if (verifyTempDbFile.existsSync()) verifyTempDbFile.deleteSync();
+      await verifyTempDbFile.writeAsBytes(dbData);
+
+      try {
+        final testDb = await openDatabase(verifyTempDbFile.path, readOnly: true);
+        final list = await testDb.rawQuery('PRAGMA integrity_check(1)');
+        if (list.isEmpty || list.first.values.first?.toString().toLowerCase() != 'ok') {
+          throw Exception('PRAGMA integrity_check failed on backup database.');
+        }
+        await testDb.close();
+      } finally {
+        if (verifyTempDbFile.existsSync()) verifyTempDbFile.deleteSync();
+      }
+
       await Share.shareXFiles([XFile(zipFile.path)],
           subject: 'OrderKart Backup');
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Backup file exported successfully');
+        SnackbarHelper.showSuccess(context, 'Backup verified successfully and shared!');
       }
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Export failed: $e');
