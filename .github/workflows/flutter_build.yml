@@ -35,7 +35,10 @@ jobs:
 
       # 3.1 Accept Android Licenses
       - name: Accept Android Licenses
-        run: yes | flutter doctor --android-licenses || true
+        run: |
+          flutter config --no-analytics
+          flutter doctor -v
+          yes | flutter doctor --android-licenses || true
 
       # 4. Get all packages/dependencies
       - name: Install Dependencies
@@ -49,7 +52,7 @@ jobs:
 
       # 5. Build Android Release APK
       - name: Build Android APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --verbose
 
       # 7. Upload APK Artifact
       - name: Upload Android APK Release
