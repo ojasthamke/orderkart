@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/services/package_exporter.dart';
+import '../../../core/services/package_validator.dart';
 import '../../../core/services/worker_package_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
@@ -271,34 +273,74 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                 ),
                 const SizedBox(height: 24),
 
-                // --- GENERATE WORKER REPORT PACKAGE ---
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      AppHaptics.buttonClick();
-                      try {
-                        await WorkerPackageService.generateWorkerReportPackage(
-                          workerId: worker.id,
-                          workerName: worker.name,
-                        );
-                        if (context.mounted) {
-                          SnackbarHelper.showSuccess(context, 'Exported Report Package for Owner!');
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          SnackbarHelper.showError(context, 'Export failed: $e');
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.share_rounded),
-                    label: const Text('Export My Report Package for Owner', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                // --- WORKER IMPORT & EXPORT SECTION ---
+                const Text('Worker Data Import & Export', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const SizedBox(height: 4),
+                const Text('Import updated packages from Owner or export your daily work report:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          AppHaptics.buttonClick();
+                          try {
+                            final result = await FilePicker.platform.pickFiles(type: FileType.any);
+                            if (result == null || result.files.single.path == null) return;
+                            final path = result.files.single.path!;
+                            final val = await PackageValidator.validatePackage(path);
+                            if (!val.isValid) {
+                              if (context.mounted) SnackbarHelper.showError(context, 'Invalid Package: ${val.errorMessage}');
+                              return;
+                            }
+                            await DatabaseHelper.instance.mergeDatabaseFromPath(val.dbPath, selectedModules: ['entire_db']);
+                            ref.refresh(currentWorkerProfileProvider);
+                            if (context.mounted) SnackbarHelper.showSuccess(context, '✅ Owner package imported successfully!');
+                          } catch (e) {
+                            if (context.mounted) SnackbarHelper.showError(context, 'Import failed: $e');
+                          }
+                        },
+                        icon: const Icon(Icons.file_download_rounded),
+                        label: const Text('Import Package'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          AppHaptics.buttonClick();
+                          try {
+                            await WorkerPackageService.generateWorkerReportPackage(
+                              workerId: worker.id,
+                              workerName: worker.name,
+                            );
+                            if (context.mounted) {
+                              SnackbarHelper.showSuccess(context, '✅ Worker report package exported!');
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              SnackbarHelper.showError(context, 'Export failed: $e');
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.share_rounded),
+                        label: const Text('Export Report'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
               ],

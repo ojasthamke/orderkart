@@ -277,17 +277,20 @@ class AppDrawer extends ConsumerWidget {
                         }
                       },
                     ),
-                  if (!isWorker)
-                    _DrawerItem(
-                      icon: Icons.restore_rounded,
-                      title: 'Backup & Restore',
-                      onTap: () async {
-                        Navigator.pop(context);
-                        if (await OwnerPinDialog.verify(context, title: 'Backup & Restore')) {
+                  _DrawerItem(
+                    icon: Icons.sync_alt_rounded,
+                    title: 'Import & Export Data',
+                    onTap: () async {
+                      Navigator.pop(context);
+                      if (isWorker) {
+                        Navigator.pushNamed(context, AppRoutes.backupRestore);
+                      } else {
+                        if (await OwnerPinDialog.verify(context, title: 'Import & Export Data')) {
                           Navigator.pushNamed(context, AppRoutes.backupRestore);
                         }
-                      },
-                    ),
+                      }
+                    },
+                  ),
 
                 ],
               ),
