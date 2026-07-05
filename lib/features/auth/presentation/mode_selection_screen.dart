@@ -45,7 +45,7 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
     if (_selectedMode == AppMode.owner) {
       _showOwnerSetupDialog();
     } else {
-      _showWorkerSetupDialog();
+      _importOwnerProvisioningZip();
     }
   }
 

@@ -279,31 +279,27 @@ class AppDrawer extends ConsumerWidget {
                         }
                       },
                     ),
-                  _DrawerItem(
-                    icon: Icons.swap_horiz_rounded,
-                    title: 'Switch App Mode',
-                    iconColor: AppColors.primary,
-                    onTap: () async {
-                      Navigator.pop(context);
-                      if (isWorker) {
-                        if (await OwnerPinDialog.verify(context, title: 'Switch to Owner Mode')) {
-                          Navigator.pushNamed(context, AppRoutes.modeSelection);
-                        }
-                      } else {
+                  if (!isWorker) ...[
+                    _DrawerItem(
+                      icon: Icons.swap_horiz_rounded,
+                      title: 'Switch App Mode',
+                      iconColor: AppColors.primary,
+                      onTap: () async {
+                        Navigator.pop(context);
                         Navigator.pushNamed(context, AppRoutes.modeSelection);
-                      }
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.logout_rounded,
-                    title: 'Logout Session',
-                    iconColor: AppColors.error,
-                    onTap: () {
-                      Navigator.pop(context);
-                      AppModeService.logoutOwner();
-                      Navigator.pushReplacementNamed(context, AppRoutes.modeSelection);
-                    },
-                  ),
+                      },
+                    ),
+                    _DrawerItem(
+                      icon: Icons.logout_rounded,
+                      title: 'Logout Session',
+                      iconColor: AppColors.error,
+                      onTap: () {
+                        Navigator.pop(context);
+                        AppModeService.logoutOwner();
+                        Navigator.pushReplacementNamed(context, AppRoutes.modeSelection);
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),

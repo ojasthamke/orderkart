@@ -133,8 +133,8 @@ class PackageExporter {
         await tempDb.delete('worker_assignments', where: 'worker_id NOT IN ($list)');
         await tempDb.delete('worker_reports', where: 'worker_id NOT IN ($list)');
         await tempDb.delete('commission_history', where: 'worker_id NOT IN ($list)');
-        await tempDb.delete('orders', where: 'assigned_worker_id NOT IN ($list)');
-        await tempDb.delete('customers', where: 'assigned_worker_id NOT IN ($list)');
+        await tempDb.delete('orders', where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" AND assigned_worker_id NOT IN ($list)');
+        await tempDb.delete('customers', where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" AND assigned_worker_id NOT IN ($list)');
       }
 
       if (selectedItemIds != null && selectedItemIds.isNotEmpty) {

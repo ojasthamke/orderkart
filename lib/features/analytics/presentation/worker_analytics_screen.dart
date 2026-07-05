@@ -18,31 +18,49 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
     final empId = w['employee_id'] as String? ?? '';
     final commType = w['commission_type'] as String? ?? 'pct_order';
     final commVal = (w['commission_value'] as num?)?.toDouble() ?? 5.0;
+    final monthlyTarget = (w['monthly_target'] as num?)?.toDouble() ?? 50000.0;
 
-    // Fetch order totals for this worker
-    final orderRes = await db.rawQuery(
-      'SELECT SUM(grand_total) as total_sales, COUNT(id) as order_count FROM orders WHERE assigned_worker_id = ? AND is_archived = 0',
-      [wid],
-    );
+    // Fetch order totals for this worker safely
+    final orderRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(o.grand_total), 0) as total_sales, COUNT(o.id) as order_count 
+      FROM orders o
+      LEFT JOIN customers c ON o.customer_id = c.id
+      WHERE c.assigned_worker_id = ? OR o.id IN (
+        SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
+      )
+    ''', [wid, wid]);
+    
     final totalSales = (orderRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
     final orderCount = (orderRes.first['order_count'] as num?)?.toInt() ?? 0;
 
-    // Fetch payment totals (Cash vs Online)
-    final cashRes = await db.rawQuery(
-      'SELECT SUM(amount) as sum FROM payments WHERE worker_id = ? AND LOWER(payment_method) = "cash"',
-      [wid],
-    );
-    final onlineRes = await db.rawQuery(
-      'SELECT SUM(amount) as sum FROM payments WHERE worker_id = ? AND LOWER(payment_method) != "cash"',
-      [wid],
-    );
+    // Fetch payment totals (Cash vs Online) safely
+    final cashRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(p.amount), 0) as sum 
+      FROM payments p
+      JOIN orders o ON p.order_id = o.id
+      JOIN customers c ON o.customer_id = c.id
+      WHERE (c.assigned_worker_id = ? OR o.id IN (
+        SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
+      )) AND LOWER(p.method) = 'cash'
+    ''', [wid, wid]);
+
+    final onlineRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(p.amount), 0) as sum 
+      FROM payments p
+      JOIN orders o ON p.order_id = o.id
+      JOIN customers c ON o.customer_id = c.id
+      WHERE (c.assigned_worker_id = ? OR o.id IN (
+        SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
+      )) AND LOWER(p.method) != 'cash'
+    ''', [wid, wid]);
+
     final cashColl = (cashRes.first['sum'] as num?)?.toDouble() ?? 0.0;
     final onlineColl = (onlineRes.first['sum'] as num?)?.toDouble() ?? 0.0;
     final totalColl = cashColl + onlineColl;
 
     // Fetch customer count
     final custRes = await db.rawQuery(
-      'SELECT COUNT(id) as count FROM customers WHERE assigned_worker_id = ? AND is_archived = 0',
+      'SELECT COUNT(id) as count FROM customers WHERE assigned_worker_id = ?',
       [wid],
     );
     final customerCount = (custRes.first['count'] as num?)?.toInt() ?? 0;
@@ -55,8 +73,8 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       commEarned = (totalSales * commVal) / 100.0;
     }
 
-    const double dailyTarget = 50000.0;
-    final targetPct = (totalColl / dailyTarget).clamp(0.0, 1.0);
+    final double target = monthlyTarget > 0 ? monthlyTarget : 50000.0;
+    final targetPct = (totalColl / target).clamp(0.0, 1.0);
 
     list.add({
       'id': wid,
@@ -70,10 +88,10 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       'customer_count': customerCount,
       'commission_earned': commEarned,
       'target_pct': targetPct,
+      'monthly_target': target,
     });
   }
 
-  // Sort by total collections descending
   list.sort((a, b) => (b['total_collected'] as double).compareTo(a['total_collected'] as double));
   return list;
 });
