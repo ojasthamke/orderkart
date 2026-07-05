@@ -60,6 +60,24 @@ class PackageValidator {
       }
 
       final bytes = await zipFile.readAsBytes();
+
+      // Check if the file is a raw unencrypted SQLite database file
+      if (bytes.length >= 16) {
+        final header = String.fromCharCodes(bytes.sublist(0, 15));
+        if (header == 'SQLite format 3') {
+          return PackageValidationResult(
+            isValid: true,
+            errorMessage: '',
+            manifest: {
+              'package_type': 'raw_db',
+              'generated_by_worker_name': 'Database Backup',
+            },
+            dbPath: zipPath,
+            photosCount: 0,
+          );
+        }
+      }
+
       final archive = ZipDecoder().decodeBytes(bytes);
 
       List<int>? dbEncData;

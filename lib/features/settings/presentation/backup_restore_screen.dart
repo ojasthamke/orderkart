@@ -16,6 +16,7 @@ import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'dialogs/export_wizard_dialog.dart';
 import '../../../core/services/package_exporter.dart';
+import '../../../core/services/package_validator.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -151,69 +152,33 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       final srcPath = result.files.first.path!;
       final dbPath  = await DatabaseHelper.instance.database.then((db) => db.path);
 
-      if (srcPath.toLowerCase().endsWith('.zip')) {
-        final bytes = await File(srcPath).readAsBytes();
-        Archive archive;
-        try {
-          archive = ZipDecoder().decodeBytes(bytes);
-        } catch (_) {
-          throw Exception("The selected zip file is corrupted or invalid.");
-        }
-
-        bool hasDb = false;
-        List<int>? dbData;
-        for (final file in archive) {
-          if (file.name == 'orderkart.db' && file.isFile) {
-            hasDb = true;
-            dbData = file.content as List<int>;
-            break;
-          }
-        }
-
-        if (!hasDb || dbData == null) {
-          throw Exception("Invalid backup: zip file does not contain orderkart.db");
-        }
-
-        if (!await _isValidSqliteBytes(dbData)) {
-          throw Exception("Invalid backup: orderkart.db inside zip is corrupted or not a valid SQLite database.");
-        }
-
-        // Close connection first
-        await DatabaseHelper.instance.close();
-
-        final dbDest = File(dbPath);
-        await dbDest.writeAsBytes(dbData);
-
-        for (final file in archive) {
-          final normalizedPath = file.name.replaceAll('\\', '/');
-          if (file.isFile && normalizedPath.startsWith('customer_photos/')) {
-            final relativeName = p.basename(normalizedPath);
-            final photoDest = File('${AppConstants.appDocsDir}/customer_photos/$relativeName');
-            await photoDest.parent.create(recursive: true);
-            await photoDest.writeAsBytes(file.content as List<int>);
-          }
-        }
-
-        // Reinitialize connection
-        await DatabaseHelper.instance.database;
-      } else {
-        // Fallback for legacy raw .db imports
-        final file = File(srcPath);
-        if (!await _isValidSqliteFile(file)) {
-          throw Exception("The selected file is not a valid SQLite database.");
-        }
-        await DatabaseHelper.instance.close();
-        await file.copy(dbPath);
-        await DatabaseHelper.instance.database;
+      // Enterprise validation & extraction (.orderkart, .zip, .db)
+      final validation = await PackageValidator.validatePackage(srcPath);
+      if (!validation.isValid) {
+        throw Exception(validation.errorMessage);
       }
+
+      final incomingDbPath = validation.dbPath;
+      if (incomingDbPath.isEmpty || !File(incomingDbPath).existsSync()) {
+        throw Exception("Could not extract a valid database from the package.");
+      }
+
+      // Close connection first
+      await DatabaseHelper.instance.close();
+
+      final dbDest = File(dbPath);
+      await File(incomingDbPath).copy(dbDest.path);
+
+      // Reinitialize connection
+      await DatabaseHelper.instance.database;
 
       if (mounted) {
-        SnackbarHelper.showSuccess(
-            context, 'Backup restored successfully!');
+        SnackbarHelper.showSuccess(context, 'Backup restored successfully!');
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Restore failed: $e');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -231,52 +196,16 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       }
 
       final srcPath = result.files.first.path!;
-      final tempDir = await getTemporaryDirectory();
-      String dbFileToMerge = srcPath;
 
-      if (srcPath.toLowerCase().endsWith('.zip')) {
-        final bytes = await File(srcPath).readAsBytes();
-        Archive archive;
-        try {
-          archive = ZipDecoder().decodeBytes(bytes);
-        } catch (_) {
-          throw Exception("The selected zip file is corrupted or invalid.");
-        }
+      // Enterprise validation & extraction (.orderkart, .zip, .db)
+      final validation = await PackageValidator.validatePackage(srcPath);
+      if (!validation.isValid) {
+        throw Exception(validation.errorMessage);
+      }
 
-        List<int>? dbData;
-        for (final file in archive) {
-          if (file.name == 'orderkart.db' && file.isFile) {
-            dbData = file.content as List<int>;
-            break;
-          }
-        }
-
-        if (dbData == null || !await _isValidSqliteBytes(dbData)) {
-          throw Exception("Invalid backup: zip file does not contain a valid orderkart.db");
-        }
-
-        // Write temp DB file to merge
-        final tempDb = File('${tempDir.path}/merge_incoming.db');
-        await tempDb.writeAsBytes(dbData);
-        dbFileToMerge = tempDb.path;
-
-        // Copy incoming photos without deleting existing
-        for (final file in archive) {
-          final normalizedPath = file.name.replaceAll('\\', '/');
-          if (file.isFile && normalizedPath.startsWith('customer_photos/')) {
-            final relativeName = p.basename(normalizedPath);
-            final photoDest = File('${AppConstants.appDocsDir}/customer_photos/$relativeName');
-            if (!photoDest.existsSync()) {
-              await photoDest.parent.create(recursive: true);
-              await photoDest.writeAsBytes(file.content as List<int>);
-            }
-          }
-        }
-      } else {
-        final file = File(srcPath);
-        if (!await _isValidSqliteFile(file)) {
-          throw Exception("The selected file is not a valid SQLite database.");
-        }
+      final dbFileToMerge = validation.dbPath;
+      if (dbFileToMerge.isEmpty || !File(dbFileToMerge).existsSync()) {
+        throw Exception("Could not extract a valid database from the package.");
       }
 
       // Perform non-destructive merge into target DB
