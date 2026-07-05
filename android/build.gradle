@@ -14,8 +14,8 @@ subprojects {
             project.android {
                 compileSdkVersion 34
                 compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_11
-                    targetCompatibility JavaVersion.VERSION_11
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
                 }
             }
         }
@@ -25,7 +25,6 @@ subprojects {
         resolutionStrategy {
             force 'androidx.work:work-runtime:2.9.1'
             force 'androidx.work:work-runtime-ktx:2.9.1'
-            force 'com.android.tools:desugar_jdk_libs:2.0.4'
         }
     }
 }
