@@ -35,6 +35,14 @@ import 'features/visit/presentation/visit_list_screen.dart';
 import 'features/visit/presentation/add_edit_visit_screen.dart';
 import 'features/note/domain/app_note.dart';
 import 'features/visit/domain/app_visit.dart';
+import 'features/auth/presentation/mode_selection_screen.dart';
+import 'features/worker/presentation/worker_management_screen.dart';
+import 'features/dashboard/presentation/worker_dashboard_screen.dart';
+import 'features/sync/presentation/pending_sync_screen.dart';
+import 'features/settings/presentation/import_wizard_screen.dart';
+import 'features/settings/presentation/sync_history_screen.dart';
+import 'features/settings/presentation/activity_timeline_screen.dart';
+import 'features/settings/presentation/business_profile_screen.dart';
 
 
 class OrderKartApp extends ConsumerStatefulWidget {
@@ -189,6 +197,31 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
       case AppRoutes.addEditVisit:
         final args = settings.arguments as Map<String, dynamic>?;
         return _slide(AddEditVisitScreen(visit: args?['visit'] as AppVisit?));
+
+      // Enterprise & Security
+      case AppRoutes.modeSelection:
+        return _slide(const ModeSelectionScreen());
+
+      case AppRoutes.workers:
+        return _slide(const WorkerManagementScreen());
+
+      case AppRoutes.workerDashboard:
+        return _slide(const WorkerDashboardScreen());
+
+      case AppRoutes.pendingSync:
+        return _slide(const PendingSyncScreen());
+
+      case AppRoutes.importWizard:
+        return _slide(const ImportWizardScreen());
+
+      case AppRoutes.syncHistory:
+        return _slide(const SyncHistoryScreen());
+
+      case AppRoutes.activityTimeline:
+        return _slide(const ActivityTimelineScreen());
+
+      case AppRoutes.businessProfile:
+        return _slide(const BusinessProfileScreen());
 
       default:
         return _slide(const MainScreen());

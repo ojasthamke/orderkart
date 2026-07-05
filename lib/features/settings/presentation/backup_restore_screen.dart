@@ -6,12 +6,14 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import 'package:path/path.dart' as p;
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
+import 'dialogs/export_wizard_dialog.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -32,15 +34,15 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           _SectionCard(
-            title:    'Export',
+            title:    'Export Packages',
             icon:     Icons.upload_rounded,
             iconColor: AppColors.success,
             children: [
               _ActionTile(
-                icon:     Icons.storage_rounded,
-                title:    'Export Backup File',
-                subtitle: 'Share database and customer photos (.zip)',
-                onTap:    _exportDatabase,
+                icon:     Icons.drive_folder_upload_rounded,
+                title:    'Modular Package Export',
+                subtitle: 'Select Areas, Customers, Orders, Inventory, Settings to export (.zip)',
+                onTap:    () => ExportWizardDialog.show(context),
                 loading:  _loading,
               ),
             ],
@@ -52,10 +54,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             iconColor: AppColors.primary,
             children: [
               _ActionTile(
-                icon:     Icons.merge_type_rounded,
-                title:    'Merge Worker Data (Safe Sync)',
-                subtitle: 'Add new customers & orders without deleting existing data',
-                onTap:    _mergeImportDatabase,
+                icon:     Icons.auto_mode_rounded,
+                title:    '4-Step Import Wizard (Preview & Merge)',
+                subtitle: 'Preview incoming record counts, review conflict policy, and merge safely',
+                onTap:    () => Navigator.pushNamed(context, AppRoutes.importWizard),
                 loading:  _loading,
               ),
               const Divider(height: 1),

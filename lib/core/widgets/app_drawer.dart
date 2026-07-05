@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../security/app_mode_service.dart';
+import 'owner_pin_dialog.dart';
+import 'snackbar_helper.dart';
 
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
@@ -64,7 +67,26 @@ class AppDrawer extends ConsumerWidget {
                   _DrawerItem(
                     icon: Icons.dashboard_rounded,
                     title: 'Dashboard',
-                    onTap: () => Navigator.pop(context),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final mode = await AppModeService.getAppMode();
+                      if (mode == AppMode.worker) {
+                        Navigator.pushNamed(context, AppRoutes.workerDashboard);
+                      } else {
+                        Navigator.pushNamed(context, AppRoutes.dashboard);
+                      }
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.badge_rounded,
+                    title: 'Worker Management',
+                    iconColor: AppColors.primary,
+                    onTap: () async {
+                      Navigator.pop(context);
+                      if (await OwnerPinDialog.verify(context, title: 'Worker Management')) {
+                        Navigator.pushNamed(context, AppRoutes.workers);
+                      }
+                    },
                   ),
                   _DrawerItem(
                     icon: Icons.people_alt_rounded,
@@ -93,9 +115,14 @@ class AppDrawer extends ConsumerWidget {
                   _DrawerItem(
                     icon: Icons.inventory_rounded,
                     title: 'Inventory & Stock',
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.inventory);
+                      final mode = await AppModeService.getAppMode();
+                      if (mode == AppMode.worker) {
+                        SnackbarHelper.showError(context, 'Inventory is managed on Owner Device only.');
+                      } else {
+                        Navigator.pushNamed(context, AppRoutes.inventory);
+                      }
                     },
                   ),
 
@@ -104,80 +131,45 @@ class AppDrawer extends ConsumerWidget {
                     padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                     child: Divider(height: 1),
                   ),
-                  _SectionHeader(title: 'QUICK ACCESS'),
+                  _SectionHeader(title: 'ENTERPRISE & SYNC'),
                   _DrawerItem(
-                    icon: Icons.map_rounded,
-                    title: 'Areas & Streets',
-                    iconColor: const Color(0xFF0EA5E9),
-                    onTap: () {
+                    icon: Icons.auto_mode_rounded,
+                    title: 'Import Wizard (Merge)',
+                    iconColor: const Color(0xFF0284C7),
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.areas);
+                      if (await OwnerPinDialog.verify(context, title: 'Import Wizard Access')) {
+                        Navigator.pushNamed(context, AppRoutes.importWizard);
+                      }
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.receipt_long_rounded,
-                    title: 'Expenses',
+                    icon: Icons.sync_rounded,
+                    title: 'Pending Sync Queue',
                     iconColor: const Color(0xFFD97706),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.expenses);
+                      Navigator.pushNamed(context, AppRoutes.pendingSync);
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.note_alt_rounded,
-                    title: 'Notes & Reminders',
+                    icon: Icons.history_toggle_off_rounded,
+                    title: 'Sync Log History',
                     iconColor: const Color(0xFF8B5CF6),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.notes);
+                      Navigator.pushNamed(context, AppRoutes.syncHistory);
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.search_rounded,
-                    title: 'Global Search',
+                    icon: Icons.storefront_rounded,
+                    title: 'Business Profile',
                     iconColor: const Color(0xFF10B981),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.search);
-                    },
-                  ),
-
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
-                    child: Divider(height: 1),
-                  ),
-
-                  _SectionHeader(title: 'MANAGEMENT & ROUTES'),
-                  _DrawerItem(
-                    icon: Icons.map_rounded,
-                    title: 'Areas & Streets',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.areas);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.alt_route_rounded,
-                    title: 'Visits & Route Plan',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.visits);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.receipt_long_rounded,
-                    title: 'Expenses',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.expenses);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.note_alt_rounded,
-                    title: 'Notes & Reminders',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.notes);
+                      if (await OwnerPinDialog.verify(context, title: 'Business Profile')) {
+                        Navigator.pushNamed(context, AppRoutes.businessProfile);
+                      }
                     },
                   ),
 
@@ -190,33 +182,19 @@ class AppDrawer extends ConsumerWidget {
                   _DrawerItem(
                     icon: Icons.analytics_rounded,
                     title: 'Analytics & Reports',
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.analytics);
+                      if (await OwnerPinDialog.verify(context, title: 'Analytics Access')) {
+                        Navigator.pushNamed(context, AppRoutes.analytics);
+                      }
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.calculate_rounded,
-                    title: 'Profit & Loss Statement',
+                    icon: Icons.history_rounded,
+                    title: 'Activity Timeline',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.profitLoss);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.search_rounded,
-                    title: 'Global Search',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.search);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.notifications_rounded,
-                    title: 'Notification Center',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.notifications);
+                      Navigator.pushNamed(context, AppRoutes.activityTimeline);
                     },
                   ),
 
@@ -229,17 +207,21 @@ class AppDrawer extends ConsumerWidget {
                   _DrawerItem(
                     icon: Icons.settings_rounded,
                     title: 'Settings',
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.settings);
+                      if (await OwnerPinDialog.verify(context, title: 'Master Settings')) {
+                        Navigator.pushNamed(context, AppRoutes.settings);
+                      }
                     },
                   ),
                   _DrawerItem(
                     icon: Icons.restore_rounded,
                     title: 'Backup & Restore',
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.backupRestore);
+                      if (await OwnerPinDialog.verify(context, title: 'Backup & Restore')) {
+                        Navigator.pushNamed(context, AppRoutes.backupRestore);
+                      }
                     },
                   ),
                 ],

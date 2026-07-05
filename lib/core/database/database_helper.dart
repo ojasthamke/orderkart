@@ -33,6 +33,8 @@ class DatabaseHelper {
         await _ensureVipColumns(db);
         await _ensurePriceHistoryTables(db);
         await _ensureAreaAndStreetColumns(db);
+        await _createV4Tables(db);
+        await _ensureV4Columns(db);
       },
     );
   }
@@ -52,6 +54,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 3) {
       await _createV3Tables(db);
+    }
+    if (oldVersion < 4) {
+      await _createV4Tables(db);
     }
   }
 
@@ -485,6 +490,234 @@ class DatabaseHelper {
     await incomingDb.close();
     return resultStats;
   }
+
+  Future<void> _createV4Tables(Database db) async {
+    // Workers
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS workers (
+        id               TEXT PRIMARY KEY,
+        name             TEXT NOT NULL,
+        photo_path       TEXT DEFAULT '',
+        phone            TEXT DEFAULT '',
+        address          TEXT DEFAULT '',
+        joining_date     TEXT DEFAULT '',
+        employee_id      TEXT DEFAULT '',
+        status           TEXT NOT NULL DEFAULT 'active',
+        pin              TEXT DEFAULT '',
+        commission_type  TEXT NOT NULL DEFAULT 'pct_order',
+        commission_value REAL DEFAULT 5.0,
+        salary           REAL DEFAULT 0,
+        bonus            REAL DEFAULT 0,
+        notes            TEXT DEFAULT '',
+        created_at       TEXT NOT NULL,
+        updated_at       TEXT NOT NULL
+      )
+    ''');
+
+    // Worker Assignments
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS worker_assignments (
+        id          TEXT PRIMARY KEY,
+        worker_id   TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id   TEXT NOT NULL,
+        created_at  TEXT NOT NULL
+      )
+    ''');
+
+    // Worker Reports
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS worker_reports (
+        id                TEXT PRIMARY KEY,
+        worker_id         TEXT NOT NULL,
+        report_date       TEXT NOT NULL,
+        orders_count      INTEGER DEFAULT 0,
+        sales_total       REAL DEFAULT 0,
+        collection_total  REAL DEFAULT 0,
+        pending_total     REAL DEFAULT 0,
+        commission_earned REAL DEFAULT 0,
+        expenses_total    REAL DEFAULT 0,
+        customers_added   INTEGER DEFAULT 0,
+        created_at        TEXT NOT NULL
+      )
+    ''');
+
+    // Sync History
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_history (
+        id              TEXT PRIMARY KEY,
+        worker_id       TEXT DEFAULT '',
+        worker_name     TEXT DEFAULT '',
+        device_name     TEXT DEFAULT '',
+        sync_date       TEXT NOT NULL,
+        customers_count INTEGER DEFAULT 0,
+        orders_count    INTEGER DEFAULT 0,
+        payments_count  INTEGER DEFAULT 0,
+        expenses_count  INTEGER DEFAULT 0,
+        photos_count    INTEGER DEFAULT 0,
+        status          TEXT NOT NULL DEFAULT 'success',
+        duration_ms     INTEGER DEFAULT 0,
+        errors          TEXT DEFAULT '',
+        metadata_json   TEXT DEFAULT '{}'
+      )
+    ''');
+
+    // Audit Logs / Activity Logs
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id          TEXT PRIMARY KEY,
+        user_type   TEXT NOT NULL DEFAULT 'owner',
+        worker_id   TEXT DEFAULT '',
+        action      TEXT NOT NULL,
+        entity_type TEXT DEFAULT '',
+        entity_id   TEXT DEFAULT '',
+        old_value   TEXT DEFAULT '',
+        new_value   TEXT DEFAULT '',
+        device_name TEXT DEFAULT '',
+        created_at  TEXT NOT NULL
+      )
+    ''');
+
+    // Pending Sync Queue
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS pending_sync (
+        id           TEXT PRIMARY KEY,
+        entity_type  TEXT NOT NULL,
+        entity_id    TEXT NOT NULL,
+        action_type  TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        created_at   TEXT NOT NULL,
+        status       TEXT NOT NULL DEFAULT 'pending'
+      )
+    ''');
+
+    // Worker Devices
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS worker_devices (
+        id          TEXT PRIMARY KEY,
+        worker_id   TEXT NOT NULL,
+        device_name TEXT NOT NULL,
+        android_id  TEXT DEFAULT '',
+        app_version TEXT DEFAULT '',
+        last_sync   TEXT DEFAULT '',
+        created_at  TEXT NOT NULL
+      )
+    ''');
+
+    // Business Profile
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS business_profile (
+        id             TEXT PRIMARY KEY,
+        business_name  TEXT NOT NULL DEFAULT 'OrderKart',
+        owner_name     TEXT DEFAULT '',
+        phone          TEXT DEFAULT '',
+        whatsapp       TEXT DEFAULT '',
+        email          TEXT DEFAULT '',
+        address        TEXT DEFAULT '',
+        gst_number     TEXT DEFAULT '',
+        upi_id         TEXT DEFAULT '',
+        logo_path      TEXT DEFAULT '',
+        qr_path        TEXT DEFAULT '',
+        invoice_footer TEXT DEFAULT '',
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL
+      )
+    ''');
+
+    // VIP Membership / Subscriptions
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS vip_membership (
+        id                TEXT PRIMARY KEY,
+        customer_id       TEXT NOT NULL,
+        plan_name         TEXT NOT NULL DEFAULT 'Gold VIP',
+        start_date        TEXT NOT NULL,
+        expiry_date       TEXT NOT NULL,
+        fee               REAL DEFAULT 0,
+        discount_pct      REAL DEFAULT 10.0,
+        markup_pct        REAL DEFAULT 5.0,
+        free_delivery     INTEGER DEFAULT 1,
+        priority_delivery INTEGER DEFAULT 1,
+        status            TEXT NOT NULL DEFAULT 'active',
+        created_at        TEXT NOT NULL
+      )
+    ''');
+
+    // Commission History
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS commission_history (
+        id                TEXT PRIMARY KEY,
+        worker_id         TEXT NOT NULL,
+        period_start      TEXT NOT NULL,
+        period_end        TEXT NOT NULL,
+        gross_sales       REAL DEFAULT 0,
+        collection_amount REAL DEFAULT 0,
+        commission_type   TEXT NOT NULL,
+        rate              REAL DEFAULT 0,
+        calculated_amount REAL DEFAULT 0,
+        status            TEXT NOT NULL DEFAULT 'unpaid',
+        paid_date         TEXT DEFAULT '',
+        created_at        TEXT NOT NULL
+      )
+    ''');
+
+    // Repair Logs
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS repair_logs (
+        id           TEXT PRIMARY KEY,
+        date         TEXT NOT NULL,
+        issue_type   TEXT NOT NULL,
+        details      TEXT DEFAULT '',
+        action_taken TEXT DEFAULT ''
+      )
+    ''');
+
+    // Indexes for V4 performance
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_worker_assign_wid ON worker_assignments(worker_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_worker_rep_wid ON worker_reports(worker_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_pending_sync_status ON pending_sync(status)');
+  }
+
+  Future<void> _ensureV4Columns(Database db) async {
+    final customerCols = [
+      "ALTER TABLE customers ADD COLUMN assigned_worker_id TEXT DEFAULT ''",
+      "ALTER TABLE customers ADD COLUMN created_by TEXT DEFAULT 'owner'",
+      "ALTER TABLE customers ADD COLUMN updated_by TEXT DEFAULT 'owner'",
+      "ALTER TABLE customers ADD COLUMN device_id TEXT DEFAULT ''",
+    ];
+    for (final col in customerCols) {
+      try { await db.execute(col); } catch (_) {}
+    }
+
+    final orderCols = [
+      "ALTER TABLE orders ADD COLUMN created_by TEXT DEFAULT 'owner'",
+      "ALTER TABLE orders ADD COLUMN assigned_worker_id TEXT DEFAULT ''",
+      "ALTER TABLE orders ADD COLUMN device_name TEXT DEFAULT ''",
+      "ALTER TABLE orders ADD COLUMN order_source TEXT DEFAULT 'owner'",
+      "ALTER TABLE orders ADD COLUMN commission_rate REAL DEFAULT 0.0",
+      "ALTER TABLE orders ADD COLUMN commission_type TEXT DEFAULT ''",
+    ];
+    for (final col in orderCols) {
+      try { await db.execute(col); } catch (_) {}
+    }
+
+    final itemCols = [
+      "ALTER TABLE items ADD COLUMN assigned_worker_id TEXT DEFAULT ''",
+      "ALTER TABLE items ADD COLUMN updated_by TEXT DEFAULT 'owner'",
+    ];
+    for (final col in itemCols) {
+      try { await db.execute(col); } catch (_) {}
+    }
+
+    final expenseCols = [
+      "ALTER TABLE expenses ADD COLUMN created_by TEXT DEFAULT 'owner'",
+      "ALTER TABLE expenses ADD COLUMN assigned_worker_id TEXT DEFAULT ''",
+    ];
+    for (final col in expenseCols) {
+      try { await db.execute(col); } catch (_) {}
+    }
+  }
 }
+
 
 

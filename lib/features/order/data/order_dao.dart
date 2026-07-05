@@ -111,11 +111,34 @@ class OrderDao {
     final db = await _getExecutor(executor);
     final id  = order.id.isEmpty ? _uuid.v4() : order.id;
     final now = DateTime.now().toIso8601String();
+
+    String workerId = order.assignedWorkerId;
+    double commRate = 0.0;
+    String commType = '';
+
+    if (workerId.isEmpty) {
+      final cust = await db.query('customers', columns: ['assigned_worker_id'], where: 'id = ?', whereArgs: [order.customerId]);
+      if (cust.isNotEmpty) {
+        workerId = cust.first['assigned_worker_id'] as String? ?? '';
+      }
+    }
+
+    if (workerId.isNotEmpty) {
+      final w = await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
+      if (w.isNotEmpty) {
+        commRate = (w.first['commission_value'] as num?)?.toDouble() ?? 5.0;
+        commType = w.first['commission_type'] as String? ?? 'pct_order';
+      }
+    }
+
     await db.insert('orders', {
       ...order.toMap(),
-      'id':         id,
-      'created_at': now,
-      'updated_at': now,
+      'id':                 id,
+      'assigned_worker_id': workerId.isNotEmpty ? workerId : order.assignedWorkerId,
+      'commission_rate':    commRate > 0 ? commRate : 5.0,
+      'commission_type':    commType.isNotEmpty ? commType : 'pct_order',
+      'created_at':         order.createdAt.toIso8601String().isEmpty ? now : order.createdAt.toIso8601String(),
+      'updated_at':         now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
     return id;
   }

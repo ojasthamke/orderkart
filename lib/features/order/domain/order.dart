@@ -23,6 +23,10 @@ class AppOrder {
   final List<dynamic> items;  // List<OrderItem>
   final List<dynamic> payments; // List<Payment>
 
+  final String assignedWorkerId;
+  final double commissionRate;
+  final String commissionType;
+
   String get orderNoLabel {
     if (orderNumber == null) return '#000';
     return '#${orderNumber!.toString().padLeft(3, '0')}';
@@ -46,6 +50,9 @@ class AppOrder {
     this.customerName,
     this.customerAddress,
     this.customerPhone,
+    this.assignedWorkerId   = '',
+    this.commissionRate     = 0.0,
+    this.commissionType     = '',
     this.items    = const [],
     this.payments = const [],
   });
@@ -68,6 +75,9 @@ class AppOrder {
     String? customerName,
     String? customerAddress,
     String? customerPhone,
+    String? assignedWorkerId,
+    double? commissionRate,
+    String? commissionType,
     List<dynamic>? items,
     List<dynamic>? payments,
   }) {
@@ -89,6 +99,9 @@ class AppOrder {
       customerName:        customerName        ?? this.customerName,
       customerAddress:     customerAddress     ?? this.customerAddress,
       customerPhone:       customerPhone       ?? this.customerPhone,
+      assignedWorkerId:    assignedWorkerId    ?? this.assignedWorkerId,
+      commissionRate:      commissionRate      ?? this.commissionRate,
+      commissionType:      commissionType      ?? this.commissionType,
       items:               items               ?? this.items,
       payments:            payments            ?? this.payments,
     );
@@ -108,6 +121,9 @@ class AppOrder {
         'notes':                notes,
         'created_at':           createdAt.toIso8601String(),
         'updated_at':           updatedAt.toIso8601String(),
+        'assigned_worker_id':   assignedWorkerId,
+        'commission_rate':      commissionRate,
+        'commission_type':      commissionType,
       };
 
   factory AppOrder.fromMap(Map<String, dynamic> map) => AppOrder(
@@ -128,6 +144,9 @@ class AppOrder {
         customerName:        map['customer_name']        as String?,
         customerAddress:     map['customer_address']     as String?,
         customerPhone:       map['customer_phone']       as String?,
+        assignedWorkerId:    map['assigned_worker_id']   as String? ?? '',
+        commissionRate:      (map['commission_rate']     as num?)?.toDouble() ?? 0.0,
+        commissionType:      map['commission_type']      as String? ?? '',
       );
 
   @override

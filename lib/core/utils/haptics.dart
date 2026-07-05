@@ -30,4 +30,14 @@ class AppHaptics {
   static void warning() {
     HapticFeedback.vibrate();
   }
+
+  /// Success vibration
+  static void success() {
+    HapticFeedback.lightImpact();
+  }
+
+  /// Error vibration
+  static void error() {
+    HapticFeedback.vibrate();
+  }
 }

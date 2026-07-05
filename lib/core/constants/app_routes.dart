@@ -35,6 +35,16 @@ class AppRoutes {
   static const String visits        = '/visits';
   static const String addEditVisit  = '/add-edit-visit';
 
-  // Notification Center
-  static const String notifications = '/notifications';
+  // Enterprise & Security
+  static const String modeSelection   = '/mode-selection';
+  static const String workers         = '/workers';
+  static const String workerDashboard = '/worker-dashboard';
+  static const String pendingSync     = '/pending-sync';
+  static const String importWizard    = '/import-wizard';
+  static const String syncHistory     = '/sync-history';
+  static const String activityTimeline= '/activity-timeline';
+  static const String businessProfile = '/business-profile';
+
+  // Notifications
+  static const String notifications   = '/notifications';
 }
