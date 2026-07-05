@@ -1,10 +1,19 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:archive/archive.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/database/database_helper.dart';
+import '../../../core/security/app_mode_service.dart';
+import '../../../core/services/package_exporter.dart';
+import '../../../core/services/package_validator.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -47,6 +56,95 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     super.dispose();
   }
 
+  Future<void> _handleEditItem(Item item) async {
+    final canPrices = await AppModeService.hasWorkerPermission('change_prices');
+    if (!canPrices) {
+      if (mounted) {
+        SnackbarHelper.showError(context, '⚠️ Price & item edits are locked to Owner Official Price List.');
+      }
+      return;
+    }
+    if (mounted) {
+      Navigator.of(context)
+          .pushNamed(AppRoutes.addEditItem, arguments: {'itemId': item.id})
+          .then((_) => ref.refresh(inventoryProvider));
+    }
+  }
+
+  Future<void> _handleStockAdjust(Item item) async {
+    final canStock = await AppModeService.hasWorkerPermission('change_stock');
+    if (!canStock) {
+      if (mounted) {
+        SnackbarHelper.showError(context, '⚠️ Stock adjustments are locked by Owner.');
+      }
+      return;
+    }
+    if (mounted) _showStockAdjustDialog(context, item);
+  }
+
+  Future<void> _exportPriceList() async {
+    AppHaptics.buttonClick();
+    try {
+      await PackageExporter.exportPackage(
+        selectedModules: ['items', 'prices', 'entire_db'],
+      );
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Official Stock & Price List exported successfully!');
+      }
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Export failed: $e');
+    }
+  }
+
+  Future<void> _importOwnerPriceList() async {
+    AppHaptics.buttonClick();
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+      );
+      if (result == null || result.files.single.path == null) return;
+
+      final filePath = result.files.single.path!;
+      final validation = await PackageValidator.validatePackage(filePath);
+      if (!validation.isValid) {
+        if (mounted) SnackbarHelper.showError(context, 'Invalid Package: ${validation.errorMessage}');
+        return;
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      final bytes = File(filePath).readAsBytesSync();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      String? extractedDbPath;
+      for (final file in archive) {
+        if (file.name == 'database.db') {
+          final dbFile = File('${tempDir.path}/price_list_temp.db');
+          if (dbFile.existsSync()) dbFile.deleteSync();
+          dbFile.writeAsBytesSync(file.content as List<int>);
+          extractedDbPath = dbFile.path;
+          break;
+        }
+      }
+
+      if (extractedDbPath == null) {
+        if (mounted) SnackbarHelper.showError(context, 'No database found in package');
+        return;
+      }
+
+      await DatabaseHelper.instance.mergeDatabaseFromPath(
+        extractedDbPath,
+        selectedModules: ['items', 'prices'],
+      );
+
+      ref.refresh(inventoryProvider);
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, '✅ Official Owner Stock & Price List updated!');
+      }
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Price List import failed: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(inventoryProvider);
@@ -55,6 +153,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       title: 'Inventory & Prices',
       showBack: widget.showBack,
       actions: [
+        IconButton(
+          icon: const Icon(Icons.share_rounded),
+          tooltip: 'Export Stock & Price List (Owner)',
+          onPressed: _exportPriceList,
+        ),
+        IconButton(
+          icon: const Icon(Icons.download_rounded),
+          tooltip: 'Import Stock & Price List (Worker)',
+          onPressed: _importOwnerPriceList,
+        ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.sort_rounded),
           onSelected: (v) => ref.read(inventoryProvider.notifier).sort(v),
@@ -165,10 +273,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   itemCount: items.length,
                   itemBuilder: (_, i) => _ItemTile(
                     item: items[i],
-                    onEdit: () => Navigator.of(context)
-                        .pushNamed(AppRoutes.addEditItem, arguments: {'itemId': items[i].id})
-                        .then((_) => ref.refresh(inventoryProvider)),
-                    onAdjustStock: () => _showStockAdjustDialog(context, items[i]),
+                    onEdit: () => _handleEditItem(items[i]),
+                    onAdjustStock: () => _handleStockAdjust(items[i]),
                     onDelete: () => _confirmDelete(context, items[i]),
                   ),
                 ),

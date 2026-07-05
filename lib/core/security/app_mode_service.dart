@@ -105,6 +105,17 @@ class AppModeService {
     final inputHash = _hashPin(pin.trim(), storedSalt);
     return inputHash == storedHash;
   }
+
+  /// Check specific worker permission configured by Owner
+  static Future<bool> hasWorkerPermission(String permissionKey) async {
+    final mode = await getAppMode();
+    if (mode == AppMode.owner) return true; // Owner has all permissions
+
+    final db = await DatabaseHelper.instance.database;
+    final res = await db.query('worker_permissions', limit: 1);
+    if (res.isEmpty) return true;
+    return (res.first[permissionKey] as int? ?? 1) == 1;
+  }
 }
 
 final appModeProvider = FutureProvider<AppMode>((ref) async {
