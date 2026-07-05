@@ -363,6 +363,8 @@ class PackageExporter {
       'generated_by_worker_name': workerName,
       'is_worker_provisioning_package': workerId.isNotEmpty,
       if (workerId.isNotEmpty) 'worker_secret': secretKey,
+      // Embed owner_secret inline for full backups so restore works after reinstall
+      if (workerId.isEmpty && selectedModules.contains('entire_db')) 'owner_secret': secretKey,
       'device_name': Platform.localHostname,
       'platform': Platform.operatingSystem,
       'device_id': 'mock_device_id_${Platform.operatingSystem.hashCode.abs()}',
