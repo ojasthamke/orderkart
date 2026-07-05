@@ -434,6 +434,7 @@ class DatabaseHelper {
         return selectedModules.contains('notifications') || selectedModules.contains('entire_db');
       case 'workers':
       case 'worker_assignments':
+      case 'worker_permissions':
       case 'worker_reports':
       case 'commission_history':
         return selectedModules.contains('workers') || selectedModules.contains('entire_db');
@@ -473,6 +474,7 @@ class DatabaseHelper {
       'notifications',
       'workers',
       'worker_assignments',
+      'worker_permissions',
       'worker_reports',
       'commission_history',
       'business_profile',
