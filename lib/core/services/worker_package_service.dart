@@ -9,6 +9,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
 import '../database/database_helper.dart';
+import '../services/worker_permission_service.dart';
 import '../utils/security_helper.dart';
 import '../../features/worker/data/worker_dao.dart';
 
@@ -73,6 +74,7 @@ class WorkerPackageService {
 
     // Query Data Scoped to the Worker
     final workerRow = await mainDb.query('workers', where: 'id = ?', whereArgs: [workerId]);
+    await WorkerPermissionService.getPermissionsForWorker(workerId);
     final permissionsRow = await mainDb.query('worker_permissions', where: 'worker_id = ?', whereArgs: [workerId]);
     final assignmentsRows = await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId]);
 

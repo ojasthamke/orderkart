@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/models/worker_permission.dart';
 import '../../../core/services/package_exporter.dart';
 import '../../../core/services/package_validator.dart';
 import '../../../core/services/worker_package_service.dart';
+import '../../../core/services/worker_permission_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -43,8 +45,7 @@ class WorkerSelfProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScreen> {
-  final _dao = WorkerDao();
-  Map<String, bool> _permissions = {};
+  WorkerPermission? _permissions;
   bool _loadingPerms = true;
 
   @override
@@ -56,7 +57,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
   Future<void> _loadPermissions() async {
     final worker = await ref.read(currentWorkerProfileProvider.future);
     if (worker != null) {
-      final perms = await _dao.getWorkerPermissions(worker.id);
+      final perms = await WorkerPermissionService.getPermissionsForWorker(worker.id);
       if (mounted) {
         setState(() {
           _permissions = perms;
@@ -252,22 +253,25 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                     border: Border.all(color: AppColors.gray200),
                     boxShadow: AppColors.cardShadow,
                   ),
-                  child: _loadingPerms
+                  child: _loadingPerms || _permissions == null
                       ? const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
                       : Column(
                           children: [
-                            _permBadge('Create Orders & Billing', 'create_order'),
-                            _permBadge('Edit Existing Orders', 'edit_order'),
-                            _permBadge('Add New Customers', 'add_customer'),
-                            _permBadge('Edit Customer Details', 'edit_customer'),
-                            _permBadge('Receive Customer Payments', 'receive_payment'),
-                            _permBadge('Adjust Inventory Stock', 'change_stock'),
-                            _permBadge('Modify Item Prices', 'change_prices'),
-                            _permBadge('Add Daily Expenses', 'add_expenses'),
-                            _permBadge('Export Data Package', 'export_data'),
-                            _permBadge('View Reports & Performance', 'view_reports'),
-                            _permBadge('Manage Field Visit Notes', 'edit_notes'),
-                            _permBadge('Manage VIP Subscriptions', 'manage_vip'),
+                            _permBadge('Customers Catalog', _permissions!.customers),
+                            _permBadge('Orders Creation & Billing', _permissions!.orders),
+                            _permBadge('Payments Collection', _permissions!.payments),
+                            _permBadge('Expenses Entry', _permissions!.expenses),
+                            _permBadge('Selling Price Adjustments', _permissions!.sellingPrice),
+                            _permBadge('Cost Price Visibility', _permissions!.costPrice),
+                            _permBadge('Stock Quantity Edits', _permissions!.stock),
+                            _permBadge('Items Catalog', _permissions!.items),
+                            _permBadge('VIP Customers', _permissions!.vip),
+                            _permBadge('Reports Dashboard', _permissions!.reports),
+                            _permBadge('Field Visit Notes', _permissions!.notes),
+                            _permBadge('Data Export Slices', _permissions!.export),
+                            _permBadge('Data Import Merges', _permissions!.import),
+                            _permBadge('System Settings', _permissions!.settings),
+                            _permBadge('Analytics Dashboard', _permissions!.analytics),
                           ],
                         ),
                 ),
@@ -371,28 +375,55 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
     );
   }
 
-  Widget _permBadge(String label, String key) {
-    final isAllowed = _permissions[key] ?? false;
+  Widget _permBadge(String label, PermissionLevel level) {
+    final bool isHidden = level == PermissionLevel.hidden;
+    Color color;
+    String badgeText;
+    IconData icon;
+
+    switch (level) {
+      case PermissionLevel.full:
+        color = AppColors.success;
+        badgeText = 'FULL ACCESS';
+        icon = Icons.check_circle_rounded;
+        break;
+      case PermissionLevel.edit:
+        color = Colors.teal;
+        badgeText = 'CAN EDIT';
+        icon = Icons.edit_rounded;
+        break;
+      case PermissionLevel.view:
+        color = Colors.blue;
+        badgeText = 'VIEW ONLY';
+        icon = Icons.visibility_rounded;
+        break;
+      case PermissionLevel.hidden:
+        color = AppColors.error;
+        badgeText = 'LOCKED BY OWNER';
+        icon = Icons.lock_rounded;
+        break;
+    }
+
     return ListTile(
       dense: true,
       leading: Icon(
-        isAllowed ? Icons.check_circle_rounded : Icons.lock_rounded,
-        color: isAllowed ? AppColors.success : AppColors.gray400,
+        icon,
+        color: isHidden ? AppColors.gray400 : color,
         size: 20,
       ),
       title: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: isAllowed ? AppColors.successSurface : AppColors.gray200,
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
-          isAllowed ? 'ENABLED' : 'LOCKED BY OWNER',
+          badgeText,
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w800,
-            color: isAllowed ? AppColors.success : AppColors.gray600,
+            color: color,
           ),
         ),
       ),

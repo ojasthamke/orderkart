@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/services/worker_permission_service.dart';
 import '../../../core/utils/security_helper.dart';
 import '../domain/worker.dart';
 
@@ -310,38 +311,12 @@ class WorkerDao {
 
   // ── Permissions ───────────────────────────────────────────────────────────
   Future<Map<String, bool>> getWorkerPermissions(String workerId) async {
-    final db = await _db;
-    final res = await db.query('worker_permissions', where: 'worker_id = ?', whereArgs: [workerId]);
-    
-    final Map<String, bool> defaultPerms = {
-      'add_customer': true,
-      'edit_customer': true,
-      'delete_customer': false,
-      'create_order': true,
-      'edit_order': true,
-      'cancel_order': false,
-      'receive_payment': true,
-      'change_stock': true,
-      'change_prices': false,
-      'change_inventory': false,
-      'add_expenses': true,
-      'export_data': true,
-      'import_data': false,
-      'view_reports': true,
-      'edit_notes': true,
-      'manage_vip': false,
-      'backup_restore': false,
-    };
-
-    if (res.isEmpty) return defaultPerms;
-
-    final row = res.first;
+    final wp = await WorkerPermissionService.getPermissionsForWorker(workerId);
+    final map = wp.toMap();
     final Map<String, bool> perms = {};
-    defaultPerms.forEach((key, defaultValue) {
-      if (row.containsKey(key)) {
-        perms[key] = (row[key] as int?) == 1;
-      } else {
-        perms[key] = defaultValue;
+    map.forEach((key, val) {
+      if (val is int) {
+        perms[key] = val > 0; // > 0 means granted (View, Edit, or Full)
       }
     });
     return perms;
