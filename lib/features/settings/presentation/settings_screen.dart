@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/security/app_mode_service.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -359,31 +360,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       .read(settingsProvider.notifier)
                       .update(settings.copyWith(notificationsEnabled: v)),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.wb_sunny_rounded),
-                  title: const Text('Daily Morning Summary Time'),
-                  subtitle: Text('Get summary of dues & low stock at ${settings.notificationTime}'),
-                  trailing: const Icon(Icons.access_time_rounded),
-                  onTap: settings.notificationsEnabled
-                      ? () async {
-                          final parts = settings.notificationTime.split(':');
-                          final currentHour = int.tryParse(parts[0]) ?? 6;
-                          final currentMin = int.tryParse(parts[1]) ?? 0;
-                          final picked = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay(hour: currentHour, minute: currentMin),
-                          );
-                          if (picked != null) {
-                            final newHour = picked.hour.toString().padLeft(2, '0');
-                            final newMin = picked.minute.toString().padLeft(2, '0');
-                            final newTime = '$newHour:$newMin';
-                            ref.read(settingsProvider.notifier).update(
-                                  settings.copyWith(notificationTime: newTime),
-                                );
-                          }
-                        }
-                      : null,
-                ),
                 SwitchListTile(
                   secondary: const Icon(Icons.warning_amber_rounded),
                   title: const Text('Low Stock Alert'),
@@ -418,45 +394,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               const SizedBox(height: 20),
 
-              // ── Security & App Lock ─────────────────────────────
-              _sectionHeader('Security & App Lock', Icons.lock_rounded),
+              // ── Security & Device Session ─────────────────────────────
+              _sectionHeader('Security & Device Mode', Icons.lock_rounded),
               _card([
-                ListTile(
-                  leading: const Icon(Icons.security_rounded, color: AppColors.primary),
-                  title: const Text('Passcode App Lock'),
-                  subtitle: const Text('Protect business data with a PIN code'),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Row(
-                          children: [
-                            Icon(Icons.shield_rounded, color: AppColors.primary),
-                            SizedBox(width: 8),
-                            Text('App Security Status'),
-                          ],
-                        ),
-                        content: const Text(
-                          'App Lock with PIN Protection is ACTIVE for OrderKart.\n\nYour financial & customer records are secured with device biometric / PIN authentication.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.swap_horiz_rounded, color: AppColors.primary),
                   title: const Text('Switch Device App Mode'),
                   subtitle: const Text('Re-configure device as Owner or Worker'),
                   trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   onTap: () => Navigator.of(context).pushNamed(AppRoutes.modeSelection),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+                  title: const Text('Logout Owner Session'),
+                  subtitle: const Text('End current session & require PIN on next entry'),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () {
+                    AppModeService.logoutOwner();
+                    SnackbarHelper.showInfo(context, 'Owner Session Logged Out.');
+                    Navigator.of(context).pushReplacementNamed(AppRoutes.modeSelection);
+                  },
                 ),
               ]),
 

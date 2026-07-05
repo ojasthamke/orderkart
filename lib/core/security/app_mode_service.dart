@@ -13,6 +13,17 @@ class AppModeService {
   static const String keyOwnerPinSalt = 'owner_pin_salt';
   static const String keyIsInitialized = 'app_initialized';
 
+  /// Session state: once logged in as Owner, true until explicit Logout!
+  static bool isOwnerSessionActive = true;
+
+  static void loginOwnerSuccess() {
+    isOwnerSessionActive = true;
+  }
+
+  static void logoutOwner() {
+    isOwnerSessionActive = false;
+  }
+
   /// Hash a PIN with a salt
   static String _hashPin(String pin, String salt) {
     final bytes = utf8.encode('$pin:$salt');

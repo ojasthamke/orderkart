@@ -16,10 +16,18 @@ class OwnerPinDialog extends StatefulWidget {
 
   /// Static helper method to prompt for PIN anywhere in the app
   static Future<bool> verify(BuildContext context, {String? title, String? subtitle}) async {
-    final isPinSet = await AppModeService.isOwnerPinSet();
-    if (!isPinSet) return true; // If PIN is not configured yet, allow access
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.owner && AppModeService.isOwnerSessionActive) {
+      return true; // Already authenticated for session!
+    }
 
-    return await showDialog<bool>(
+    final isPinSet = await AppModeService.isOwnerPinSet();
+    if (!isPinSet) {
+      AppModeService.loginOwnerSuccess();
+      return true; // If PIN is not configured yet, allow access
+    }
+
+    final ok = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => OwnerPinDialog(
@@ -28,6 +36,11 @@ class OwnerPinDialog extends StatefulWidget {
           ),
         ) ??
         false;
+
+    if (ok) {
+      AppModeService.loginOwnerSuccess();
+    }
+    return ok;
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../customer/presentation/customer_provider.dart';
@@ -130,7 +131,7 @@ class WorkerDashboardScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome Card
+            // --- HEADER WELCOME CARD ---
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -147,33 +148,170 @@ class WorkerDashboardScreen extends ConsumerWidget {
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('WORKER MODE', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      Text('FIELD EXECUTIVE MODE', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1)),
                       Icon(Icons.offline_pin_rounded, color: Colors.white, size: 20),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text('Assigned Route & Orders', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: () => _showCustomerPickerForOrder(context, ref),
-                    icon: const Icon(Icons.add_shopping_cart_rounded, color: Color(0xFF0284C7)),
-                    label: const Text('Create New Order'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF0284C7),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                  const Text('Delivery Route & Field Sales', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  const Text('Hierarchy: Area → Street → Customer → Order', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            AppHaptics.buttonClick();
+                            Navigator.of(context).pushNamed(AppRoutes.areas);
+                          },
+                          icon: const Icon(Icons.map_rounded, color: Color(0xFF0284C7)),
+                          label: const Text('Start Route (Area → Street)'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF0284C7),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      IconButton(
+                        onPressed: () => _showCustomerPickerForOrder(context, ref),
+                        icon: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white),
+                        tooltip: 'Quick Order',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          padding: const EdgeInsets.all(12),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            const Text("Today's Performance", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            // --- TARGET PROGRESS BANNER ---
+            reportAsync.maybeWhen(
+              data: (rpt) {
+                final collected = (rpt['cash_received'] as num?)?.toDouble() ?? 0.0;
+                const double target = 50000.0;
+                final pct = (collected / target).clamp(0.0, 1.0);
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.gray200),
+                    boxShadow: AppColors.cardShadow,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Today's Collection Target", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                          Text('${(pct * 100).toStringAsFixed(0)}% Achieved',
+                              style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 13)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: pct,
+                          minHeight: 8,
+                          backgroundColor: AppColors.gray200,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Collected: ${AppFormatters.currency(collected)}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                          Text('Target: ${AppFormatters.currency(target)}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+              orElse: () => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 20),
+
+            // --- QUICK ACTIONS GRID ---
+            const Text("Quick Actions", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+
+            GridView.count(
+              crossAxisCount: 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _actionCard(
+                  context,
+                  title: 'Areas & Routes',
+                  subtitle: 'Area → Street',
+                  icon: Icons.map_rounded,
+                  color: Colors.orange,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.areas),
+                ),
+                _actionCard(
+                  context,
+                  title: 'My Customers',
+                  subtitle: 'Assigned List',
+                  icon: Icons.people_outline_rounded,
+                  color: AppColors.primary,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.customers),
+                ),
+                _actionCard(
+                  context,
+                  title: 'Quick Order',
+                  subtitle: '+ New Order',
+                  icon: Icons.add_shopping_cart_rounded,
+                  color: AppColors.success,
+                  onTap: () => _showCustomerPickerForOrder(context, ref),
+                ),
+                _actionCard(
+                  context,
+                  title: 'My Orders',
+                  subtitle: 'Order History',
+                  icon: Icons.receipt_long_rounded,
+                  color: Colors.purple,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.orderManagement),
+                ),
+                _actionCard(
+                  context,
+                  title: 'Field Visit',
+                  subtitle: 'Log Note',
+                  icon: Icons.note_alt_outlined,
+                  color: Colors.teal,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
+                ),
+                _actionCard(
+                  context,
+                  title: 'Sync Queue',
+                  subtitle: 'Offline Queue',
+                  icon: Icons.sync_rounded,
+                  color: Colors.deepOrange,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.pendingSync),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+            const Text("Today's Performance Metrics", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
 
             reportAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
               error: (e, _) => Text('Error: $e'),
               data: (rpt) => GridView.count(
                 crossAxisCount: 2,
@@ -201,39 +339,60 @@ class WorkerDashboardScreen extends ConsumerWidget {
                     color: Colors.purple,
                   ),
                   StatCard(
-                    label: "Assigned Areas",
-                    value: "Active",
-                    icon: Icons.map_outlined,
-                    color: Colors.orange,
-                    onTap: () => Navigator.of(context).pushNamed(AppRoutes.areas),
+                    label: "Pending Dues",
+                    value: AppFormatters.currency((rpt['pending_amount'] as num?)?.toDouble() ?? 0),
+                    icon: Icons.hourglass_empty_rounded,
+                    color: Colors.red,
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 24),
-            const Text("Quick Actions", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
 
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.of(context).pushNamed(AppRoutes.customers),
-                    icon: const Icon(Icons.people_outline_rounded),
-                    label: const Text('My Customers'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.of(context).pushNamed(AppRoutes.orderManagement),
-                    icon: const Icon(Icons.receipt_long_rounded),
-                    label: const Text('My Orders'),
-                  ),
-                ),
-              ],
+  Widget _actionCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        AppHaptics.buttonClick();
+        onTap();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.gray200),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
             ),
+            const SizedBox(height: 6),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            Text(subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 9, color: AppColors.textSecondary)),
           ],
         ),
       ),

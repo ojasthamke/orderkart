@@ -107,6 +107,15 @@ class AppDrawer extends ConsumerWidget {
                     ),
 
                   _DrawerItem(
+                    icon: Icons.map_rounded,
+                    title: 'Areas & Routes (Area → Street)',
+                    iconColor: Colors.orange,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.areas);
+                    },
+                  ),
+                  _DrawerItem(
                     icon: Icons.people_alt_rounded,
                     title: isWorker ? 'My Customers' : 'Customers',
                     onTap: () {
@@ -123,6 +132,17 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                   
+                  if (isWorker) ...[
+                    _DrawerItem(
+                      icon: Icons.note_alt_rounded,
+                      title: 'Field Visit Notes',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.notes);
+                      },
+                    ),
+                  ],
+
                   if (!isWorker)
                     _DrawerItem(
                       icon: Icons.workspace_premium_rounded,
@@ -261,6 +281,16 @@ class AppDrawer extends ConsumerWidget {
                       } else {
                         Navigator.pushNamed(context, AppRoutes.modeSelection);
                       }
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.logout_rounded,
+                    title: 'Logout Session',
+                    iconColor: AppColors.error,
+                    onTap: () {
+                      Navigator.pop(context);
+                      AppModeService.logoutOwner();
+                      Navigator.pushReplacementNamed(context, AppRoutes.modeSelection);
                     },
                   ),
                 ],
