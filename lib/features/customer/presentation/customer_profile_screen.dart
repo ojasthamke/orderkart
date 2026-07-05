@@ -74,10 +74,13 @@ class CustomerProfileScreen extends ConsumerWidget {
                 AppHaptics.buttonClick();
                 switch (value) {
                   case 'contact':
+                    final phoneToSave = customer.phone1.trim().isNotEmpty
+                        ? customer.phone1
+                        : (customer.whatsapp.trim().isNotEmpty ? customer.whatsapp : customer.phone2);
                     await ContactExporter.saveCustomerToContacts(
                       context,
                       name: customer.name,
-                      phone: customer.phone1,
+                      phone: phoneToSave,
                       address: customer.address,
                       notes: customer.notes,
                     );
@@ -626,13 +629,18 @@ class CustomerProfileScreen extends ConsumerWidget {
             icon: Icons.person_add_rounded,
             label: 'Save Contact',
             color: const Color(0xFF8B5CF6),
-            onTap: () => ContactExporter.saveCustomerToContacts(
-              context,
-              name: customer.name,
-              phone: customer.phone1,
-              address: customer.address,
-              notes: customer.notes,
-            ),
+            onTap: () {
+              final phoneToSave = customer.phone1.trim().isNotEmpty
+                  ? customer.phone1
+                  : (customer.whatsapp.trim().isNotEmpty ? customer.whatsapp : customer.phone2);
+              ContactExporter.saveCustomerToContacts(
+                context,
+                name: customer.name,
+                phone: phoneToSave,
+                address: customer.address,
+                notes: customer.notes,
+              );
+            },
           ),
           // Call
           _actionBtn(
