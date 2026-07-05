@@ -1,8 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:archive/archive.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/database/database_helper.dart';
 import '../../../core/security/app_mode_service.dart';
+import '../../../core/services/package_validator.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 
@@ -281,6 +288,70 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
     }
   }
 
+  Future<void> _importOwnerProvisioningZip() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+      );
+      if (result == null || result.files.single.path == null) return;
+
+      setState(() => _loading = true);
+      final filePath = result.files.single.path!;
+
+      final validation = await PackageValidator.validatePackage(filePath);
+      if (!validation.isValid) {
+        if (mounted) {
+          SnackbarHelper.showError(context, 'Invalid Package: ${validation.errorMessage}');
+        }
+        setState(() => _loading = false);
+        return;
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      final bytes = File(filePath).readAsBytesSync();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      String? extractedDbPath;
+      String workerName = 'Worker';
+
+      for (final file in archive) {
+        if (file.name == 'database.db') {
+          final dbFile = File('${tempDir.path}/provisioning_db.db');
+          if (dbFile.existsSync()) dbFile.deleteSync();
+          dbFile.writeAsBytesSync(file.content as List<int>);
+          extractedDbPath = dbFile.path;
+        } else if (file.name == 'manifest.json') {
+          final content = utf8.decode(file.content as List<int>);
+          final map = jsonDecode(content) as Map<String, dynamic>;
+          workerName = map['generated_by_worker_name'] as String? ?? 'Worker';
+        }
+      }
+
+      if (extractedDbPath == null) {
+        if (mounted) SnackbarHelper.showError(context, 'No database found in package');
+        setState(() => _loading = false);
+        return;
+      }
+
+      await DatabaseHelper.instance.mergeDatabaseFromPath(
+        extractedDbPath,
+        selectedModules: ['entire_db'],
+      );
+
+      await AppModeService.setAppMode(AppMode.worker);
+      await AppModeService.setAppInitialized(true);
+
+      if (!mounted) return;
+      ref.invalidate(appModeProvider);
+      SnackbarHelper.showSuccess(context, '🎉 Worker Device Provisioned! Logged in as $workerName');
+      Navigator.of(context).pushReplacementNamed(AppRoutes.workerDashboard);
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Provisioning import failed: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -350,6 +421,22 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+
+              // --- PROVISIONING PACKAGE BUTTON FOR WORKERS ---
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _importOwnerProvisioningZip,
+                  icon: const Icon(Icons.download_for_offline_rounded, color: Color(0xFF0284C7)),
+                  label: const Text('Apply Owner Provisioning ZIP (.orderkart)',
+                      style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0284C7))),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Color(0xFF0284C7)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

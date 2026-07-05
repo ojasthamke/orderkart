@@ -257,6 +257,7 @@ class PackageExporter {
       'business_name': AppConstants.appName,
       'generated_by_worker_id': workerId,
       'generated_by_worker_name': workerName,
+      'is_worker_provisioning_package': workerId.isNotEmpty,
       'device_name': Platform.localHostname,
       'device_model': Platform.operatingSystem,
       'android_id': 'mock_android_id_${Platform.operatingSystem.hashCode.abs()}',
