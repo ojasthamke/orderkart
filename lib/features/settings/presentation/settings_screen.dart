@@ -450,6 +450,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     );
                   },
                 ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.swap_horiz_rounded, color: AppColors.primary),
+                  title: const Text('Switch Device App Mode'),
+                  subtitle: const Text('Re-configure device as Owner or Worker'),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () => Navigator.of(context).pushNamed(AppRoutes.modeSelection),
+                ),
               ]),
 
               // ── Backup & Restore ──────────────────────────────────

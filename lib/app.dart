@@ -2,11 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/constants/app_colors.dart';
 import 'core/constants/app_routes.dart';
+import 'core/security/app_mode_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/presentation/settings_provider.dart';
 import 'features/dashboard/presentation/main_screen.dart';
-import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/area/presentation/area_screen.dart';
 import 'features/street/presentation/street_screen.dart';
 import 'features/customer/presentation/customer_list_screen.dart';
@@ -44,7 +45,6 @@ import 'features/settings/presentation/sync_history_screen.dart';
 import 'features/settings/presentation/activity_timeline_screen.dart';
 import 'features/settings/presentation/business_profile_screen.dart';
 
-
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
 
@@ -53,7 +53,6 @@ class OrderKartApp extends ConsumerStatefulWidget {
 }
 
 class _OrderKartAppState extends ConsumerState<OrderKartApp> {
-
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
@@ -64,7 +63,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      initialRoute: AppRoutes.dashboard,
+      initialRoute: '/',
       onGenerateRoute: (settings) => _generateRoute(settings),
     );
   }
@@ -72,8 +71,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
   /// Central route generator — ensures every navigation is handled
   Route<dynamic>? _generateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case '/':
       case AppRoutes.dashboard:
-        return _slide(const MainScreen());
+        return _slide(const AppStartupScreen());
 
       case AppRoutes.areas:
         return _slide(const AreaScreen());
@@ -224,7 +224,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const BusinessProfileScreen());
 
       default:
-        return _slide(const MainScreen());
+        return _slide(const AppStartupScreen());
     }
   }
 
@@ -244,6 +244,45 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         );
       },
       transitionDuration: const Duration(milliseconds: 280),
+    );
+  }
+}
+
+class AppStartupScreen extends ConsumerWidget {
+  const AppStartupScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: () async {
+        final initialized = await AppModeService.isAppInitialized();
+        final mode = await AppModeService.getAppMode();
+        return {'initialized': initialized, 'mode': mode};
+      }(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          );
+        }
+
+        final data = snapshot.data ?? {'initialized': false, 'mode': AppMode.owner};
+        final bool initialized = data['initialized'] as bool;
+        final AppMode mode = data['mode'] as AppMode;
+
+        if (!initialized) {
+          return const ModeSelectionScreen();
+        }
+
+        if (mode == AppMode.worker) {
+          return const WorkerDashboardScreen();
+        }
+
+        return const MainScreen();
+      },
     );
   }
 }
