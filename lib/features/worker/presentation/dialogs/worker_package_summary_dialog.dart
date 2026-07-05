@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/haptics.dart';
+import '../../../../core/utils/responsive_helper.dart';
 import '../../../worker/domain/worker.dart';
 
 class WorkerPackageSummaryDialog extends StatelessWidget {
@@ -77,8 +78,8 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500),
-        padding: const EdgeInsets.all(24),
+        constraints: ResponsiveHelper.dialogConstraints(context),
+        padding: ResponsiveHelper.pagePadding(context),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -70,23 +70,13 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
   Future<void> _determineUser() async {
     final mode = await AppModeService.getAppMode();
     if (mode == AppMode.worker) {
-      await WorkerSession.instance.load();
-      final workerId = WorkerSession.instance.currentWorkerId;
-      if (workerId != null && workerId.isNotEmpty) {
-        final db = await DatabaseHelper.instance.database;
-        final res = await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
-        if (res.isNotEmpty) {
-          setState(() {
-            _targetName = res.first['name'] as String? ?? 'Worker';
-            _isWorker = true;
-          });
-          return;
+      // Worker PIN requirement removed — direct navigation to Worker Dashboard
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(AppRoutes.workerDashboard);
         }
-      }
-      setState(() {
-        _targetName = 'Worker';
-        _isWorker = true;
       });
+      return;
     } else {
       setState(() {
         _targetName = 'Master Owner';

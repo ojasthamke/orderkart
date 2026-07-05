@@ -10,6 +10,7 @@ import '../../../core/services/worker_package_service.dart';
 import '../../../core/services/worker_permission_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
+import '../../../core/utils/responsive_helper.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 
@@ -434,12 +435,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     SnackbarHelper.showSuccess(context, 'Worker status changed to ${newStatus.toUpperCase()}');
   }
 
-  Future<void> _resetPin() async {
-    final updated = _currentWorker.copyWith(pinHash: '');
-    await ref.read(workerListProvider.notifier).update(updated);
-    setState(() => _currentWorker = updated);
-    SnackbarHelper.showSuccess(context, 'Worker PIN reset successfully. PIN lock cleared.');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -554,7 +549,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
               Row(
                 children: [
                   _overviewMetric('Package Ver', hasPackage ? 'v${_currentWorker.packageVersion}' : 'v0 (None)'),
-                  _overviewMetric('PIN Status', _currentWorker.pinHash.isNotEmpty ? '🔒 PIN Set' : '🔓 No PIN'),
+                  _overviewMetric('Status', _currentWorker.status.toUpperCase()),
                   _overviewMetric('Device', '📲 Bound'),
                 ],
               ),
@@ -590,13 +585,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
             icon: Icons.checklist_rounded,
             color: Colors.indigo,
             onTap: () => _tabController.animateTo(1),
-          ),
-          const Divider(height: 1),
-          _actionTile(
-            title: 'Reset Worker PIN',
-            icon: Icons.lock_reset_rounded,
-            color: Colors.orange,
-            onTap: _resetPin,
           ),
           const Divider(height: 1),
           _actionTile(
@@ -965,9 +953,21 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            ),
+          ),
         ],
       ),
     );

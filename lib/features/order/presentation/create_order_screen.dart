@@ -416,18 +416,24 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight:
-                      isBold ? FontWeight.w700 : FontWeight.w500,
-                  color: AppColors.textSecondary)),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight:
-                      isBold ? FontWeight.w700 : FontWeight.w600,
-                  color: color ?? AppColors.textPrimary)),
+          Expanded(
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight:
+                        isBold ? FontWeight.w700 : FontWeight.w500,
+                    color: AppColors.textSecondary)),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(value,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight:
+                        isBold ? FontWeight.w700 : FontWeight.w600,
+                    color: color ?? AppColors.textPrimary)),
+          ),
         ],
       ),
     );
