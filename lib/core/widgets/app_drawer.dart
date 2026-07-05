@@ -4,7 +4,6 @@ import '../constants/app_routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../security/app_mode_service.dart';
 import 'owner_pin_dialog.dart';
-import 'snackbar_helper.dart';
 
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
@@ -13,6 +12,8 @@ class AppDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDark ? const Color(0xFF1A1A1A) : Colors.white;
+    final modeAsync = ref.watch(appModeProvider);
+    final isWorker = modeAsync.value == AppMode.worker;
 
     return Drawer(
       backgroundColor: backgroundColor,
@@ -37,8 +38,8 @@ class AppDrawer extends ConsumerWidget {
                       child: Image.asset(
                         'assets/logo.png',
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.inventory_2_rounded,
+                        errorBuilder: (_, __, ___) => Icon(
+                          isWorker ? Icons.badge_rounded : Icons.inventory_2_rounded,
                           color: AppColors.primary,
                           size: 24,
                         ),
@@ -46,14 +47,28 @@ class AppDrawer extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Text(
-                    'OrderKart',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                      letterSpacing: -0.5,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'OrderKart',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      Text(
+                        isWorker ? 'WORKER APP' : 'OWNER CONTROL',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          color: isWorker ? const Color(0xFF0EA5E9) : AppColors.textSecondary,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -63,86 +78,89 @@ class AppDrawer extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 children: [
-                  _SectionHeader(title: 'MAIN'),
+                  const _SectionHeader(title: 'NAVIGATION'),
                   _DrawerItem(
                     icon: Icons.dashboard_rounded,
                     title: 'Dashboard',
-                    onTap: () async {
+                    onTap: () {
                       Navigator.pop(context);
-                      final mode = await AppModeService.getAppMode();
-                      if (mode == AppMode.worker) {
+                      if (isWorker) {
                         Navigator.pushNamed(context, AppRoutes.workerDashboard);
                       } else {
                         Navigator.pushNamed(context, AppRoutes.dashboard);
                       }
                     },
                   ),
-                  _DrawerItem(
-                    icon: Icons.badge_rounded,
-                    title: 'Worker Management',
-                    iconColor: AppColors.primary,
-                    onTap: () async {
-                      Navigator.pop(context);
-                      if (await OwnerPinDialog.verify(context, title: 'Worker Management')) {
-                        Navigator.pushNamed(context, AppRoutes.workers);
-                      }
-                    },
-                  ),
+                  
+                  // ONLY SHOW WORKER MANAGEMENT IF IN OWNER MODE!
+                  if (!isWorker)
+                    _DrawerItem(
+                      icon: Icons.badge_rounded,
+                      title: 'Worker Management',
+                      iconColor: AppColors.primary,
+                      onTap: () async {
+                        Navigator.pop(context);
+                        if (await OwnerPinDialog.verify(context, title: 'Worker Management')) {
+                          Navigator.pushNamed(context, AppRoutes.workers);
+                        }
+                      },
+                    ),
+
                   _DrawerItem(
                     icon: Icons.people_alt_rounded,
-                    title: 'Customers',
+                    title: isWorker ? 'My Customers' : 'Customers',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, AppRoutes.customers);
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.workspace_premium_rounded,
-                    title: 'VIP Membership Club',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.vipDashboard);
-                    },
-                  ),
-                  _DrawerItem(
                     icon: Icons.shopping_cart_rounded,
-                    title: 'Orders & Sales',
+                    title: isWorker ? 'My Orders & Sales' : 'Orders & Sales',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, AppRoutes.orderManagement);
                     },
                   ),
+                  
+                  if (!isWorker)
+                    _DrawerItem(
+                      icon: Icons.workspace_premium_rounded,
+                      title: 'VIP Membership Club',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.vipDashboard);
+                      },
+                    ),
+                  
                   _DrawerItem(
                     icon: Icons.inventory_rounded,
-                    title: 'Inventory & Stock',
-                    onTap: () async {
+                    title: 'Inventory Catalog',
+                    onTap: () {
                       Navigator.pop(context);
-                      final mode = await AppModeService.getAppMode();
-                      if (mode == AppMode.worker) {
-                        SnackbarHelper.showError(context, 'Inventory is managed on Owner Device only.');
-                      } else {
-                        Navigator.pushNamed(context, AppRoutes.inventory);
-                      }
+                      Navigator.pushNamed(context, AppRoutes.inventory);
                     },
                   ),
 
-                  // ── Quick Access ─────────────────────────────────────
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                     child: Divider(height: 1),
                   ),
-                  _SectionHeader(title: 'ENTERPRISE & SYNC'),
-                  _DrawerItem(
-                    icon: Icons.auto_mode_rounded,
-                    title: 'Import Wizard (Merge)',
-                    iconColor: const Color(0xFF0284C7),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      if (await OwnerPinDialog.verify(context, title: 'Import Wizard Access')) {
-                        Navigator.pushNamed(context, AppRoutes.importWizard);
-                      }
-                    },
-                  ),
+                  const _SectionHeader(title: 'SYNC & DATA'),
+                  
+                  if (!isWorker)
+                    _DrawerItem(
+                      icon: Icons.auto_mode_rounded,
+                      title: 'Import Wizard (Merge)',
+                      iconColor: const Color(0xFF0284C7),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        if (await OwnerPinDialog.verify(context, title: 'Import Wizard Access')) {
+                          Navigator.pushNamed(context, AppRoutes.importWizard);
+                        }
+                      },
+                    ),
+
                   _DrawerItem(
                     icon: Icons.sync_rounded,
                     title: 'Pending Sync Queue',
@@ -161,66 +179,87 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.syncHistory);
                     },
                   ),
-                  _DrawerItem(
-                    icon: Icons.storefront_rounded,
-                    title: 'Business Profile',
-                    iconColor: const Color(0xFF10B981),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      if (await OwnerPinDialog.verify(context, title: 'Business Profile')) {
-                        Navigator.pushNamed(context, AppRoutes.businessProfile);
-                      }
-                    },
-                  ),
+                  
+                  if (!isWorker)
+                    _DrawerItem(
+                      icon: Icons.storefront_rounded,
+                      title: 'Business Profile',
+                      iconColor: const Color(0xFF10B981),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        if (await OwnerPinDialog.verify(context, title: 'Business Profile')) {
+                          Navigator.pushNamed(context, AppRoutes.businessProfile);
+                        }
+                      },
+                    ),
+
+                  if (!isWorker) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+                      child: Divider(height: 1),
+                    ),
+
+                    const _SectionHeader(title: 'INSIGHTS & ALERTS'),
+                    _DrawerItem(
+                      icon: Icons.analytics_rounded,
+                      title: 'Analytics & Reports',
+                      onTap: () async {
+                        Navigator.pop(context);
+                        if (await OwnerPinDialog.verify(context, title: 'Analytics Access')) {
+                          Navigator.pushNamed(context, AppRoutes.analytics);
+                        }
+                      },
+                    ),
+                    _DrawerItem(
+                      icon: Icons.history_rounded,
+                      title: 'Activity Timeline',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.activityTimeline);
+                      },
+                    ),
+                  ],
 
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                     child: Divider(height: 1),
                   ),
 
-                  _SectionHeader(title: 'INSIGHTS & ALERTS'),
+                  const _SectionHeader(title: 'SECURITY & MODE'),
+                  if (!isWorker)
+                    _DrawerItem(
+                      icon: Icons.settings_rounded,
+                      title: 'Settings',
+                      onTap: () async {
+                        Navigator.pop(context);
+                        if (await OwnerPinDialog.verify(context, title: 'Master Settings')) {
+                          Navigator.pushNamed(context, AppRoutes.settings);
+                        }
+                      },
+                    ),
+                  if (!isWorker)
+                    _DrawerItem(
+                      icon: Icons.restore_rounded,
+                      title: 'Backup & Restore',
+                      onTap: () async {
+                        Navigator.pop(context);
+                        if (await OwnerPinDialog.verify(context, title: 'Backup & Restore')) {
+                          Navigator.pushNamed(context, AppRoutes.backupRestore);
+                        }
+                      },
+                    ),
                   _DrawerItem(
-                    icon: Icons.analytics_rounded,
-                    title: 'Analytics & Reports',
+                    icon: Icons.swap_horiz_rounded,
+                    title: 'Switch App Mode',
+                    iconColor: AppColors.primary,
                     onTap: () async {
                       Navigator.pop(context);
-                      if (await OwnerPinDialog.verify(context, title: 'Analytics Access')) {
-                        Navigator.pushNamed(context, AppRoutes.analytics);
-                      }
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.history_rounded,
-                    title: 'Activity Timeline',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.activityTimeline);
-                    },
-                  ),
-
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
-                    child: Divider(height: 1),
-                  ),
-
-                  _SectionHeader(title: 'SYSTEM & SETTINGS'),
-                  _DrawerItem(
-                    icon: Icons.settings_rounded,
-                    title: 'Settings',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      if (await OwnerPinDialog.verify(context, title: 'Master Settings')) {
-                        Navigator.pushNamed(context, AppRoutes.settings);
-                      }
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.restore_rounded,
-                    title: 'Backup & Restore',
-                    onTap: () async {
-                      Navigator.pop(context);
-                      if (await OwnerPinDialog.verify(context, title: 'Backup & Restore')) {
-                        Navigator.pushNamed(context, AppRoutes.backupRestore);
+                      if (isWorker) {
+                        if (await OwnerPinDialog.verify(context, title: 'Switch to Owner Mode')) {
+                          Navigator.pushNamed(context, AppRoutes.modeSelection);
+                        }
+                      } else {
+                        Navigator.pushNamed(context, AppRoutes.modeSelection);
                       }
                     },
                   ),

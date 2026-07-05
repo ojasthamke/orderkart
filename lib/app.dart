@@ -106,11 +106,11 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         ));
 
       case AppRoutes.createOrder:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = settings.arguments as Map<String, dynamic>?;
         return _slide(CreateOrderScreen(
-          customerId: args['customerId'] as String,
-          customerName: args['customerName'] as String,
-          orderId: args['orderId'] as String?,
+          customerId: args?['customerId'] as String? ?? '',
+          customerName: args?['customerName'] as String? ?? '',
+          orderId: args?['orderId'] as String?,
         ));
 
       case AppRoutes.orderManagement:

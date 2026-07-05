@@ -5,10 +5,102 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/stat_card.dart';
+import '../../customer/presentation/customer_provider.dart';
 import '../../order/presentation/order_provider.dart';
 
 class WorkerDashboardScreen extends ConsumerWidget {
   const WorkerDashboardScreen({super.key});
+
+  Future<void> _showCustomerPickerForOrder(BuildContext context, WidgetRef ref) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Consumer(
+        builder: (context, ref, _) {
+          final customersAsync = ref.watch(allCustomersProvider);
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Select Customer for Order',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: customersAsync.when(
+                    loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                    error: (err, _) => Center(child: Text('Error: $err')),
+                    data: (customers) {
+                      if (customers.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('No customers found.'),
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  Navigator.pushNamed(context, AppRoutes.addEditCustomer);
+                                },
+                                icon: const Icon(Icons.person_add_rounded),
+                                label: const Text('Add Customer First'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: customers.length,
+                        itemBuilder: (context, index) {
+                          final c = customers[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.primarySurface,
+                              child: Text(
+                                c.name.isNotEmpty ? c.name[0].toUpperCase() : 'C',
+                                style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary),
+                              ),
+                            ),
+                            title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text([if (c.phone1.isNotEmpty) c.phone1, c.address].where((e) => e.isNotEmpty).join(' · ')),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.createOrder,
+                                arguments: {'customerId': c.id, 'customerName': c.name},
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -63,7 +155,7 @@ class WorkerDashboardScreen extends ConsumerWidget {
                   const Text('Assigned Route & Orders', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
-                    onPressed: () => Navigator.of(context).pushNamed(AppRoutes.createOrder),
+                    onPressed: () => _showCustomerPickerForOrder(context, ref),
                     icon: const Icon(Icons.add_shopping_cart_rounded, color: Color(0xFF0284C7)),
                     label: const Text('Create New Order'),
                     style: ElevatedButton.styleFrom(
