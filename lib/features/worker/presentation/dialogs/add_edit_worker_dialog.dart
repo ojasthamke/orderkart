@@ -28,6 +28,7 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
   late TextEditingController _empIdCon;
   late TextEditingController _commValCon;
   late TextEditingController _salaryCon;
+  late TextEditingController _targetCon;
   late TextEditingController _notesCon;
 
   CommissionType _commType = CommissionType.pctOrder;
@@ -43,6 +44,7 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
     _empIdCon = TextEditingController(text: w?.employeeId ?? '');
     _commValCon = TextEditingController(text: (w?.commissionValue ?? 5.0).toString());
     _salaryCon = TextEditingController(text: (w?.salary ?? 0.0).toString());
+    _targetCon = TextEditingController(text: '50000');
     _notesCon = TextEditingController(text: w?.notes ?? '');
     if (w != null) {
       _commType = w.commissionType;
@@ -58,6 +60,7 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
     _empIdCon.dispose();
     _commValCon.dispose();
     _salaryCon.dispose();
+    _targetCon.dispose();
     _notesCon.dispose();
     super.dispose();
   }
@@ -203,20 +206,18 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                       ),
                     ),
                   ),
-                  if (_commType == CommissionType.salary || _commType == CommissionType.mixed) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _salaryCon,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Monthly Salary (₹)',
-                          prefixIcon: Icon(Icons.account_balance_wallet_outlined),
-                          border: OutlineInputBorder(),
-                        ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _targetCon,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Monthly Target (₹)',
+                        prefixIcon: Icon(Icons.flag_outlined),
+                        border: OutlineInputBorder(),
                       ),
                     ),
-                  ]
+                  ),
                 ],
               ),
               const SizedBox(height: 16),

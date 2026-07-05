@@ -350,11 +350,34 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
                         ),
                         hint: const Text('All Workers'),
                         items: [
-                          const DropdownMenuItem<String>(value: null, child: Text('All Workers')),
-                          ..._workers.map((w) => DropdownMenuItem<String>(value: w['id'], child: Text(w['name'] ?? ''))),
+                          const DropdownMenuItem<String>(value: null, child: Text('All Workers (Owner Full Package)')),
+                          ..._workers.map((w) => DropdownMenuItem<String>(value: w['id'], child: Text('Worker: ${w['name'] ?? ''}'))),
                         ],
                         onChanged: (val) => setState(() => _selectedWorkerId = val),
                       ),
+                      if (_selectedWorkerId != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySurface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.shield_outlined, color: AppColors.primary, size: 20),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Owner Control: Generating custom offline database tuned specifically for this worker.',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
 
                     const SizedBox(height: 12),
