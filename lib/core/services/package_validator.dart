@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart';
-import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../constants/app_constants.dart';
 
@@ -91,7 +90,6 @@ class PackageValidator {
       final Map<String, dynamic> manifest = jsonDecode(utf8.decode(manifestData));
 
       // Validate version parameters
-      final appVer = manifest['app_version']?.toString() ?? '';
       final dbVer = manifest['db_version']?.toString() ?? '';
       final schemaVer = manifest['schema_version']?.toString() ?? '';
 
@@ -174,12 +172,12 @@ class PackageValidator {
     );
   }
 
-  static List<String> photoList(List<ArchiveFile> files) =>
-      files.map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('photos/')).toList();
+  static List<String> photoList(Archive archive) =>
+      archive.files.map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('photos/')).toList();
 
-  static List<String> logoList(List<ArchiveFile> files) =>
-      files.map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('logo/')).toList();
+  static List<String> logoList(Archive archive) =>
+      archive.files.map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('logo/')).toList();
 
-  static List<String> qrList(List<ArchiveFile> files) =>
-      files.map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('qr/')).toList();
+  static List<String> qrList(Archive archive) =>
+      archive.files.map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('qr/')).toList();
 }
