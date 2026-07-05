@@ -99,7 +99,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     }
   }
 
-  // ── 1. ASSIGN AREAS (Cascading to Streets & Customers) ────────────────────
+  // ── 1. ASSIGN AREAS (Cascading strictly to Streets & Customers in Assigned Areas) ──
   Future<void> _openAssignAreas() async {
     final db = await DatabaseHelper.instance.database;
     final areas = await db.query('areas', orderBy: 'name ASC');
@@ -121,48 +121,39 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     );
 
     if (selected != null) {
-      // Cascading logic: Auto-select member streets & customers
-      List<String> newStreetIds = List.from(_assignedStreetIds);
-      List<String> newCustomerIds = List.from(_assignedCustomerIds);
+      // Strict Scoping: Streets & Customers MUST belong ONLY to assigned areas
+      List<String> memberStreetIds = [];
+      List<String> memberCustomerIds = [];
 
       if (selected.isNotEmpty) {
         final inClause = selected.map((id) => "'$id'").join(',');
         final memberStreets = await db.query('streets', where: 'area_id IN ($inClause)');
-        final memberStreetIds = memberStreets.map((s) => s['id'] as String).toList();
-        
-        // Add newly assigned member streets
-        for (final sId in memberStreetIds) {
-          if (!newStreetIds.contains(sId)) newStreetIds.add(sId);
-        }
+        memberStreetIds = memberStreets.map((s) => s['id'] as String).toList();
 
-        if (newStreetIds.isNotEmpty) {
-          final streetInClause = newStreetIds.map((id) => "'$id'").join(',');
+        if (memberStreetIds.isNotEmpty) {
+          final streetInClause = memberStreetIds.map((id) => "'$id'").join(',');
           final memberCustomers = await db.query('customers', where: 'street_id IN ($streetInClause)');
-          for (final c in memberCustomers) {
-            final cId = c['id'] as String;
-            if (!newCustomerIds.contains(cId)) newCustomerIds.add(cId);
-          }
+          memberCustomerIds = memberCustomers.map((c) => c['id'] as String).toList();
         }
       }
 
-      await _saveAssignments('area', selected);
-      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'street', entityIds: newStreetIds);
-      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'customer', entityIds: newCustomerIds);
+      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'area', entityIds: selected);
+      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'street', entityIds: memberStreetIds);
+      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'customer', entityIds: memberCustomerIds);
       await _loadData();
     }
   }
 
-  // ── 2. ASSIGN STREETS (Filtered by assigned areas) ───────────────────────
+  // ── 2. ASSIGN STREETS (Filtered strictly by assigned areas) ──────────────
   Future<void> _openAssignStreets() async {
-    final db = await DatabaseHelper.instance.database;
-    List<Map<String, dynamic>> streets;
-
-    if (_assignedAreaIds.isNotEmpty) {
-      final inClause = _assignedAreaIds.map((id) => "'$id'").join(',');
-      streets = await db.query('streets', where: 'area_id IN ($inClause)', orderBy: 'name ASC');
-    } else {
-      streets = await db.query('streets', orderBy: 'name ASC');
+    if (_assignedAreaIds.isEmpty) {
+      SnackbarHelper.showInfo(context, 'Please assign at least 1 Area first to select streets.');
+      return;
     }
+
+    final db = await DatabaseHelper.instance.database;
+    final inClause = _assignedAreaIds.map((id) => "'$id'").join(',');
+    final streets = await db.query('streets', where: 'area_id IN ($inClause)', orderBy: 'name ASC');
 
     final items = streets.map((s) {
       return AssignmentItem(
@@ -181,34 +172,30 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     );
 
     if (selected != null) {
-      // Cascading logic: Auto-select member customers
-      List<String> newCustomerIds = List.from(_assignedCustomerIds);
+      // Filter customers strictly to selected streets in assigned areas
+      List<String> memberCustomerIds = [];
       if (selected.isNotEmpty) {
         final streetInClause = selected.map((id) => "'$id'").join(',');
         final memberCustomers = await db.query('customers', where: 'street_id IN ($streetInClause)');
-        for (final c in memberCustomers) {
-          final cId = c['id'] as String;
-          if (!newCustomerIds.contains(cId)) newCustomerIds.add(cId);
-        }
+        memberCustomerIds = memberCustomers.map((c) => c['id'] as String).toList();
       }
 
       await _saveAssignments('street', selected);
-      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'customer', entityIds: newCustomerIds);
+      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'customer', entityIds: memberCustomerIds);
       await _loadData();
     }
   }
 
-  // ── 3. ASSIGN CUSTOMERS (Filtered by assigned streets) ────────────────────
+  // ── 3. ASSIGN CUSTOMERS (Filtered strictly by assigned streets/areas) ─────
   Future<void> _openAssignCustomers() async {
-    final db = await DatabaseHelper.instance.database;
-    List<Map<String, dynamic>> customers;
-
-    if (_assignedStreetIds.isNotEmpty) {
-      final inClause = _assignedStreetIds.map((id) => "'$id'").join(',');
-      customers = await db.query('customers', where: 'street_id IN ($inClause)', orderBy: 'name ASC');
-    } else {
-      customers = await db.query('customers', orderBy: 'name ASC');
+    if (_assignedStreetIds.isEmpty) {
+      SnackbarHelper.showInfo(context, 'Please assign Areas & Streets first to select customers.');
+      return;
     }
+
+    final db = await DatabaseHelper.instance.database;
+    final inClause = _assignedStreetIds.map((id) => "'$id'").join(',');
+    final customers = await db.query('customers', where: 'street_id IN ($inClause)', orderBy: 'name ASC');
 
     final items = customers.map((c) {
       return AssignmentItem(
