@@ -405,4 +405,59 @@ class OrderDao {
       'total_sales': (totalSales.first['v'] as num?)?.toDouble() ?? 0.0,
     };
   }
+
+  /// Compute customer savings: order-level discounts + market-price savings
+  /// Returns {'total': double, 'monthly': double, 'order_count': int}
+  Future<Map<String, double>> getCustomerSavings(String customerId) async {
+    final db   = await _db;
+    final now  = DateTime.now();
+    final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    // ── All-time: sum of discounts + (market_price - unit_price) × qty ─────
+    final allTimeResult = await db.rawQuery('''
+      SELECT
+        COALESCE(SUM(o.discount), 0) AS discount_savings,
+        COALESCE(SUM(
+          CASE
+            WHEN oi.item_id != '' AND i.market_price > oi.unit_price
+            THEN (i.market_price - oi.unit_price) * oi.quantity
+            ELSE 0
+          END
+        ), 0) AS market_savings
+      FROM orders o
+      LEFT JOIN order_items oi ON oi.order_id = o.id
+      LEFT JOIN items i ON i.id = oi.item_id
+      WHERE o.customer_id = ?
+        AND o.delivery_status != 'cancelled'
+    ''', [customerId]);
+
+    // ── This month ──────────────────────────────────────────────────────────
+    final monthlyResult = await db.rawQuery('''
+      SELECT
+        COALESCE(SUM(o.discount), 0) AS discount_savings,
+        COALESCE(SUM(
+          CASE
+            WHEN oi.item_id != '' AND i.market_price > oi.unit_price
+            THEN (i.market_price - oi.unit_price) * oi.quantity
+            ELSE 0
+          END
+        ), 0) AS market_savings
+      FROM orders o
+      LEFT JOIN order_items oi ON oi.order_id = o.id
+      LEFT JOIN items i ON i.id = oi.item_id
+      WHERE o.customer_id = ?
+        AND o.delivery_status != 'cancelled'
+        AND strftime('%Y-%m', o.created_at) = ?
+    ''', [customerId, month]);
+
+    final allDisc   = (allTimeResult.first['discount_savings'] as num?)?.toDouble() ?? 0;
+    final allMarket = (allTimeResult.first['market_savings']   as num?)?.toDouble() ?? 0;
+    final monDisc   = (monthlyResult.first['discount_savings'] as num?)?.toDouble() ?? 0;
+    final monMarket = (monthlyResult.first['market_savings']   as num?)?.toDouble() ?? 0;
+
+    return {
+      'total':   allDisc + allMarket,
+      'monthly': monDisc + monMarket,
+    };
+  }
 }

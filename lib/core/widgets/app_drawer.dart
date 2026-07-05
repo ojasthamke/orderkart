@@ -99,6 +99,49 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
 
+                  // ── Quick Access ─────────────────────────────────────
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+                    child: Divider(height: 1),
+                  ),
+                  _SectionHeader(title: 'QUICK ACCESS'),
+                  _DrawerItem(
+                    icon: Icons.map_rounded,
+                    title: 'Areas & Streets',
+                    iconColor: const Color(0xFF0EA5E9),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.areas);
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.receipt_long_rounded,
+                    title: 'Expenses',
+                    iconColor: const Color(0xFFD97706),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.expenses);
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.note_alt_rounded,
+                    title: 'Notes & Reminders',
+                    iconColor: const Color(0xFF8B5CF6),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.notes);
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.search_rounded,
+                    title: 'Global Search',
+                    iconColor: const Color(0xFF10B981),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.search);
+                    },
+                  ),
+
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                     child: Divider(height: 1),
@@ -223,29 +266,43 @@ class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final Color? iconColor;
 
   const _DrawerItem({
     required this.icon,
     required this.title,
     required this.onTap,
+    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = iconColor ?? AppColors.textPrimary;
     return ListTile(
-      leading: Icon(icon, color: AppColors.textPrimary, size: 24),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: iconColor != null
+            ? BoxDecoration(
+                color: iconColor!.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              )
+            : null,
+        child: Icon(icon, color: color, size: iconColor != null ? 20 : 24),
+      ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 15,
+          color: iconColor != null ? color : null,
         ),
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      hoverColor: AppColors.primary.withOpacity(0.05),
-      splashColor: AppColors.primary.withOpacity(0.1),
+      hoverColor: (iconColor ?? AppColors.primary).withOpacity(0.05),
+      splashColor: (iconColor ?? AppColors.primary).withOpacity(0.1),
       onTap: onTap,
     );
   }

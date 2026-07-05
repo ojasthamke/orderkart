@@ -13,6 +13,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/customer.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/utils/contact_exporter.dart';
 import 'customer_provider.dart';
 
 class AddEditCustomerScreen extends ConsumerStatefulWidget {
@@ -472,11 +473,54 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       }
 
       if (!mounted) return;
+      if (!mounted) return;
       if (_isEdit) {
         SnackbarHelper.showSuccess(context, 'Customer details updated');
         Navigator.of(context).pop();
       } else {
         SnackbarHelper.showSuccess(context, 'Customer added successfully');
+
+        // Offer Save to Device Contacts
+        final saveContact = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.contacts_rounded, color: AppColors.primary, size: 26),
+                SizedBox(width: 10),
+                Text('Save to Contacts?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              ],
+            ),
+            content: Text(
+              'Save ${_nameCon.text.trim()} (${_phone1Con.text.trim()}) to your phone device contacts?',
+              style: const TextStyle(fontSize: 14, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Skip'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.person_add_rounded, size: 18),
+                label: const Text('Save Contact'),
+              ),
+            ],
+          ),
+        );
+
+        if (saveContact == true && mounted) {
+          await ContactExporter.saveCustomerToContacts(
+            context,
+            name: _nameCon.text.trim(),
+            phone: _phone1Con.text.trim(),
+            address: _addressCon.text.trim(),
+          );
+        }
+
+        if (!mounted) return;
+
         // Offer VIP upgrade for new customers
         final upgradeToVip = await showDialog<bool>(
           context: context,

@@ -398,4 +398,76 @@ class DatabaseHelper {
       await db.execute("ALTER TABLE streets ADD COLUMN maps_location TEXT DEFAULT ''");
     } catch (_) {}
   }
+
+  /// Close database connection safely
+  Future<void> close() async {
+    if (_db != null && _db!.isOpen) {
+      await _db!.close();
+      _db = null;
+    }
+  }
+
+  /// Smart Non-Destructive Merge Import:
+  /// Merges records from incoming SQLite DB into current DB without deleting older or existing records.
+  /// Returns a map of counts merged per table.
+  Future<Map<String, int>> mergeDatabaseFromPath(String incomingDbPath) async {
+    final targetDb = await database;
+    final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
+
+    final tables = [
+      'areas',
+      'streets',
+      'customers',
+      'items',
+      'orders',
+      'order_items',
+      'payments',
+      'expenses',
+      'notes',
+      'visits',
+      'notifications',
+      'item_price_history'
+    ];
+
+    final Map<String, int> mergedCounts = {};
+
+    for (final table in tables) {
+      int merged = 0;
+      try {
+        final incomingRows = await incomingDb.query(table);
+        for (final row in incomingRows) {
+          final id = row['id']?.toString() ?? '';
+          if (id.isEmpty) continue;
+
+          // Check if record exists in current DB
+          final existing = await targetDb.query(table, where: 'id = ?', whereArgs: [id]);
+          if (existing.isEmpty) {
+            await targetDb.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+            merged++;
+          } else {
+            // Check updated_at if available
+            final existingUpdated = existing.first['updated_at']?.toString() ?? '';
+            final incomingUpdated = row['updated_at']?.toString() ?? '';
+            if (incomingUpdated.isNotEmpty && existingUpdated.isNotEmpty) {
+              final incDt = DateTime.tryParse(incomingUpdated);
+              final exDt = DateTime.tryParse(existingUpdated);
+              if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
+                await targetDb.update(table, row, where: 'id = ?', whereArgs: [id]);
+                merged++;
+              }
+            }
+          }
+        }
+      } catch (_) {
+        // Table might not exist in older schema backup, skip safely
+      }
+      if (merged > 0) {
+        mergedCounts[table] = merged;
+      }
+    }
+
+    await incomingDb.close();
+    return mergedCounts;
+  }
 }
+

@@ -47,14 +47,22 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
           ),
           const SizedBox(height: 16),
           _SectionCard(
-            title:    'Import',
+            title:    'Import & Merge Data',
             icon:     Icons.download_rounded,
             iconColor: AppColors.primary,
             children: [
               _ActionTile(
+                icon:     Icons.merge_type_rounded,
+                title:    'Merge Worker Data (Safe Sync)',
+                subtitle: 'Add new customers & orders without deleting existing data',
+                onTap:    _mergeImportDatabase,
+                loading:  _loading,
+              ),
+              const Divider(height: 1),
+              _ActionTile(
                 icon:     Icons.folder_open_rounded,
-                title:    'Restore from File',
-                subtitle: 'Pick a .db or .zip backup file',
+                title:    'Full Restore from File (Overwrite)',
+                subtitle: 'Replace entire database with a .db or .zip backup file',
                 onTap:    _importDatabase,
                 loading:  _loading,
               ),
@@ -260,6 +268,113 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     } catch (e) {
       if (mounted)
         SnackbarHelper.showError(context, 'Restore failed: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _mergeImportDatabase() async {
+    setState(() => _loading = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+      );
+      if (result == null || result.files.isEmpty) {
+        setState(() => _loading = false);
+        return;
+      }
+
+      final srcPath = result.files.first.path!;
+      final tempDir = await getTemporaryDirectory();
+      String dbFileToMerge = srcPath;
+
+      if (srcPath.toLowerCase().endsWith('.zip')) {
+        final bytes = await File(srcPath).readAsBytes();
+        Archive archive;
+        try {
+          archive = ZipDecoder().decodeBytes(bytes);
+        } catch (_) {
+          throw Exception("The selected zip file is corrupted or invalid.");
+        }
+
+        List<int>? dbData;
+        for (final file in archive) {
+          if (file.name == 'orderkart.db' && file.isFile) {
+            dbData = file.content as List<int>;
+            break;
+          }
+        }
+
+        if (dbData == null || !await _isValidSqliteBytes(dbData)) {
+          throw Exception("Invalid backup: zip file does not contain a valid orderkart.db");
+        }
+
+        // Write temp DB file to merge
+        final tempDb = File('${tempDir.path}/merge_incoming.db');
+        await tempDb.writeAsBytes(dbData);
+        dbFileToMerge = tempDb.path;
+
+        // Copy incoming photos without deleting existing
+        for (final file in archive) {
+          final normalizedPath = file.name.replaceAll('\\', '/');
+          if (file.isFile && normalizedPath.startsWith('customer_photos/')) {
+            final relativeName = p.basename(normalizedPath);
+            final photoDest = File('${AppConstants.appDocsDir}/customer_photos/$relativeName');
+            if (!photoDest.existsSync()) {
+              await photoDest.parent.create(recursive: true);
+              await photoDest.writeAsBytes(file.content as List<int>);
+            }
+          }
+        }
+      } else {
+        final file = File(srcPath);
+        if (!await _isValidSqliteFile(file)) {
+          throw Exception("The selected file is not a valid SQLite database.");
+        }
+      }
+
+      // Perform non-destructive merge into target DB
+      final mergedCounts = await DatabaseHelper.instance.mergeDatabaseFromPath(dbFileToMerge);
+
+      if (mounted) {
+        if (mergedCounts.isEmpty) {
+          SnackbarHelper.showInfo(context, 'Data sync completed: All records are already up to date!');
+        } else {
+          final summaryLines = mergedCounts.entries
+              .map((e) => '• ${e.key.toUpperCase()}: ${e.value} new/updated')
+              .join('\n');
+
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
+                  SizedBox(width: 10),
+                  Text('Worker Data Merged!', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Successfully merged new data without deleting or overwriting any existing records:\n'),
+                  Text(summaryLines, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, height: 1.4)),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Great!'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Merge failed: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }

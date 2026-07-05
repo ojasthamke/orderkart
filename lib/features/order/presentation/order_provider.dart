@@ -179,3 +179,10 @@ final dashboardOrdersProvider = FutureProvider.family<List<AppOrder>, DashboardO
     endDate: params.endDate,
   );
 });
+
+/// Per-customer savings: discounts + market-price savings combined
+/// Returns {'total': double, 'monthly': double}
+final customerSavingsProvider =
+    FutureProvider.family<Map<String, double>, String>((ref, customerId) {
+  return OrderDao().getCustomerSavings(customerId);
+});
