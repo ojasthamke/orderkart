@@ -9,6 +9,7 @@ import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/worker.dart';
 import 'dialogs/add_edit_worker_dialog.dart';
+import 'worker_control_panel_screen.dart';
 import 'worker_provider.dart';
 
 class WorkerManagementScreen extends ConsumerWidget {
@@ -190,41 +191,63 @@ class _WorkerCard extends ConsumerWidget {
 
                 const SizedBox(height: 16),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
-                      tooltip: 'Edit Worker Profile',
-                      onPressed: () async {
-                        final updated = await AddEditWorkerDialog.show(context, worker: worker);
-                        if (updated != null) {
-                          await ref.read(workerListProvider.notifier).update(updated);
-                        }
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                      tooltip: 'Delete Worker',
-                      onPressed: () async {
-                        final ok = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Delete Worker?'),
-                            content: Text('Delete "${worker.name}"? Assignments will be cleared.'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-                                child: const Text('Delete'),
-                              ),
-                            ],
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        AppHaptics.buttonClick();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => WorkerControlPanelScreen(worker: worker),
                           ),
                         );
-                        if (ok == true) {
-                          await ref.read(workerListProvider.notifier).delete(worker.id);
-                        }
                       },
+                      icon: const Icon(Icons.dashboard_customize_rounded, size: 16),
+                      label: const Text('Worker Control Panel', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
+                          tooltip: 'Edit Worker Profile',
+                          onPressed: () async {
+                            final updated = await AddEditWorkerDialog.show(context, worker: worker);
+                            if (updated != null) {
+                              await ref.read(workerListProvider.notifier).update(updated);
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                          tooltip: 'Delete Worker',
+                          onPressed: () async {
+                            final ok = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Delete Worker?'),
+                                content: Text('Delete "${worker.name}"? Assignments will be cleared.'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (ok == true) {
+                              await ref.read(workerListProvider.notifier).delete(worker.id);
+                            }
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),

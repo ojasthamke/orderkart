@@ -891,6 +891,31 @@ class DatabaseHelper {
       )
     ''');
 
+    // Worker Permissions
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS worker_permissions (
+        worker_id        TEXT PRIMARY KEY,
+        add_customer     INTEGER DEFAULT 1,
+        edit_customer    INTEGER DEFAULT 1,
+        delete_customer  INTEGER DEFAULT 0,
+        create_order     INTEGER DEFAULT 1,
+        edit_order       INTEGER DEFAULT 1,
+        cancel_order     INTEGER DEFAULT 0,
+        receive_payment  INTEGER DEFAULT 1,
+        change_stock     INTEGER DEFAULT 1,
+        change_prices    INTEGER DEFAULT 0,
+        change_inventory INTEGER DEFAULT 0,
+        add_expenses     INTEGER DEFAULT 1,
+        export_data      INTEGER DEFAULT 1,
+        import_data      INTEGER DEFAULT 0,
+        view_reports     INTEGER DEFAULT 1,
+        edit_notes       INTEGER DEFAULT 1,
+        manage_vip       INTEGER DEFAULT 0,
+        backup_restore   INTEGER DEFAULT 0,
+        updated_at       TEXT NOT NULL
+      )
+    ''');
+
     // Indexes for V4 performance
     await db.execute('CREATE INDEX IF NOT EXISTS idx_worker_assign_wid ON worker_assignments(worker_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_worker_rep_wid ON worker_reports(worker_id)');
