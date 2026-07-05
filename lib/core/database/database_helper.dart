@@ -399,14 +399,6 @@ class DatabaseHelper {
     } catch (_) {}
   }
 
-  /// Close database connection safely
-  Future<void> close() async {
-    if (_db != null && _db!.isOpen) {
-      await _db!.close();
-      _db = null;
-    }
-  }
-
   /// Smart Non-Destructive Merge Import:
   /// Merges records from incoming SQLite DB into current DB without deleting older or existing records.
   /// Returns a map of counts merged per table.
