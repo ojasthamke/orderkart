@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/utils/security_helper.dart';
 import '../domain/worker.dart';
 
 class WorkerDao {
@@ -73,12 +74,27 @@ class WorkerDao {
     final db = await _db;
     final id = worker.id.isEmpty ? _uuid.v4() : worker.id;
     final now = DateTime.now().toIso8601String();
+
     await db.insert('workers', {
       ...worker.toMap(),
       'id': id,
       'created_at': now,
       'updated_at': now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+    // Auto-create worker security secret credential JIT
+    final secret = SecurityHelper.generateOwnerSecret();
+    await db.insert(
+      'worker_security',
+      {
+        'worker_id': id,
+        'worker_secret': secret,
+        'created_at': now,
+        'updated_at': now,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
     return id;
   }
 

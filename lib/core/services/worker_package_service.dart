@@ -38,17 +38,32 @@ class WorkerPackageService {
         ? activeKeyVerRow.first['value']?.toString() ?? '1'
         : '1';
 
-    // Retrieve the worker's own secret key from worker_security table
+    // Retrieve the worker's own secret key from worker_security table (or initialize JIT)
     final List<Map<String, dynamic>> secRes = await mainDb.query(
       'worker_security',
       columns: ['worker_secret'],
       where: 'worker_id = ?',
       whereArgs: [workerId],
     );
-    if (secRes.isEmpty) {
-      throw Exception('Security credentials for this worker not initialized. Please reset worker PIN first.');
+    String secretKey = '';
+    if (secRes.isNotEmpty) {
+      secretKey = secRes.first['worker_secret']?.toString() ?? '';
     }
-    final String secretKey = secRes.first['worker_secret']?.toString() ?? '';
+
+    if (secretKey.isEmpty) {
+      secretKey = SecurityHelper.generateOwnerSecret();
+      final nowStr = DateTime.now().toIso8601String();
+      await mainDb.insert(
+        'worker_security',
+        {
+          'worker_id': workerId,
+          'worker_secret': secretKey,
+          'created_at': nowStr,
+          'updated_at': nowStr,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
 
     // Create temporary workspace directory
     final tempDir = await getTemporaryDirectory();
