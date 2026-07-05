@@ -18,14 +18,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Set up Java JDK (required for Android builds)
+      # 2. Set up Java JDK 17 (required for Android builds)
       - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. Set up Flutter environment
+      # 3. Set up Flutter — latest stable
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -37,7 +37,6 @@ jobs:
       - name: Accept Android Licenses
         run: |
           flutter config --no-analytics
-          flutter doctor -v
           yes | flutter doctor --android-licenses || true
 
       # 4. Get all packages/dependencies
@@ -50,9 +49,20 @@ jobs:
           dart run flutter_launcher_icons
           dart run flutter_native_splash:create
 
-      # 5. Build Android Release APK
+      # 5. Analyze Dart code (non-blocking)
+      - name: Analyze Code
+        run: flutter analyze --no-fatal-infos || true
+
+      # 6. Build Android Release APK — capture full Gradle output for debugging
       - name: Build Android APK
-        run: flutter build apk --release --no-tree-shake-icons --verbose
+        run: |
+          flutter build apk --release --no-tree-shake-icons 2>&1 | tee /tmp/flutter_build.log
+          BUILD_EXIT=${PIPESTATUS[0]}
+          if [ "$BUILD_EXIT" -ne 0 ]; then
+            echo "=== GRADLE ERROR OUTPUT ==="
+            grep -A 30 'FAILURE\|error:\|Exception\|BUILD FAILED' /tmp/flutter_build.log | head -100
+            exit $BUILD_EXIT
+          fi
 
       # 7. Upload APK Artifact
       - name: Upload Android APK Release
