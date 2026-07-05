@@ -334,44 +334,48 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       }
 
       // Perform non-destructive merge into target DB
-      final mergedCounts = await DatabaseHelper.instance.mergeDatabaseFromPath(dbFileToMerge);
+      final stats = await DatabaseHelper.instance.mergeDatabaseFromPath(dbFileToMerge);
 
       if (mounted) {
-        if (mergedCounts.isEmpty) {
-          SnackbarHelper.showInfo(context, 'Data sync completed: All records are already up to date!');
-        } else {
-          final summaryLines = mergedCounts.entries
-              .map((e) => '• ${e.key.toUpperCase()}: ${e.value} new/updated')
-              .join('\n');
+        final totalInserted = stats.values.fold(0, (sum, m) => sum + (m['inserted'] ?? 0));
+        final totalUpdated  = stats.values.fold(0, (sum, m) => sum + (m['updated'] ?? 0));
+        final totalSkipped  = stats.values.fold(0, (sum, m) => sum + (m['skipped'] ?? 0));
 
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Row(
-                children: [
-                  Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
-                  SizedBox(width: 10),
-                  Text('Worker Data Merged!', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Successfully merged new data without deleting or overwriting any existing records:\n'),
-                  Text(summaryLines, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, height: 1.4)),
-                ],
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Great!'),
-                ),
+        final summaryLines = stats.entries
+            .where((e) => (e.value['inserted']! + e.value['updated']!) > 0)
+            .map((e) => '• ${e.key.toUpperCase()}: ${e.value['inserted']} added, ${e.value['updated']} updated, ${e.value['skipped']} skipped')
+            .join('\n');
+
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
+                SizedBox(width: 10),
+                Text('Worker Data Merged!', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               ],
             ),
-          );
-        }
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Sync Summary: $totalInserted inserted, $totalUpdated updated, $totalSkipped skipped (idempotent).\n'),
+                if (summaryLines.isNotEmpty)
+                  Text(summaryLines, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, height: 1.4))
+                else
+                  const Text('All records are already up to date!', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.success)),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Great!'),
+              ),
+            ],
+          ),
+        );
       }
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Merge failed: $e');

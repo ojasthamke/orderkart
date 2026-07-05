@@ -399,13 +399,14 @@ class DatabaseHelper {
     } catch (_) {}
   }
 
-  /// Smart Non-Destructive Merge Import:
-  /// Merges records from incoming SQLite DB into current DB without deleting older or existing records.
-  /// Returns a map of counts merged per table.
-  Future<Map<String, int>> mergeDatabaseFromPath(String incomingDbPath) async {
+  /// Smart Non-Destructive Merge Import Specification:
+  /// Performs topological merge across database tables with LWW (Last-Write-Wins) timestamp conflict resolution.
+  /// Returns a detailed map per table: {'inserted': int, 'updated': int, 'skipped': int, 'conflicted': int}.
+  Future<Map<String, Map<String, int>>> mergeDatabaseFromPath(String incomingDbPath) async {
     final targetDb = await database;
     final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
 
+    // Topological dependency order: Parents before Children
     final tables = [
       'areas',
       'streets',
@@ -421,45 +422,69 @@ class DatabaseHelper {
       'item_price_history'
     ];
 
-    final Map<String, int> mergedCounts = {};
+    final Map<String, Map<String, int>> resultStats = {};
 
     for (final table in tables) {
-      int merged = 0;
+      int inserted = 0;
+      int updated = 0;
+      int skipped = 0;
+      int conflicted = 0;
+
       try {
         final incomingRows = await incomingDb.query(table);
         for (final row in incomingRows) {
           final id = row['id']?.toString() ?? '';
-          if (id.isEmpty) continue;
+          if (id.isEmpty) {
+            skipped++;
+            continue;
+          }
 
-          // Check if record exists in current DB
           final existing = await targetDb.query(table, where: 'id = ?', whereArgs: [id]);
           if (existing.isEmpty) {
-            await targetDb.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
-            merged++;
+            try {
+              await targetDb.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+              inserted++;
+            } catch (_) {
+              conflicted++;
+            }
           } else {
-            // Check updated_at if available
-            final existingUpdated = existing.first['updated_at']?.toString() ?? '';
-            final incomingUpdated = row['updated_at']?.toString() ?? '';
+            // Compare timestamps (LWW - Last-Write-Wins)
+            final existingUpdated = existing.first['updated_at']?.toString() ?? existing.first['created_at']?.toString() ?? '';
+            final incomingUpdated = row['updated_at']?.toString() ?? row['created_at']?.toString() ?? '';
+
             if (incomingUpdated.isNotEmpty && existingUpdated.isNotEmpty) {
               final incDt = DateTime.tryParse(incomingUpdated);
-              final exDt = DateTime.tryParse(existingUpdated);
+              final exDt  = DateTime.tryParse(existingUpdated);
+
               if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
                 await targetDb.update(table, row, where: 'id = ?', whereArgs: [id]);
-                merged++;
+                updated++;
+              } else if (incDt != null && exDt != null && incDt.isBefore(exDt)) {
+                skipped++;
+              } else {
+                // Exact same timestamp or identical record - Idempotent skip
+                skipped++;
               }
+            } else {
+              skipped++;
             }
           }
         }
       } catch (_) {
-        // Table might not exist in older schema backup, skip safely
+        // Table missing in legacy schema backup
       }
-      if (merged > 0) {
-        mergedCounts[table] = merged;
-      }
+
+      resultStats[table] = {
+        'inserted': inserted,
+        'updated': updated,
+        'skipped': skipped,
+        'conflicted': conflicted,
+      };
     }
 
     await incomingDb.close();
-    return mergedCounts;
+    return resultStats;
   }
 }
+
 
