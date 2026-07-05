@@ -312,23 +312,8 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
       final bytes = File(filePath).readAsBytesSync();
       final archive = ZipDecoder().decodeBytes(bytes);
 
-      String? extractedDbPath;
-      String workerName = 'Worker';
-
-      for (final file in archive) {
-        if (file.name == 'database.db') {
-          final dbFile = File('${tempDir.path}/provisioning_db.db');
-          if (dbFile.existsSync()) dbFile.deleteSync();
-          dbFile.writeAsBytesSync(file.content as List<int>);
-          extractedDbPath = dbFile.path;
-        } else if (file.name == 'manifest.json') {
-          final content = utf8.decode(file.content as List<int>);
-          final map = jsonDecode(content) as Map<String, dynamic>;
-          workerName = map['generated_by_worker_name'] as String? ?? 'Worker';
-        }
-      }
-
-      if (extractedDbPath == null) {
+      final extractedDbPath = validation.dbPath;
+      if (extractedDbPath.isEmpty || !File(extractedDbPath).existsSync()) {
         if (mounted) SnackbarHelper.showError(context, 'No database found in package');
         setState(() => _loading = false);
         return;

@@ -111,22 +111,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         return;
       }
 
-      final tempDir = await getTemporaryDirectory();
-      final bytes = File(filePath).readAsBytesSync();
-      final archive = ZipDecoder().decodeBytes(bytes);
-
-      String? extractedDbPath;
-      for (final file in archive) {
-        if (file.name == 'database.db') {
-          final dbFile = File('${tempDir.path}/price_list_temp.db');
-          if (dbFile.existsSync()) dbFile.deleteSync();
-          dbFile.writeAsBytesSync(file.content as List<int>);
-          extractedDbPath = dbFile.path;
-          break;
-        }
-      }
-
-      if (extractedDbPath == null) {
+      final extractedDbPath = validation.dbPath;
+      if (extractedDbPath.isEmpty || !File(extractedDbPath).existsSync()) {
         if (mounted) SnackbarHelper.showError(context, 'No database found in package');
         return;
       }

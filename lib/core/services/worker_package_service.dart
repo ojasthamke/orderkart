@@ -117,9 +117,38 @@ class WorkerPackageService {
     await writeEncryptedJson('streets.json', streetsRows);
     await writeEncryptedJson('customers.json', customersRows);
     await writeEncryptedJson('inventory.json', itemsRows);
+    await writeEncryptedJson('worker.json', workerRow);
+    await writeEncryptedJson('permissions.json', permissionsRow);
+    await writeEncryptedJson('assignments.json', assignmentsRows);
+    await writeEncryptedJson('areas.json', areasRows);
+    await writeEncryptedJson('streets.json', streetsRows);
+    await writeEncryptedJson('customers.json', customersRows);
+    await writeEncryptedJson('inventory.json', itemsRows);
     await writeEncryptedJson('price_list.json', priceListRows);
     await writeEncryptedJson('business_profile.json', businessProfileRow);
     await writeEncryptedJson('settings.json', settingsRows);
+
+    // Create database.db for direct SQLite importers
+    final dbFile = File('${packageDir.path}/database.db');
+    if (dbFile.existsSync()) dbFile.deleteSync();
+    final scopedDb = await openDatabase(dbFile.path);
+    await DatabaseHelper.instance.createSchema(scopedDb);
+    await scopedDb.execute('PRAGMA foreign_keys = OFF');
+
+    try {
+      for (final r in workerRow) { await scopedDb.insert('workers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in permissionsRow) { await scopedDb.insert('worker_permissions', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in assignmentsRows) { await scopedDb.insert('worker_assignments', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in areasRows) { await scopedDb.insert('areas', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in streetsRows) { await scopedDb.insert('streets', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in customersRows) { await scopedDb.insert('customers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in itemsRows) { await scopedDb.insert('items', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in priceListRows) { await scopedDb.insert('item_price_history', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in businessProfileRow) { await scopedDb.insert('business_profile', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in settingsRows) { await scopedDb.insert('settings', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    } finally {
+      await scopedDb.close();
+    }
 
     // Export customer photos for only assigned customers
     final photosDir = Directory('${packageDir.path}/photos')..createSync();
@@ -158,7 +187,7 @@ class WorkerPackageService {
     final fileHashes = <String, String>{};
     final List<String> jsonFiles = [
       'worker.json', 'permissions.json', 'assignments.json', 'areas.json', 'streets.json',
-      'customers.json', 'inventory.json', 'price_list.json', 'business_profile.json', 'settings.json'
+      'customers.json', 'inventory.json', 'price_list.json', 'business_profile.json', 'settings.json', 'database.db'
     ];
     for (final f in jsonFiles) {
       fileHashes[f] = await _calculateFileHash(File('${packageDir.path}/$f'));
