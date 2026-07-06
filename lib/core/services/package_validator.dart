@@ -397,11 +397,19 @@ class PackageValidator {
       }
 
       // Extract files safely
-      for (final p in photoList(archive)) {
-        final filename = p.split('/').last;
-        final dest = File('${AppConstants.appDocsDir}/customer_photos/$filename');
-        await dest.parent.create(recursive: true);
-        await dest.writeAsBytes(photoFiles[p]!);
+      for (final photoPath in photoList(archive)) {
+        final filename = photoPath.split('/').last;
+        final photoDirs = [
+          '${AppConstants.appDocsDir}/customer_photos/$filename',
+          '${AppConstants.appDocsDir}/area_photos/$filename',
+          '${AppConstants.appDocsDir}/street_photos/$filename',
+          '${AppConstants.appDocsDir}/note_photos/$filename',
+        ];
+        for (final targetPath in photoDirs) {
+          final dest = File(targetPath);
+          await dest.parent.create(recursive: true);
+          await dest.writeAsBytes(photoFiles[photoPath]!);
+        }
       }
 
       for (final l in logoList(archive)) {

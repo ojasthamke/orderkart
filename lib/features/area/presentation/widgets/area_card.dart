@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../domain/area.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/ownership_badge.dart';
 
 class AreaCard extends StatelessWidget {
   final Area area;
@@ -69,11 +70,22 @@ class AreaCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        area.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              area.name,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
                             ),
+                          ),
+                          OwnershipBadge(
+                            createdBy: area.createdBy,
+                            workerName: area.workerName,
+                          ),
+                        ],
                       ),
                       if (area.description.isNotEmpty) ...[
                         const SizedBox(height: 4),

@@ -12,8 +12,19 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
+import '../../../core/widgets/ownership_badge.dart';
+import '../../../core/database/database_helper.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
+
+final activeWorkersListProvider = FutureProvider<List<Map<String, String>>>((ref) async {
+  final db = await DatabaseHelper.instance.database;
+  final rows = await db.query('workers', columns: ['id', 'name'], orderBy: 'name ASC');
+  return rows.map((r) => {
+    'id': r['id']?.toString() ?? '',
+    'name': r['name']?.toString() ?? '',
+  }).toList();
+});
 
 class CustomerListScreen extends ConsumerStatefulWidget {
   final String? streetId;
@@ -30,45 +41,13 @@ class CustomerListScreen extends ConsumerStatefulWidget {
 }
 
 class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
-  String _sourceMode = 'all'; // 'all', 'owner', 'worker'
-
-  Widget _sourceChip(String label, String value, IconData icon) {
-    final selected = _sourceMode == value;
-    return GestureDetector(
-      onTap: () {
-        setState(() => _sourceMode = value);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primarySurface : AppColors.gray100,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.gray300),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: selected ? AppColors.primary : AppColors.gray600),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? AppColors.primary : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  String _sourceMode = 'all'; // 'all', 'owner', or workerId
 
   @override
   Widget build(BuildContext context) {
     final effectiveStreetId = widget.streetId ?? '';
     final customersAsync = ref.watch(customerListProvider(effectiveStreetId));
+    final workersAsync = ref.watch(activeWorkersListProvider);
 
     return AppScaffold(
       title: widget.streetName ?? 'All Customers',
@@ -96,26 +75,43 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 ref.read(customerListProvider(effectiveStreetId).notifier).search(q),
           ),
 
-          // Source Filter Chips
-          Padding(
+          // Dynamic Material 3 Filter Chips Row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Row(
               children: [
-                const Text('Source:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                FilterChip(
+                  selected: _sourceMode == 'all',
+                  label: const Text('All'),
+                  avatar: const Icon(Icons.apps_rounded, size: 16),
+                  selectedColor: AppColors.primarySurface,
+                  onSelected: (_) => setState(() => _sourceMode = 'all'),
+                ),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _sourceChip('All Customers', 'all', Icons.people_alt_rounded),
-                        const SizedBox(width: 6),
-                        _sourceChip('Owner Customers', 'owner', Icons.person_rounded),
-                        const SizedBox(width: 6),
-                        _sourceChip('Worker Customers', 'worker', Icons.badge_rounded),
-                      ],
-                    ),
-                  ),
+                FilterChip(
+                  selected: _sourceMode == 'owner',
+                  label: const Text('🟢 Owner'),
+                  selectedColor: AppColors.success.withOpacity(0.18),
+                  onSelected: (_) => setState(() => _sourceMode = 'owner'),
+                ),
+                const SizedBox(width: 8),
+                ...workersAsync.when(
+                  data: (workers) => workers.map((w) {
+                    final wId = w['id']!;
+                    final wName = w['name']!;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        selected: _sourceMode == wId,
+                        label: Text('🔵 $wName'),
+                        selectedColor: AppColors.primarySurface,
+                        onSelected: (_) => setState(() => _sourceMode = wId),
+                      ),
+                    );
+                  }).toList(),
+                  loading: () => [],
+                  error: (_, __) => [],
                 ),
               ],
             ),
@@ -128,9 +124,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
               data: (rawCustomers) {
                 var customers = rawCustomers;
                 if (_sourceMode == 'owner') {
-                  customers = rawCustomers.where((c) => c.assignedWorkerId.isEmpty).toList();
-                } else if (_sourceMode == 'worker') {
-                  customers = rawCustomers.where((c) => c.assignedWorkerId.isNotEmpty).toList();
+                  customers = rawCustomers.where((c) => c.createdBy.toLowerCase() == 'owner' || (c.createdBy.isEmpty && c.assignedWorkerId.isEmpty)).toList();
+                } else if (_sourceMode != 'all') {
+                  customers = rawCustomers.where((c) => c.assignedWorkerId == _sourceMode || c.createdBy == _sourceMode || c.workerName.toLowerCase() == _sourceMode.toLowerCase()).toList();
                 }
 
                 if (customers.isEmpty) {
@@ -273,6 +269,11 @@ class _CustomerCard extends StatelessWidget {
                                   VipGoldBadgeChip(planName: customer.vipPlan)
                                 else
                                   _buildTagBadge(customer.tag),
+                                const SizedBox(width: 6),
+                                OwnershipBadge(
+                                  createdBy: customer.createdBy,
+                                  workerName: customer.workerName,
+                                ),
                               ],
                             ),
                           ),

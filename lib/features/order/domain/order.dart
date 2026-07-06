@@ -24,6 +24,9 @@ class AppOrder {
   final List<dynamic> payments; // List<Payment>
 
   final String assignedWorkerId;
+  final String createdBy;
+  final String workerName;
+  final String deviceName;
   final double commissionRate;
   final String commissionType;
 
@@ -51,6 +54,9 @@ class AppOrder {
     this.customerAddress,
     this.customerPhone,
     this.assignedWorkerId   = '',
+    this.createdBy          = 'owner',
+    this.workerName         = '',
+    this.deviceName         = '',
     this.commissionRate     = 0.0,
     this.commissionType     = '',
     this.items    = const [],
@@ -76,6 +82,9 @@ class AppOrder {
     String? customerAddress,
     String? customerPhone,
     String? assignedWorkerId,
+    String? createdBy,
+    String? workerName,
+    String? deviceName,
     double? commissionRate,
     String? commissionType,
     List<dynamic>? items,
@@ -100,6 +109,9 @@ class AppOrder {
       customerAddress:     customerAddress     ?? this.customerAddress,
       customerPhone:       customerPhone       ?? this.customerPhone,
       assignedWorkerId:    assignedWorkerId    ?? this.assignedWorkerId,
+      createdBy:          createdBy           ?? this.createdBy,
+      workerName:         workerName          ?? this.workerName,
+      deviceName:         deviceName          ?? this.deviceName,
       commissionRate:      commissionRate      ?? this.commissionRate,
       commissionType:      commissionType      ?? this.commissionType,
       items:               items               ?? this.items,
@@ -122,6 +134,9 @@ class AppOrder {
         'created_at':           createdAt.toIso8601String(),
         'updated_at':           updatedAt.toIso8601String(),
         'assigned_worker_id':   assignedWorkerId,
+        'created_by':          createdBy,
+        'worker_name':         workerName,
+        'device_name':         deviceName,
         'commission_rate':      commissionRate,
         'commission_type':      commissionType,
       };
@@ -144,7 +159,10 @@ class AppOrder {
         customerName:        map['customer_name']        as String?,
         customerAddress:     map['customer_address']     as String?,
         customerPhone:       map['customer_phone']       as String?,
-        assignedWorkerId:    map['assigned_worker_id']   as String? ?? '',
+        assignedWorkerId:    (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
+        createdBy:           map['created_by']           as String? ?? 'owner',
+        workerName:          map['worker_name']          as String? ?? '',
+        deviceName:          map['device_name']          as String? ?? '',
         commissionRate:      (map['commission_rate']     as num?)?.toDouble() ?? 0.0,
         commissionType:      map['commission_type']      as String? ?? '',
       );

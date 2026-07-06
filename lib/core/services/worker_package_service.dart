@@ -360,6 +360,8 @@ class WorkerPackageService {
     packageDir.createSync();
 
     // Query Data Scoped to the Worker's field edits
+    final areasRows = await mainDb.query('areas');
+    final streetsRows = await mainDb.query('streets');
     final customersRows = await mainDb.query('customers');
     final ordersRows = lastSyncTime.isNotEmpty
         ? await mainDb.query('orders', where: 'created_at >= ? OR updated_at >= ?', whereArgs: [lastSyncTime, lastSyncTime])
@@ -413,22 +415,47 @@ class WorkerPackageService {
     await writeEncryptedJson('visits.json', visitsRows);
     await writeEncryptedJson('worker_reports.json', workerReportsRows);
 
-    // Export customer photos for only these customers
+    // Export customer, area, street, and note photos
     final photosDir = Directory('${packageDir.path}/photos')..createSync();
-    final Set<String> assignedPhotoNames = customersRows
-        .map((e) => e['photo_path']?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .map((e) => p.basename(e))
-        .toSet();
+    final Set<String> assignedPhotoNames = {};
 
-    final srcPhotoDir = Directory('${AppConstants.appDocsDir}/customer_photos');
-    if (srcPhotoDir.existsSync()) {
-      final files = srcPhotoDir.listSync();
-      for (final f in files) {
-        if (f is File) {
-          final filename = p.basename(f.path);
-          if (assignedPhotoNames.contains(filename)) {
-            await f.copy('${photosDir.path}/$filename');
+    for (final c in customersRows) {
+      final pathStr = c['photo_path']?.toString() ?? '';
+      if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+    }
+    for (final a in areasRows) {
+      final pathStr = a['photo_path']?.toString() ?? '';
+      if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+    }
+    for (final s in streetsRows) {
+      final pathStr = s['photo_path']?.toString() ?? '';
+      if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+    }
+    for (final n in notesRows) {
+      final pathStr = (n['attachment_path'] ?? n['photo_path'])?.toString() ?? '';
+      if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+    }
+
+    final photoDirsToScan = [
+      Directory('${AppConstants.appDocsDir}/customer_photos'),
+      Directory('${AppConstants.appDocsDir}/area_photos'),
+      Directory('${AppConstants.appDocsDir}/street_photos'),
+      Directory('${AppConstants.appDocsDir}/note_photos'),
+      Directory('${AppConstants.appDocsDir}/attachments'),
+    ];
+
+    for (final srcDir in photoDirsToScan) {
+      if (srcDir.existsSync()) {
+        final files = srcDir.listSync();
+        for (final f in files) {
+          if (f is File) {
+            final filename = p.basename(f.path);
+            if (assignedPhotoNames.contains(filename)) {
+              final targetFile = File('${photosDir.path}/$filename');
+              if (!targetFile.existsSync()) {
+                await f.copy(targetFile.path);
+              }
+            }
           }
         }
       }

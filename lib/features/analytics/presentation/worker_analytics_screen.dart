@@ -58,12 +58,41 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
     final onlineColl = (onlineRes.first['sum'] as num?)?.toDouble() ?? 0.0;
     final totalColl = cashColl + onlineColl;
 
+    // Fetch areas added
+    final areaRes = await db.rawQuery(
+      'SELECT COUNT(id) as count FROM areas WHERE assigned_worker_id = ? OR created_by = ? OR worker_name = ?',
+      [wid, wid, wname],
+    );
+    final areasAdded = (areaRes.first['count'] as num?)?.toInt() ?? 0;
+
+    // Fetch streets added
+    final streetRes = await db.rawQuery(
+      'SELECT COUNT(id) as count FROM streets WHERE assigned_worker_id = ? OR created_by = ? OR worker_name = ?',
+      [wid, wid, wname],
+    );
+    final streetsAdded = (streetRes.first['count'] as num?)?.toInt() ?? 0;
+
     // Fetch customer count
     final custRes = await db.rawQuery(
-      'SELECT COUNT(id) as count FROM customers WHERE assigned_worker_id = ?',
-      [wid],
+      'SELECT COUNT(id) as count FROM customers WHERE assigned_worker_id = ? OR created_by = ? OR worker_name = ?',
+      [wid, wid, wname],
     );
     final customerCount = (custRes.first['count'] as num?)?.toInt() ?? 0;
+
+    // Fetch expenses added
+    final expRes = await db.rawQuery(
+      'SELECT COUNT(id) as count, COALESCE(SUM(amount), 0) as total FROM expenses WHERE assigned_worker_id = ? OR created_by = ? OR worker_name = ?',
+      [wid, wid, wname],
+    );
+    final expensesCount = (expRes.first['count'] as num?)?.toInt() ?? 0;
+    final totalExpenses = (expRes.first['total'] as num?)?.toDouble() ?? 0.0;
+
+    // Fetch photos uploaded count
+    final photosRes = await db.rawQuery(
+      'SELECT COUNT(id) as count FROM customers WHERE (assigned_worker_id = ? OR created_by = ? OR worker_name = ?) AND photo_path != ""',
+      [wid, wid, wname],
+    );
+    final photosUploaded = (photosRes.first['count'] as num?)?.toInt() ?? 0;
 
     // Calculate commission
     double commEarned = 0.0;
@@ -86,6 +115,11 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       'online_collected': onlineColl,
       'total_collected': totalColl,
       'customer_count': customerCount,
+      'areas_added': areasAdded,
+      'streets_added': streetsAdded,
+      'expenses_count': expensesCount,
+      'total_expenses': totalExpenses,
+      'photos_uploaded': photosUploaded,
       'commission_earned': commEarned,
       'target_pct': targetPct,
       'monthly_target': target,
@@ -266,7 +300,7 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 12),
 
-                          // Breakdown Metrics Row
+                          // Breakdown Metrics Row 1: Sales & Financials
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
@@ -274,6 +308,18 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                               _subStat('Cash', AppFormatters.currency(w['cash_collected'] as double)),
                               _subStat('Online', AppFormatters.currency(w['online_collected'] as double)),
                               _subStat('Commission', AppFormatters.currency(w['commission_earned'] as double)),
+                            ],
+                          ),
+                          const Divider(height: 16),
+                          // Breakdown Metrics Row 2: Ownership Activity
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _subStat('Areas', '${w['areas_added']}'),
+                              _subStat('Streets', '${w['streets_added']}'),
+                              _subStat('Customers', '${w['customer_count']}'),
+                              _subStat('Expenses', AppFormatters.currency(w['total_expenses'] as double)),
+                              _subStat('Photos', '${w['photos_uploaded']}'),
                             ],
                           ),
                         ],

@@ -1119,6 +1119,29 @@ class DatabaseHelper {
     for (final col in businessProfileCols) {
       try { await db.execute(col); } catch (_) {}
     }
+
+    await _ensureOwnershipColumns(db);
+  }
+
+  Future<void> _ensureOwnershipColumns(Database db) async {
+    final tables = ['areas', 'streets', 'customers', 'orders', 'payments', 'expenses', 'notes', 'visits', 'items'];
+    for (final table in tables) {
+      try {
+        await db.execute("ALTER TABLE $table ADD COLUMN created_by TEXT DEFAULT 'owner'");
+      } catch (_) {}
+      try {
+        await db.execute("ALTER TABLE $table ADD COLUMN assigned_worker_id TEXT DEFAULT ''");
+      } catch (_) {}
+      try {
+        await db.execute("ALTER TABLE $table ADD COLUMN worker_id TEXT DEFAULT ''");
+      } catch (_) {}
+      try {
+        await db.execute("ALTER TABLE $table ADD COLUMN worker_name TEXT DEFAULT ''");
+      } catch (_) {}
+      try {
+        await db.execute("ALTER TABLE $table ADD COLUMN device_name TEXT DEFAULT ''");
+      } catch (_) {}
+    }
   }
 
   Future<void> _runStartupHealthCheck(Database db) async {

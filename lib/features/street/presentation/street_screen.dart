@@ -16,6 +16,17 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../domain/street.dart';
 import 'street_provider.dart';
+import '../../../core/widgets/ownership_badge.dart';
+import '../../../core/database/database_helper.dart';
+
+final activeWorkersListProvider = FutureProvider<List<Map<String, String>>>((ref) async {
+  final db = await DatabaseHelper.instance.database;
+  final rows = await db.query('workers', columns: ['id', 'name'], orderBy: 'name ASC');
+  return rows.map((r) => {
+    'id': r['id']?.toString() ?? '',
+    'name': r['name']?.toString() ?? '',
+  }).toList();
+});
 
 class StreetScreen extends ConsumerStatefulWidget {
   final String areaId;
@@ -28,9 +39,12 @@ class StreetScreen extends ConsumerStatefulWidget {
 }
 
 class _StreetScreenState extends ConsumerState<StreetScreen> {
+  String _filterMode = 'all'; // 'all', 'owner', or workerId
+
   @override
   Widget build(BuildContext context) {
     final streetsAsync = ref.watch(streetProviderFamily(widget.areaId));
+    final workersAsync = ref.watch(activeWorkersListProvider);
 
     return AppScaffold(
       title: widget.areaName,
@@ -47,37 +61,91 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
             onChanged: (q) =>
                 ref.read(streetProviderFamily(widget.areaId).notifier).search(q),
           ),
+
+          // Dynamic Material 3 Filter Chips Row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                FilterChip(
+                  selected: _filterMode == 'all',
+                  label: const Text('All'),
+                  avatar: const Icon(Icons.apps_rounded, size: 16),
+                  selectedColor: AppColors.primarySurface,
+                  onSelected: (_) => setState(() => _filterMode = 'all'),
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  selected: _filterMode == 'owner',
+                  label: const Text('🟢 Owner'),
+                  selectedColor: AppColors.success.withOpacity(0.18),
+                  onSelected: (_) => setState(() => _filterMode = 'owner'),
+                ),
+                const SizedBox(width: 8),
+                ...workersAsync.when(
+                  data: (workers) => workers.map((w) {
+                    final wId = w['id']!;
+                    final wName = w['name']!;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        selected: _filterMode == wId,
+                        label: Text('🔵 $wName'),
+                        selectedColor: AppColors.primarySurface,
+                        onSelected: (_) => setState(() => _filterMode = wId),
+                      ),
+                    );
+                  }).toList(),
+                  loading: () => [],
+                  error: (_, __) => [],
+                ),
+              ],
+            ),
+          ),
+
           Expanded(
             child: streetsAsync.when(
               loading: () => const LoadingShimmer(),
               error: (e, _) => Center(child: Text('Error: $e')),
-              data: (streets) => streets.isEmpty
-                  ? EmptyStateWidget(
-                      icon: Icons.turn_slight_right_rounded,
-                      title: 'No Streets Yet',
-                      subtitle: 'Add streets to organise your customers',
-                      actionLabel: 'Add Street',
-                      onAction: () => _showAddEdit(context, null),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 96),
-                      itemCount: streets.length,
-                      itemBuilder: (ctx, i) {
-                        final st = streets[i];
-                        return _StreetTile(
-                          street: st,
-                          onTap: () => Navigator.of(context).pushNamed(
-                            AppRoutes.customers,
-                            arguments: {
-                              'streetId':   st.id,
-                              'streetName': st.name,
-                            },
-                          ),
-                          onEdit:   () => _showAddEdit(context, st),
-                          onDelete: () => _confirmDelete(context, st),
-                        ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.1);
-                      },
-                    ),
+              data: (rawStreets) {
+                var streets = rawStreets;
+                if (_filterMode == 'owner') {
+                  streets = rawStreets.where((s) => s.createdBy.toLowerCase() == 'owner' || (s.createdBy.isEmpty && s.assignedWorkerId.isEmpty)).toList();
+                } else if (_filterMode != 'all') {
+                  streets = rawStreets.where((s) => s.assignedWorkerId == _filterMode || s.createdBy == _filterMode || s.workerName.toLowerCase() == _filterMode.toLowerCase()).toList();
+                }
+
+                if (streets.isEmpty) {
+                  return EmptyStateWidget(
+                    icon: Icons.turn_slight_right_rounded,
+                    title: 'No Streets Found',
+                    subtitle: _filterMode == 'all' ? 'Add streets to organise your customers' : 'No streets match the selected filter',
+                    actionLabel: 'Add Street',
+                    onAction: () => _showAddEdit(context, null),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 96),
+                  itemCount: streets.length,
+                  itemBuilder: (ctx, i) {
+                    final st = streets[i];
+                    return _StreetTile(
+                      street: st,
+                      onTap: () => Navigator.of(context).pushNamed(
+                        AppRoutes.customers,
+                        arguments: {
+                          'streetId':   st.id,
+                          'streetName': st.name,
+                        },
+                      ),
+                      onEdit:   () => _showAddEdit(context, st),
+                      onDelete: () => _confirmDelete(context, st),
+                    ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.1);
+                  },
+                );
+              },
             ),
           ),
         ],
@@ -301,9 +369,20 @@ class _StreetTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      street.name,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            street.name,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        OwnershipBadge(
+                          createdBy: street.createdBy,
+                          workerName: street.workerName,
+                        ),
+                      ],
                     ),
                     if (street.description.isNotEmpty) ...[
                       const SizedBox(height: 4),

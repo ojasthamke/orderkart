@@ -15,6 +15,7 @@ import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/widgets/ownership_badge.dart';
 import '../../order/domain/payment.dart';
 import '../../order/presentation/order_provider.dart';
 import '../domain/customer.dart';
@@ -153,6 +154,7 @@ class CustomerProfileScreen extends ConsumerWidget {
             children: [
               // Profile Header Card
               _buildProfileHeader(context, ref, customer),
+              _buildOwnershipCard(context, customer),
 
               // ── Big "Create New Order" CTA & Quick Reorder ──────────────
               Padding(
@@ -440,6 +442,60 @@ class CustomerProfileScreen extends ConsumerWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOwnershipCard(BuildContext context, Customer customer) {
+    final isOwner = customer.createdBy.toLowerCase() == 'owner' || (customer.createdBy.isEmpty && customer.assignedWorkerId.isEmpty);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.gray200),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Data Ownership & Attribution',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              OwnershipBadge(
+                createdBy: customer.createdBy,
+                workerName: customer.workerName,
+              ),
+            ],
+          ),
+          const Divider(height: 16),
+          _infoRow('Source', isOwner ? 'Owner' : 'Worker'),
+          _infoRow('Created By', isOwner ? 'Owner' : (customer.workerName.isNotEmpty ? customer.workerName : 'Worker')),
+          if (customer.assignedWorkerId.isNotEmpty)
+            _infoRow('Worker ID', customer.assignedWorkerId),
+          if (customer.deviceName.isNotEmpty)
+            _infoRow('Device Name', customer.deviceName),
+          _infoRow('Created Date', AppFormatters.dateTime(customer.createdAt)),
+          _infoRow('Last Updated', AppFormatters.dateTime(customer.updatedAt)),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
         ],
       ),
     );

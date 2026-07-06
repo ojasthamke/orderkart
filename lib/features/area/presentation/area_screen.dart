@@ -18,6 +18,17 @@ import 'area_provider.dart';
 import 'dialogs/add_edit_area_dialog.dart';
 import 'widgets/area_card.dart';
 
+import '../../../core/database/database_helper.dart';
+
+final activeWorkersListProvider = FutureProvider<List<Map<String, String>>>((ref) async {
+  final db = await DatabaseHelper.instance.database;
+  final rows = await db.query('workers', columns: ['id', 'name'], orderBy: 'name ASC');
+  return rows.map((r) => {
+    'id': r['id']?.toString() ?? '',
+    'name': r['name']?.toString() ?? '',
+  }).toList();
+});
+
 class AreaScreen extends ConsumerStatefulWidget {
   final bool showBack;
   const AreaScreen({super.key, this.showBack = true});
@@ -28,10 +39,12 @@ class AreaScreen extends ConsumerStatefulWidget {
 
 class _AreaScreenState extends ConsumerState<AreaScreen> {
   String _sort = 'name';
+  String _filterMode = 'all'; // 'all', 'owner', or workerId
 
   @override
   Widget build(BuildContext context) {
     final areasAsync = ref.watch(areaProvider);
+    final workersAsync = ref.watch(activeWorkersListProvider);
 
     return AppScaffold(
       title: 'Areas',
@@ -68,35 +81,89 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
             hint: 'Search areas...',
             onChanged: (q) => ref.read(areaProvider.notifier).search(q),
           ),
+
+          // Dynamic Material 3 Filter Chips Row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                FilterChip(
+                  selected: _filterMode == 'all',
+                  label: const Text('All'),
+                  avatar: const Icon(Icons.apps_rounded, size: 16),
+                  selectedColor: AppColors.primarySurface,
+                  onSelected: (_) => setState(() => _filterMode = 'all'),
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  selected: _filterMode == 'owner',
+                  label: const Text('🟢 Owner'),
+                  selectedColor: AppColors.success.withOpacity(0.18),
+                  onSelected: (_) => setState(() => _filterMode = 'owner'),
+                ),
+                const SizedBox(width: 8),
+                ...workersAsync.when(
+                  data: (workers) => workers.map((w) {
+                    final wId = w['id']!;
+                    final wName = w['name']!;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        selected: _filterMode == wId,
+                        label: Text('🔵 $wName'),
+                        selectedColor: AppColors.primarySurface,
+                        onSelected: (_) => setState(() => _filterMode = wId),
+                      ),
+                    );
+                  }).toList(),
+                  loading: () => [],
+                  error: (_, __) => [],
+                ),
+              ],
+            ),
+          ),
+
           Expanded(
             child: areasAsync.when(
               loading: () => const LoadingShimmer(),
               error: (e, _) => Center(child: Text('Error: $e')),
-              data: (areas) => areas.isEmpty
-                  ? EmptyStateWidget(
-                      icon: Icons.map_outlined,
-                      title: 'No Areas Yet',
-                      subtitle: 'Add your first area to get started',
-                      actionLabel: 'Add Area',
-                      onAction: () => _showAddEditDialog(context, null),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 96),
-                      itemCount: areas.length,
-                      itemBuilder: (ctx, i) => AreaCard(
-                        area: areas[i],
-                        index: i,
-                        onTap: () => Navigator.of(context).pushNamed(
-                          AppRoutes.streets,
-                          arguments: {
-                            'areaId':   areas[i].id,
-                            'areaName': areas[i].name,
-                          },
-                        ),
-                        onEdit: () => _showAddEditDialog(context, areas[i]),
-                        onDelete: () => _confirmDelete(context, areas[i]),
-                      ).animate(delay: (i * 50).ms).fadeIn().slideX(begin: 0.1),
+              data: (rawAreas) {
+                var areas = rawAreas;
+                if (_filterMode == 'owner') {
+                  areas = rawAreas.where((a) => a.createdBy.toLowerCase() == 'owner' || (a.createdBy.isEmpty && a.assignedWorkerId.isEmpty)).toList();
+                } else if (_filterMode != 'all') {
+                  areas = rawAreas.where((a) => a.assignedWorkerId == _filterMode || a.createdBy == _filterMode || a.workerName.toLowerCase() == _filterMode.toLowerCase()).toList();
+                }
+
+                if (areas.isEmpty) {
+                  return EmptyStateWidget(
+                    icon: Icons.map_outlined,
+                    title: 'No Areas Found',
+                    subtitle: _filterMode == 'all' ? 'Add your first area to get started' : 'No areas match the selected filter',
+                    actionLabel: 'Add Area',
+                    onAction: () => _showAddEditDialog(context, null),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 96),
+                  itemCount: areas.length,
+                  itemBuilder: (ctx, i) => AreaCard(
+                    area: areas[i],
+                    index: i,
+                    onTap: () => Navigator.of(context).pushNamed(
+                      AppRoutes.streets,
+                      arguments: {
+                        'areaId':   areas[i].id,
+                        'areaName': areas[i].name,
+                      },
                     ),
+                    onEdit: () => _showAddEditDialog(context, areas[i]),
+                    onDelete: () => _confirmDelete(context, areas[i]),
+                  ).animate(delay: (i * 50).ms).fadeIn().slideX(begin: 0.1),
+                );
+              },
             ),
           ),
         ],
