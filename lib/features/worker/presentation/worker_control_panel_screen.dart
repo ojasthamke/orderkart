@@ -3,6 +3,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/models/worker_permission.dart';
@@ -12,6 +14,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/utils/responsive_helper.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 
 import '../data/worker_dao.dart';
@@ -423,6 +426,62 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   }
 
 
+  Future<void> _exportWorkerContactsToPhone() async {
+    AppHaptics.buttonClick();
+    final db = await DatabaseHelper.instance.database;
+    final rows = await db.query(
+      'customers',
+      where: 'assigned_worker_id = ? OR created_by = ?',
+      whereArgs: [_currentWorker.id, _currentWorker.id],
+      orderBy: 'name ASC',
+    );
+
+    if (rows.isEmpty) {
+      if (mounted) SnackbarHelper.showInfo(context, 'No customers found for ${_currentWorker.name} to export.');
+      return;
+    }
+
+    final defaultName = 'Contacts_${_currentWorker.name.replaceAll(' ', '_')}';
+    final customName = await ExportFilenameDialog.show(
+      context,
+      defaultName: defaultName,
+      extension: '.vcf',
+      title: 'Export Worker Contacts to Phone',
+    );
+    if (customName == null) return;
+
+    final buffer = StringBuffer();
+    for (final row in rows) {
+      final name = row['name']?.toString() ?? 'Customer';
+      final phone = row['phone1']?.toString() ?? row['phone2']?.toString() ?? '';
+      if (phone.isEmpty) continue;
+
+      buffer.writeln('BEGIN:VCARD');
+      buffer.writeln('VERSION:3.0');
+      buffer.writeln('FN:$name');
+      buffer.writeln('TEL;TYPE=CELL:$phone');
+      if ((row['address']?.toString() ?? '').isNotEmpty) {
+        buffer.writeln('ADR:;;${row['address']};;;;');
+      }
+      buffer.writeln('END:VCARD');
+      buffer.writeln();
+    }
+
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/$customName');
+    await file.writeAsString(buffer.toString());
+
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      text: 'Exported ${rows.length} contacts for ${_currentWorker.name}',
+      subject: 'Worker Contacts Export',
+    );
+
+    if (mounted) {
+      SnackbarHelper.showSuccess(context, '✅ ${rows.length} contacts exported for phone saving!');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -565,6 +624,14 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
             icon: Icons.cloud_upload_rounded,
             color: isOutdated ? Colors.deepOrange : AppColors.primary,
             onTap: _triggerPackageSummary,
+          ),
+          const Divider(height: 1),
+          _actionTile(
+            title: 'Export Worker Customers to Phone (.vcf)',
+            subtitle: 'Save new customer names & phone numbers directly to phone contacts',
+            icon: Icons.contacts_rounded,
+            color: Colors.teal,
+            onTap: _exportWorkerContactsToPhone,
           ),
           const Divider(height: 1),
           _actionTile(
@@ -1037,6 +1104,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
 
   Widget _actionTile({
     required String title,
+    String? subtitle,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
@@ -1044,6 +1112,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     return ListTile(
       leading: Icon(icon, color: color, size: 20),
       title: Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+      subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)) : null,
       trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.gray400),
       onTap: onTap,
     );

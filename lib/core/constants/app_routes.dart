@@ -47,6 +47,7 @@ class AppRoutes {
 
   static const String workerAnalytics = '/worker-analytics';
   static const String workerSelfProfile = '/worker-self-profile';
+  static const String workerSyncActivity = '/worker-sync-activity';
 
   // Notifications
   static const String notifications   = '/notifications';

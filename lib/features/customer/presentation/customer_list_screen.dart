@@ -15,7 +15,7 @@ import '../../../core/widgets/vip_glow_avatar.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
 
-class CustomerListScreen extends ConsumerWidget {
+class CustomerListScreen extends ConsumerStatefulWidget {
   final String? streetId;
   final String? streetName;
 
@@ -26,24 +26,64 @@ class CustomerListScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final effectiveStreetId = streetId ?? '';
+  ConsumerState<CustomerListScreen> createState() => _CustomerListScreenState();
+}
+
+class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
+  String _sourceMode = 'all'; // 'all', 'owner', 'worker'
+
+  Widget _sourceChip(String label, String value, IconData icon) {
+    final selected = _sourceMode == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _sourceMode = value);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primarySurface : AppColors.gray100,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.gray300),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: selected ? AppColors.primary : AppColors.gray600),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveStreetId = widget.streetId ?? '';
     final customersAsync = ref.watch(customerListProvider(effectiveStreetId));
 
     return AppScaffold(
-      title: streetName ?? 'All Customers',
+      title: widget.streetName ?? 'All Customers',
       actions: [
         IconButton(
           icon: const Icon(Icons.search_rounded),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
         ),
       ],
-      floatingActionButton: streetId != null 
+      floatingActionButton: widget.streetId != null 
         ? FloatingActionButton(
             heroTag: 'add_customer',
             onPressed: () => Navigator.of(context).pushNamed(
               AppRoutes.addEditCustomer,
-              arguments: {'streetId': streetId},
+              arguments: {'streetId': widget.streetId},
             ).then((_) => ref.refresh(customerListProvider(effectiveStreetId))),
             child: const Icon(Icons.person_add_rounded),
           )
@@ -55,29 +95,65 @@ class CustomerListScreen extends ConsumerWidget {
             onChanged: (q) =>
                 ref.read(customerListProvider(effectiveStreetId).notifier).search(q),
           ),
+
+          // Source Filter Chips
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                const Text('Source:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _sourceChip('All Customers', 'all', Icons.people_alt_rounded),
+                        const SizedBox(width: 6),
+                        _sourceChip('Owner Customers', 'owner', Icons.person_rounded),
+                        const SizedBox(width: 6),
+                        _sourceChip('Worker Customers', 'worker', Icons.badge_rounded),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           Expanded(
             child: customersAsync.when(
               loading: () => const LoadingShimmer(),
               error: (e, _) => Center(child: Text('Error: $e')),
-              data: (customers) => customers.isEmpty
-                  ? EmptyStateWidget(
-                      icon: Icons.people_outline_rounded,
-                      title: 'No Customers Yet',
-                      subtitle: 'Add your first customer in this street',
-                      actionLabel: 'Add Customer',
-                      onAction: () {
-                        if (streetId != null) {
-                          Navigator.of(context)
-                            .pushNamed(
-                              AppRoutes.addEditCustomer,
-                              arguments: {'streetId': streetId},
-                            )
-                            .then((_) =>
-                                ref.refresh(customerListProvider(effectiveStreetId)));
-                        }
-                      },
-                    )
-                  : ReorderableListView.builder(
+              data: (rawCustomers) {
+                var customers = rawCustomers;
+                if (_sourceMode == 'owner') {
+                  customers = rawCustomers.where((c) => c.assignedWorkerId.isEmpty).toList();
+                } else if (_sourceMode == 'worker') {
+                  customers = rawCustomers.where((c) => c.assignedWorkerId.isNotEmpty).toList();
+                }
+
+                if (customers.isEmpty) {
+                  return EmptyStateWidget(
+                    icon: Icons.people_outline_rounded,
+                    title: 'No Customers Found',
+                    subtitle: 'Try changing source or search filter',
+                    actionLabel: 'Add Customer',
+                    onAction: () {
+                      if (widget.streetId != null) {
+                        Navigator.of(context)
+                          .pushNamed(
+                            AppRoutes.addEditCustomer,
+                            arguments: {'streetId': widget.streetId},
+                          )
+                          .then((_) =>
+                              ref.refresh(customerListProvider(effectiveStreetId)));
+                      }
+                    },
+                  );
+                }
+
+                return ReorderableListView.builder(
                       padding: const EdgeInsets.only(bottom: 96),
                       itemCount: customers.length,
                       onReorder: (oldIndex, newIndex) {

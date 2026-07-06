@@ -32,6 +32,7 @@ class _OrderManagementScreenState
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _filter = 'all';
+  String _sourceMode = 'all'; // 'all', 'owner', 'worker'
 
   final _tabs = [
     {'label': 'All',       'status': 'all'},
@@ -89,12 +90,37 @@ class _OrderManagementScreenState
             tabAlignment: TabAlignment.start,
           ),
 
+          // Source filter chips (Owner vs Worker orders)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 6),
+            child: Row(
+              children: [
+                const Text('Source:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _sourceChip('All Orders', 'all', Icons.inventory_2_rounded),
+                        const SizedBox(width: 6),
+                        _sourceChip('Owner Orders', 'owner', Icons.person_rounded),
+                        const SizedBox(width: 6),
+                        _sourceChip('Worker Orders', 'worker', Icons.badge_rounded),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Date filter chips
           SizedBox(
-            height: 48,
+            height: 44,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               itemCount: _filters.length,
               itemBuilder: (_, i) {
                 final f = _filters[i];
@@ -138,22 +164,62 @@ class _OrderManagementScreenState
             child: TabBarView(
               controller: _tabController,
               children: _tabs
-                  .map((_) => ordersAsync.when(
+                  .map((t) => ordersAsync.when(
                         loading: () => const LoadingShimmer(),
-                        error: (e, _) =>
-                            Center(child: Text('Error: $e')),
-                        data: (orders) => orders.isEmpty
-                            ? const EmptyStateWidget(
-                                icon: Icons.receipt_long_rounded,
-                                title: 'No Orders',
-                                subtitle: 'Orders will appear here',
-                              )
-                            : _buildOrderList(orders),
+                        error: (e, _) => Center(child: Text('Error: $e')),
+                        data: (orders) {
+                          var filtered = orders;
+                          if (_sourceMode == 'owner') {
+                            filtered = orders.where((o) => o.assignedWorkerId.isEmpty).toList();
+                          } else if (_sourceMode == 'worker') {
+                            filtered = orders.where((o) => o.assignedWorkerId.isNotEmpty).toList();
+                          }
+                          return filtered.isEmpty
+                              ? const EmptyStateWidget(
+                                  icon: Icons.receipt_long_rounded,
+                                  title: 'No Orders Found',
+                                  subtitle: 'Try changing source or status filters',
+                                )
+                              : _buildOrderList(filtered);
+                        },
                       ))
                   .toList(),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _sourceChip(String label, String value, IconData icon) {
+    final selected = _sourceMode == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _sourceMode = value);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primarySurface : AppColors.gray100,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.gray300),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: selected ? AppColors.primary : AppColors.gray600),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

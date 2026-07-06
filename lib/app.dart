@@ -47,6 +47,7 @@ import 'features/settings/presentation/sync_history_screen.dart';
 import 'features/settings/presentation/activity_timeline_screen.dart';
 import 'features/settings/presentation/business_profile_screen.dart';
 import 'features/analytics/presentation/worker_analytics_screen.dart';
+import 'features/worker/presentation/worker_sync_activity_screen.dart';
 
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
@@ -245,6 +246,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.workerSelfProfile:
         return _slide(const WorkerSelfProfileScreen());
+
+      case AppRoutes.workerSyncActivity:
+        return _slide(const WorkerSyncActivityScreen());
 
       default:
         return _slide(const AppStartupScreen());

@@ -116,6 +116,15 @@ class AppDrawer extends ConsumerWidget {
                         }
                       },
                     ),
+                    _DrawerItem(
+                      icon: Icons.history_edu_rounded,
+                      title: 'Worker Sync Activity & Imports',
+                      iconColor: Colors.teal,
+                      onTap: () async {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.workerSyncActivity);
+                      },
+                    ),
                   ],
 
                   _DrawerItem(
