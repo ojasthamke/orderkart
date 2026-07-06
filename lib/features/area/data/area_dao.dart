@@ -4,6 +4,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/security/app_mode_service.dart';
 import '../domain/area.dart';
 
 class AreaDao {
@@ -21,12 +22,41 @@ class AreaDao {
     if (sortBy == 'street_count')  orderClause = 'street_count DESC';
     if (sortBy == 'customer_count')orderClause = 'customer_count DESC';
 
-    String whereClause = '';
+    List<String> whereClauses = [];
     List<dynamic> args = [];
+
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      whereClause = 'WHERE a.name LIKE ?';
+      whereClauses.add('a.name LIKE ?');
       args.add('%${searchQuery.trim()}%');
     }
+
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final workerRows = await db.query('workers', limit: 1);
+      if (workerRows.isNotEmpty) {
+        final workerId = workerRows.first['id'] as String;
+        final assignmentRows = await db.query(
+          'worker_assignments',
+          where: 'worker_id = ? AND entity_type = ?',
+          whereArgs: [workerId, 'area'],
+        );
+        final assignedAreaIds = assignmentRows
+            .map((e) => e['entity_id']?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        if (assignedAreaIds.isEmpty) {
+          return []; // Worker has no assigned areas!
+        }
+
+        final inClause = assignedAreaIds.map((id) => "'$id'").join(',');
+        whereClauses.add('a.id IN ($inClause)');
+      }
+    }
+
+    final whereClauseSection = whereClauses.isNotEmpty
+        ? 'WHERE ${whereClauses.join(' AND ')}'
+        : '';
 
     final maps = await db.rawQuery('''
       SELECT
@@ -44,7 +74,7 @@ class AreaDao {
           JOIN streets st ON cust.street_id = st.id
           WHERE st.area_id = a.id) AS total_revenue
       FROM areas a
-      $whereClause
+      $whereClauseSection
       ORDER BY $orderClause
     ''', args);
 

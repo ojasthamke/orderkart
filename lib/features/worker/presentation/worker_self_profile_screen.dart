@@ -18,6 +18,11 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/worker.dart';
+import '../../area/presentation/area_provider.dart';
+import '../../customer/presentation/customer_provider.dart';
+import '../../order/presentation/order_provider.dart';
+import '../../expense/presentation/expense_provider.dart';
+import '../../settings/presentation/sync_history_screen.dart';
 
 final currentWorkerProfileProvider = FutureProvider<Worker?>((ref) async {
   final db = await DatabaseHelper.instance.database;
@@ -73,7 +78,22 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
         workerId: worker.id,
         workerName: worker.name,
         onSyncEvent: (msg) {
-          if (mounted) SnackbarHelper.showInfo(context, msg);
+          if (mounted) {
+            SnackbarHelper.showInfo(context, msg);
+            if (msg.contains('SUCCESS')) {
+              ref.invalidate(currentWorkerProfileProvider);
+              ref.invalidate(areaProvider);
+              ref.invalidate(allCustomersProvider);
+              ref.invalidate(orderManagementProvider);
+              ref.invalidate(analyticsSummaryProvider);
+              ref.invalidate(weeklyChartProvider);
+              ref.invalidate(monthlyChartProvider);
+              ref.invalidate(expenseProvider);
+              ref.invalidate(monthlySummaryProvider);
+              ref.invalidate(importHistoryProvider);
+              ref.invalidate(workerSyncHistoryProvider);
+            }
+          }
         },
       );
     } else {
@@ -346,6 +366,16 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
             workerName: worker.name,
             onSyncCompleted: () {
               ref.invalidate(currentWorkerProfileProvider);
+              ref.invalidate(areaProvider);
+              ref.invalidate(allCustomersProvider);
+              ref.invalidate(orderManagementProvider);
+              ref.invalidate(analyticsSummaryProvider);
+              ref.invalidate(weeklyChartProvider);
+              ref.invalidate(monthlyChartProvider);
+              ref.invalidate(expenseProvider);
+              ref.invalidate(monthlySummaryProvider);
+              ref.invalidate(importHistoryProvider);
+              ref.invalidate(workerSyncHistoryProvider);
             },
           ),
           const SizedBox(height: 24),

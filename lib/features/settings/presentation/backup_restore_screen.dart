@@ -22,6 +22,11 @@ import '../../../core/services/package_validator.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/widgets/hotspot_sync_control_card.dart';
+import '../../area/presentation/area_provider.dart';
+import '../../customer/presentation/customer_provider.dart';
+import '../../order/presentation/order_provider.dart';
+import '../../expense/presentation/expense_provider.dart';
+import '../../settings/presentation/sync_history_screen.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -67,6 +72,16 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             workerId: 'owner',
             workerName: 'Owner',
             onSyncCompleted: () {
+              ref.invalidate(areaProvider);
+              ref.invalidate(allCustomersProvider);
+              ref.invalidate(orderManagementProvider);
+              ref.invalidate(analyticsSummaryProvider);
+              ref.invalidate(weeklyChartProvider);
+              ref.invalidate(monthlyChartProvider);
+              ref.invalidate(expenseProvider);
+              ref.invalidate(monthlySummaryProvider);
+              ref.invalidate(importHistoryProvider);
+              ref.invalidate(workerSyncHistoryProvider);
               if (mounted) setState(() {});
             },
           ),

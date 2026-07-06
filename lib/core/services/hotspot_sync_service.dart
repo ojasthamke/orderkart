@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../constants/app_constants.dart';
+import 'package_validator.dart';
 
 class HotspotSyncService {
   HotspotSyncService._();
@@ -139,6 +140,45 @@ class HotspotSyncService {
             final jsonString = utf8.decode(jsonBytes);
             final Map<String, dynamic> dataMap = jsonDecode(jsonString);
 
+            // Parse manifest metadata and validate
+            final manifest = dataMap['manifest'] ?? {};
+
+            // 1. Schema Version Check
+            final schemaVer = manifest['schema_version']?.toString() ?? '';
+            if (schemaVer != '4') {
+              throw Exception('Incompatible database schema version: $schemaVer. Expected: 4.');
+            }
+
+            // 2. Minimum Supported Version Check
+            final minSuppVer = manifest['minimum_supported_version']?.toString() ?? '1.0.0';
+            if (!PackageValidator.isVersionCompatible(AppConstants.appVersion, minSuppVer)) {
+              throw Exception('App version (${AppConstants.appVersion}) is too old. Expected at least $minSuppVer.');
+            }
+
+            // 3. Double Import / Package Expiry Check
+            final packageId = manifest['package_id']?.toString() ?? '';
+            if (packageId.isNotEmpty) {
+              final mainDb = await DatabaseHelper.instance.database;
+              final List<Map<String, dynamic>> existingImport = await mainDb.query(
+                'import_history', 
+                where: 'package_id = ?', 
+                whereArgs: [packageId]
+              );
+              if (existingImport.isNotEmpty) {
+                // Return success immediately without duplicate merging
+                request.response
+                  ..statusCode = HttpStatus.ok
+                  ..headers.contentType = ContentType.json
+                  ..write(jsonEncode({
+                    'status': 'success',
+                    'message': 'Package already imported previously.',
+                    'merged_records': 0,
+                  }));
+                await request.response.close();
+                return;
+              }
+            }
+
             // Merge Database Records
             final stats = await DatabaseHelper.instance.mergeDatabaseFromJson(
               dataMap,
@@ -166,7 +206,6 @@ class HotspotSyncService {
             }
 
             // Log import activity in history logs
-            final manifest = dataMap['manifest'] ?? {};
             final wId = manifest['generated_by_worker_id']?.toString() ?? 'unknown';
             final wName = manifest['generated_by_worker_name']?.toString() ?? 'Worker';
             final devName = manifest['device_name']?.toString() ?? 'Device';
@@ -247,6 +286,10 @@ class HotspotSyncService {
 
     final dataMap = <String, dynamic>{
       'manifest': {
+        'package_id': const Uuid().v4(),
+        'package_type': 'hotspot_sync',
+        'schema_version': '4',
+        'minimum_supported_version': '1.0.0',
         'generated_at': DateTime.now().toIso8601String(),
         'generated_by_worker_id': workerId,
         'generated_by_worker_name': workerName,
