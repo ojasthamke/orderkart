@@ -136,7 +136,7 @@ class HotspotSyncService {
             // Decompress data
             final compressedBytes = base64Url.decode(base64Data);
             final jsonBytes = GZipDecoder().decodeBytes(compressedBytes);
-            final jsonString = utf8.decode(jsonBytes!);
+            final jsonString = utf8.decode(jsonBytes);
             final Map<String, dynamic> dataMap = jsonDecode(jsonString);
 
             // Merge Database Records

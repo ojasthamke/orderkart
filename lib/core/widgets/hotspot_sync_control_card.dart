@@ -235,7 +235,7 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
     final bool isSelected = _modules[key] ?? false;
     return InkWell(
       onTap: () {
-        AppHaptics.lightImpact();
+        AppHaptics.selection();
         setState(() {
           _modules[key] = !isSelected;
         });
@@ -249,7 +249,7 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
             activeColor: AppColors.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             onChanged: (val) {
-              AppHaptics.lightImpact();
+              AppHaptics.selection();
               setState(() {
                 _modules[key] = val ?? false;
               });

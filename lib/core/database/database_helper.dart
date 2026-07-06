@@ -503,15 +503,6 @@ class DatabaseHelper {
       'settings'
     ];
 
-    int totalRows = 0;
-    for (final table in tables) {
-      if (!_isTableSelected(table, selectedModules)) continue;
-      final rows = incomingData[table];
-      if (rows is List) {
-        totalRows += rows.length;
-      }
-    }
-
     final Map<String, Map<String, int>> resultStats = {};
 
     Future<void> runMerge(DatabaseExecutor dbExecutor) async {

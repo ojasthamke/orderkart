@@ -21,7 +21,6 @@ import '../../../core/services/package_exporter.dart';
 import '../../../core/services/package_validator.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../../core/widgets/export_filename_dialog.dart';
-import '../../../core/services/hotspot_sync_service.dart';
 import '../../../core/widgets/hotspot_sync_control_card.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {

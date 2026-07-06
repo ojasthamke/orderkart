@@ -40,7 +40,7 @@ void main() {
       // Verify Gzip decompression
       final compressedBytes = base64Url.decode(payload);
       final jsonBytes = GZipDecoder().decodeBytes(compressedBytes);
-      final jsonString = utf8.decode(jsonBytes!);
+      final jsonString = utf8.decode(jsonBytes);
       final Map<String, dynamic> data = jsonDecode(jsonString);
 
       expect(data['manifest']['generated_by_worker_id'], equals('worker-1'));
@@ -49,12 +49,11 @@ void main() {
     });
 
     test('Local HTTP Server Handshake and Sync works', () async {
-      String statusMsg = '';
       bool successTriggered = false;
 
       // Start server
       await HotspotSyncService.startServer(
-        onStatusUpdate: (msg) => statusMsg = msg,
+        onStatusUpdate: (_) {},
         onSyncSuccess: () => successTriggered = true,
       );
 

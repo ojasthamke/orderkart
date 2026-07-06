@@ -12,14 +12,11 @@ import '../../../core/services/worker_package_service.dart';
 import '../../../core/services/worker_permission_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:network_info_plus/network_info_plus.dart';
 import '../../../core/services/hotspot_sync_service.dart';
 import '../../../core/widgets/hotspot_sync_control_card.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
-import '../data/worker_dao.dart';
 import '../domain/worker.dart';
 
 final currentWorkerProfileProvider = FutureProvider<Worker?>((ref) async {
@@ -27,7 +24,6 @@ final currentWorkerProfileProvider = FutureProvider<Worker?>((ref) async {
   final workers = await db.query('workers', limit: 1);
   if (workers.isEmpty) return null;
 
-  final dao = WorkerDao();
   final w = Worker.fromMap(workers.first);
   
   final custRes = await db.rawQuery('SELECT COUNT(*) as v FROM customers WHERE assigned_worker_id = ?', [w.id]);
@@ -349,7 +345,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
             workerId: worker.id,
             workerName: worker.name,
             onSyncCompleted: () {
-              ref.refresh(currentWorkerProfileProvider);
+              ref.invalidate(currentWorkerProfileProvider);
             },
           ),
           const SizedBox(height: 24),
@@ -405,7 +401,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                           return;
                         }
                         await DatabaseHelper.instance.mergeDatabaseFromPath(val.dbPath, selectedModules: ['entire_db']);
-                        ref.refresh(currentWorkerProfileProvider);
+                        ref.invalidate(currentWorkerProfileProvider);
                         if (context.mounted) SnackbarHelper.showSuccess(context, '✅ Owner package imported successfully!');
                       } catch (e) {
                         if (context.mounted) SnackbarHelper.showError(context, 'Import failed: $e');
