@@ -279,21 +279,48 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                       ? const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
                       : Column(
                           children: [
-                            _permBadge('Customers Catalog', _permissions!.customers),
-                            _permBadge('Orders Creation & Billing', _permissions!.orders),
-                            _permBadge('Payments Collection', _permissions!.payments),
-                            _permBadge('Expenses Entry', _permissions!.expenses),
-                            _permBadge('Selling Price Adjustments', _permissions!.sellingPrice),
-                            _permBadge('Cost Price Visibility', _permissions!.costPrice),
-                            _permBadge('Stock Quantity Edits', _permissions!.stock),
-                            _permBadge('Items Catalog', _permissions!.items),
-                            _permBadge('VIP Customers', _permissions!.vip),
-                            _permBadge('Reports Dashboard', _permissions!.reports),
-                            _permBadge('Field Visit Notes', _permissions!.notes),
-                            _permBadge('Data Export Slices', _permissions!.export),
-                            _permBadge('Data Import Merges', _permissions!.import),
-                            _permBadge('System Settings', _permissions!.settings),
-                            _permBadge('Analytics Dashboard', _permissions!.analytics),
+                            _buildPermissionGroup(
+                              'Core Operations',
+                              Icons.assignment_ind_rounded,
+                              [
+                                _permBadge('Customers Catalog', _permissions!.customers),
+                                _permBadge('Orders Creation & Billing', _permissions!.orders),
+                                _permBadge('Payments Collection', _permissions!.payments),
+                                _permBadge('Expenses Entry', _permissions!.expenses),
+                                _permBadge('Field Visit Notes', _permissions!.notes),
+                              ],
+                            ),
+                            const Divider(height: 1),
+                            _buildPermissionGroup(
+                              'Product & Inventory',
+                              Icons.inventory_2_rounded,
+                              [
+                                _permBadge('Items Catalog', _permissions!.items),
+                                _permBadge('Selling Price Adjustments', _permissions!.sellingPrice),
+                                _permBadge('Cost Price Visibility', _permissions!.costPrice),
+                                _permBadge('Stock Quantity Edits', _permissions!.stock),
+                              ],
+                            ),
+                            const Divider(height: 1),
+                            _buildPermissionGroup(
+                              'Reports & Insights',
+                              Icons.analytics_rounded,
+                              [
+                                _permBadge('Reports Dashboard', _permissions!.reports),
+                                _permBadge('Analytics Dashboard', _permissions!.analytics),
+                                _permBadge('VIP Customers', _permissions!.vip),
+                              ],
+                            ),
+                            const Divider(height: 1),
+                            _buildPermissionGroup(
+                              'System & Data',
+                              Icons.settings_suggest_rounded,
+                              [
+                                _permBadge('Data Export Slices', _permissions!.export),
+                                _permBadge('Data Import Merges', _permissions!.import),
+                                _permBadge('System Settings', _permissions!.settings),
+                              ],
+                            ),
                           ],
                         ),
                 ),
@@ -541,6 +568,17 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
             color: color,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPermissionGroup(String title, IconData groupIcon, List<Widget> permissionsList) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        leading: Icon(groupIcon, color: AppColors.primary),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+        children: permissionsList,
       ),
     );
   }
