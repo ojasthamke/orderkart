@@ -221,6 +221,34 @@ class PackageValidator {
         if (localWorker.isNotEmpty) {
           secretKey = localWorker.first['worker_secret']?.toString() ?? '';
         }
+        if (secretKey.isEmpty && manifest.containsKey('worker_secret')) {
+          secretKey = manifest['worker_secret']?.toString() ?? '';
+          final nowStr = DateTime.now().toIso8601String();
+          await db.insert(
+            'worker_security',
+            {
+              'worker_id': generatedByWorkerId,
+              'worker_secret': secretKey,
+              'created_at': nowStr,
+              'updated_at': nowStr,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+        if (secretKey.isEmpty) {
+          secretKey = SecurityHelper.generateOwnerSecret();
+          final nowStr = DateTime.now().toIso8601String();
+          await db.insert(
+            'worker_security',
+            {
+              'worker_id': generatedByWorkerId,
+              'worker_secret': secretKey,
+              'created_at': nowStr,
+              'updated_at': nowStr,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
       } else {
         // Owner backup: select correct key according to packageKeyVersion
         final List<Map<String, dynamic>> res = await db.query(

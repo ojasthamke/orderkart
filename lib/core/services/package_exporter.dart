@@ -238,6 +238,20 @@ class PackageExporter {
       if (res.isNotEmpty) {
         secretKey = res.first['worker_secret']?.toString() ?? '';
       }
+      if (secretKey.isEmpty) {
+        secretKey = SecurityHelper.generateOwnerSecret();
+        final nowStr = DateTime.now().toIso8601String();
+        await mainDb.insert(
+          'worker_security',
+          {
+            'worker_id': workerId,
+            'worker_secret': secretKey,
+            'created_at': nowStr,
+            'updated_at': nowStr,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
     }
     
     // If not set yet and not a full backup, check if this device is a worker device (meaning we sign as a worker)
@@ -252,6 +266,20 @@ class PackageExporter {
         );
         if (resSec.isNotEmpty) {
           secretKey = resSec.first['worker_secret']?.toString() ?? '';
+        }
+        if (secretKey.isEmpty) {
+          secretKey = SecurityHelper.generateOwnerSecret();
+          final nowStr = DateTime.now().toIso8601String();
+          await mainDb.insert(
+            'worker_security',
+            {
+              'worker_id': localWorkers.first['id'],
+              'worker_secret': secretKey,
+              'created_at': nowStr,
+              'updated_at': nowStr,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
         }
       }
     }

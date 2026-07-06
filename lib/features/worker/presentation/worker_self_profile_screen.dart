@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:sqflite/sqflite.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/models/worker_permission.dart';
@@ -59,6 +60,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
     final worker = await ref.read(currentWorkerProfileProvider.future);
     if (worker != null) {
       final perms = await WorkerPermissionService.getPermissionsForWorker(worker.id);
+      await _ensureWorkerSecurity(worker.id);
       if (mounted) {
         setState(() {
           _permissions = perms;
@@ -67,6 +69,25 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
       }
     } else {
       if (mounted) setState(() => _loadingPerms = false);
+    }
+  }
+
+  Future<void> _ensureWorkerSecurity(String workerId) async {
+    final db = await DatabaseHelper.instance.database;
+    final res = await db.query('worker_security', where: 'worker_id = ?', whereArgs: [workerId]);
+    if (res.isEmpty || (res.first['worker_secret']?.toString() ?? '').isEmpty) {
+      final secret = DateTime.now().millisecondsSinceEpoch.toString();
+      final nowStr = DateTime.now().toIso8601String();
+      await db.insert(
+        'worker_security',
+        {
+          'worker_id': workerId,
+          'worker_secret': secret,
+          'created_at': nowStr,
+          'updated_at': nowStr,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
     }
   }
 
@@ -359,6 +380,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                             SnackbarHelper.showError(context, '❌ Data Export is disabled by Owner for your profile.');
                             return;
                           }
+                          await _ensureWorkerSecurity(worker.id);
                           final defaultName = 'Worker_FullBackup_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
                           final customName = await ExportFilenameDialog.show(
                             context,
@@ -403,6 +425,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                             SnackbarHelper.showError(context, '❌ Data Export is disabled by Owner for your profile.');
                             return;
                           }
+                          await _ensureWorkerSecurity(worker.id);
                           final defaultName = 'Update_Owner_Data_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
                           final customName = await ExportFilenameDialog.show(
                             context,
