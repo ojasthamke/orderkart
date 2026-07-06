@@ -305,14 +305,11 @@ class AppStartupScreen extends ConsumerWidget {
         }
 
         if (mode == AppMode.worker) {
-          return const PinLockScreen();
+          return const WorkerDashboardScreen();
         }
 
-        if (AppModeService.isOwnerSessionActive) {
-          return const MainScreen();
-        }
-
-        return const PinLockScreen();
+        AppModeService.loginOwnerSuccess();
+        return const MainScreen();
       },
     );
   }

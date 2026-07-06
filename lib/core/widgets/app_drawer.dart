@@ -3,7 +3,6 @@ import '../constants/app_colors.dart';
 import '../constants/app_routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../security/app_mode_service.dart';
-import 'owner_pin_dialog.dart';
 
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
@@ -98,11 +97,9 @@ class AppDrawer extends ConsumerWidget {
                       icon: Icons.badge_rounded,
                       title: 'Worker Management',
                       iconColor: AppColors.primary,
-                      onTap: () async {
+                      onTap: () {
                         Navigator.pop(context);
-                        if (await OwnerPinDialog.verify(context, title: 'Worker Management')) {
-                          Navigator.pushNamed(context, AppRoutes.workers);
-                        }
+                        Navigator.pushNamed(context, AppRoutes.workers);
                       },
                     ),
                     _DrawerItem(
@@ -192,23 +189,11 @@ class AppDrawer extends ConsumerWidget {
                       icon: Icons.auto_mode_rounded,
                       title: 'Import Wizard (Merge)',
                       iconColor: const Color(0xFF0284C7),
-                      onTap: () async {
+                      onTap: () {
                         Navigator.pop(context);
-                        if (await OwnerPinDialog.verify(context, title: 'Import Wizard Access')) {
-                          Navigator.pushNamed(context, AppRoutes.importWizard);
-                        }
+                        Navigator.pushNamed(context, AppRoutes.importWizard);
                       },
                     ),
-
-                  _DrawerItem(
-                    icon: Icons.sync_rounded,
-                    title: 'Pending Sync Queue',
-                    iconColor: const Color(0xFFD97706),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.pendingSync);
-                    },
-                  ),
                   _DrawerItem(
                     icon: Icons.history_toggle_off_rounded,
                     title: 'Sync Log History',
@@ -224,11 +209,9 @@ class AppDrawer extends ConsumerWidget {
                       icon: Icons.storefront_rounded,
                       title: 'Business Profile',
                       iconColor: const Color(0xFF10B981),
-                      onTap: () async {
+                      onTap: () {
                         Navigator.pop(context);
-                        if (await OwnerPinDialog.verify(context, title: 'Business Profile')) {
-                          Navigator.pushNamed(context, AppRoutes.businessProfile);
-                        }
+                        Navigator.pushNamed(context, AppRoutes.businessProfile);
                       },
                     ),
 
@@ -242,22 +225,18 @@ class AppDrawer extends ConsumerWidget {
                     _DrawerItem(
                       icon: Icons.analytics_rounded,
                       title: 'Analytics & Reports',
-                      onTap: () async {
+                      onTap: () {
                         Navigator.pop(context);
-                        if (await OwnerPinDialog.verify(context, title: 'Analytics Access')) {
-                          Navigator.pushNamed(context, AppRoutes.analytics);
-                        }
+                        Navigator.pushNamed(context, AppRoutes.analytics);
                       },
                     ),
                     _DrawerItem(
                       icon: Icons.badge_rounded,
                       title: 'Worker Analytics',
                       iconColor: AppColors.primary,
-                      onTap: () async {
+                      onTap: () {
                         Navigator.pop(context);
-                        if (await OwnerPinDialog.verify(context, title: 'Worker Analytics')) {
-                          Navigator.pushNamed(context, AppRoutes.workerAnalytics);
-                        }
+                        Navigator.pushNamed(context, AppRoutes.workerAnalytics);
                       },
                     ),
                     _DrawerItem(
@@ -280,24 +259,20 @@ class AppDrawer extends ConsumerWidget {
                     _DrawerItem(
                       icon: Icons.settings_rounded,
                       title: 'Settings',
-                      onTap: () async {
+                      onTap: () {
                         Navigator.pop(context);
-                        if (await OwnerPinDialog.verify(context, title: 'Master Settings')) {
-                          Navigator.pushNamed(context, AppRoutes.settings);
-                        }
+                        Navigator.pushNamed(context, AppRoutes.settings);
                       },
                     ),
                   _DrawerItem(
                     icon: Icons.sync_alt_rounded,
                     title: 'Import & Export Data',
-                    onTap: () async {
+                    onTap: () {
                       Navigator.pop(context);
                       if (isWorker) {
                         Navigator.pushNamed(context, AppRoutes.backupRestore);
                       } else {
-                        if (await OwnerPinDialog.verify(context, title: 'Import & Export Data')) {
-                          Navigator.pushNamed(context, AppRoutes.backupRestore);
-                        }
+                        Navigator.pushNamed(context, AppRoutes.backupRestore);
                       }
                     },
                   ),

@@ -8,7 +8,6 @@ import 'package:path/path.dart' as p;
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/security/app_mode_service.dart';
 import '../../../core/services/worker_session.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
@@ -483,31 +482,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ]),
 
-                const SizedBox(height: 20),
 
-                // ── Security & Device Session ─────────────────────────────
-                _sectionHeader('Security & Device Mode', Icons.lock_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.swap_horiz_rounded, color: AppColors.primary),
-                    title: const Text('Switch Device App Mode'),
-                    subtitle: const Text('Re-configure device as Owner or Worker'),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                    onTap: () => Navigator.of(context).pushNamed(AppRoutes.modeSelection),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-                    title: const Text('Logout Owner Session'),
-                    subtitle: const Text('End current session & require PIN on next entry'),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                    onTap: () {
-                      AppModeService.logoutOwner();
-                      SnackbarHelper.showInfo(context, 'Owner Session Logged Out.');
-                      Navigator.of(context).pushReplacementNamed(AppRoutes.modeSelection);
-                    },
-                  ),
-                ]),
 
                 // ── Backup & Restore ──────────────────────────────────
                 _sectionHeader('Backup & Data', Icons.cloud_upload_rounded),

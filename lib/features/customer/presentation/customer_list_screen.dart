@@ -228,6 +228,7 @@ class _CustomerCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Serial number badge
                           if (customer.serialNo > 0) ...[
@@ -252,27 +253,30 @@ class _CustomerCard extends StatelessWidget {
                             const SizedBox(width: 6),
                           ],
                           Expanded(
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Flexible(
-                                  child: Text(
-                                    customer.name,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(fontWeight: FontWeight.w700),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                Text(
+                                  customer.name,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                  softWrap: true,
                                 ),
-                                const SizedBox(width: 6),
-                                if (customer.isVipActive)
-                                  VipGoldBadgeChip(planName: customer.vipPlan)
-                                else
-                                  _buildTagBadge(customer.tag),
-                                const SizedBox(width: 6),
-                                OwnershipBadge(
-                                  createdBy: customer.createdBy,
-                                  workerName: customer.workerName,
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    if (customer.isVipActive)
+                                      VipGoldBadgeChip(planName: customer.vipPlan)
+                                    else
+                                      _buildTagBadge(customer.tag),
+                                    const SizedBox(width: 6),
+                                    OwnershipBadge(
+                                      createdBy: customer.createdBy,
+                                      workerName: customer.workerName,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -299,30 +303,59 @@ class _CustomerCard extends StatelessWidget {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
-                        customer.phone1,
+                        'Phone: ${customer.phone1}',
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
-                            ?.copyWith(color: AppColors.textSecondary),
+                            ?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
                       ),
-                      if (customer.houseNumber.isNotEmpty ||
-                          customer.address.isNotEmpty)
-                        Text(
-                          [
-                            if (customer.houseNumber.isNotEmpty)
-                              customer.houseNumber,
-                            if (customer.address.isNotEmpty)
-                              customer.address,
-                          ].join(', '),
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: AppColors.textHint),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      const SizedBox(height: 4),
+                      ref.watch(customerLocationProvider(customer.streetId)).when(
+                        data: (loc) {
+                          final streetName = loc['street'] ?? '';
+                          final areaName = loc['area'] ?? '';
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (customer.houseNumber.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: Text(
+                                    'House No: ${customer.houseNumber}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              if (customer.address.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: Text(
+                                    'Address: ${customer.address}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(color: AppColors.textHint),
+                                    softWrap: true,
+                                  ),
+                                ),
+                              if (streetName.isNotEmpty || areaName.isNotEmpty)
+                                Text(
+                                  'Route: $streetName • Area: $areaName',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 10),
+                                ),
+                            ],
+                          );
+                        },
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
                     ],
                   ),
                 ),

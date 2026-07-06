@@ -334,8 +334,8 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
 
       if (!mounted) return;
       ref.invalidate(appModeProvider);
-      SnackbarHelper.showSuccess(context, '🎉 Worker Device Provisioned! Setup your security PIN.');
-      Navigator.of(context).pushReplacementNamed(AppRoutes.pinLock);
+      SnackbarHelper.showSuccess(context, '🎉 Worker Device Provisioned!');
+      Navigator.of(context).pushReplacementNamed(AppRoutes.workerDashboard);
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Provisioning import failed: $e');
     } finally {

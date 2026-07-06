@@ -314,23 +314,29 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Flexible(
-                            child: Text(
-                              customer.name,
-                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                          Text(
+                            customer.name,
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                            softWrap: true,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(height: 6),
                           VipGoldBadgeChip(planName: customer.vipPlan),
+                          const SizedBox(height: 6),
+                          if (customer.phone1.isNotEmpty)
+                            Text(
+                              'Phone: ${customer.phone1}',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          if (customer.address.isNotEmpty)
+                            Text(
+                              'Address: ${customer.address}',
+                              style: const TextStyle(color: AppColors.textHint, fontSize: 12),
+                              softWrap: true,
+                            ),
                         ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        customer.phone1.isNotEmpty ? customer.phone1 : customer.address,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                       ),
                     ],
                   ),

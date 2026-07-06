@@ -132,3 +132,26 @@ final allCustomersProvider = FutureProvider<List<Customer>>((ref) async {
   final maps = await db.query('customers', orderBy: 'serial_no ASC');
   return maps.map(Customer.fromMap).toList();
 });
+
+// Location info provider (Street and Area name)
+final customerLocationProvider = FutureProvider.family<Map<String, String>, String>((ref, streetId) async {
+  if (streetId.isEmpty) return {'street': '', 'area': ''};
+  try {
+    final db = await DatabaseHelper.instance.database;
+    final streetRows = await db.query('streets', where: 'id = ?', whereArgs: [streetId], limit: 1);
+    if (streetRows.isEmpty) return {'street': '', 'area': ''};
+    final streetName = streetRows.first['name']?.toString() ?? '';
+    final areaId = streetRows.first['area_id']?.toString() ?? '';
+
+    String areaName = '';
+    if (areaId.isNotEmpty) {
+      final areaRows = await db.query('areas', where: 'id = ?', whereArgs: [areaId], limit: 1);
+      if (areaRows.isNotEmpty) {
+        areaName = areaRows.first['name']?.toString() ?? '';
+      }
+    }
+    return {'street': streetName, 'area': areaName};
+  } catch (_) {
+    return {'street': '', 'area': ''};
+  }
+});

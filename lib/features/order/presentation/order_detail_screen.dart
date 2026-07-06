@@ -237,28 +237,43 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 customerAsync.when(
                   data: (cust) {
                     if (cust == null) return const SizedBox.shrink();
-                    final houseStr = [
-                      if (cust.serialNo > 0) '#${cust.serialNo}',
-                      if (cust.houseNumber.isNotEmpty) cust.houseNumber,
-                    ].join(' · ');
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (houseStr.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            houseStr,
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                        if (cust.address.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            cust.address,
-                            style: const TextStyle(color: AppColors.textHint, fontSize: 12),
-                          ),
-                        ],
-                      ],
+                    return ref.watch(customerLocationProvider(cust.streetId)).when(
+                      data: (loc) {
+                        final streetName = loc['street'] ?? '';
+                        final areaName = loc['area'] ?? '';
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (cust.serialNo > 0 || cust.houseNumber.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                [
+                                  if (cust.serialNo > 0) 'Serial: #${cust.serialNo}',
+                                  if (cust.houseNumber.isNotEmpty) 'House: ${cust.houseNumber}',
+                                ].join('  •  '),
+                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                            if (cust.address.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Address: ${cust.address}',
+                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                softWrap: true,
+                              ),
+                            ],
+                            if (streetName.isNotEmpty || areaName.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Route: $streetName  •  Area: $areaName',
+                                style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w800),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
                     );
                   },
                   loading: () => const SizedBox.shrink(),

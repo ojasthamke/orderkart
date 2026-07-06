@@ -385,28 +385,44 @@ class _OrderCard extends ConsumerWidget {
                 // Header row
                 Row(
                   children: [
-                    customerAsync.when(
-                      data: (customer) => CustomerAvatar(
-                        photoPath: customer?.photoPath,
-                        radius: 18,
-                      ),
-                      loading: () => const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: AppColors.primarySurface,
-                        child: SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pushNamed(
+                          AppRoutes.customerProfile,
+                          arguments: {'customerId': order.customerId},
+                        );
+                      },
+                      child: customerAsync.when(
+                        data: (customer) => CustomerAvatar(
+                          photoPath: customer?.photoPath,
+                          radius: 18,
                         ),
+                        loading: () => const CircleAvatar(
+                          radius: 18,
+                          backgroundColor: AppColors.primarySurface,
+                          child: SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        error: (_, __) => const CustomerAvatar(photoPath: '', radius: 18),
                       ),
-                      error: (_, __) => const CustomerAvatar(photoPath: '', radius: 18),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        '${order.orderNoLabel} · ${order.customerName ?? 'Unknown'}',
-                        style: Theme.of(context).textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.customerProfile,
+                            arguments: {'customerId': order.customerId},
+                          );
+                        },
+                        child: Text(
+                          '${order.orderNoLabel} · ${order.customerName ?? 'Unknown'}',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+                        ),
                       ),
                     ),
                     OwnershipBadge(
@@ -434,11 +450,18 @@ class _OrderCard extends ConsumerWidget {
                       icon: const Icon(Icons.more_vert_rounded,
                           color: AppColors.gray500, size: 20),
                       onSelected: (v) {
+                        if (v == 'profile') {
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.customerProfile,
+                            arguments: {'customerId': order.customerId},
+                          );
+                        }
                         if (v == 'edit')      onEdit();
                         if (v == 'delete')    onDelete();
                         if (v == 'duplicate') onDuplicate();
                       },
                       itemBuilder: (_) => [
+                        const PopupMenuItem(value: 'profile',   child: Text('Customer Profile')),
                         const PopupMenuItem(value: 'edit',      child: Text('Edit')),
                         const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
                         const PopupMenuItem(
@@ -456,18 +479,64 @@ class _OrderCard extends ConsumerWidget {
                 customerAsync.when(
                   data: (cust) {
                     if (cust == null) return const SizedBox.shrink();
-                    final houseStr = [
-                      if (cust.serialNo > 0) '#${cust.serialNo}',
-                      if (cust.houseNumber.isNotEmpty) cust.houseNumber,
-                    ].join(' · ');
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 2, bottom: 2),
-                      child: Text(
-                        '${houseStr.isNotEmpty ? '$houseStr  •  ' : ''}${cust.address}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    return ref.watch(customerLocationProvider(cust.streetId)).when(
+                      data: (loc) {
+                        final streetName = loc['street'] ?? '';
+                        final areaName = loc['area'] ?? '';
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.only(top: 4, bottom: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF1E1E1E)
+                                : AppColors.gray50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.gray200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (cust.serialNo > 0 || cust.houseNumber.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: Text(
+                                    [
+                                      if (cust.serialNo > 0) 'Serial: #${cust.serialNo}',
+                                      if (cust.houseNumber.isNotEmpty) 'House: ${cust.houseNumber}',
+                                    ].join('  •  '),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              if (cust.address.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Text(
+                                    'Address: ${cust.address}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(color: AppColors.textSecondary),
+                                    softWrap: true,
+                                  ),
+                                ),
+                              if (streetName.isNotEmpty || areaName.isNotEmpty)
+                                Text(
+                                  'Route: $streetName  •  Area: $areaName',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 11),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
                     );
                   },
                   loading: () => const SizedBox.shrink(),
@@ -522,12 +591,25 @@ class _OrderCard extends ConsumerWidget {
                       ),
                     const SizedBox(width: 6),
                     // Pay button
-                    if (order.remainingAmount > 0)
+                    if (order.remainingAmount > 0) ...[
                       _ActionBtn(
                         label: 'Pay',
                         color: AppColors.warning,
                         onTap: onAddPayment,
                       ),
+                      const SizedBox(width: 6),
+                    ],
+                    // Profile button
+                    _ActionBtn(
+                      label: 'Profile',
+                      color: Colors.blueGrey,
+                      onTap: () {
+                        Navigator.of(context).pushNamed(
+                          AppRoutes.customerProfile,
+                          arguments: {'customerId': order.customerId},
+                        );
+                      },
+                    ),
                   ],
                 ),
               ],

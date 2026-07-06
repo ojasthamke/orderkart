@@ -348,56 +348,106 @@ class CustomerProfileScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(
+                      customer.name,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                      softWrap: true,
+                    ),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
-                        Flexible(
-                          child: Text(
-                            customer.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (customer.isVipActive)
+                        if (customer.isVipActive) ...[
                           VipGoldBadgeChip(planName: customer.vipPlan),
+                          const SizedBox(width: 8),
+                        ],
+                        OwnershipBadge(
+                          createdBy: customer.createdBy,
+                          workerName: customer.workerName,
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Text(
-                      customer.phone1,
+                      'Phone: ${customer.phone1}',
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
-                          ?.copyWith(color: AppColors.textSecondary),
+                          ?.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
                     ),
-                    if (customer.serialNo > 0 || customer.houseNumber.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                    if (customer.phone2.isNotEmpty) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        [
-                          if (customer.serialNo > 0) '#${customer.serialNo}',
-                          if (customer.houseNumber.isNotEmpty) customer.houseNumber,
-                        ].join(' · '),
+                        'Phone 2: ${customer.phone2}',
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
-                            ?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                            ?.copyWith(color: AppColors.textSecondary),
                       ),
                     ],
-                    if (customer.address.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                    if (customer.whatsapp.isNotEmpty) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        customer.address,
+                        'WhatsApp: ${customer.whatsapp}',
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
-                            ?.copyWith(color: AppColors.textHint),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                            ?.copyWith(color: AppColors.textSecondary),
                       ),
                     ],
+                    const SizedBox(height: 8),
+                    ref.watch(customerLocationProvider(customer.streetId)).when(
+                      data: (loc) {
+                        final streetName = loc['street'] ?? '';
+                        final areaName = loc['area'] ?? '';
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (customer.serialNo > 0 || customer.houseNumber.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  [
+                                    if (customer.serialNo > 0) 'Serial No: #${customer.serialNo}',
+                                    if (customer.houseNumber.isNotEmpty) 'House No: ${customer.houseNumber}',
+                                  ].join('  •  '),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            if (streetName.isNotEmpty || areaName.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  'Route: $streetName  •  Area: $areaName',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                            if (customer.address.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  'Address: ${customer.address}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(color: AppColors.textHint),
+                                  softWrap: true,
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
                   ],
                 ),
               ),
