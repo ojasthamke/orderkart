@@ -106,17 +106,6 @@ class AppDrawer extends ConsumerWidget {
                       },
                     ),
                     _DrawerItem(
-                      icon: Icons.admin_panel_settings_rounded,
-                      title: 'Worker Permission Manager',
-                      iconColor: Colors.deepPurple,
-                      onTap: () async {
-                        Navigator.pop(context);
-                        if (await OwnerPinDialog.verify(context, title: 'Worker Permission Manager')) {
-                          Navigator.pushNamed(context, AppRoutes.workers);
-                        }
-                      },
-                    ),
-                    _DrawerItem(
                       icon: Icons.history_edu_rounded,
                       title: 'Worker Sync Activity & Imports',
                       iconColor: Colors.teal,

@@ -299,6 +299,14 @@ class WorkerPackageService {
     String? customFileName,
     bool isIncremental = false,
   }) async {
+    // Verify Worker Export Permission
+    if (workerId.isNotEmpty) {
+      final allowed = await WorkerPermissionService.hasPermission(workerId, 'export_data', requiredLevel: 1);
+      if (!allowed) {
+        throw Exception('Data export is disabled by the Owner for this worker profile.');
+      }
+    }
+
     final mainDb = await DatabaseHelper.instance.database;
 
     // Get active key version (default to '1')

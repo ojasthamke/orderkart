@@ -27,6 +27,17 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
   String _searchQuery = '';
   String _selectedStatus = 'all'; // 'all', 'active', 'suspended', 'leave'
 
+  Future<void> _addNewWorker() async {
+    AppHaptics.buttonClick();
+    final newWorker = await AddEditWorkerDialog.show(context);
+    if (newWorker != null) {
+      await ref.read(workerListProvider.notifier).add(newWorker);
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Worker "${newWorker.name}" added successfully');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final workersAsync = ref.watch(workerListProvider);
@@ -47,23 +58,95 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
           onPressed: () => Navigator.pushNamed(context, AppRoutes.workerAnalytics),
         ),
       ],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          AppHaptics.buttonClick();
-          final newWorker = await AddEditWorkerDialog.show(context);
-          if (newWorker != null) {
-            await ref.read(workerListProvider.notifier).add(newWorker);
-            if (context.mounted) {
-              SnackbarHelper.showSuccess(context, 'Worker "${newWorker.name}" added successfully');
-            }
-          }
-        },
-        icon: const Icon(Icons.person_add_rounded),
-        label: const Text('Add Worker'),
-        backgroundColor: AppColors.primary,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1565C0).withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _addNewWorker,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          icon: const Icon(Icons.person_add_rounded, color: Colors.white),
+          label: const Text(
+            'Add New Worker',
+            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5),
+          ),
+        ),
       ),
       body: Column(
         children: [
+          // --- TOP BEAUTIFUL ADD WORKER ACTION BANNER ---
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2563EB).withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Add Field Worker',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Create worker accounts & set permissions',
+                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _addNewWorker,
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: const Text('Add Worker', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF1E3A8A),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // --- SEARCH BAR ---
           CustomSearchBar(
             hint: 'Search workers by name or ID...',

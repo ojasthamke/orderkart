@@ -284,12 +284,41 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                 const Text('Import packages from Owner or export work updates with custom file names:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 const SizedBox(height: 12),
 
+                if (_permissions != null && _permissions!.export == PermissionLevel.hidden) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.shade300),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.lock_rounded, color: Colors.red),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Data Export Permission is DISABLED by Owner for your account. Contact Owner to grant export permission.',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 // 1. Import Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () async {
                       AppHaptics.buttonClick();
+                      if (_permissions != null && _permissions!.import == PermissionLevel.hidden) {
+                        SnackbarHelper.showError(context, '❌ Data Import is disabled by Owner for your profile.');
+                        return;
+                      }
                       try {
                         final result = await FilePicker.platform.pickFiles(type: FileType.any);
                         if (result == null || result.files.single.path == null) return;
@@ -326,6 +355,10 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           AppHaptics.buttonClick();
+                          if (_permissions != null && _permissions!.export == PermissionLevel.hidden) {
+                            SnackbarHelper.showError(context, '❌ Data Export is disabled by Owner for your profile.');
+                            return;
+                          }
                           final defaultName = 'Worker_FullBackup_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
                           final customName = await ExportFilenameDialog.show(
                             context,
@@ -352,7 +385,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                         icon: const Icon(Icons.inventory_2_rounded),
                         label: const Text('Export Entire Backup', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigo,
+                          backgroundColor: (_permissions != null && _permissions!.export == PermissionLevel.hidden) ? AppColors.gray500 : Colors.indigo,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -366,6 +399,10 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           AppHaptics.buttonClick();
+                          if (_permissions != null && _permissions!.export == PermissionLevel.hidden) {
+                            SnackbarHelper.showError(context, '❌ Data Export is disabled by Owner for your profile.');
+                            return;
+                          }
                           final defaultName = 'Update_Owner_Data_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
                           final customName = await ExportFilenameDialog.show(
                             context,
@@ -392,7 +429,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                         icon: const Icon(Icons.sync_alt_rounded),
                         label: const Text('Share Data to Update Owner', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: (_permissions != null && _permissions!.export == PermissionLevel.hidden) ? AppColors.gray500 : AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
