@@ -1,7 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
-import '../../../core/services/worker_session.dart';
 import '../domain/street.dart';
 
 class StreetDao {
@@ -37,19 +36,6 @@ class StreetDao {
     final db = await _db;
     final id  = street.id.isEmpty ? _uuid.v4() : street.id;
     final map = street.toMap();
-
-    if (WorkerSession.instance.isWorker) {
-      map['created_by'] = 'worker';
-      if ((map['assigned_worker_id'] as String? ?? '').isEmpty) {
-        map['assigned_worker_id'] = WorkerSession.instance.currentWorkerId ?? '';
-      }
-      if ((map['worker_name'] as String? ?? '').isEmpty) {
-        map['worker_name'] = WorkerSession.instance.currentWorkerName ?? 'Worker';
-      }
-      if ((map['device_name'] as String? ?? '').isEmpty) {
-        map['device_name'] = WorkerSession.instance.currentDeviceName;
-      }
-    }
 
     await db.insert('streets', {
       ...map,

@@ -8,7 +8,6 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/empty_state_widget.dart';
-import '../../../core/widgets/ownership_badge.dart';
 
 class WorkerSyncActivityScreen extends ConsumerStatefulWidget {
   const WorkerSyncActivityScreen({super.key});
@@ -268,16 +267,9 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
               backgroundColor: AppColors.primarySurface,
               child: const Icon(Icons.download_done_rounded, color: AppColors.primary),
             ),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Update from $wName',
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                  ),
-                ),
-                OwnershipBadge(createdBy: 'worker', workerName: wName),
-              ],
+            title: Text(
+              'Update from $wName',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
             ),
             subtitle: Text(
               'Imported: ${AppFormatters.dateTime(importedAt)}\nDevice: $devName • Records: $recCount',
@@ -369,7 +361,7 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
             ),
             title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
             subtitle: Text('Phone: $phone • Added on ${AppFormatters.shortDate(createdAt)}'),
-            trailing: OwnershipBadge(createdBy: 'worker', workerName: wName),
+            trailing: Text(wName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
           ),
         );
       },
@@ -409,7 +401,7 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
             ),
             title: Text('Order #${id.length > 6 ? id.substring(0, 6) : id} • ${AppFormatters.currency(amount)}', style: const TextStyle(fontWeight: FontWeight.w800)),
             subtitle: Text('Date: ${AppFormatters.shortDate(createdAt)} • Status: ${o['delivery_status']}'),
-            trailing: OwnershipBadge(createdBy: 'worker', workerName: wName),
+            trailing: Text(wName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
           ),
         );
       },
@@ -448,7 +440,7 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
             ),
             title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
             subtitle: Text('Created: ${AppFormatters.dateTime(createdAt)}'),
-            trailing: OwnershipBadge(createdBy: 'worker', workerName: wName),
+            trailing: Text(wName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
           ),
         );
       },

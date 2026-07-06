@@ -14,7 +14,6 @@ import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/customer_avatar.dart';
-import '../../../core/widgets/ownership_badge.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../domain/order.dart';
 import '../domain/payment.dart';
@@ -425,11 +424,6 @@ class _OrderCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    OwnershipBadge(
-                      createdBy: order.createdBy,
-                      workerName: order.workerName,
-                    ),
-                    const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),

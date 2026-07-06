@@ -3,7 +3,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
-import '../../../core/services/worker_session.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
 import '../domain/payment.dart';
@@ -133,17 +132,6 @@ class OrderDao {
     }
 
     final map = order.toMap();
-    if (WorkerSession.instance.isWorker) {
-      map['created_by'] = 'worker';
-      if (workerId.isEmpty) workerId = WorkerSession.instance.currentWorkerId ?? '';
-      map['assigned_worker_id'] = workerId;
-      if ((map['worker_name'] as String? ?? '').isEmpty) {
-        map['worker_name'] = WorkerSession.instance.currentWorkerName ?? 'Worker';
-      }
-      if ((map['device_name'] as String? ?? '').isEmpty) {
-        map['device_name'] = WorkerSession.instance.currentDeviceName;
-      }
-    }
 
     await db.insert('orders', {
       ...map,

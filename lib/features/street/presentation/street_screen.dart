@@ -16,7 +16,6 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../domain/street.dart';
 import 'street_provider.dart';
-import '../../../core/widgets/ownership_badge.dart';
 import '../../../core/database/database_helper.dart';
 
 final activeWorkersListProvider = FutureProvider<List<Map<String, String>>>((ref) async {
@@ -377,10 +376,6 @@ class _StreetTile extends StatelessWidget {
                             street.name,
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                           ),
-                        ),
-                        OwnershipBadge(
-                          createdBy: street.createdBy,
-                          workerName: street.workerName,
                         ),
                       ],
                     ),
