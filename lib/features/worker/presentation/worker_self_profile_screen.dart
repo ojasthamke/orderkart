@@ -12,6 +12,9 @@ import '../../../core/services/worker_package_service.dart';
 import '../../../core/services/worker_permission_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:network_info_plus/network_info_plus.dart';
+import '../../../core/services/hotspot_sync_service.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -67,9 +70,24 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
           _loadingPerms = false;
         });
       }
+      
+      // Start Wi-Fi automatic connection sync listener
+      HotspotSyncService.startAutoSyncListener(
+        workerId: worker.id,
+        workerName: worker.name,
+        onSyncEvent: (msg) {
+          if (mounted) SnackbarHelper.showInfo(context, msg);
+        },
+      );
     } else {
       if (mounted) setState(() => _loadingPerms = false);
     }
+  }
+
+  @override
+  void dispose() {
+    HotspotSyncService.stopAutoSyncListener();
+    super.dispose();
   }
 
   Future<void> _ensureWorkerSecurity(String workerId) async {
@@ -323,6 +341,65 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                             ),
                           ],
                         ),
+                ),
+                const SizedBox(height: 24),
+
+                // --- OFFLINE HOTSPOT AUTO-SYNC ---
+                const Text('Offline Hotspot Auto-Sync', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const SizedBox(height: 4),
+                const Text('Connect automatically to Owner hotspot and sync database and photos offline:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 12),
+                
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      AppHaptics.buttonClick();
+                      if (_permissions != null && _permissions!.export == PermissionLevel.hidden) {
+                        SnackbarHelper.showError(context, '❌ Data Export is disabled by Owner.');
+                        return;
+                      }
+                      
+                      setState(() => _loadingPerms = true);
+                      try {
+                        final info = NetworkInfo();
+                        final gateway = await info.getWifiGatewayIP();
+                        if (gateway == null || gateway.isEmpty) {
+                          if (context.mounted) {
+                            SnackbarHelper.showError(context, '❌ Not connected to Wi-Fi / Hotspot. Connect to Owner\'s hotspot first.');
+                          }
+                          return;
+                        }
+                        
+                        if (context.mounted) SnackbarHelper.showInfo(context, 'Connecting to Owner at $gateway...');
+                        final success = await HotspotSyncService.syncWithGateway(
+                          gatewayIp: gateway,
+                          workerId: worker.id,
+                          workerName: worker.name,
+                        );
+                        
+                        if (context.mounted) {
+                          if (success) {
+                            SnackbarHelper.showSuccess(context, '✅ Data and photos synced successfully with Owner!');
+                          } else {
+                            SnackbarHelper.showError(context, '❌ Sync failed. Make sure Owner is in Hotspot Sync Mode.');
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) SnackbarHelper.showError(context, 'Sync error: $e');
+                      } finally {
+                        if (mounted) setState(() => _loadingPerms = false);
+                      }
+                    },
+                    icon: const Icon(Icons.wifi_tethering_rounded),
+                    label: const Text('Sync Now via Hotspot'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepOrange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
 

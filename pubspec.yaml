@@ -21,6 +21,8 @@ dependencies:
   # Networking / Sharing
   url_launcher: ^6.3.0
   share_plus: ^9.0.0
+  connectivity_plus: ^6.0.3
+  network_info_plus: ^6.0.0
 
   # QR Code
   qr_flutter: ^4.1.0

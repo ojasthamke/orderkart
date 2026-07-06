@@ -471,6 +471,177 @@ class DatabaseHelper {
     }
   }
 
+  /// Smart Non-Destructive Merge Import from JSON:
+  /// Performs topological merge across database tables with LWW (Last-Write-Wins) timestamp conflict resolution.
+  Future<Map<String, Map<String, int>>> mergeDatabaseFromJson(
+    Map<String, dynamic> incomingData, {
+    List<String>? selectedModules,
+    bool dryRun = false,
+  }) async {
+    final targetDb = await database;
+
+    final tables = [
+      'areas',
+      'streets',
+      'customers',
+      'vip_membership',
+      'items',
+      'item_price_history',
+      'orders',
+      'order_items',
+      'payments',
+      'expenses',
+      'notes',
+      'visits',
+      'notifications',
+      'workers',
+      'worker_assignments',
+      'worker_permissions',
+      'worker_reports',
+      'commission_history',
+      'business_profile',
+      'settings'
+    ];
+
+    int totalRows = 0;
+    for (final table in tables) {
+      if (!_isTableSelected(table, selectedModules)) continue;
+      final rows = incomingData[table];
+      if (rows is List) {
+        totalRows += rows.length;
+      }
+    }
+
+    final Map<String, Map<String, int>> resultStats = {};
+
+    Future<void> runMerge(DatabaseExecutor dbExecutor) async {
+      for (final table in tables) {
+        int inserted = 0;
+        int updated = 0;
+        int skipped = 0;
+        int conflicted = 0;
+
+        if (!_isTableSelected(table, selectedModules)) {
+          resultStats[table] = {
+            'inserted': 0,
+            'updated': 0,
+            'skipped': 0,
+            'conflicted': 0,
+          };
+          continue;
+        }
+
+        final rawList = incomingData[table];
+        final List<Map<String, dynamic>> incomingRows = rawList is List
+            ? List<Map<String, dynamic>>.from(rawList.map((item) => Map<String, dynamic>.from(item)))
+            : [];
+
+        for (final row in incomingRows) {
+          final id = row['id']?.toString() ?? 
+                     row['key']?.toString() ?? 
+                     row['worker_id']?.toString() ?? '';
+          if (id.isEmpty) {
+            skipped++;
+            continue;
+          }
+
+          List<Map<String, dynamic>> existing;
+          if (table == 'settings') {
+            final key = id.toLowerCase();
+            const protectedKeys = {
+              'app_mode',
+              'owner_pin_hash',
+              'owner_pin_salt',
+              'app_initialized',
+              'active_worker_id',
+              'owner_secret',
+              'owner_secret_v1',
+              'owner_secret_v2',
+              'owner_failed_pin_attempts',
+              'owner_pin_lockout_until',
+            };
+            if (protectedKeys.contains(key)) {
+              skipped++;
+              continue;
+            }
+            existing = await dbExecutor.query(table, where: 'key = ?', whereArgs: [id]);
+          } else if (table == 'worker_permissions') {
+            existing = await dbExecutor.query(table, where: 'worker_id = ?', whereArgs: [id]);
+          } else {
+            existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
+          }
+
+          if (existing.isEmpty) {
+            try {
+              if (!dryRun) {
+                await dbExecutor.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+              }
+              inserted++;
+            } catch (_) {
+              conflicted++;
+            }
+          } else {
+            if (table == 'settings') {
+              final existingVal = existing.first['value']?.toString() ?? '';
+              final incomingVal = row['value']?.toString() ?? '';
+              if (existingVal != incomingVal) {
+                if (!dryRun) {
+                  await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
+                }
+                updated++;
+              } else {
+                skipped++;
+              }
+              continue;
+            }
+
+            final existingUpdated = existing.first['updated_at']?.toString() ?? existing.first['created_at']?.toString() ?? '';
+            final incomingUpdated = row['updated_at']?.toString() ?? row['created_at']?.toString() ?? '';
+
+            if (incomingUpdated.isNotEmpty && existingUpdated.isNotEmpty) {
+              final incDt = DateTime.tryParse(incomingUpdated);
+              final exDt  = DateTime.tryParse(existingUpdated);
+
+              if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
+                if (!dryRun) {
+                  if (table == 'settings') {
+                    await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
+                  } else if (table == 'worker_permissions') {
+                    await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
+                  } else {
+                    await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);
+                  }
+                }
+                updated++;
+              } else {
+                skipped++;
+              }
+            } else {
+              skipped++;
+            }
+          }
+        }
+
+        resultStats[table] = {
+          'inserted': inserted,
+          'updated': updated,
+          'skipped': skipped,
+          'conflicted': conflicted,
+        };
+      }
+    }
+
+    if (dryRun) {
+      await runMerge(targetDb);
+    } else {
+      await targetDb.transaction((txn) async {
+        await runMerge(txn);
+      });
+    }
+
+    return resultStats;
+  }
+
   /// Smart Non-Destructive Merge Import Specification:
   /// Performs topological merge across database tables with LWW (Last-Write-Wins) timestamp conflict resolution.
   /// Returns a detailed map per table: {'inserted': int, 'updated': int, 'skipped': int, 'conflicted': int}.
