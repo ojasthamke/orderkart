@@ -99,11 +99,10 @@ class SearchDao {
       LIMIT 15
     ''', [q, q, q, q, if (searchInt != null) searchInt]);
     for (final o in orders) {
-      final orderNo = o['order_number'] as int?;
-      final orderNoLabel = orderNo != null ? '#${orderNo.toString().padLeft(3, '0')}' : '#000';
+      final orderId = o['id'] as String;
       results.add(SearchResult(
-        id:       o['id'] as String,
-        title:    'Order $orderNoLabel',
+        id:       orderId,
+        title:    'Order $orderId',
         subtitle: 'Order • Customer: ${o['customer_name']} • Total: ₹${o['grand_total']} (${o['delivery_status']})',
         type:     SearchResultType.order,
       ));

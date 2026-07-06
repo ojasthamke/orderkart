@@ -26,6 +26,7 @@ import '../domain/order.dart';
 import '../domain/order_item.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
+import '../data/order_dao.dart';
 import 'widgets/item_selector_widget.dart';
 import 'widgets/smart_round_banner.dart';
 
@@ -694,8 +695,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     AppHaptics.primarySave();
     setState(() => _saving = true);
 
-    final now     = DateTime.now();
-    final orderId = widget.orderId ?? const Uuid().v4();
+    final now = DateTime.now();
+    final String orderId = widget.orderId ?? await OrderDao.generateUniqueOrderNo();
 
     final roundingDiff = _smartRound ? _smartRounded - _afterDiscount : 0;
     

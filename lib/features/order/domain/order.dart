@@ -31,8 +31,7 @@ class AppOrder {
   final String commissionType;
 
   String get orderNoLabel {
-    if (orderNumber == null) return '#000';
-    return '#${orderNumber!.toString().padLeft(3, '0')}';
+    return id;
   }
 
   const AppOrder({

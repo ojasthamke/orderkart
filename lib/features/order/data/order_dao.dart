@@ -1,8 +1,8 @@
-/// OrderDao — complete SQLite operations for orders
-
+import 'dart:math' as math;
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/security/app_mode_service.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
 import '../domain/payment.dart';
@@ -10,6 +10,35 @@ import '../domain/payment.dart';
 class OrderDao {
   final _uuid = const Uuid();
   Future<Database> get _db => DatabaseHelper.instance.database;
+
+  /// Generate a unique order ID that is exactly 2 alphabets and 5 digits long.
+  /// Owner orders start with 'OW', Worker orders start with 'WK'.
+  /// Collisions automatically append suffixes 1, 2, 3, 4, 5...
+  static Future<String> generateUniqueOrderNo() async {
+    final mode = await AppModeService.getAppMode();
+    final prefix = (mode == AppMode.owner) ? 'OW' : 'WK';
+    final randDigits = (math.Random().nextInt(90000) + 10000).toString();
+    final baseNo = '$prefix$randDigits';
+
+    final db = await DatabaseHelper.instance.database;
+    String candidate = baseNo;
+    int suffix = 1;
+
+    while (true) {
+      final List<Map<String, dynamic>> res = await db.query(
+        'orders',
+        columns: ['id'],
+        where: 'id = ?',
+        whereArgs: [candidate],
+      );
+      if (res.isEmpty) {
+        break;
+      }
+      candidate = '$baseNo$suffix';
+      suffix++;
+    }
+    return candidate;
+  }
 
   Future<DatabaseExecutor> _getExecutor(DatabaseExecutor? executor) async {
     return executor ?? await _db;
