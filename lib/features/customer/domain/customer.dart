@@ -21,6 +21,8 @@ class Customer {
   final String  lastOrderDate;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String   assignedWorkerId;
+  final String   createdBy;
 
   // VIP Membership Fields
   final bool   isVip;
@@ -56,6 +58,8 @@ class Customer {
     this.lastOrderDate  = '',
     required this.createdAt,
     required this.updatedAt,
+    this.assignedWorkerId = '',
+    this.createdBy        = 'owner',
     // VIP Defaults
     this.isVip               = false,
     this.vipPlan             = 'Gold VIP',
@@ -91,6 +95,8 @@ class Customer {
     String?   lastOrderDate,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String?   assignedWorkerId,
+    String?   createdBy,
     bool?   isVip,
     String? vipPlan,
     String? vipStartDate,
@@ -124,6 +130,8 @@ class Customer {
       lastOrderDate:      lastOrderDate      ?? this.lastOrderDate,
       createdAt:          createdAt          ?? this.createdAt,
       updatedAt:          updatedAt          ?? this.updatedAt,
+      assignedWorkerId:   assignedWorkerId   ?? this.assignedWorkerId,
+      createdBy:          createdBy          ?? this.createdBy,
       isVip:               isVip               ?? this.isVip,
       vipPlan:             vipPlan             ?? this.vipPlan,
       vipStartDate:        vipStartDate        ?? this.vipStartDate,
@@ -159,6 +167,8 @@ class Customer {
         'last_order_date':     lastOrderDate,
         'created_at':          createdAt.toIso8601String(),
         'updated_at':          updatedAt.toIso8601String(),
+        'assigned_worker_id':  assignedWorkerId,
+        'created_by':          createdBy,
         'is_vip':               isVip ? 1 : 0,
         'vip_plan':             vipPlan,
         'vip_start_date':       vipStartDate,
@@ -193,6 +203,8 @@ class Customer {
         lastOrderDate:       map['last_order_date']     as String? ?? '',
         createdAt:           DateTime.parse(map['created_at']    as String),
         updatedAt:           DateTime.parse(map['updated_at']    as String),
+        assignedWorkerId:    map['assigned_worker_id']   as String? ?? '',
+        createdBy:           map['created_by']          as String? ?? 'owner',
         isVip:               (map['is_vip'] as int? ?? 0) == 1,
         vipPlan:             map['vip_plan']            as String? ?? 'Gold VIP',
         vipStartDate:        map['vip_start_date']       as String? ?? '',

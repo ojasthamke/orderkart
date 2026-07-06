@@ -154,28 +154,29 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 }
 
                 return ReorderableListView.builder(
-                      padding: const EdgeInsets.only(bottom: 96),
-                      itemCount: customers.length,
-                      onReorder: (oldIndex, newIndex) {
-                        if (newIndex > oldIndex) {
-                          newIndex -= 1;
-                        }
-                        ref
-                            .read(customerListProvider(effectiveStreetId).notifier)
-                            .reorder(oldIndex, newIndex);
-                      },
-                      itemBuilder: (ctx, i) => KeyedSubtree(
-                        key: ValueKey(customers[i].id),
-                        child: _CustomerCard(
-                          customer: customers[i],
-                          streetId: effectiveStreetId,
-                          ref: ref,
-                        )
-                            .animate(delay: (i * 40).ms)
-                            .fadeIn()
-                            .slideX(begin: 0.05),
-                      ),
-                    ),
+                  padding: const EdgeInsets.only(bottom: 96),
+                  itemCount: customers.length,
+                  onReorder: (oldIndex, newIndex) {
+                    if (newIndex > oldIndex) {
+                      newIndex -= 1;
+                    }
+                    ref
+                        .read(customerListProvider(effectiveStreetId).notifier)
+                        .reorder(oldIndex, newIndex);
+                  },
+                  itemBuilder: (ctx, i) => KeyedSubtree(
+                    key: ValueKey(customers[i].id),
+                    child: _CustomerCard(
+                      customer: customers[i],
+                      streetId: effectiveStreetId,
+                      ref: ref,
+                    )
+                        .animate(delay: (i * 40).ms)
+                        .fadeIn()
+                        .slideX(begin: 0.05),
+                  ),
+                );
+              },
             ),
           ),
         ],
