@@ -1,6 +1,8 @@
 // lib/core/services/worker_session.dart
 
+import 'dart:io';
 import '../database/database_helper.dart';
+import '../security/app_mode_service.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// Singleton managing the currently logged-in worker session persistently.
@@ -10,25 +12,44 @@ class WorkerSession {
   static final WorkerSession instance = WorkerSession._();
 
   String? _currentWorkerId;
-  String? get currentWorkerId => _currentWorkerId;
+  String? _currentWorkerName;
+  AppMode _appMode = AppMode.owner;
 
-  bool get isWorker => _currentWorkerId != null && _currentWorkerId!.isNotEmpty;
+  String? get currentWorkerId => _currentWorkerId;
+  String? get currentWorkerName => _currentWorkerName;
+
+  String get currentDeviceName {
+    if (Platform.isAndroid) return 'Android Device';
+    if (Platform.isIOS) return 'iPhone/iPad';
+    if (Platform.isWindows) return 'Windows PC';
+    return 'Mobile Device';
+  }
+
+  bool get isWorker => _appMode == AppMode.worker || (_currentWorkerId != null && _currentWorkerId!.isNotEmpty);
   bool get isOwner => !isWorker;
 
-  /// Loads the persisted worker ID from settings.
+  /// Loads the persisted worker ID and mode from settings.
   Future<void> load() async {
     try {
+      _appMode = await AppModeService.getAppMode();
       final db = await DatabaseHelper.instance.database;
       final res = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
       if (res.isNotEmpty) {
         _currentWorkerId = res.first['value'] as String?;
       }
+      if (_currentWorkerId != null && _currentWorkerId!.isNotEmpty) {
+        final w = await db.query('workers', where: 'id = ?', whereArgs: [_currentWorkerId]);
+        if (w.isNotEmpty) {
+          _currentWorkerName = w.first['name'] as String?;
+        }
+      }
     } catch (_) {}
   }
 
   /// Sets and persists the current worker ID.
-  Future<void> setWorker(String? workerId) async {
+  Future<void> setWorker(String? workerId, {String? workerName}) async {
     _currentWorkerId = workerId;
+    _currentWorkerName = workerName;
     try {
       final db = await DatabaseHelper.instance.database;
       if (workerId == null) {
@@ -38,6 +59,13 @@ class WorkerSession {
           'key': 'active_worker_id',
           'value': workerId,
         }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+        if (workerName == null || workerName.isEmpty) {
+          final w = await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
+          if (w.isNotEmpty) {
+            _currentWorkerName = w.first['name'] as String?;
+          }
+        }
       }
     } catch (_) {}
   }

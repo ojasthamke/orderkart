@@ -1142,6 +1142,13 @@ class DatabaseHelper {
         await db.execute("ALTER TABLE $table ADD COLUMN device_name TEXT DEFAULT ''");
       } catch (_) {}
     }
+
+    try {
+      await db.execute("ALTER TABLE import_history ADD COLUMN worker_id TEXT DEFAULT ''");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE import_history ADD COLUMN summary_json TEXT DEFAULT ''");
+    } catch (_) {}
   }
 
   Future<void> _runStartupHealthCheck(Database db) async {

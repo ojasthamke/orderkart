@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -7,6 +8,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/empty_state_widget.dart';
+import '../../../core/widgets/ownership_badge.dart';
 
 class WorkerSyncActivityScreen extends ConsumerStatefulWidget {
   const WorkerSyncActivityScreen({super.key});
@@ -20,6 +22,8 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
   bool _loading = true;
   List<Map<String, dynamic>> _workerCustomers = [];
   List<Map<String, dynamic>> _workerOrders = [];
+  List<Map<String, dynamic>> _workerAreas = [];
+  List<Map<String, dynamic>> _workerStreets = [];
   List<Map<String, dynamic>> _importLogs = [];
   List<Map<String, dynamic>> _workers = [];
   String _selectedWorkerId = 'all';
@@ -27,7 +31,7 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadData();
   }
 
@@ -54,7 +58,9 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
     );
     final customers = custRows.map((c) {
       final wid = c['assigned_worker_id']?.toString() ?? c['created_by']?.toString() ?? '';
-      final wName = workerNameMap[wid] ?? (c['created_by']?.toString() ?? 'Worker');
+      final wName = (c['worker_name']?.toString() ?? '').isNotEmpty 
+          ? c['worker_name']!.toString() 
+          : (workerNameMap[wid] ?? 'Worker');
       return {
         ...c,
         'worker_name': wName,
@@ -65,12 +71,14 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
     // 2. Worker Orders
     final orderRows = await db.query(
       'orders',
-      where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR order_source == "worker"',
+      where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
       orderBy: 'created_at DESC',
     );
     final orders = orderRows.map((o) {
       final wid = o['assigned_worker_id']?.toString() ?? '';
-      final wName = workerNameMap[wid] ?? 'Field Worker';
+      final wName = (o['worker_name']?.toString() ?? '').isNotEmpty
+          ? o['worker_name']!.toString()
+          : (workerNameMap[wid] ?? 'Worker');
       return {
         ...o,
         'worker_name': wName,
@@ -78,7 +86,42 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
       };
     }).toList();
 
-    // 3. Import Logs
+    // 3. Worker Areas & Streets
+    final areaRows = await db.query(
+      'areas',
+      where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
+      orderBy: 'created_at DESC',
+    );
+    final areas = areaRows.map((a) {
+      final wid = a['assigned_worker_id']?.toString() ?? a['created_by']?.toString() ?? '';
+      final wName = (a['worker_name']?.toString() ?? '').isNotEmpty 
+          ? a['worker_name']!.toString() 
+          : (workerNameMap[wid] ?? 'Worker');
+      return {
+        ...a,
+        'worker_name': wName,
+        'worker_id': wid,
+      };
+    }).toList();
+
+    final streetRows = await db.query(
+      'streets',
+      where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
+      orderBy: 'created_at DESC',
+    );
+    final streets = streetRows.map((s) {
+      final wid = s['assigned_worker_id']?.toString() ?? s['created_by']?.toString() ?? '';
+      final wName = (s['worker_name']?.toString() ?? '').isNotEmpty 
+          ? s['worker_name']!.toString() 
+          : (workerNameMap[wid] ?? 'Worker');
+      return {
+        ...s,
+        'worker_name': wName,
+        'worker_id': wid,
+      };
+    }).toList();
+
+    // 4. Import Logs
     final imports = await db.query('import_history', orderBy: 'imported_at DESC');
 
     if (mounted) {
@@ -86,6 +129,8 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         _workers = workers;
         _workerCustomers = customers;
         _workerOrders = orders;
+        _workerAreas = areas;
+        _workerStreets = streets;
         _importLogs = imports;
         _loading = false;
       });
@@ -102,19 +147,26 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
     return _workerOrders.where((o) => o['worker_id'] == _selectedWorkerId).toList();
   }
 
+  List<Map<String, dynamic>> _filteredAreas() {
+    if (_selectedWorkerId == 'all') return _workerAreas;
+    return _workerAreas.where((a) => a['worker_id'] == _selectedWorkerId).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Worker Activity & Sync Logs',
+      title: 'Worker Activity & Updates',
       bottom: TabBar(
         controller: _tabController,
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         indicatorColor: AppColors.primary,
+        isScrollable: true,
         tabs: const [
-          Tab(text: 'Customers', icon: Icon(Icons.people_alt_rounded, size: 18)),
-          Tab(text: 'Orders', icon: Icon(Icons.shopping_cart_rounded, size: 18)),
-          Tab(text: 'Import Packages', icon: Icon(Icons.history_rounded, size: 18)),
+          Tab(text: 'Worker Updates Log', icon: Icon(Icons.history_rounded, size: 18)),
+          Tab(text: 'Worker Customers', icon: Icon(Icons.people_alt_rounded, size: 18)),
+          Tab(text: 'Worker Orders', icon: Icon(Icons.shopping_cart_rounded, size: 18)),
+          Tab(text: 'Areas & Streets', icon: Icon(Icons.map_rounded, size: 18)),
         ],
       ),
       body: _loading
@@ -165,14 +217,122 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
                   child: TabBarView(
                     controller: _tabController,
                     children: [
+                      _buildImportHistoryList(),
                       _buildCustomersList(),
                       _buildOrdersList(),
-                      _buildImportHistoryList(),
+                      _buildAreasList(),
                     ],
                   ),
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildImportHistoryList() {
+    final logs = _selectedWorkerId == 'all'
+        ? _importLogs
+        : _importLogs.where((l) => l['worker_id'] == _selectedWorkerId).toList();
+
+    if (logs.isEmpty) {
+      return const EmptyStateWidget(
+        icon: Icons.history_rounded,
+        title: 'No Worker Updates Imported Yet',
+        subtitle: 'When workers export their data packages and you import them into Owner app, detailed sync logs and record stats will appear here.',
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: logs.length,
+      itemBuilder: (ctx, i) {
+        final imp = logs[i];
+        final pkgId = imp['package_id']?.toString() ?? 'Package';
+        final wName = imp['worker_name']?.toString() ?? 'Worker';
+        final devName = imp['device_name']?.toString() ?? 'Mobile Device';
+        final importedAt = DateTime.tryParse(imp['imported_at']?.toString() ?? '') ?? DateTime.now();
+        final summaryRaw = imp['summary_json']?.toString() ?? '';
+        Map<String, dynamic> summary = {};
+        if (summaryRaw.isNotEmpty) {
+          try { summary = jsonDecode(summaryRaw); } catch (_) {}
+        }
+
+        final recCount = imp['record_count'] as int? ?? 0;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ExpansionTile(
+            leading: CircleAvatar(
+              backgroundColor: AppColors.primarySurface,
+              child: const Icon(Icons.download_done_rounded, color: AppColors.primary),
+            ),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Update from $wName',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
+                ),
+                OwnershipBadge(createdBy: 'worker', workerName: wName),
+              ],
+            ),
+            subtitle: Text(
+              'Imported: ${AppFormatters.dateTime(importedAt)}\nDevice: $devName • Records: $recCount',
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Divider(height: 16),
+                    const Text('Imported Data Breakdown:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        if ((summary['areas'] ?? 0) > 0)
+                          _statChip('🗺️ Areas: ${summary['areas']}'),
+                        if ((summary['streets'] ?? 0) > 0)
+                          _statChip('🛣️ Streets: ${summary['streets']}'),
+                        if ((summary['customers'] ?? 0) > 0)
+                          _statChip('👤 Customers: ${summary['customers']}'),
+                        if ((summary['orders'] ?? 0) > 0)
+                          _statChip('🛒 Orders: ${summary['orders']}'),
+                        if ((summary['payments'] ?? 0) > 0)
+                          _statChip('💳 Payments: ${summary['payments']}'),
+                        if ((summary['expenses'] ?? 0) > 0)
+                          _statChip('💸 Expenses: ${summary['expenses']}'),
+                        if ((summary['photos'] ?? 0) > 0)
+                          _statChip('📷 Photos: ${summary['photos']}'),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text('Package ID: $pkgId', style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _statChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primarySurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+      ),
+      child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
     );
   }
 
@@ -209,15 +369,7 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
             ),
             title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
             subtitle: Text('Phone: $phone • Added on ${AppFormatters.shortDate(createdAt)}'),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.purple.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.purple.shade200),
-              ),
-              child: Text('By: $wName', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.purple)),
-            ),
+            trailing: OwnershipBadge(createdBy: 'worker', workerName: wName),
           ),
         );
       },
@@ -255,39 +407,32 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
               backgroundColor: AppColors.successSurface,
               child: Icon(Icons.shopping_cart_rounded, color: AppColors.success),
             ),
-            title: Text('Order #${id.substring(0, 6)} • ${AppFormatters.currency(amount)}', style: const TextStyle(fontWeight: FontWeight.w800)),
+            title: Text('Order #${id.length > 6 ? id.substring(0, 6) : id} • ${AppFormatters.currency(amount)}', style: const TextStyle(fontWeight: FontWeight.w800)),
             subtitle: Text('Date: ${AppFormatters.shortDate(createdAt)} • Status: ${o['delivery_status']}'),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.indigo.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.indigo.shade200),
-              ),
-              child: Text('By: $wName', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.indigo)),
-            ),
+            trailing: OwnershipBadge(createdBy: 'worker', workerName: wName),
           ),
         );
       },
     );
   }
 
-  Widget _buildImportHistoryList() {
-    if (_importLogs.isEmpty) {
+  Widget _buildAreasList() {
+    final areas = _filteredAreas();
+    if (areas.isEmpty) {
       return const EmptyStateWidget(
-        icon: Icons.history_rounded,
-        title: 'No Import Packages Yet',
-        subtitle: 'Imported package records from workers will appear here.',
+        icon: Icons.map_rounded,
+        title: 'No Worker Areas / Streets',
+        subtitle: 'Areas and streets created by workers will appear here.',
       );
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _importLogs.length,
+      itemCount: areas.length,
       itemBuilder: (ctx, i) {
-        final imp = _importLogs[i];
-        final pkgId = imp['package_id']?.toString() ?? 'Package';
-        final importedAt = DateTime.tryParse(imp['imported_at']?.toString() ?? '') ?? DateTime.now();
-        final modules = imp['modules']?.toString() ?? 'All Modules';
+        final a = areas[i];
+        final name = a['name']?.toString() ?? 'Area';
+        final wName = a['worker_name']?.toString() ?? 'Worker';
+        final createdAt = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime.now();
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -299,11 +444,11 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
           child: ListTile(
             leading: const CircleAvatar(
               backgroundColor: AppColors.primarySurface,
-              child: Icon(Icons.inventory_2_rounded, color: AppColors.primary),
+              child: Icon(Icons.map_rounded, color: AppColors.primary),
             ),
-            title: Text('Import: ${pkgId.length > 12 ? pkgId.substring(0, 12) : pkgId}', style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text('Imported on ${AppFormatters.dateTime(importedAt)}\nModules: $modules'),
-            isThreeLine: true,
+            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: Text('Created: ${AppFormatters.dateTime(createdAt)}'),
+            trailing: OwnershipBadge(createdBy: 'worker', workerName: wName),
           ),
         );
       },

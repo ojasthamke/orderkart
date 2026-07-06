@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:convert';
 import 'dart:io';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
@@ -232,13 +234,40 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       // Perform non-destructive merge into target DB
       final stats = await DatabaseHelper.instance.mergeDatabaseFromPath(dbFileToMerge);
 
+      // Record in import_history table for worker updates tracking
+      try {
+        final db = await DatabaseHelper.instance.database;
+        final manifest = validation.manifest;
+        final pkgId = manifest['package_id']?.toString() ?? const Uuid().v4();
+        final wId = manifest['generated_by_worker_id']?.toString() ?? '';
+        final wName = manifest['generated_by_worker_name']?.toString() ?? (manifest['generated_by_name']?.toString() ?? 'Worker');
+        final devName = manifest['device_name']?.toString() ?? 'Mobile Device';
+
+        final summaryMap = <String, int>{};
+        stats.forEach((key, val) {
+          summaryMap[key] = (val['inserted'] ?? 0) + (val['updated'] ?? 0);
+        });
+
+        await db.insert('import_history', {
+          'id': const Uuid().v4(),
+          'package_id': pkgId,
+          'imported_at': DateTime.now().toIso8601String(),
+          'worker_id': wId,
+          'worker_name': wName,
+          'device_name': devName,
+          'record_count': stats.values.fold<int>(0, (sum, m) => sum + ((m['inserted'] as num?)?.toInt() ?? 0) + ((m['updated'] as num?)?.toInt() ?? 0)),
+          'summary_json': jsonEncode(summaryMap),
+          'status': 'success',
+        });
+      } catch (_) {}
+
       if (mounted) {
         final totalInserted = stats.values.fold(0, (sum, m) => sum + (m['inserted'] ?? 0));
         final totalUpdated  = stats.values.fold(0, (sum, m) => sum + (m['updated'] ?? 0));
         final totalSkipped  = stats.values.fold(0, (sum, m) => sum + (m['skipped'] ?? 0));
 
         final summaryLines = stats.entries
-            .where((e) => (e.value['inserted']! + e.value['updated']!) > 0)
+            .where((e) => ((e.value['inserted'] ?? 0) + (e.value['updated'] ?? 0)) > 0)
             .map((e) => '• ${e.key.toUpperCase()}: ${e.value['inserted']} added, ${e.value['updated']} updated, ${e.value['skipped']} skipped')
             .join('\n');
 
