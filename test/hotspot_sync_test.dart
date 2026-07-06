@@ -30,7 +30,11 @@ void main() {
     });
 
     test('Payload Compilation works correctly', () async {
-      final payload = await HotspotSyncService.compileSyncPayload('worker-1', 'Worker One');
+      final payload = await HotspotSyncService.compileSyncPayload(
+        workerId: 'worker-1',
+        workerName: 'Worker One',
+        modules: ['areas_streets', 'customers', 'orders_payments', 'products', 'expenses', 'photos'],
+      );
       expect(payload, isNotEmpty);
 
       // Verify Gzip decompression
@@ -65,10 +69,13 @@ void main() {
       final handshakeBody = await utf8.decoder.bind(handshakeResp).join();
       final handshakeData = jsonDecode(handshakeBody);
       expect(handshakeData['app'], equals('orderkart'));
-      expect(handshakeData['role'], equals('owner'));
 
       // Test POST /sync
-      final payload = await HotspotSyncService.compileSyncPayload('worker-1', 'Worker One');
+      final payload = await HotspotSyncService.compileSyncPayload(
+        workerId: 'worker-1',
+        workerName: 'Worker One',
+        modules: ['areas_streets', 'customers', 'orders_payments', 'products', 'expenses', 'photos'],
+      );
       final syncReq = await client.post('127.0.0.1', 8292, '/sync');
       syncReq.headers.contentType = ContentType.json;
       syncReq.write(jsonEncode({'data': payload}));

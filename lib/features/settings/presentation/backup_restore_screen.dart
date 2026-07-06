@@ -22,6 +22,7 @@ import '../../../core/services/package_validator.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/services/hotspot_sync_service.dart';
+import '../../../core/widgets/hotspot_sync_control_card.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -63,36 +64,12 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
               ),
             ],
           ),
-          _SectionCard(
-            title:    'Offline Hotspot Sync (Receiver)',
-            icon:     Icons.wifi_tethering_rounded,
-            iconColor: Colors.deepOrange,
-            children: [
-              SwitchListTile(
-                value: HotspotSyncService.isServerRunning,
-                title: const Text('Enable Hotspot Sync Receiver'),
-                subtitle: const Text('Listen for incoming sync updates from connected workers on your hotspot'),
-                activeColor: Colors.deepOrange,
-                onChanged: (val) async {
-                  if (val) {
-                    await HotspotSyncService.startServer(
-                      onStatusUpdate: (status) {
-                        if (mounted) SnackbarHelper.showInfo(context, status);
-                      },
-                      onSyncSuccess: () {
-                        if (mounted) {
-                          SnackbarHelper.showSuccess(context, '✅ Data synced successfully from worker device!');
-                          setState(() {});
-                        }
-                      },
-                    );
-                  } else {
-                    await HotspotSyncService.stopServer();
-                  }
-                  setState(() {});
-                },
-              ),
-            ],
+          HotspotSyncControlCard(
+            workerId: 'owner',
+            workerName: 'Owner',
+            onSyncCompleted: () {
+              if (mounted) setState(() {});
+            },
           ),
           const SizedBox(height: 16),
           _SectionCard(
