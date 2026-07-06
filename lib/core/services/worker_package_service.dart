@@ -296,6 +296,8 @@ class WorkerPackageService {
   static Future<void> generateWorkerReportPackage({
     required String workerId,
     required String workerName,
+    String? customFileName,
+    bool isIncremental = false,
   }) async {
     final mainDb = await DatabaseHelper.instance.database;
 
@@ -316,10 +318,32 @@ class WorkerPackageService {
       where: 'worker_id = ?',
       whereArgs: [workerId],
     );
-    if (secRes.isEmpty) {
-      throw Exception('Worker credentials not found.');
+
+    String secretKey = '';
+    if (secRes.isNotEmpty) {
+      secretKey = secRes.first['worker_secret']?.toString() ?? '';
     }
-    final String secretKey = secRes.first['worker_secret']?.toString() ?? '';
+    if (secretKey.isEmpty) {
+      secretKey = SecurityHelper.generateOwnerSecret();
+      await mainDb.insert(
+        'worker_security',
+        {
+          'worker_id': workerId,
+          'worker_secret': secretKey,
+          'created_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    // Check last sync timestamp for incremental export
+    String lastSyncTime = '';
+    if (isIncremental) {
+      final syncRow = await mainDb.query('settings', where: 'key = ?', whereArgs: ['last_owner_sync_timestamp']);
+      if (syncRow.isNotEmpty) {
+        lastSyncTime = syncRow.first['value']?.toString() ?? '';
+      }
+    }
 
     // Create temporary workspace directory
     final tempDir = await getTemporaryDirectory();
@@ -329,8 +353,10 @@ class WorkerPackageService {
 
     // Query Data Scoped to the Worker's field edits
     final customersRows = await mainDb.query('customers');
-    final ordersRows = await mainDb.query('orders');
-    
+    final ordersRows = lastSyncTime.isNotEmpty
+        ? await mainDb.query('orders', where: 'created_at >= ? OR updated_at >= ?', whereArgs: [lastSyncTime, lastSyncTime])
+        : await mainDb.query('orders');
+
     final List<String> orderIds = ordersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
     final List<Map<String, dynamic>> orderItemsRows = orderIds.isEmpty
         ? []
@@ -344,6 +370,23 @@ class WorkerPackageService {
     final notesRows = await mainDb.query('notes');
     final visitsRows = await mainDb.query('visits');
     final workerReportsRows = await mainDb.query('worker_reports', where: 'worker_id = ?', whereArgs: [workerId]);
+
+    // Create scoped SQLite database file for direct DB import compatibility
+    final scopedDbFile = File('${packageDir.path}/database.db');
+    if (scopedDbFile.existsSync()) scopedDbFile.deleteSync();
+    final scopedDb = await openDatabase(scopedDbFile.path, version: AppConstants.dbVersion, onCreate: (db, v) async {
+      await DatabaseHelper.instance.createTablesForDatabase(db);
+    });
+
+    for (final r in customersRows) { await scopedDb.insert('customers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in ordersRows) { await scopedDb.insert('orders', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in orderItemsRows) { await scopedDb.insert('order_items', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in paymentsRows) { await scopedDb.insert('payments', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in expensesRows) { await scopedDb.insert('expenses', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in notesRows) { await scopedDb.insert('notes', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in visitsRows) { await scopedDb.insert('visits', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in workerReportsRows) { await scopedDb.insert('worker_reports', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    await scopedDb.close();
 
     // Serialize and Encrypt JSON files helper
     Future<void> writeEncryptedJson(String filename, dynamic data) async {
@@ -386,7 +429,7 @@ class WorkerPackageService {
     // Calculate file hashes
     final fileHashes = <String, String>{};
     final List<String> jsonFiles = [
-      'customers.json', 'orders.json', 'order_items.json', 'payments.json', 'expenses.json',
+      'database.db', 'customers.json', 'orders.json', 'order_items.json', 'payments.json', 'expenses.json',
       'notes.json', 'visits.json', 'worker_reports.json'
     ];
     for (final f in jsonFiles) {
@@ -415,6 +458,7 @@ class WorkerPackageService {
       'generated_by_worker_id': workerId,
       'generated_by_worker_name': workerName,
       'is_worker_provisioning_package': false,
+      'worker_secret': secretKey,
       'device_name': Platform.localHostname,
       'platform': Platform.operatingSystem,
       'device_id': 'mock_device_id_${Platform.operatingSystem.hashCode.abs()}',
@@ -437,16 +481,19 @@ class WorkerPackageService {
     final checksumFile = File('${packageDir.path}/checksum.sha256');
     await checksumFile.writeAsString(manifestHash);
 
-    // Create ZIP package
-    final zipFile = File('${tempDir.path}/WorkerReport.orderkart');
+    // Create ZIP package with custom filename
+    final fileNameToUse = customFileName ?? 'WorkerReport.orderkart';
+    final zipFile = File('${tempDir.path}/$fileNameToUse');
     if (zipFile.existsSync()) zipFile.deleteSync();
 
     final encoder = ZipFileEncoder();
     encoder.create(zipFile.path);
     encoder.addFile(manifestFile, 'manifest.json');
     encoder.addFile(checksumFile, 'checksum.sha256');
+    encoder.addFile(scopedDbFile, 'database.db');
     for (final f in jsonFiles) {
-      encoder.addFile(File('${packageDir.path}/$f'), f);
+      final file = File('${packageDir.path}/$f');
+      if (file.existsSync()) encoder.addFile(file, f);
     }
     for (final f in photoList) {
       if (f is File) encoder.addFile(f, 'photos/${p.basename(f.path)}');
@@ -464,6 +511,14 @@ class WorkerPackageService {
       'record_count': jsonFiles.length,
       'status': 'success',
     });
+
+    // Update last sync timestamp if incremental
+    if (isIncremental) {
+      await mainDb.insert('settings', {
+        'key': 'last_owner_sync_timestamp',
+        'value': DateTime.now().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
 
     // Cleanup temp files
     if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);

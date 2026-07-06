@@ -12,6 +12,7 @@ import '../../../core/services/worker_permission_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../data/worker_dao.dart';
 import '../domain/worker.dart';
@@ -280,66 +281,120 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                 // --- WORKER IMPORT & EXPORT SECTION ---
                 const Text('Worker Data Import & Export', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 4),
-                const Text('Import updated packages from Owner or export your daily work report:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const Text('Import packages from Owner or export work updates with custom file names:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 const SizedBox(height: 12),
 
+                // 1. Import Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      AppHaptics.buttonClick();
+                      try {
+                        final result = await FilePicker.platform.pickFiles(type: FileType.any);
+                        if (result == null || result.files.single.path == null) return;
+                        final path = result.files.single.path!;
+                        final val = await PackageValidator.validatePackage(path);
+                        if (!val.isValid) {
+                          if (context.mounted) SnackbarHelper.showError(context, 'Invalid Package: ${val.errorMessage}');
+                          return;
+                        }
+                        await DatabaseHelper.instance.mergeDatabaseFromPath(val.dbPath, selectedModules: ['entire_db']);
+                        ref.refresh(currentWorkerProfileProvider);
+                        if (context.mounted) SnackbarHelper.showSuccess(context, '✅ Owner package imported successfully!');
+                      } catch (e) {
+                        if (context.mounted) SnackbarHelper.showError(context, 'Import failed: $e');
+                      }
+                    },
+                    icon: const Icon(Icons.file_download_rounded),
+                    label: const Text('Import Package from Owner'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 2 Export Buttons Side-by-Side
                 Row(
                   children: [
+                    // Button 1: Export Entire Worker Backup
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           AppHaptics.buttonClick();
+                          final defaultName = 'Worker_FullBackup_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
+                          final customName = await ExportFilenameDialog.show(
+                            context,
+                            defaultName: defaultName,
+                            extension: '.orderkart',
+                            title: 'Name Worker Backup File',
+                          );
+                          if (customName == null) return;
+
                           try {
-                            final result = await FilePicker.platform.pickFiles(type: FileType.any);
-                            if (result == null || result.files.single.path == null) return;
-                            final path = result.files.single.path!;
-                            final val = await PackageValidator.validatePackage(path);
-                            if (!val.isValid) {
-                              if (context.mounted) SnackbarHelper.showError(context, 'Invalid Package: ${val.errorMessage}');
-                              return;
+                            await PackageExporter.exportPackage(
+                              selectedModules: ['entire_db', 'photos', 'settings'],
+                              workerId: worker.id,
+                              workerName: worker.name,
+                              customFileName: customName,
+                            );
+                            if (context.mounted) {
+                              SnackbarHelper.showSuccess(context, '✅ Full Backup "$customName" exported!');
                             }
-                            await DatabaseHelper.instance.mergeDatabaseFromPath(val.dbPath, selectedModules: ['entire_db']);
-                            ref.refresh(currentWorkerProfileProvider);
-                            if (context.mounted) SnackbarHelper.showSuccess(context, '✅ Owner package imported successfully!');
                           } catch (e) {
-                            if (context.mounted) SnackbarHelper.showError(context, 'Import failed: $e');
+                            if (context.mounted) SnackbarHelper.showError(context, 'Export failed: $e');
                           }
                         },
-                        icon: const Icon(Icons.file_download_rounded),
-                        label: const Text('Import Package'),
+                        icon: const Icon(Icons.inventory_2_rounded),
+                        label: const Text('Export Entire Backup', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
+                          backgroundColor: Colors.indigo,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
+
+                    // Button 2: Share Data to Update Owner
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           AppHaptics.buttonClick();
+                          final defaultName = 'Update_Owner_Data_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
+                          final customName = await ExportFilenameDialog.show(
+                            context,
+                            defaultName: defaultName,
+                            extension: '.orderkart',
+                            title: 'Name Owner Update File',
+                          );
+                          if (customName == null) return;
+
                           try {
                             await WorkerPackageService.generateWorkerReportPackage(
                               workerId: worker.id,
                               workerName: worker.name,
+                              customFileName: customName,
+                              isIncremental: true,
                             );
                             if (context.mounted) {
-                              SnackbarHelper.showSuccess(context, '✅ Worker report package exported!');
+                              SnackbarHelper.showSuccess(context, '✅ Data update "$customName" shared with Owner!');
                             }
                           } catch (e) {
-                            if (context.mounted) {
-                              SnackbarHelper.showError(context, 'Export failed: $e');
-                            }
+                            if (context.mounted) SnackbarHelper.showError(context, 'Export failed: $e');
                           }
                         },
-                        icon: const Icon(Icons.share_rounded),
-                        label: const Text('Export Report'),
+                        icon: const Icon(Icons.sync_alt_rounded),
+                        label: const Text('Share Data to Update Owner', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),

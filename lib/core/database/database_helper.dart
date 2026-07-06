@@ -131,6 +131,12 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_visits_date ON visits(date)');
   }
 
+  Future<void> createTablesForDatabase(Database db) async {
+    await _createTables(db);
+    await _ensureVipColumns(db);
+    await _ensureV4Columns(db);
+  }
+
   Future<void> _createTables(Database db) async {
     // Areas
     await db.execute('''
@@ -548,6 +554,25 @@ class DatabaseHelper {
 
           List<Map<String, dynamic>> existing;
           if (table == 'settings') {
+            final key = id.toLowerCase();
+            const protectedKeys = {
+              'app_mode',
+              'owner_pin_hash',
+              'owner_pin_salt',
+              'app_initialized',
+              'active_worker_id',
+              'owner_secret',
+              'owner_secret_v1',
+              'owner_secret_v2',
+              'owner_failed_pin_attempts',
+              'owner_pin_lockout_until',
+            };
+            if (protectedKeys.contains(key)) {
+              skipped++;
+              processedRows++;
+              onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+              continue; // Protect local session keys from being overwritten!
+            }
             existing = await dbExecutor.query(table, where: 'key = ?', whereArgs: [id]);
           } else if (table == 'worker_permissions') {
             existing = await dbExecutor.query(table, where: 'worker_id = ?', whereArgs: [id]);

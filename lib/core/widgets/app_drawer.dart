@@ -92,8 +92,8 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                   
-                  // ONLY SHOW WORKER MANAGEMENT IF IN OWNER MODE!
-                  if (!isWorker)
+                  // ONLY SHOW WORKER MANAGEMENT & PERMISSION MANAGER IF IN OWNER MODE!
+                  if (!isWorker) ...[
                     _DrawerItem(
                       icon: Icons.badge_rounded,
                       title: 'Worker Management',
@@ -105,6 +105,18 @@ class AppDrawer extends ConsumerWidget {
                         }
                       },
                     ),
+                    _DrawerItem(
+                      icon: Icons.admin_panel_settings_rounded,
+                      title: 'Worker Permission Manager',
+                      iconColor: Colors.deepPurple,
+                      onTap: () async {
+                        Navigator.pop(context);
+                        if (await OwnerPinDialog.verify(context, title: 'Worker Permission Manager')) {
+                          Navigator.pushNamed(context, AppRoutes.workers);
+                        }
+                      },
+                    ),
+                  ],
 
                   _DrawerItem(
                     icon: Icons.map_rounded,

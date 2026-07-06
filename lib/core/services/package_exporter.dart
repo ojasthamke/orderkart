@@ -36,6 +36,7 @@ class PackageExporter {
     List<String>? selectedNoteIds,
     String workerId = '',
     String workerName = '',
+    String? customFileName,
   }) async {
     final mainDb = await DatabaseHelper.instance.database;
     await mainDb.rawQuery('PRAGMA wal_checkpoint(FULL);');
@@ -388,7 +389,7 @@ class PackageExporter {
     await checksumFile.writeAsString(manifestHash);
 
     // Create the final zip archive containing the structured folders
-    final zipFilename = selectedModules.contains('entire_db') ? 'BusinessBackup.orderkart' : 'OrderKartPackage.zip';
+    final zipFilename = customFileName ?? (selectedModules.contains('entire_db') ? 'BusinessBackup.orderkart' : 'OrderKartPackage.zip');
     final zipFile = File('${tempDir.path}/$zipFilename');
     if (zipFile.existsSync()) zipFile.deleteSync();
 

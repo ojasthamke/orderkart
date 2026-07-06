@@ -17,6 +17,8 @@ import 'package:archive/archive_io.dart';
 import 'dialogs/export_wizard_dialog.dart';
 import '../../../core/services/package_exporter.dart';
 import '../../../core/services/package_validator.dart';
+import '../../../core/security/app_mode_service.dart';
+import '../../../core/widgets/export_filename_dialog.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -98,13 +100,23 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   }
 
   Future<void> _exportBusinessBackup() async {
+    final defaultName = 'BusinessBackup_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
+    final customName = await ExportFilenameDialog.show(
+      context,
+      defaultName: defaultName,
+      extension: '.orderkart',
+      title: 'Name Business Backup File',
+    );
+    if (customName == null) return;
+
     setState(() => _loading = true);
     try {
       await PackageExporter.exportPackage(
         selectedModules: ['entire_db', 'photos', 'settings'],
+        customFileName: customName,
       );
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Full Business Backup created and verified successfully!');
+        SnackbarHelper.showSuccess(context, 'Full Business Backup "$customName" created successfully!');
       }
     } catch (e) {
       if (mounted) {
@@ -152,6 +164,9 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       final srcPath = result.files.first.path!;
       final dbPath  = await DatabaseHelper.instance.database.then((db) => db.path);
 
+      // Preserve current active mode before replacing database file
+      final currentMode = await AppModeService.getAppMode();
+
       // Enterprise validation & extraction (.orderkart, .zip, .db)
       final validation = await PackageValidator.validatePackage(srcPath);
       if (!validation.isValid) {
@@ -171,6 +186,12 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
 
       // Reinitialize connection
       await DatabaseHelper.instance.database;
+
+      // Restore current app mode and active session so Owner is NEVER logged out!
+      await AppModeService.setAppMode(currentMode);
+      if (currentMode == AppMode.owner) {
+        AppModeService.loginOwnerSuccess();
+      }
 
       if (mounted) {
         SnackbarHelper.showSuccess(context, 'Backup restored successfully!');

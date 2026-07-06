@@ -35,6 +35,13 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
       title: 'Worker Management',
       actions: [
         IconButton(
+          icon: const Icon(Icons.admin_panel_settings_rounded, color: Colors.deepPurple),
+          tooltip: 'Permission Manager',
+          onPressed: () {
+            SnackbarHelper.showInfo(context, 'Select any worker below to configure permissions.');
+          },
+        ),
+        IconButton(
           icon: const Icon(Icons.analytics_rounded),
           tooltip: 'Worker Analytics',
           onPressed: () => Navigator.pushNamed(context, AppRoutes.workerAnalytics),
