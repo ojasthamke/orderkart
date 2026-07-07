@@ -328,6 +328,16 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                          }
                          await DatabaseHelper.instance.mergeDatabaseFromPath(val.dbPath, selectedModules: ['entire_db']);
                          ref.invalidate(currentWorkerProfileProvider);
+                         ref.invalidate(areaProvider);
+                         ref.invalidate(allCustomersProvider);
+                         ref.invalidate(orderManagementProvider);
+                         ref.invalidate(analyticsSummaryProvider);
+                         ref.invalidate(weeklyChartProvider);
+                         ref.invalidate(monthlyChartProvider);
+                         ref.invalidate(expenseProvider);
+                         ref.invalidate(monthlySummaryProvider);
+                         ref.invalidate(importHistoryProvider);
+                         ref.invalidate(workerSyncHistoryProvider);
                          if (context.mounted) SnackbarHelper.showSuccess(context, '✅ Owner package imported successfully!');
                        } catch (e) {
                          if (context.mounted) SnackbarHelper.showError(context, 'Import failed: $e');

@@ -212,6 +212,18 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       // Reinitialize connection
       await DatabaseHelper.instance.database;
 
+      // Invalidate cache to auto-update screens
+      ref.invalidate(areaProvider);
+      ref.invalidate(allCustomersProvider);
+      ref.invalidate(orderManagementProvider);
+      ref.invalidate(analyticsSummaryProvider);
+      ref.invalidate(weeklyChartProvider);
+      ref.invalidate(monthlyChartProvider);
+      ref.invalidate(expenseProvider);
+      ref.invalidate(monthlySummaryProvider);
+      ref.invalidate(importHistoryProvider);
+      ref.invalidate(workerSyncHistoryProvider);
+
       // Restore current app mode and active session so Owner is NEVER logged out!
       await AppModeService.setAppMode(currentMode);
       if (currentMode == AppMode.owner) {
@@ -256,6 +268,18 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
 
       // Perform non-destructive merge into target DB
       final stats = await DatabaseHelper.instance.mergeDatabaseFromPath(dbFileToMerge);
+
+      // Invalidate cache to auto-update screens
+      ref.invalidate(areaProvider);
+      ref.invalidate(allCustomersProvider);
+      ref.invalidate(orderManagementProvider);
+      ref.invalidate(analyticsSummaryProvider);
+      ref.invalidate(weeklyChartProvider);
+      ref.invalidate(monthlyChartProvider);
+      ref.invalidate(expenseProvider);
+      ref.invalidate(monthlySummaryProvider);
+      ref.invalidate(importHistoryProvider);
+      ref.invalidate(workerSyncHistoryProvider);
 
       // Record in import_history table for worker updates tracking
       try {
