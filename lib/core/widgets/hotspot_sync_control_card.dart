@@ -342,8 +342,8 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                 hintText: 'e.g. 123456',
                 border: OutlineInputBorder(),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
