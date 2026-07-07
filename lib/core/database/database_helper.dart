@@ -625,7 +625,9 @@ class DatabaseHelper {
               }
               if (hasChanged) {
                 if (!dryRun) {
-                  if (table == 'worker_permissions') {
+                  if (table == 'settings') {
+                    await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
+                  } else if (table == 'worker_permissions') {
                     await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
                   } else {
                     await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);
@@ -834,7 +836,9 @@ class DatabaseHelper {
               }
               if (hasChanged) {
                 if (!dryRun) {
-                  if (table == 'worker_permissions') {
+                  if (table == 'settings') {
+                    await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
+                  } else if (table == 'worker_permissions') {
                     await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
                   } else {
                     await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);

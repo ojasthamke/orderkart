@@ -31,8 +31,10 @@ class PackageValidator {
   /// Helper to compare two semantic versions. Returns true if appVer >= minSupportedVer.
   static bool isVersionCompatible(String appVer, String minSupportedVer) {
     try {
-      final appParts = appVer.split('.').map(int.parse).toList();
-      final minParts = minSupportedVer.split('.').map(int.parse).toList();
+      final cleanApp = appVer.split('+').first.split('-').first;
+      final cleanMin = minSupportedVer.split('+').first.split('-').first;
+      final appParts = cleanApp.split('.').map(int.parse).toList();
+      final minParts = cleanMin.split('.').map(int.parse).toList();
       for (int i = 0; i < 3; i++) {
         final aVal = i < appParts.length ? appParts[i] : 0;
         final mVal = i < minParts.length ? minParts[i] : 0;
