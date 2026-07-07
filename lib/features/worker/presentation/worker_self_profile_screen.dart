@@ -25,7 +25,23 @@ import '../../inventory/presentation/inventory_provider.dart';
 import '../../street/presentation/street_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
 
-final currentWorkerProfileProvider = FutureProvider<Worker?>((ref) async {
+class WorkerProfileData {
+  final Worker worker;
+  final int totalOrders;
+  final double totalSales;
+  final double pendingDues;
+  final int totalNotes;
+
+  WorkerProfileData({
+    required this.worker,
+    required this.totalOrders,
+    required this.totalSales,
+    required this.pendingDues,
+    required this.totalNotes,
+  });
+}
+
+final currentWorkerProfileProvider = FutureProvider<WorkerProfileData?>((ref) async {
   final db = await DatabaseHelper.instance.database;
   final workers = await db.query('workers', limit: 1);
   if (workers.isEmpty) return null;
@@ -37,11 +53,24 @@ final currentWorkerProfileProvider = FutureProvider<Worker?>((ref) async {
   final streetRes = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"', [w.id]);
   final collRes = await db.rawQuery('SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?', [w.id]);
 
-  return w.copyWith(
+  final orderRes = await db.rawQuery('SELECT COUNT(*) as v FROM orders WHERE assigned_worker_id = ?', [w.id]);
+  final salesRes = await db.rawQuery('SELECT COALESCE(SUM(grand_total), 0) as v FROM orders WHERE assigned_worker_id = ?', [w.id]);
+  final duesRes = await db.rawQuery('SELECT COALESCE(SUM(remaining_amount), 0) as v FROM orders WHERE assigned_worker_id = ?', [w.id]);
+  final noteRes = await db.rawQuery('SELECT COUNT(*) as v FROM notes WHERE worker_id = ?', [w.id]);
+
+  final workerWithCounts = w.copyWith(
     assignedCustomersCount: (custRes.first['v'] as num?)?.toInt() ?? 0,
     assignedAreasCount: (areaRes.first['v'] as num?)?.toInt() ?? 0,
     assignedStreetsCount: (streetRes.first['v'] as num?)?.toInt() ?? 0,
     totalCollection: (collRes.first['v'] as num?)?.toDouble() ?? 0.0,
+  );
+
+  return WorkerProfileData(
+    worker: workerWithCounts,
+    totalOrders: (orderRes.first['v'] as num?)?.toInt() ?? 0,
+    totalSales: (salesRes.first['v'] as num?)?.toDouble() ?? 0.0,
+    pendingDues: (duesRes.first['v'] as num?)?.toDouble() ?? 0.0,
+    totalNotes: (noteRes.first['v'] as num?)?.toInt() ?? 0,
   );
 });
 
@@ -88,8 +117,9 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
   }
 
   Future<void> _initProfile() async {
-    final worker = await ref.read(currentWorkerProfileProvider.future);
-    if (worker != null) {
+    final profileData = await ref.read(currentWorkerProfileProvider.future);
+    if (profileData != null) {
+      final worker = profileData.worker;
       await _ensureWorkerSecurity(worker.id);
       
       // Start Wi-Fi automatic connection sync listener
@@ -142,8 +172,8 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
       body: workerAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (err, _) => Center(child: Text('Error loading profile: $err')),
-        data: (worker) {
-          if (worker == null) {
+        data: (profileData) {
+          if (profileData == null) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
@@ -155,6 +185,8 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
               ),
             );
           }
+
+          final worker = profileData.worker;
 
           final targetPct = worker.monthlyTarget > 0
               ? (worker.totalCollection / worker.monthlyTarget).clamp(0.0, 1.0)
@@ -300,6 +332,26 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                     Expanded(child: _metricTile('Assigned Streets', '${worker.assignedStreetsCount}', Icons.alt_route_rounded, Colors.indigo)),
                     const SizedBox(width: 10),
                     Expanded(child: _metricTile('My Customers', '${worker.assignedCustomersCount}', Icons.people_rounded, Colors.orange)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                const Text('Sales & Visit Performance', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const SizedBox(height: 10),
+
+                Row(
+                  children: [
+                    Expanded(child: _metricTile('Total Orders', '${profileData.totalOrders}', Icons.receipt_long_rounded, Colors.purple)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _metricTile('Total Sales', AppFormatters.currency(profileData.totalSales), Icons.shopping_cart_checkout_rounded, AppColors.success)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(child: _metricTile('Pending Dues', AppFormatters.currency(profileData.pendingDues), Icons.hourglass_empty_rounded, Colors.red)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _metricTile('Logged Notes', '${profileData.totalNotes}', Icons.note_alt_rounded, Colors.teal)),
                   ],
                 ),
                 const SizedBox(height: 24),
