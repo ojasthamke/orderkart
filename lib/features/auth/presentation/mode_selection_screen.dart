@@ -62,27 +62,29 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
             Text('Owner Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Enter the 6-digit Owner Activation Code to register as Master Owner:',
-              style: TextStyle(fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _activationCodeCon,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 2, fontSize: 18),
-              decoration: const InputDecoration(
-                hintText: 'Enter Code',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.key_rounded),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter the 6-digit Owner Activation Code to register as Master Owner:',
+                style: TextStyle(fontSize: 13, height: 1.4),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextField(
+                controller: _activationCodeCon,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 2, fontSize: 18),
+                decoration: const InputDecoration(
+                  hintText: 'Enter Code',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.key_rounded),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -124,41 +126,43 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
             Text('Create Owner PIN', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Create a 6-digit security PIN to protect Master Settings, Inventory, Prices, Reports & Backups:',
-              style: TextStyle(fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _pinCon,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
-              style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 4, fontSize: 18),
-              decoration: const InputDecoration(
-                hintText: 'Enter 6-Digit PIN',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock_outline_rounded),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Create a 6-digit security PIN to protect Master Settings, Inventory, Prices, Reports & Backups:',
+                style: TextStyle(fontSize: 13, height: 1.4),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _confirmPinCon,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
-              style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 4, fontSize: 18),
-              decoration: const InputDecoration(
-                hintText: 'Confirm PIN',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock_clock_rounded),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _pinCon,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 6,
+                style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 4, fontSize: 18),
+                decoration: const InputDecoration(
+                  hintText: 'Enter 6-Digit PIN',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock_outline_rounded),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              TextField(
+                controller: _confirmPinCon,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 6,
+                style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 4, fontSize: 18),
+                decoration: const InputDecoration(
+                  hintText: 'Confirm PIN',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock_clock_rounded),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -278,88 +282,101 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 36),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Welcome to OrderKart',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Select Application Mode for this device:',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 32),
-
-              // Mode Cards
-              _buildModeOption(
-                mode: AppMode.owner,
-                title: 'Owner Mode (Master)',
-                subtitle: 'Full Business Access, Inventory Control, Reports, PIN Security & Worker Assignments.',
-                icon: Icons.admin_panel_settings_rounded,
-                color: AppColors.primary,
-              ),
-              const SizedBox(height: 16),
-              _buildModeOption(
-                mode: AppMode.worker,
-                title: 'Worker Mode (Child)',
-                subtitle: 'Assigned Areas, Create Orders, Collect Payments, Track Earnings & Offline Sync.',
-                icon: Icons.badge_rounded,
-                color: const Color(0xFF0EA5E9),
-              ),
-
-              const Spacer(),
-
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _proceed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: _loading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          _selectedMode == AppMode.owner ? 'Continue as Owner' : 'Continue as Worker',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySurface,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 36),
                         ),
-                ),
-              ),
-              const SizedBox(height: 12),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Welcome to OrderKart',
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Select Application Mode for this device:',
+                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 32),
 
-              // --- PROVISIONING PACKAGE BUTTON FOR WORKERS ---
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _loading ? null : _importOwnerProvisioningZip,
-                  icon: const Icon(Icons.download_for_offline_rounded, color: Color(0xFF0284C7)),
-                  label: const Text('Apply Owner Provisioning ZIP (.orderkart)',
-                      style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0284C7))),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: Color(0xFF0284C7)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        // Mode Cards
+                        _buildModeOption(
+                          mode: AppMode.owner,
+                          title: 'Owner Mode (Master)',
+                          subtitle: 'Full Business Access, Inventory Control, Reports, PIN Security & Worker Assignments.',
+                          icon: Icons.admin_panel_settings_rounded,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildModeOption(
+                          mode: AppMode.worker,
+                          title: 'Worker Mode (Child)',
+                          subtitle: 'Assigned Areas, Create Orders, Collect Payments, Track Earnings & Offline Sync.',
+                          icon: Icons.badge_rounded,
+                          color: const Color(0xFF0EA5E9),
+                        ),
+
+                        const Spacer(),
+                        const SizedBox(height: 24),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: _loading ? null : _proceed,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: _loading
+                                ? const CircularProgressIndicator(color: Colors.white)
+                                : Text(
+                                    _selectedMode == AppMode.owner ? 'Continue as Owner' : 'Continue as Worker',
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // --- PROVISIONING PACKAGE BUTTON FOR WORKERS ---
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _loading ? null : _importOwnerProvisioningZip,
+                            icon: const Icon(Icons.download_for_offline_rounded, color: Color(0xFF0284C7)),
+                            label: const Text('Apply Owner Provisioning ZIP (.orderkart)',
+                                style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0284C7))),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(color: Color(0xFF0284C7)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

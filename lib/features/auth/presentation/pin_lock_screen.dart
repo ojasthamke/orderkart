@@ -200,56 +200,72 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       body: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(),
-            
-            // --- HEADER INFO ---
-            const Icon(Icons.lock_rounded, size: 54, color: AppColors.primary),
-            const SizedBox(height: 16),
-            Text(
-              'Welcome Back, $_targetName',
-              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _lockoutTimeRemaining > 0 && !_isWorker
-                  ? 'Too many failed attempts. Try again in $_lockoutTimeRemaining seconds'
-                  : 'Enter your 6-digit security PIN to unlock:',
-              style: TextStyle(
-                color: _lockoutTimeRemaining > 0 && !_isWorker ? Colors.redAccent : AppColors.textSecondary,
-                fontSize: 13,
-                fontWeight: _lockoutTimeRemaining > 0 && !_isWorker ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-            
-            const Spacer(),
-            
-            // --- PIN DOTS DISPLAY ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(6, (index) {
-                final active = index < _pin.length;
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: active ? AppColors.primary : Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 2),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      const Spacer(),
+                      
+                      // --- HEADER INFO ---
+                      const Icon(Icons.lock_rounded, size: 54, color: AppColors.primary),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Welcome Back, $_targetName',
+                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          _lockoutTimeRemaining > 0 && !_isWorker
+                              ? 'Too many failed attempts. Try again in $_lockoutTimeRemaining seconds'
+                              : 'Enter your 6-digit security PIN to unlock:',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _lockoutTimeRemaining > 0 && !_isWorker ? Colors.redAccent : AppColors.textSecondary,
+                            fontSize: 13,
+                            fontWeight: _lockoutTimeRemaining > 0 && !_isWorker ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                      
+                      const Spacer(),
+                      
+                      // --- PIN DOTS DISPLAY ---
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(6, (index) {
+                          final active = index < _pin.length;
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 8),
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: active ? AppColors.primary : Colors.transparent,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.primary, width: 2),
+                            ),
+                          );
+                        }),
+                      ),
+                      
+                      const Spacer(),
+                      
+                      // --- KEYPAD ---
+                      _buildKeypad(),
+                      
+                      const SizedBox(height: 24),
+                    ],
                   ),
-                );
-              }),
-            ),
-            
-            const Spacer(),
-            
-            // --- KEYPAD ---
-            _buildKeypad(),
-            
-            const SizedBox(height: 24),
-          ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

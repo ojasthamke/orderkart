@@ -76,10 +76,14 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> {
       body: Container(
         decoration: BoxDecoration(gradient: bgGradient),
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
               // Premium Pulsing Welcome Icon Circle
               Container(
                 width: 100,
@@ -153,6 +157,8 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 }

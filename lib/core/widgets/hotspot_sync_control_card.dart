@@ -143,7 +143,9 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                 crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 3.2,
+                childAspectRatio: MediaQuery.textScalerOf(context).scale(1.0) > 1.4
+                    ? 2.0
+                    : (MediaQuery.textScalerOf(context).scale(1.0) > 1.1 ? 2.5 : 3.2),
                 mainAxisSpacing: 4,
                 crossAxisSpacing: 8,
                 children: [

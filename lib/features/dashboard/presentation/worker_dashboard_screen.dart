@@ -272,6 +272,9 @@ class WorkerDashboardScreen extends ConsumerWidget {
                     crossAxisCount: 3,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
+                    childAspectRatio: MediaQuery.textScalerOf(context).scale(1.0) > 1.4
+                        ? 0.72
+                        : (MediaQuery.textScalerOf(context).scale(1.0) > 1.1 ? 0.80 : 0.88),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
@@ -343,6 +346,9 @@ class WorkerDashboardScreen extends ConsumerWidget {
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
+                      childAspectRatio: MediaQuery.textScalerOf(context).scale(1.0) > 1.4
+                          ? 0.80
+                          : (MediaQuery.textScalerOf(context).scale(1.0) > 1.1 ? 0.90 : 1.05),
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       children: [

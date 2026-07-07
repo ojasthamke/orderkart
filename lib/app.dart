@@ -73,7 +73,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         final mediaQuery = MediaQuery.of(context);
         final clampedScaler = mediaQuery.textScaler.clamp(
           minScaleFactor: 0.8,
-          maxScaleFactor: 1.3,
+          maxScaleFactor: 1.8,
         );
         return MediaQuery(
           data: mediaQuery.copyWith(textScaler: clampedScaler),
