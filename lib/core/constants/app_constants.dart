@@ -27,7 +27,7 @@ class AppConstants {
   static const String appName = 'OrderKart';
   static const String appTagline = 'Smart Delivery Management';
   static const String appVersion = '1.0.0';
-  static const String appBuild = '1';
+  static const String appBuild = '2';
 
   // Database
   static const String dbName = 'orderkart.db';
