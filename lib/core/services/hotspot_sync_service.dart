@@ -218,7 +218,8 @@ class HotspotSyncService {
             final mainDb = await DatabaseHelper.instance.database;
             await mainDb.insert('import_history', {
               'id': const Uuid().v4(),
-              'package_id': wId,
+              'package_id': packageId,
+              'worker_id': wId,
               'imported_at': DateTime.now().toIso8601String(),
               'worker_name': wName,
               'device_name': devName,

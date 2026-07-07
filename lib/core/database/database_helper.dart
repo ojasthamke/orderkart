@@ -608,7 +608,33 @@ class DatabaseHelper {
                 skipped++;
               }
             } else {
-              skipped++;
+              // Fallback for tables without timestamps: check if any value has changed
+              bool hasChanged = false;
+              final existingMap = existing.first;
+              for (final entry in row.entries) {
+                final key = entry.key;
+                if (existingMap.containsKey(key)) {
+                  if (existingMap[key]?.toString() != entry.value?.toString()) {
+                    hasChanged = true;
+                    break;
+                  }
+                } else {
+                  hasChanged = true;
+                  break;
+                }
+              }
+              if (hasChanged) {
+                if (!dryRun) {
+                  if (table == 'worker_permissions') {
+                    await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
+                  } else {
+                    await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);
+                  }
+                }
+                updated++;
+              } else {
+                skipped++;
+              }
             }
           }
         }
@@ -791,7 +817,33 @@ class DatabaseHelper {
                 skipped++;
               }
             } else {
-              skipped++;
+              // Fallback for tables without timestamps: check if any value has changed
+              bool hasChanged = false;
+              final existingMap = existing.first;
+              for (final entry in row.entries) {
+                final key = entry.key;
+                if (existingMap.containsKey(key)) {
+                  if (existingMap[key]?.toString() != entry.value?.toString()) {
+                    hasChanged = true;
+                    break;
+                  }
+                } else {
+                  hasChanged = true;
+                  break;
+                }
+              }
+              if (hasChanged) {
+                if (!dryRun) {
+                  if (table == 'worker_permissions') {
+                    await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
+                  } else {
+                    await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);
+                  }
+                }
+                updated++;
+              } else {
+                skipped++;
+              }
             }
           }
           processedRows++;

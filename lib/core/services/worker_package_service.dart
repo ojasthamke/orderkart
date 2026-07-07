@@ -119,13 +119,6 @@ class WorkerPackageService {
     await writeEncryptedJson('streets.json', streetsRows);
     await writeEncryptedJson('customers.json', customersRows);
     await writeEncryptedJson('inventory.json', itemsRows);
-    await writeEncryptedJson('worker.json', workerRow);
-    await writeEncryptedJson('permissions.json', permissionsRow);
-    await writeEncryptedJson('assignments.json', assignmentsRows);
-    await writeEncryptedJson('areas.json', areasRows);
-    await writeEncryptedJson('streets.json', streetsRows);
-    await writeEncryptedJson('customers.json', customersRows);
-    await writeEncryptedJson('inventory.json', itemsRows);
     await writeEncryptedJson('price_list.json', priceListRows);
     await writeEncryptedJson('business_profile.json', businessProfileRow);
     await writeEncryptedJson('settings.json', settingsRows);
@@ -463,8 +456,9 @@ class WorkerPackageService {
 
     // Calculate file hashes
     final fileHashes = <String, String>{};
+    fileHashes['database.db'] = await _calculateFileHash(scopedDbFile);
     final List<String> jsonFiles = [
-      'database.db', 'customers.json', 'orders.json', 'order_items.json', 'payments.json', 'expenses.json',
+      'customers.json', 'orders.json', 'order_items.json', 'payments.json', 'expenses.json',
       'notes.json', 'visits.json', 'worker_reports.json'
     ];
     for (final f in jsonFiles) {
