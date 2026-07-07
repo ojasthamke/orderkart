@@ -114,6 +114,55 @@ class AppConstants {
     0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 5.0,
   ];
 
+  static List<double> getPresetsForUnit(String unit) {
+    final normalized = unit.trim().toLowerCase();
+    switch (normalized) {
+      case 'kg':
+      case 'kilo':
+      case 'kilogram':
+      case 'kilograms':
+      case 'gram':
+      case 'grams':
+      case 'g':
+        return [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0, 5.0, 10.0];
+        
+      case 'liter':
+      case 'litre':
+      case 'liters':
+      case 'litres':
+      case 'l':
+      case 'ml':
+      case 'ltr':
+      case 'ltrs':
+        return [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 5.0, 10.0];
+
+      case 'dozen':
+      case 'dozens':
+      case 'dz':
+        return [0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 10.0];
+
+      case 'piece':
+      case 'pieces':
+      case 'pc':
+      case 'pcs':
+      case 'packet':
+      case 'packets':
+      case 'pkt':
+      case 'box':
+      case 'boxes':
+      case 'unit':
+      case 'units':
+      case 'bottle':
+      case 'bottles':
+      case 'can':
+      case 'cans':
+        return [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 10.0, 12.0, 15.0, 20.0, 25.0];
+
+      default:
+        return [1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 15.0, 20.0];
+    }
+  }
+
   // Settings Keys (stored in DB settings table)
   static const String keyBusinessName    = 'business_name';
   static const String keyOwnerName       = 'owner_name';

@@ -299,7 +299,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                     // Preset chips
                     Wrap(
                       spacing: 8,
-                      children: AppConstants.quantityPresets.map((q) {
+                      children: AppConstants.getPresetsForUnit(_selected!.unit).map((q) {
                         final disabled = q > _selected!.stock;
                         return ChoiceChip(
                           label: Text(AppFormatters.quantity(q)),
