@@ -23,7 +23,7 @@ class DatabaseSeeder {
       await db.delete('items');
     }
 
-    final int areasCount = await _seedAreasAndStreetsAndCustomers(db);
+    await _seedAreasAndStreetsAndCustomers(db);
     final int itemsCount = await _seedVegetablesAndFruits(db);
 
     return {

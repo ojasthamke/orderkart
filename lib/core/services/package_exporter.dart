@@ -133,15 +133,15 @@ class PackageExporter {
         List<String> custConditions = [];
         List<dynamic> custArgs = [];
         if (hasCustomerFilter) {
-          custConditions.add('id IN (${List.filled(selectedCustomerIds!.length, '?').join(',')})');
+          custConditions.add('id IN (${List.filled(selectedCustomerIds.length, '?').join(',')})');
           custArgs.addAll(selectedCustomerIds);
         }
         if (hasStreetFilter) {
-          custConditions.add('street_id IN (${List.filled(selectedStreetIds!.length, '?').join(',')})');
+          custConditions.add('street_id IN (${List.filled(selectedStreetIds.length, '?').join(',')})');
           custArgs.addAll(selectedStreetIds);
         }
         if (hasAreaFilter) {
-          custConditions.add('street_id IN (SELECT id FROM streets WHERE area_id IN (${List.filled(selectedAreaIds!.length, '?').join(',')}))');
+          custConditions.add('street_id IN (SELECT id FROM streets WHERE area_id IN (${List.filled(selectedAreaIds.length, '?').join(',')}))');
           custArgs.addAll(selectedAreaIds);
         }
         final resolvedCustomers = await tempDb.query('customers',
@@ -166,7 +166,7 @@ class PackageExporter {
           streetArgs.addAll(keepStreetIds);
         }
         if (hasAreaFilter) {
-          streetConditions.add('area_id IN (${List.filled(selectedAreaIds!.length, '?').join(',')})');
+          streetConditions.add('area_id IN (${List.filled(selectedAreaIds.length, '?').join(',')})');
           streetArgs.addAll(selectedAreaIds);
         }
         final resolvedStreets = await tempDb.query('streets',

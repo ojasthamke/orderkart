@@ -25,7 +25,7 @@ class AppTheme {
         onPrimary: AppColors.white,
         secondary: AppColors.successLight,
         surface: AppColors.surface,
-        background: AppColors.background,
+
         error: AppColors.error,
       ),
       textTheme: _buildTextTheme(AppColors.textPrimary),
@@ -177,8 +177,8 @@ class AppTheme {
       dropdownMenuTheme: DropdownMenuThemeData(
         textStyle: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
         menuStyle: MenuStyle(
-          backgroundColor: MaterialStateProperty.all(AppColors.white),
-          elevation: MaterialStateProperty.all(8),
+          backgroundColor: WidgetStateProperty.all(AppColors.white),
+          elevation: WidgetStateProperty.all(8),
         ),
       ),
     );

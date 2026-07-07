@@ -380,6 +380,14 @@ class DatabaseHelper {
     await db.execute('DELETE FROM areas');
     await db.execute('DELETE FROM items');
     await db.execute('DELETE FROM expenses');
+    // V3/V4 tables
+    await db.execute('DELETE FROM notifications');
+    await db.execute('DELETE FROM notes');
+    await db.execute('DELETE FROM visits');
+    await db.execute('DELETE FROM worker_assignments');
+    await db.execute('DELETE FROM workers');
+    await db.execute('DELETE FROM audit_logs');
+    await db.execute('DELETE FROM vip_membership');
     // Re-seed defaults but keep settings
   }
 
@@ -1473,7 +1481,7 @@ class DatabaseHelper {
         if (tempDir.existsSync()) {
           final List<FileSystemEntity> files = tempDir.listSync();
           for (final file in files) {
-            if (file is File && file.path.endsWith('.zip')) {
+            if (file is File && file.path.endsWith('.zip') && basename(file.path).toLowerCase().startsWith('orderkart')) {
               // Delete old zip files (older than 1 day)
               final lastMod = file.lastModifiedSync();
               if (DateTime.now().difference(lastMod).inDays >= 1) {

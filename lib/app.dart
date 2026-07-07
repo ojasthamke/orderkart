@@ -88,7 +88,6 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
   /// Central route generator — ensures every navigation is handled
   Route<dynamic>? _generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case '/':
       case AppRoutes.dashboard:
         return _slide(const AppStartupScreen());
 

@@ -24,7 +24,7 @@ class OrderDao {
     String candidate = baseNo;
     int suffix = 1;
 
-    while (true) {
+    while (suffix < 10000) {
       final List<Map<String, dynamic>> res = await db.query(
         'orders',
         columns: ['id'],
@@ -36,6 +36,9 @@ class OrderDao {
       }
       candidate = '$baseNo$suffix';
       suffix++;
+    }
+    if (suffix >= 10000) {
+      throw Exception('Could not generate a unique order number after 10000 attempts');
     }
     return candidate;
   }
@@ -97,7 +100,7 @@ class OrderDao {
       if (workerId == null || workerId.isEmpty) {
         final workerRows = await db.query('workers', limit: 1);
         if (workerRows.isNotEmpty) {
-          workerId = workerRows.first['id'] as String;
+          workerId = workerRows.first['id']?.toString();
         }
       }
 
@@ -228,7 +231,7 @@ class OrderDao {
       'device_name':        deviceName,
       'commission_rate':    commRate > 0 ? commRate : 5.0,
       'commission_type':    commType.isNotEmpty ? commType : 'pct_order',
-      'created_at':         order.createdAt.toIso8601String().isEmpty ? now : order.createdAt.toIso8601String(),
+      'created_at':         order.createdAt.toIso8601String(),
       'updated_at':         now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
     return id;
@@ -337,7 +340,7 @@ class OrderDao {
       if (workerId == null || workerId.isEmpty) {
         final workerRows = await db.query('workers', limit: 1);
         if (workerRows.isNotEmpty) {
-          workerId = workerRows.first['id'] as String;
+          workerId = workerRows.first['id']?.toString();
         }
       }
     }

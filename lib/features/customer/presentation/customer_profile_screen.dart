@@ -8,7 +8,6 @@ import '../../../core/utils/haptics.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/customer_avatar.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';

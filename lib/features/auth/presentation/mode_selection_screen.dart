@@ -201,7 +201,7 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
       Navigator.of(context).pushReplacementNamed(
         AppRoutes.welcome,
         arguments: WelcomeSplashScreenArgs(
-          name: 'Nayan',
+          name: 'Owner',
           nextRoute: AppRoutes.dashboard,
         ),
       );

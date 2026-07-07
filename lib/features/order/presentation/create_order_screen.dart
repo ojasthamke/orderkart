@@ -666,6 +666,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ));
       
       if (cartItem.quantity > dbItem.stock) {
+        if (!mounted) return;
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -779,8 +780,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         arguments: {'orderId': orderId},
       );
     } catch (e) {
-      setState(() => _saving = false);
       if (mounted) SnackbarHelper.showError(context, 'Failed to save order: $e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 

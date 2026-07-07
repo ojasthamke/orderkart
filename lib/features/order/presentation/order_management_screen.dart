@@ -16,6 +16,7 @@ import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../domain/order.dart';
+import '../data/order_dao.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
 
@@ -233,7 +234,7 @@ class _OrderManagementScreenState
         onTap: () => Navigator.of(ctx).pushNamed(
           AppRoutes.orderDetail,
           arguments: {'orderId': orders[i].id},
-        ).then((_) => ref.refresh(orderManagementProvider)),
+        ).then((_) => ref.invalidate(orderManagementProvider)),
         onToggleDelivery: () => _toggleDelivery(orders[i]),
         onAddPayment:     () => _addPayment(ctx, orders[i]),
         onEdit: () => Navigator.of(ctx).pushNamed(
@@ -243,7 +244,7 @@ class _OrderManagementScreenState
             'customerName': orders[i].customerName ?? '',
             'orderId':      orders[i].id,
           },
-        ).then((_) => ref.refresh(orderManagementProvider)),
+        ).then((_) => ref.invalidate(orderManagementProvider)),
         onDelete: () => _deleteOrder(ctx, orders[i]),
         onDuplicate: () => _duplicateOrder(orders[i]),
       ).animate(delay: (i * 40).ms).fadeIn(),
@@ -276,9 +277,9 @@ class _OrderManagementScreenState
     );
 
     if (result != null && result is Map<String, dynamic>) {
-      final amount = result['amount'] as double;
-      final method = result['method'] as String;
-      final notes = result['notes'] as String;
+      final amount = (result['amount'] as num?)?.toDouble() ?? 0.0;
+      final method = (result['method'] as String?) ?? 'cash';
+      final notes = (result['notes'] as String?) ?? '';
 
       await ref.read(orderManagementProvider.notifier).addPayment(Payment(
             id:         const Uuid().v4(),
@@ -309,7 +310,7 @@ class _OrderManagementScreenState
 
   Future<void> _duplicateOrder(AppOrder order) async {
     final now     = DateTime.now();
-    final newId   = const Uuid().v4();
+    final newId   = await OrderDao.generateUniqueOrderNo();
     final duplicate = order.copyWith(
       id:             newId,
       paidAmount:     0,

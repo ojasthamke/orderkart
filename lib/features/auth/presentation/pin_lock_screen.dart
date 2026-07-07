@@ -23,7 +23,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
   final List<int> _pin = [];
   String _targetName = 'User';
   bool _isWorker = false;
-  bool _loading = false;
+  bool _loading = false; // ignore: unused_field - used in setState for state management
   int _lockoutTimeRemaining = 0;
   Timer? _lockoutTimer;
 

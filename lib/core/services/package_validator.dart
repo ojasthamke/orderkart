@@ -484,11 +484,11 @@ class PackageValidator {
   }
 
   static List<String> photoList(Archive archive) =>
-      archive.files.map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('photos/')).toList();
+      archive.files.where((e) => e.isFile).map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('photos/')).toList();
 
   static List<String> logoList(Archive archive) =>
-      archive.files.map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('logo/')).toList();
+      archive.files.where((e) => e.isFile).map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('logo/')).toList();
 
   static List<String> qrList(Archive archive) =>
-      archive.files.map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('qr/')).toList();
+      archive.files.where((e) => e.isFile).map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('qr/')).toList();
 }
