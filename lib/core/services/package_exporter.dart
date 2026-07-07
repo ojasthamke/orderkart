@@ -181,10 +181,8 @@ class PackageExporter {
       await tempDb.delete('order_items', where: 'order_id NOT IN (SELECT id FROM orders)');
       await tempDb.delete('payments', where: 'order_id NOT IN (SELECT id FROM orders)');
 
-      // --- 4b. Remove Sensitive Settings ---
-      // The Owner's private signing secret should never be distributed to worker devices.
       if (workerId.isNotEmpty) {
-        await tempDb.delete('settings', where: 'key = ?', whereArgs: [AppConstants.keyOwnerSecret]);
+        await tempDb.delete('settings', where: "key LIKE 'owner_secret%'");
       }
 
     } finally {

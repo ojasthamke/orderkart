@@ -102,7 +102,7 @@ class WorkerPackageService {
     
     // Filter settings: avoid owner_secret
     final allSettings = await mainDb.query('settings');
-    final settingsRows = allSettings.where((row) => row['key'] != AppConstants.keyOwnerSecret).toList();
+    final settingsRows = allSettings.where((row) => !row['key'].toString().startsWith('owner_secret')).toList();
 
     // Serialize and Encrypt JSON files helper
     Future<void> writeEncryptedJson(String filename, dynamic data) async {

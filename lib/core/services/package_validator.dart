@@ -150,8 +150,8 @@ class PackageValidator {
       final String packageType = manifest['package_type']?.toString() ?? 'backup';
 
       // Verify that the required files for the package type exist
-      if (packageType == 'backup' && dbEncData == null) {
-        return _fail('Missing database.enc file inside backup package.');
+      if ((packageType == 'backup' || packageType == 'modular') && dbEncData == null) {
+        return _fail('Missing database.enc file inside package.');
       }
 
       // 3a. Check Expiry
@@ -336,7 +336,7 @@ class PackageValidator {
       final tempDbFile = File('${tempDir.path}/wizard_incoming.db');
       if (tempDbFile.existsSync()) tempDbFile.deleteSync();
 
-      if (packageType == 'backup') {
+      if (packageType == 'backup' || packageType == 'modular') {
         // Verify database.enc hash
         final actualDbEncHash = sha256.convert(dbEncData!).toString();
         final expectedDbEncHash = fileHashes['database.enc']?.toString() ?? '';
