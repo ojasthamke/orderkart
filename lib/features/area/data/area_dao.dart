@@ -1,5 +1,6 @@
 /// AreaDao — SQLite operations for Areas table
 /// Includes statistics aggregation via JOINs
+library;
 
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';

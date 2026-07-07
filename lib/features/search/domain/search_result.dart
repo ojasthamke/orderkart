@@ -1,4 +1,5 @@
 /// SearchResult — unified search result across all entities
+library;
 
 enum SearchResultType {
   area,

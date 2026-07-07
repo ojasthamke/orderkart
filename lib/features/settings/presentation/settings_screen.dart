@@ -595,9 +595,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       );
                       if (!ok || !mounted) return;
                       await ref.read(settingsProvider.notifier).resetApp();
-                      if (mounted)
+                      if (mounted) {
                         SnackbarHelper.showSuccess(
                             context, 'App data reset successfully');
+                      }
                     },
                   ),
                 ),

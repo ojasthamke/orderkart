@@ -215,7 +215,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'CUSTOMER',
                   style: TextStyle(
                       fontSize: 11,
@@ -300,7 +300,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'ITEMS',
             style: TextStyle(
                 fontSize: 11,
@@ -424,11 +424,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      const Row(
                         children: [
-                          const Text('🎉', style: TextStyle(fontSize: 22)),
-                          const SizedBox(width: 10),
-                          const Expanded(
+                          Text('🎉', style: TextStyle(fontSize: 22)),
+                          SizedBox(width: 10),
+                          Expanded(
                             child: Text(
                               'CONGRATULATIONS!',
                               style: TextStyle(
@@ -474,11 +474,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       ],
                     ],
                   )
-                : Row(
+                : const Row(
                     children: [
-                      const Text('💚', style: TextStyle(fontSize: 20)),
-                      const SizedBox(width: 10),
-                      const Expanded(
+                      Text('💚', style: TextStyle(fontSize: 20)),
+                      SizedBox(width: 10),
+                      Expanded(
                         child: Text(
                           'Thank you for shopping with us! Come back soon. 🙏',
                           style: TextStyle(
@@ -574,7 +574,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'PAYMENTS',
                 style: TextStyle(
                     fontSize: 11,

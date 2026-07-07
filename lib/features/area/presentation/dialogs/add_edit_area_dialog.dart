@@ -113,9 +113,9 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
                           : null,
                     ),
                     child: (_photoPath.isEmpty || !File(_photoPath).existsSync())
-                        ? Column(
+                        ? const Column(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
+                            children: [
                               Icon(Icons.add_a_photo_rounded, color: AppColors.gray500, size: 28),
                               SizedBox(height: 4),
                               Text('Add Photo', style: TextStyle(fontSize: 10, color: AppColors.gray600)),

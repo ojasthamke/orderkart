@@ -101,7 +101,7 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                                       const SizedBox(height: 4),
                                       Text(
                                         customer.phone1,
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                             color: AppColors.textSecondary,
                                             fontSize: 14),
                                       ),

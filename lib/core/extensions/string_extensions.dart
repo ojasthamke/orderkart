@@ -1,4 +1,5 @@
 /// String Extensions
+library;
 
 extension StringExtensions on String {
   String get capitalised {

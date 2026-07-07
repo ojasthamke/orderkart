@@ -172,7 +172,7 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: AppColors.gray200),
+                        borderSide: const BorderSide(color: AppColors.gray200),
                       ),
                     ),
                   ),

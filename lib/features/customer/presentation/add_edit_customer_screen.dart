@@ -555,8 +555,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         }
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed to save customer: $e');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

@@ -93,11 +93,11 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  Expanded(
+                  const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Worker Package Summary',
                           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
                         ),
@@ -206,11 +206,11 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.success.withOpacity(0.3)),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.lock_rounded, color: AppColors.success, size: 18),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    Icon(Icons.lock_rounded, color: AppColors.success, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         'AES-256 Encrypted & HMAC-SHA256 Signed with Worker Secret Key.',
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary),

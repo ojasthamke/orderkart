@@ -162,7 +162,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                     style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   Text(
-                    '${inStockCount} In Stock · ${lowStockCount} Low · ${outOfStockCount} Out',
+                    '$inStockCount In Stock · $lowStockCount Low · $outOfStockCount Out',
                     style: const TextStyle(color: Colors.white54, fontSize: 11),
                   ),
                 ],

@@ -1,4 +1,5 @@
 /// Payment Model
+library;
 
 class Payment {
   final String id;

@@ -1,4 +1,5 @@
 /// CustomSearchBar — Reusable animated search bar
+library;
 
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';

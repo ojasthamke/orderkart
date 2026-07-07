@@ -207,9 +207,9 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                             : null,
                       ),
                       child: (photoPath.isEmpty || !File(photoPath).existsSync())
-                          ? Column(
+                          ? const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.add_a_photo_rounded, color: AppColors.gray500, size: 24),
                                 SizedBox(height: 2),
                                 Text('Photo', style: TextStyle(fontSize: 10, color: AppColors.gray600)),
@@ -227,8 +227,9 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                       prefixIcon: Icon(Icons.turn_slight_right_rounded),
                     ),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty)
+                      if (v == null || v.trim().isEmpty) {
                         return 'Street name is required';
+                      }
                       return null;
                     },
                     textCapitalization: TextCapitalization.words,
@@ -291,8 +292,9 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                     mapsLocation: locationCon.text.trim(),
                     createdAt:    now,
                   ));
-                  if (mounted)
+                  if (mounted) {
                     SnackbarHelper.showSuccess(context, 'Street added');
+                  }
                 } else {
                   await notifier.update(street.copyWith(
                     name:         nameCon.text.trim(),
@@ -300,8 +302,9 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                     photoPath:    finalPhotoPath,
                     mapsLocation: locationCon.text.trim(),
                   ));
-                  if (mounted)
+                  if (mounted) {
                     SnackbarHelper.showSuccess(context, 'Street updated');
+                  }
                 }
               },
               child: Text(street == null ? 'Add' : 'Update'),
@@ -430,9 +433,9 @@ class _StreetTile extends StatelessWidget {
                                 color: Colors.deepOrange.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: Row(
+                              child: const Row(
                                 mainAxisSize: MainAxisSize.min,
-                                children: const [
+                                children: [
                                   Icon(Icons.location_on_rounded, size: 12, color: Colors.deepOrange),
                                   SizedBox(width: 4),
                                   Text('📍 Location', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.deepOrange)),

@@ -38,7 +38,7 @@ class ContactExporter {
         'FN:${name.trim()}',
         'TEL;TYPE=CELL,VOICE:$cleanPhone',
         if (address.trim().isNotEmpty) 'ADR;TYPE=HOME:;;${address.trim()};;;;',
-        'NOTE:OrderKart Customer ${notes.trim().isNotEmpty ? " - " + notes.trim() : ""}',
+        'NOTE:OrderKart Customer ${notes.trim().isNotEmpty ? " - ${notes.trim()}" : ""}',
         'END:VCARD',
       ].join('\r\n');
 

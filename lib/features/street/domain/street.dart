@@ -1,4 +1,5 @@
 /// Street Model — belongs to an Area
+library;
 
 class Street {
   final String id;

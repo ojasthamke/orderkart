@@ -293,8 +293,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           context, _isEdit ? 'Item updated' : 'Item added');
       Navigator.of(context).pop();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed to save: $e');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

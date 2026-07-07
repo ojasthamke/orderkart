@@ -1,4 +1,5 @@
 /// EmptyStateWidget — Shown when a list has no items
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -31,7 +32,7 @@ class EmptyStateWidget extends StatelessWidget {
             Container(
               width: 100,
               height: 100,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.primarySurface,
                 shape: BoxShape.circle,
               ),

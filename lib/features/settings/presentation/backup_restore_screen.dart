@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:convert';
 import 'dart:io';
-import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/database/database_helper.dart';
@@ -130,7 +128,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          _SectionCard(
+          const _SectionCard(
             title:    'Cloud Sync (Coming Soon)',
             icon:     Icons.cloud_rounded,
             iconColor: AppColors.gray400,
@@ -172,28 +170,6 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       if (mounted) {
         setState(() => _loading = false);
       }
-    }
-  }
-
-  Future<bool> _isValidSqliteFile(File file) async {
-    try {
-      final raf = await file.open(mode: FileMode.read);
-      final bytes = await raf.read(16);
-      await raf.close();
-      final header = String.fromCharCodes(bytes);
-      return header.startsWith('SQLite format 3');
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<bool> _isValidSqliteBytes(List<int> bytes) async {
-    try {
-      if (bytes.length < 16) return false;
-      final header = String.fromCharCodes(bytes.sublist(0, 16));
-      return header.startsWith('SQLite format 3');
-    } catch (_) {
-      return false;
     }
   }
 
@@ -254,110 +230,6 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     }
   }
 
-  Future<void> _mergeImportDatabase() async {
-    setState(() => _loading = true);
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-      );
-      if (result == null || result.files.isEmpty) {
-        setState(() => _loading = false);
-        return;
-      }
-
-      final srcPath = result.files.first.path!;
-
-      // Enterprise validation & extraction (.orderkart, .zip, .db)
-      final validation = await PackageValidator.validatePackage(srcPath);
-      if (!validation.isValid) {
-        throw Exception(validation.errorMessage);
-      }
-
-      final dbFileToMerge = validation.dbPath;
-      if (dbFileToMerge.isEmpty || !File(dbFileToMerge).existsSync()) {
-        throw Exception("Could not extract a valid database from the package.");
-      }
-
-      // Perform non-destructive merge into target DB
-      final stats = await DatabaseHelper.instance.mergeDatabaseFromPath(dbFileToMerge);
-
-      // Invalidate cache to auto-update screens
-      _invalidateAllProviders();
-
-      // Record in import_history table for worker updates tracking
-      try {
-        final db = await DatabaseHelper.instance.database;
-        final manifest = validation.manifest;
-        final pkgId = manifest['package_id']?.toString() ?? const Uuid().v4();
-        final wId = manifest['generated_by_worker_id']?.toString() ?? '';
-        final wName = manifest['generated_by_worker_name']?.toString() ?? (manifest['generated_by_name']?.toString() ?? 'Worker');
-        final devName = manifest['device_name']?.toString() ?? 'Mobile Device';
-
-        final summaryMap = <String, int>{};
-        stats.forEach((key, val) {
-          summaryMap[key] = (val['inserted'] ?? 0) + (val['updated'] ?? 0);
-        });
-
-        await db.insert('import_history', {
-          'id': const Uuid().v4(),
-          'package_id': pkgId,
-          'imported_at': DateTime.now().toIso8601String(),
-          'worker_id': wId,
-          'worker_name': wName,
-          'device_name': devName,
-          'record_count': stats.values.fold<int>(0, (sum, m) => sum + ((m['inserted'] as num?)?.toInt() ?? 0) + ((m['updated'] as num?)?.toInt() ?? 0)),
-          'summary_json': jsonEncode(summaryMap),
-          'status': 'success',
-        });
-      } catch (_) {}
-
-      if (mounted) {
-        final totalInserted = stats.values.fold(0, (sum, m) => sum + (m['inserted'] ?? 0));
-        final totalUpdated  = stats.values.fold(0, (sum, m) => sum + (m['updated'] ?? 0));
-        final totalSkipped  = stats.values.fold(0, (sum, m) => sum + (m['skipped'] ?? 0));
-
-        final summaryLines = stats.entries
-            .where((e) => ((e.value['inserted'] ?? 0) + (e.value['updated'] ?? 0)) > 0)
-            .map((e) => '• ${e.key.toUpperCase()}: ${e.value['inserted']} added, ${e.value['updated']} updated, ${e.value['skipped']} skipped')
-            .join('\n');
-
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
-                SizedBox(width: 10),
-                Text('Worker Data Merged!', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Sync Summary: $totalInserted inserted, $totalUpdated updated, $totalSkipped skipped (idempotent).\n'),
-                if (summaryLines.isNotEmpty)
-                  Text(summaryLines, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, height: 1.4))
-                else
-                  const Text('All records are already up to date!', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.success)),
-              ],
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Great!'),
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Merge failed: $e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
 }
 
 class _SectionCard extends StatelessWidget {

@@ -1,4 +1,5 @@
 /// Validators — Form field validation rules
+library;
 
 class AppValidators {
   AppValidators._();

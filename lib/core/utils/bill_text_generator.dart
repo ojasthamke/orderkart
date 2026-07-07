@@ -1,5 +1,6 @@
 /// BillTextGenerator — Generates plain-text bill for sharing
 /// Clean, sophisticated style, with no emojis (except warning), no footer, and optional owner phone.
+library;
 
 import '../constants/app_constants.dart';
 import 'formatters.dart';

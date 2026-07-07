@@ -1,5 +1,6 @@
 /// SmartRounding — Bill rounding logic
 /// Examples: 58 → 60, 39 → 40, 97 → 100, 123 → 125
+library;
 
 class SmartRounding {
   SmartRounding._();

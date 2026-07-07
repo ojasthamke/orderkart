@@ -291,10 +291,18 @@ class PackageExporter {
         final List<Map<String, dynamic>> streetPhotos = await tempDb.rawQuery('SELECT photo_path FROM streets WHERE photo_path IS NOT NULL AND photo_path != ""');
         final List<Map<String, dynamic>> notePhotos = await tempDb.rawQuery('SELECT photo_path FROM notes WHERE photo_path IS NOT NULL AND photo_path != ""');
         
-        for (final r in custPhotos) referencedPhotos.add(p.basename(r['photo_path'].toString()));
-        for (final r in areaPhotos) referencedPhotos.add(p.basename(r['photo_path'].toString()));
-        for (final r in streetPhotos) referencedPhotos.add(p.basename(r['photo_path'].toString()));
-        for (final r in notePhotos) referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        for (final r in custPhotos) {
+          referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        }
+        for (final r in areaPhotos) {
+          referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        }
+        for (final r in streetPhotos) {
+          referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        }
+        for (final r in notePhotos) {
+          referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        }
       } catch (_) {}
 
     } finally {

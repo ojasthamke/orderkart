@@ -1,5 +1,6 @@
 /// AppHaptics — Custom haptic vibration feedback helpers
 /// Gives every button action a unique, premium tactile feel
+library;
 
 import 'package:flutter/services.dart';
 

@@ -1,4 +1,5 @@
 /// AppSettings — strongly-typed settings model
+library;
 
 class AppSettings {
   final String businessName;

@@ -492,48 +492,7 @@ class CustomerProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNotesSection(BuildContext context, Customer customer) {
-    if (customer.notes.trim().isEmpty) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.notes_rounded, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Internal Notes',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-              ),
-            ],
-          ),
-          const Divider(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: SelectableText(
-              customer.notes,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _headerStat(BuildContext context, String label, String value,
       {Color? color}) {

@@ -1,4 +1,5 @@
 /// Customer Model — belongs to a Street
+library;
 
 class Customer {
   final String id;

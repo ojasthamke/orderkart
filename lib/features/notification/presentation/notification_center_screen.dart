@@ -6,7 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 
 class NotificationCenterScreen extends ConsumerWidget {
-  const NotificationCenterScreen({Key? key}) : super(key: key);
+  const NotificationCenterScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

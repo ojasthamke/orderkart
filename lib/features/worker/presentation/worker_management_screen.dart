@@ -115,10 +115,10 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
                   child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 14),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         'Add Field Worker',
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15),

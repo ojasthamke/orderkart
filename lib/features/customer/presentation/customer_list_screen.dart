@@ -120,7 +120,6 @@ class _CustomerCard extends StatelessWidget {
   final WidgetRef ref;
 
   const _CustomerCard({
-    super.key,
     required this.customer,
     required this.streetId,
     required this.ref,

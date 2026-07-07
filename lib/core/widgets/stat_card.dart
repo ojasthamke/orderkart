@@ -1,4 +1,5 @@
 /// StatCard — Reusable metric card for dashboard and analytics
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -53,7 +54,7 @@ class StatCard extends StatelessWidget {
                   child: Icon(icon, color: color, size: 22),
                 ),
                 if (onTap != null)
-                  Icon(Icons.arrow_forward_ios_rounded,
+                  const Icon(Icons.arrow_forward_ios_rounded,
                       size: 12, color: AppColors.gray400),
               ],
             ),

@@ -1,4 +1,5 @@
 /// ItemSelectorWidget — Bottom sheet to pick an item from inventory with quantity
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -355,7 +356,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                   ScaffoldMessenger.of(context).clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Quantity (${_qty}) exceeds available stock (${_selected!.stock})'),
+                                      content: Text('Quantity ($_qty) exceeds available stock (${_selected!.stock})'),
                                       backgroundColor: AppColors.error,
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,
@@ -432,7 +433,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
         return []; // Piece / Packet / custom — no sub-unit hints
     }
 
-    final String Function(double v) fmt = (v) => v == v.roundToDouble()
+    fmt(v) => v == v.roundToDouble()
         ? '\u20b9${v.toInt()}'
         : '\u20b9${v.toStringAsFixed(1)}';
 

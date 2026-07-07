@@ -19,7 +19,7 @@ void main() {
   });
 
   group('Worker Database Services Tests', () {
-    final workerId = 'worker-test-123';
+    const workerId = 'worker-test-123';
     
     setUp(() async {
       await DatabaseHelper.instance.close();

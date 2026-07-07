@@ -1,4 +1,5 @@
 /// AppScaffold — Consistent scaffold with back-button safety
+library;
 
 import 'package:flutter/material.dart';
 

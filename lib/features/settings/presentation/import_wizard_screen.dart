@@ -607,13 +607,13 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                               ],
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 2),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Deleted Records:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                const Text('0 (Preserved)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                                Text('Deleted Records:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                Text('0 (Preserved)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                               ],
                             ),
                           ),
@@ -783,22 +783,6 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                 ),
               ],
             ),
-    );
-  }
-
-  Widget _previewRow(String title, int count) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text('$title :', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          Text(count > 0 ? '+$count' : '0',
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: count > 0 ? AppColors.primary : AppColors.textSecondary)),
-        ],
-      ),
     );
   }
 

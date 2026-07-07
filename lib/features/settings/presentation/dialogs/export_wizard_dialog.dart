@@ -453,11 +453,11 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.analytics_rounded, color: AppColors.primary, size: 28),
-                const SizedBox(width: 10),
-                const Text('Export Summary', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+                Icon(Icons.analytics_rounded, color: AppColors.primary, size: 28),
+                SizedBox(width: 10),
+                Text('Export Summary', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
               ],
             ),
             const SizedBox(height: 24),

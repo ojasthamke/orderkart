@@ -1,5 +1,6 @@
 /// AreaRepository — abstract interface (Repository Pattern)
 /// Cloud-sync ready: swap impl without changing callers
+library;
 
 import 'area.dart';
 

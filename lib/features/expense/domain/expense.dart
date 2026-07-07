@@ -1,4 +1,5 @@
 /// Expense Model
+library;
 
 class Expense {
   final String id;

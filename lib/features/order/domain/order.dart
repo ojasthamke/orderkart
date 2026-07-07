@@ -1,4 +1,5 @@
 /// Order Model
+library;
 
 class AppOrder {
   final String id;

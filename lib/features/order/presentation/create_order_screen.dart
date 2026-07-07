@@ -1,5 +1,6 @@
 /// CreateOrderScreen — Full order creation with item picker, quantity,
 /// smart rounding, delivery charge, and complete summary
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';

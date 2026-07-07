@@ -1,5 +1,6 @@
 /// App Colors — Material 3 colour palette
 /// White-dominant, sunlight-friendly, professional
+library;
 
 import 'package:flutter/material.dart';
 

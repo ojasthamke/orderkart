@@ -86,7 +86,7 @@ class _OwnerPinDialogState extends State<OwnerPinDialog> {
             Container(
               width: 54,
               height: 54,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.primarySurface,
                 shape: BoxShape.circle,
               ),
@@ -181,7 +181,7 @@ class _OwnerPinDialogState extends State<OwnerPinDialog> {
         width: 56,
         height: 56,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.gray100,
           shape: BoxShape.circle,
         ),

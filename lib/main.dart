@@ -2,6 +2,7 @@
 /// Offline-first Order Management Application
 /// Author: FreshFlow Team
 /// Version: 1.0.0
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

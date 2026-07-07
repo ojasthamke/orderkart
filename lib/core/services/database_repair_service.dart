@@ -22,7 +22,7 @@ class DatabaseRepairService {
 
   static Future<RepairResult> runDiagnosticsAndRepair() async {
     final db = await DatabaseHelper.instance.database;
-    final uuid = const Uuid();
+    const uuid = Uuid();
 
     int fixedPhotos = 0;
     int cleanedOrderItems = 0;

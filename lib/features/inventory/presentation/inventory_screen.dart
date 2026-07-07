@@ -37,7 +37,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   late TabController _tabController;
   String _category = 'All';
   final _categories = ['All', ...AppConstants.itemCategories];
-  DateTime _selectedHistoryDate = DateTime.now();
+  final DateTime _selectedHistoryDate = DateTime.now();
   DateTimeRange? _priceHistoryRange;
 
   @override

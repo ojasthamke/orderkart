@@ -1,4 +1,5 @@
 /// Formatters — Currency, date, phone, quantity display helpers
+library;
 
 import 'package:intl/intl.dart';
 import '../constants/app_constants.dart';
@@ -68,7 +69,7 @@ class AppFormatters {
     final diff  = today.difference(d).inDays;
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
-    if (diff < 7)  return '${diff} days ago';
+    if (diff < 7)  return '$diff days ago';
     return _dateFmt.format(dt);
   }
 

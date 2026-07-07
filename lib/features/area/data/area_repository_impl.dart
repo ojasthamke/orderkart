@@ -1,4 +1,5 @@
 /// AreaRepositoryImpl — concrete implementation of AreaRepository
+library;
 
 import '../domain/area.dart';
 import '../domain/area_repository.dart';

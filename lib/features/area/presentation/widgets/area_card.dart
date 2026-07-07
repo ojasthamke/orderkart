@@ -1,4 +1,5 @@
 /// AreaCard — Single area list item
+library;
 
 import 'dart:io';
 import 'package:flutter/material.dart';

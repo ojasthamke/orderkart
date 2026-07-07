@@ -1,4 +1,5 @@
 /// SnackbarHelper — Consistent snackbar messages with undo support
+library;
 
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';

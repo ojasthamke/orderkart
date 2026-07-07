@@ -1,4 +1,5 @@
 /// ResponsiveLayout — Adaptive layout helpers (Delegates to ResponsiveHelper)
+library;
 
 import 'package:flutter/material.dart';
 import 'responsive_helper.dart';

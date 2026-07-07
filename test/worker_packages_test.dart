@@ -33,8 +33,8 @@ void main() {
   databaseFactory = databaseFactoryFfi;
 
   group('Worker Packages & Backup Serialization Tests', () {
-    final workerId = 'test-worker-id';
-    final workerName = 'Test Worker';
+    const workerId = 'test-worker-id';
+    const workerName = 'Test Worker';
     late Directory tempDocsDir;
 
     setUpAll(() {
@@ -331,7 +331,7 @@ void main() {
       });
 
       // Seed reports/orders
-      final orderId = 'order-1';
+      const orderId = 'order-1';
       await db.insert('orders', {
         'id': orderId,
         'customer_id': 'cust-1',
@@ -423,7 +423,7 @@ void main() {
       await db.insert('settings', {'key': 'active_worker_id', 'value': workerId});
 
       // 1. Test Area insertion under worker mode
-      final areaId = 'worker-area-1';
+      const areaId = 'worker-area-1';
       final area = Area(
         id: areaId,
         name: 'Worker Added Area',
@@ -446,7 +446,7 @@ void main() {
       expect(areaAssigns.length, equals(1));
 
       // 2. Test Street insertion under worker mode
-      final streetId = 'worker-street-1';
+      const streetId = 'worker-street-1';
       final street = Street(
         id: streetId,
         areaId: areaId,
@@ -464,7 +464,7 @@ void main() {
       expect(streetAssigns.length, equals(1));
 
       // 3. Test Customer insertion under worker mode
-      final customerId = 'worker-cust-1';
+      const customerId = 'worker-cust-1';
       final customer = Customer(
         id: customerId,
         streetId: streetId,
@@ -485,7 +485,7 @@ void main() {
       expect(customerAssigns.length, equals(1));
 
       // 4. Test Order & Payment insertion under worker mode
-      final orderId = 'WK12345';
+      const orderId = 'WK12345';
       final order = AppOrder(
         id: orderId,
         customerId: customerId,
@@ -500,7 +500,7 @@ void main() {
       final orderRow = await db.query('orders', where: 'id = ?', whereArgs: [orderId]);
       expect(orderRow.first['created_by'], equals(workerId));
 
-      final paymentId = 'worker-pay-1';
+      const paymentId = 'worker-pay-1';
       final payment = Payment(
         id: paymentId,
         orderId: orderId,
@@ -515,7 +515,7 @@ void main() {
       expect(paymentRow.first['created_by'], equals(workerId));
 
       // 5. Test Expense insertion under worker mode
-      final expenseId = 'worker-exp-1';
+      const expenseId = 'worker-exp-1';
       final expense = Expense(
         id: expenseId,
         name: 'Lunch',
@@ -531,7 +531,7 @@ void main() {
       expect(expenseRow.first['created_by'], equals(workerId));
 
       // 6. Test Note insertion under worker mode
-      final noteId = 'worker-note-1';
+      const noteId = 'worker-note-1';
       final note = AppNote(
         id: noteId,
         title: 'Call customer',
@@ -545,7 +545,7 @@ void main() {
       expect(noteRow.first['created_by'], equals(workerId));
 
       // 7. Test Visit insertion under worker mode
-      final visitId = 'worker-visit-1';
+      const visitId = 'worker-visit-1';
       final visit = AppVisit(
         id: visitId,
         areaId: areaId,

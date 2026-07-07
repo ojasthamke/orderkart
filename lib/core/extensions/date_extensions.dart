@@ -1,4 +1,5 @@
 /// Date Extensions
+library;
 
 extension DateTimeExtensions on DateTime {
   bool get isToday {

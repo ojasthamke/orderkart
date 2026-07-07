@@ -2,6 +2,7 @@
 /// flutter_local_notifications periodic scheduling only.
 /// Does NOT use workmanager or any native background worker.
 /// Fully offline-first. Works without any internet or background services.
+library;
 
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';

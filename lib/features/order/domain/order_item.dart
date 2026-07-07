@@ -1,4 +1,5 @@
 /// OrderItem — line item within an order
+library;
 
 class OrderItem {
   final String id;

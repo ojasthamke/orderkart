@@ -1,5 +1,6 @@
 /// App Routes — Named routes for all screens
 /// Centralised to avoid typos and simplify navigation
+library;
 
 class AppRoutes {
   AppRoutes._();

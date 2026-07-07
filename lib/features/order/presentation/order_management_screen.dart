@@ -1,4 +1,5 @@
 /// OrderManagementScreen — All orders with tabs, filters, one-tap actions
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -326,8 +327,9 @@ class _OrderManagementScreenState
         .read(orderManagementProvider.notifier)
         .createOrder(duplicate, items.map((it) =>
             it.copyWith(id: const Uuid().v4(), orderId: newId)).toList());
-    if (mounted)
+    if (mounted) {
       SnackbarHelper.showSuccess(context, 'Order duplicated');
+    }
   }
 }
 
@@ -564,7 +566,7 @@ class _OrderCard extends ConsumerWidget {
                 // Time + action buttons
                 Row(
                   children: [
-                    Icon(Icons.access_time_rounded,
+                    const Icon(Icons.access_time_rounded,
                         size: 12, color: AppColors.gray400),
                     const SizedBox(width: 4),
                     Text(

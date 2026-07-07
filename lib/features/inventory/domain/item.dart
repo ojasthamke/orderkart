@@ -1,4 +1,5 @@
 /// Item (Inventory) Model
+library;
 
 class Item {
   final String id;

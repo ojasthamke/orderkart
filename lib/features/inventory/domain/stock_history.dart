@@ -1,4 +1,5 @@
 /// StockHistory — records every stock change
+library;
 
 class StockHistory {
   final String id;

@@ -19,7 +19,7 @@ void main() {
         'schema_version': '4',
         'export_timestamp': '2026-07-05T12:00:00Z',
       };
-      final secret = 'test-owner-secret-key-1234567890';
+      const secret = 'test-owner-secret-key-1234567890';
       
       final signature = SecurityHelper.signManifest(manifest, secret);
       expect(signature, isNotEmpty);
@@ -34,7 +34,7 @@ void main() {
         'export_timestamp': '2026-07-05T12:00:00Z',
         'signature': '', // signature field exists but will be stripped during signing
       };
-      final secret = 'test-owner-secret-key-1234567890';
+      const secret = 'test-owner-secret-key-1234567890';
       
       final signature = SecurityHelper.signManifest(manifest, secret);
       final manifestWithSig = Map<String, dynamic>.from(manifest)..['signature'] = signature;
@@ -50,7 +50,7 @@ void main() {
         'schema_version': '4',
         'export_timestamp': '2026-07-05T12:00:00Z',
       };
-      final secret = 'test-owner-secret-key-1234567890';
+      const secret = 'test-owner-secret-key-1234567890';
       
       final signature = SecurityHelper.signManifest(manifest, secret);
       final tamperedManifest = Map<String, dynamic>.from(manifest)..['db_version'] = '5';
@@ -65,8 +65,8 @@ void main() {
         'db_version': '4',
         'schema_version': '4',
       };
-      final secret = 'test-owner-secret-key-1234567890';
-      final wrongSecret = 'wrong-secret-key';
+      const secret = 'test-owner-secret-key-1234567890';
+      const wrongSecret = 'wrong-secret-key';
       
       final signature = SecurityHelper.signManifest(manifest, secret);
       final isValid = SecurityHelper.verifyManifest(manifest, signature, wrongSecret);

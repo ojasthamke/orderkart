@@ -1,4 +1,5 @@
 /// Area Model — top-level geographic grouping
+library;
 
 class Area {
   final String id;

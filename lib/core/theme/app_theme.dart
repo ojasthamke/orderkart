@@ -1,5 +1,6 @@
 /// App Theme — Material 3, white dominant, sunlight-friendly
 /// Supports Light and Dark modes
+library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';

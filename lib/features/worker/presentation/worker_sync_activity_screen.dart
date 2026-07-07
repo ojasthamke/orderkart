@@ -243,9 +243,9 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ExpansionTile(
-            leading: CircleAvatar(
+            leading: const CircleAvatar(
               backgroundColor: AppColors.primarySurface,
-              child: const Icon(Icons.download_done_rounded, color: AppColors.primary),
+              child: Icon(Icons.download_done_rounded, color: AppColors.primary),
             ),
             title: Text(
               'Update from $wName',

@@ -21,7 +21,7 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
   final OrderRepository _repo;
   String _status = 'all';
   String _filter = 'all';
-  String? _customerId;
+  final String? _customerId;
 
   OrderManagementNotifier(this._ref, this._repo, {String? customerId})
       : _customerId = customerId,

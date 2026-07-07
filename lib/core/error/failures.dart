@@ -1,4 +1,5 @@
 /// Failure classes — typed errors for clean error handling
+library;
 
 abstract class Failure {
   final String message;

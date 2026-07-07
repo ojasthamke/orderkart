@@ -101,7 +101,7 @@ class VisitListScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         AppFormatters.dateFromString(visit.date),
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w600,
                           fontSize: 12,

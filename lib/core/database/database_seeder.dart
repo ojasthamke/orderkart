@@ -8,7 +8,7 @@ import 'database_helper.dart';
 class DatabaseSeeder {
   DatabaseSeeder._();
 
-  static final _uuid = const Uuid();
+  static const _uuid = Uuid();
   static final _random = Random(42); // Seeded for deterministic generation
 
   /// Seeds 30 Vegetables, 10 Fruits, 10 Areas, 50 Streets, 500 Customers, 200 VIP Memberships

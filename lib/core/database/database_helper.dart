@@ -1,6 +1,7 @@
 /// DatabaseHelper — SQLite initialisation, schema creation and migrations
 /// Uses singleton pattern for single database connection
 /// Designed for future cloud sync — all IDs are UUIDs (string), not auto-increment
+library;
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';

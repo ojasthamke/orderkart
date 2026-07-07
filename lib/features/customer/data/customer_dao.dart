@@ -1,4 +1,5 @@
 /// CustomerDao — SQLite operations for Customers
+library;
 
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -13,24 +14,6 @@ class CustomerDao {
 
   Future<DatabaseExecutor> _getExecutor(DatabaseExecutor? executor) async {
     return executor ?? await _db;
-  }
-
-  Future<List<String>> _getCustomerOrder(String streetId) async {
-    final db = await _db;
-    final maps = await db.query(
-      'settings',
-      columns: ['value'],
-      where: 'key = ?',
-      whereArgs: ['street_customers_order:$streetId'],
-    );
-    if (maps.isEmpty) return [];
-    try {
-      final val = maps.first['value'] as String;
-      final List<dynamic> list = jsonDecode(val);
-      return list.cast<String>();
-    } catch (_) {
-      return [];
-    }
   }
 
   Future<void> saveCustomerOrder(String streetId, List<String> orderedIds) async {

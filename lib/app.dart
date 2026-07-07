@@ -1,4 +1,5 @@
 /// OrderKart App Root — Router and Theme configuration
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -316,7 +317,7 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
         if (lastUnlock == null) {
           await prefs.setInt('last_10day_unlock_time', now);
         } else {
-          final tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+          const tenDaysMs = 10 * 24 * 60 * 60 * 1000;
           if (now - lastUnlock >= tenDaysMs) {
             is10DayLocked = true;
           }
