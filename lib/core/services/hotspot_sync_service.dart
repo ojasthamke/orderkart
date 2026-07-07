@@ -117,13 +117,11 @@ class HotspotSyncService {
     if (_server != null) return;
 
     try {
-      final random = Random.secure();
-      final token = List.generate(6, (_) => random.nextInt(10).toString()).join();
-      currentSyncToken = token;
+      currentSyncToken = 'dummy_token';
 
       _server = await HttpServer.bind(InternetAddress.anyIPv4, 8292);
       isServerRunningNotifier.value = true;
-      onStatusUpdate('Sync Token: $token\nServer listening. Waiting for other device to sync...');
+      onStatusUpdate('Server listening. Waiting for other device to sync...');
 
       _server!.listen((HttpRequest request) async {
         final path = request.uri.path;
@@ -140,15 +138,7 @@ class HotspotSyncService {
           await request.response.close();
         } else if (method == 'POST' && path == '/sync') {
           try {
-            // C4: Auth check via header token
-            final tokenHeader = request.headers.value('x-sync-token');
-            if (tokenHeader == null || tokenHeader != currentSyncToken) {
-              request.response
-                ..statusCode = HttpStatus.unauthorized
-                ..write(jsonEncode({'status': 'error', 'message': 'Unauthorized — Sync Token Mismatch'}));
-              await request.response.close();
-              return;
-            }
+            // Pairing code requirement is removed. Connection authorized directly.
 
             // C5: Payload size limit check
             final contentLength = request.contentLength;

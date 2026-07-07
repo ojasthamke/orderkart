@@ -305,9 +305,6 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
             }
           },
         );
-        setState(() {
-          _status = 'Receiver started. Waiting for connection...';
-        });
       }
     } catch (e) {
       setState(() => _status = 'Error: $e');
@@ -324,44 +321,7 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
       return;
     }
 
-    final tokenController = TextEditingController();
-    final bool? proceed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Enter Pairing Code', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Enter the 6-digit Sync Token displayed on the receiver device:'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: tokenController,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                hintText: 'e.g. 123456',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Proceed'),
-          ),
-        ],
-      ),
-    );
-
-    if (proceed != true || tokenController.text.trim().length != 6) {
-      return;
-    }
-    final enteredToken = tokenController.text.trim();
+    const enteredToken = '';
 
     setState(() {
       _loading = true;
