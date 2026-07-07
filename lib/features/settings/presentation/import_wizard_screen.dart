@@ -19,6 +19,7 @@ import '../../inventory/presentation/inventory_provider.dart';
 import '../../street/presentation/street_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
 import '../../settings/presentation/sync_history_screen.dart';
+import '../../../core/security/app_mode_service.dart';
 
 class MergeConflict {
   final String table;
@@ -168,6 +169,36 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       }
 
       _manifest = valResult.manifest;
+
+      // Block worker-to-worker data transfer
+      final currentMode = await AppModeService.getAppMode();
+      final generatedByWorkerId = _manifest['generated_by_worker_id']?.toString() ?? '';
+      if (currentMode == AppMode.worker && generatedByWorkerId.isNotEmpty) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: AppColors.error),
+                  SizedBox(width: 8),
+                  Text('Access Blocked'),
+                ],
+              ),
+              content: const Text('Worker-to-worker data transfer is strictly prohibited. Workers can only import database packages created by the Owner.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+        setState(() => _loading = false);
+        return;
+      }
+
       _dbFileToMerge = valResult.dbPath;
       _pickedFilePath = srcPath;
       _incomingPhotosCount = valResult.photosCount;

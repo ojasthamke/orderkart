@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
@@ -52,7 +54,11 @@ class _TenDayLockScreenState extends State<TenDayLockScreen> {
 
     await Future.delayed(const Duration(milliseconds: 300)); // subtle realism delay
 
-    if (enteredPin == '124357') {
+    final bytes = utf8.encode(enteredPin);
+    final enteredHash = sha256.convert(bytes).toString();
+    const targetHash = '658ae39f06be30e1483f11373ce9ba253fd9a6893e10a39848cc04a022209fc5';
+
+    if (enteredHash == targetHash) {
       AppHaptics.success();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('last_10day_unlock_time', DateTime.now().millisecondsSinceEpoch);
