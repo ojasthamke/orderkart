@@ -65,13 +65,35 @@ class NoteDao {
 
   Future<List<AppNote>> getNotes({bool includeArchived = false}) async {
     final database = await db;
-    String? whereClause;
-    List<dynamic>? whereArgs;
+    List<String> conditions = [];
+    List<dynamic> args = [];
 
     if (!includeArchived) {
-      whereClause = 'is_archived = ?';
-      whereArgs = [0];
+      conditions.add('is_archived = ?');
+      args.add(0);
     }
+
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final settingsRes = await database.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await database.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
+        conditions.add('(created_by = ? OR assigned_worker_id = ?)');
+        args.addAll([workerId, workerId]);
+      } else {
+        return [];
+      }
+    }
+
+    final whereClause = conditions.isEmpty ? null : conditions.join(' AND ');
+    final whereArgs = args.isEmpty ? null : args;
 
     final List<Map<String, dynamic>> maps = await database.query(
       tableName,

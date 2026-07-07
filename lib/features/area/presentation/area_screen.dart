@@ -19,15 +19,8 @@ import 'dialogs/add_edit_area_dialog.dart';
 import 'widgets/area_card.dart';
 
 import '../../../core/database/database_helper.dart';
-
-final activeWorkersListProvider = FutureProvider<List<Map<String, String>>>((ref) async {
-  final db = await DatabaseHelper.instance.database;
-  final rows = await db.query('workers', columns: ['id', 'name'], orderBy: 'name ASC');
-  return rows.map((r) => {
-    'id': r['id']?.toString() ?? '',
-    'name': r['name']?.toString() ?? '',
-  }).toList();
-});
+import '../../../core/security/app_mode_service.dart';
+import '../../worker/presentation/worker_provider.dart';
 
 class AreaScreen extends ConsumerStatefulWidget {
   final bool showBack;
@@ -45,6 +38,8 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
   Widget build(BuildContext context) {
     final areasAsync = ref.watch(areaProvider);
     final workersAsync = ref.watch(activeWorkersListProvider);
+    final modeAsync = ref.watch(appModeProvider);
+    final isWorker = modeAsync.valueOrNull == AppMode.worker;
 
     return AppScaffold(
       title: 'Areas',
@@ -83,46 +78,47 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
           ),
 
           // Dynamic Material 3 Filter Chips Row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              children: [
-                FilterChip(
-                  selected: _filterMode == 'all',
-                  label: const Text('All'),
-                  avatar: const Icon(Icons.apps_rounded, size: 16),
-                  selectedColor: AppColors.primarySurface,
-                  onSelected: (_) => setState(() => _filterMode = 'all'),
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  selected: _filterMode == 'owner',
-                  label: const Text('🟢 Owner'),
-                  selectedColor: AppColors.success.withOpacity(0.18),
-                  onSelected: (_) => setState(() => _filterMode = 'owner'),
-                ),
-                const SizedBox(width: 8),
-                ...workersAsync.when(
-                  data: (workers) => workers.map((w) {
-                    final wId = w['id']!;
-                    final wName = w['name']!;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        selected: _filterMode == wId,
-                        label: Text('🔵 $wName'),
-                        selectedColor: AppColors.primarySurface,
-                        onSelected: (_) => setState(() => _filterMode = wId),
-                      ),
-                    );
-                  }).toList(),
-                  loading: () => [],
-                  error: (_, __) => [],
-                ),
-              ],
+          if (!isWorker)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  FilterChip(
+                    selected: _filterMode == 'all',
+                    label: const Text('All'),
+                    avatar: const Icon(Icons.apps_rounded, size: 16),
+                    selectedColor: AppColors.primarySurface,
+                    onSelected: (_) => setState(() => _filterMode = 'all'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilterChip(
+                    selected: _filterMode == 'owner',
+                    label: const Text('🟢 Owner'),
+                    selectedColor: AppColors.success.withOpacity(0.18),
+                    onSelected: (_) => setState(() => _filterMode = 'owner'),
+                  ),
+                  const SizedBox(width: 8),
+                  ...workersAsync.when(
+                    data: (workers) => workers.map((w) {
+                      final wId = w['id']!;
+                      final wName = w['name']!;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          selected: _filterMode == wId,
+                          label: Text('🔵 $wName'),
+                          selectedColor: AppColors.primarySurface,
+                          onSelected: (_) => setState(() => _filterMode = wId),
+                        ),
+                      );
+                    }).toList(),
+                    loading: () => [],
+                    error: (_, __) => [],
+                  ),
+                ],
+              ),
             ),
-          ),
 
           Expanded(
             child: areasAsync.when(

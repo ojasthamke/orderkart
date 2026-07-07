@@ -52,10 +52,13 @@ class AreaDao {
             .where((e) => e.isNotEmpty)
             .toList();
 
-        final inClause = assignedAreaIds.isNotEmpty
-            ? assignedAreaIds.map((id) => "'$id'").join(',')
+        final placeholders = assignedAreaIds.isNotEmpty
+            ? List.filled(assignedAreaIds.length, '?').join(',')
             : "''";
-        whereClauses.add('(a.id IN ($inClause) OR a.created_by = ? OR a.assigned_worker_id = ?)');
+        whereClauses.add('(a.id IN ($placeholders) OR a.created_by = ? OR a.assigned_worker_id = ?)');
+        if (assignedAreaIds.isNotEmpty) {
+          args.addAll(assignedAreaIds);
+        }
         args.addAll([workerId, workerId]);
       } else {
         return [];

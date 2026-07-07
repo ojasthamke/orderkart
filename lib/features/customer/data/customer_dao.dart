@@ -57,6 +57,43 @@ class CustomerDao {
       final q = '%${searchQuery.trim()}%';
       args.addAll([q, q, q]);
     }
+
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await db.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
+        final assignmentRows = await db.query(
+          'worker_assignments',
+          where: 'worker_id = ? AND entity_type = ?',
+          whereArgs: [workerId, 'customer'],
+        );
+        final assignedCustomerIds = assignmentRows
+            .map((e) => e['entity_id']?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final placeholders = assignedCustomerIds.isNotEmpty
+            ? List.filled(assignedCustomerIds.length, '?').join(',')
+            : "''";
+        if (where.isNotEmpty) where += ' AND ';
+        where += '(id IN ($placeholders) OR created_by = ? OR assigned_worker_id = ?)';
+        if (assignedCustomerIds.isNotEmpty) {
+          args.addAll(assignedCustomerIds);
+        }
+        args.addAll([workerId, workerId]);
+      } else {
+        return [];
+      }
+    }
+
     final maps = await db.query(
       'customers',
       where: where.isEmpty ? null : where,
@@ -77,6 +114,66 @@ class CustomerDao {
     return customers;
   }
 
+  Future<List<Customer>> getAllCustomers() async {
+    final db = await _db;
+    String? where;
+    List<dynamic>? args;
+
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await db.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
+        final assignmentRows = await db.query(
+          'worker_assignments',
+          where: 'worker_id = ? AND entity_type = ?',
+          whereArgs: [workerId, 'customer'],
+        );
+        final assignedCustomerIds = assignmentRows
+            .map((e) => e['entity_id']?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final placeholders = assignedCustomerIds.isNotEmpty
+            ? List.filled(assignedCustomerIds.length, '?').join(',')
+            : "''";
+
+        where = '(id IN ($placeholders) OR created_by = ? OR assigned_worker_id = ?)';
+        args = [];
+        if (assignedCustomerIds.isNotEmpty) {
+          args.addAll(assignedCustomerIds);
+        }
+        args.addAll([workerId, workerId]);
+      } else {
+        return [];
+      }
+    }
+
+    final maps = await db.query(
+      'customers',
+      where: where,
+      whereArgs: args,
+      orderBy: 'serial_no ASC',
+    );
+    final customers = maps.map(Customer.fromMap).toList();
+    customers.sort((a, b) {
+      final aNo = a.serialNo;
+      final bNo = b.serialNo;
+      if (aNo == 0 && bNo == 0) return a.createdAt.compareTo(b.createdAt);
+      if (aNo == 0) return 1;
+      if (bNo == 0) return -1;
+      return aNo.compareTo(bNo);
+    });
+    return customers;
+  }
+
   Future<Customer?> getCustomerById(String id) async {
     final db = await _db;
     final maps = await db.query('customers', where: 'id = ?', whereArgs: [id]);
@@ -87,6 +184,55 @@ class CustomerDao {
   Future<List<Customer>> searchCustomers(String query) async {
     final db = await _db;
     final q = '%${query.trim()}%';
+
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await db.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
+        final assignmentRows = await db.query(
+          'worker_assignments',
+          where: 'worker_id = ? AND entity_type = ?',
+          whereArgs: [workerId, 'customer'],
+        );
+        final assignedCustomerIds = assignmentRows
+            .map((e) => e['entity_id']?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final placeholders = assignedCustomerIds.isNotEmpty
+            ? List.filled(assignedCustomerIds.length, '?').join(',')
+            : "''";
+
+        final sqlArgs = [q, q, q, q, q, q, q];
+        if (assignedCustomerIds.isNotEmpty) {
+          sqlArgs.addAll(assignedCustomerIds);
+        }
+        sqlArgs.addAll([workerId, workerId]);
+
+        final maps = await db.rawQuery('''
+          SELECT c.* FROM customers c
+          LEFT JOIN streets s ON c.street_id = s.id
+          LEFT JOIN areas a ON s.area_id = a.id
+          WHERE (c.name LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ?
+                OR c.house_number LIKE ? OR c.address LIKE ?
+                OR s.name LIKE ? OR a.name LIKE ?)
+                AND (c.id IN ($placeholders) OR c.created_by = ? OR c.assigned_worker_id = ?)
+          LIMIT 50
+        ''', sqlArgs);
+        return maps.map(Customer.fromMap).toList();
+      } else {
+        return [];
+      }
+    }
+
     final maps = await db.rawQuery('''
       SELECT c.* FROM customers c
       LEFT JOIN streets s ON c.street_id = s.id
@@ -102,6 +248,51 @@ class CustomerDao {
   /// Fetch all customers who have an outstanding balance > 0, sorted highest first
   Future<List<Customer>> getCustomersWithDue() async {
     final db = await _db;
+
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await db.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
+        final assignmentRows = await db.query(
+          'worker_assignments',
+          where: 'worker_id = ? AND entity_type = ?',
+          whereArgs: [workerId, 'customer'],
+        );
+        final assignedCustomerIds = assignmentRows
+            .map((e) => e['entity_id']?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final placeholders = assignedCustomerIds.isNotEmpty
+            ? List.filled(assignedCustomerIds.length, '?').join(',')
+            : "''";
+
+        final sqlArgs = [];
+        if (assignedCustomerIds.isNotEmpty) {
+          sqlArgs.addAll(assignedCustomerIds);
+        }
+        sqlArgs.addAll([workerId, workerId]);
+
+        final maps = await db.rawQuery('''
+          SELECT * FROM customers
+          WHERE outstanding_balance > 0
+                AND (id IN ($placeholders) OR created_by = ? OR assigned_worker_id = ?)
+          ORDER BY outstanding_balance DESC
+        ''', sqlArgs);
+        return maps.map(Customer.fromMap).toList();
+      } else {
+        return [];
+      }
+    }
+
     final maps = await db.rawQuery('''
       SELECT * FROM customers
       WHERE outstanding_balance > 0
@@ -113,6 +304,51 @@ class CustomerDao {
   /// Fetch all customers who have overpaid / advance balance (paid_amount > total_spent)
   Future<List<Customer>> getCustomersWithOverpayment() async {
     final db = await _db;
+
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await db.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
+        final assignmentRows = await db.query(
+          'worker_assignments',
+          where: 'worker_id = ? AND entity_type = ?',
+          whereArgs: [workerId, 'customer'],
+        );
+        final assignedCustomerIds = assignmentRows
+            .map((e) => e['entity_id']?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final placeholders = assignedCustomerIds.isNotEmpty
+            ? List.filled(assignedCustomerIds.length, '?').join(',')
+            : "''";
+
+        final sqlArgs = [];
+        if (assignedCustomerIds.isNotEmpty) {
+          sqlArgs.addAll(assignedCustomerIds);
+        }
+        sqlArgs.addAll([workerId, workerId]);
+
+        final maps = await db.rawQuery('''
+          SELECT * FROM customers
+          WHERE paid_amount > total_spent
+                AND (id IN ($placeholders) OR created_by = ? OR assigned_worker_id = ?)
+          ORDER BY (paid_amount - total_spent) DESC
+        ''', sqlArgs);
+        return maps.map(Customer.fromMap).toList();
+      } else {
+        return [];
+      }
+    }
+
     final maps = await db.rawQuery('''
       SELECT * FROM customers
       WHERE paid_amount > total_spent
@@ -205,16 +441,47 @@ class CustomerDao {
   /// Recalculates customer totals from orders table
   Future<void> recalcCustomerTotals(String customerId, {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
-    final result = await db.rawQuery('''
-      SELECT
-        COUNT(*)            AS total_orders,
-        COALESCE(SUM(grand_total),     0) AS total_amount,
-        COALESCE(SUM(paid_amount),     0) AS total_paid,
-        COALESCE(SUM(remaining_amount),0) AS total_pending,
-        MAX(created_at)     AS last_order
-      FROM orders
-      WHERE customer_id = ? AND delivery_status != 'cancelled'
-    ''', [customerId]);
+    final mode = await AppModeService.getAppMode();
+    String? workerId;
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await db.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+    }
+
+    final query = (workerId != null && workerId.isNotEmpty)
+        ? '''
+          SELECT
+            COUNT(*)            AS total_orders,
+            COALESCE(SUM(grand_total),     0) AS total_amount,
+            COALESCE(SUM(paid_amount),     0) AS total_paid,
+            COALESCE(SUM(remaining_amount),0) AS total_pending,
+            MAX(created_at)     AS last_order
+          FROM orders
+          WHERE customer_id = ? AND delivery_status != 'cancelled'
+            AND (created_by = ? OR assigned_worker_id = ?)
+          '''
+        : '''
+          SELECT
+            COUNT(*)            AS total_orders,
+            COALESCE(SUM(grand_total),     0) AS total_amount,
+            COALESCE(SUM(paid_amount),     0) AS total_paid,
+            COALESCE(SUM(remaining_amount),0) AS total_pending,
+            MAX(created_at)     AS last_order
+          FROM orders
+          WHERE customer_id = ? AND delivery_status != 'cancelled'
+          ''';
+
+    final queryArgs = (workerId != null && workerId.isNotEmpty)
+        ? [customerId, workerId, workerId]
+        : [customerId];
+
+    final result = await db.rawQuery(query, queryArgs);
 
     if (result.isNotEmpty) {
       final row = result.first;

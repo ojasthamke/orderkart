@@ -90,6 +90,43 @@ class OrderDao {
       args.add(now.toIso8601String());
     }
 
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await db.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
+        final assignmentRows = await db.query(
+          'worker_assignments',
+          where: 'worker_id = ? AND entity_type = ?',
+          whereArgs: [workerId, 'customer'],
+        );
+        final assignedCustomerIds = assignmentRows
+            .map((e) => e['entity_id']?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final placeholders = assignedCustomerIds.isNotEmpty
+            ? List.filled(assignedCustomerIds.length, '?').join(',')
+            : "''";
+
+        conditions.add('(o.created_by = ? OR o.assigned_worker_id = ? OR o.customer_id IN ($placeholders))');
+        args.add(workerId);
+        args.add(workerId);
+        if (assignedCustomerIds.isNotEmpty) {
+          args.addAll(assignedCustomerIds);
+        }
+      } else {
+        return [];
+      }
+    }
+
     final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
 
     final maps = await db.rawQuery('''
@@ -138,7 +175,7 @@ class OrderDao {
 
   Future<String> insertOrder(AppOrder order, {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
-    final id  = order.id.isEmpty ? _uuid.v4() : order.id;
+    final id  = order.id.isEmpty ? await generateUniqueOrderNo() : order.id;
     final now = DateTime.now().toIso8601String();
 
     String workerId = order.assignedWorkerId;
@@ -293,38 +330,97 @@ class OrderDao {
     final today  = DateTime(now.year, now.month, now.day).toIso8601String();
     final month  = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
+    final mode = await AppModeService.getAppMode();
+    String? workerId;
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await db.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+    }
+
+    final bool isWorker = workerId != null && workerId.isNotEmpty;
+
     final todaySales = await db.rawQuery(
-        'SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE DATE(created_at) = DATE(?)',
-        [today]);
+        isWorker
+            ? 'SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE DATE(created_at) = DATE(?)',
+        isWorker ? [today, workerId, workerId] : [today]);
+
     final todayOrders = await db.rawQuery(
-        'SELECT COUNT(*) AS v FROM orders WHERE DATE(created_at) = DATE(?)',
-        [today]);
+        isWorker
+            ? 'SELECT COUNT(*) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COUNT(*) AS v FROM orders WHERE DATE(created_at) = DATE(?)',
+        isWorker ? [today, workerId, workerId] : [today]);
+
     final monthlySales = await db.rawQuery(
-        "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ?",
-        [month]);
+        isWorker
+            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ? AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ?",
+        isWorker ? [month, workerId, workerId] : [month]);
+
     final pendingPayments = await db.rawQuery(
-        'SELECT COALESCE(SUM(remaining_amount),0) AS v FROM orders WHERE remaining_amount > 0');
+        isWorker
+            ? 'SELECT COALESCE(SUM(remaining_amount),0) AS v FROM orders WHERE remaining_amount > 0 AND (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(remaining_amount),0) AS v FROM orders WHERE remaining_amount > 0',
+        isWorker ? [workerId, workerId] : null);
+
     final cashReceived = await db.rawQuery(
-        "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method = 'cash'");
+        isWorker
+            ? "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method = 'cash' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method = 'cash'",
+        isWorker ? [workerId, workerId] : null);
+
     final onlineReceived = await db.rawQuery(
-        "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method != 'cash'");
+        isWorker
+            ? "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method != 'cash' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method != 'cash'",
+        isWorker ? [workerId, workerId] : null);
+
     final totalExpenses = await db.rawQuery(
-        'SELECT COALESCE(SUM(amount),0) AS v FROM expenses');
+        isWorker
+            ? 'SELECT COALESCE(SUM(amount),0) AS v FROM expenses WHERE (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(amount),0) AS v FROM expenses',
+        isWorker ? [workerId, workerId] : null);
+
     final customerCount = await db.rawQuery(
-        'SELECT COUNT(*) AS v FROM customers');
+        isWorker
+            ? "SELECT COUNT(*) AS v FROM customers WHERE (created_by = ? OR assigned_worker_id = ? OR id IN (SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'customer'))"
+            : 'SELECT COUNT(*) AS v FROM customers',
+        isWorker ? [workerId, workerId, workerId] : null);
+
     final orderCount = await db.rawQuery(
-        'SELECT COUNT(*) AS v FROM orders');
+        isWorker
+            ? 'SELECT COUNT(*) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COUNT(*) AS v FROM orders',
+        isWorker ? [workerId, workerId] : null);
+
     final itemCount = await db.rawQuery(
         'SELECT COUNT(*) AS v FROM items');
 
     // Top selling items
-    final topItems = await db.rawQuery('''
-      SELECT item_name, SUM(total_price) AS revenue, SUM(quantity) AS qty
-      FROM order_items
-      GROUP BY item_name
-      ORDER BY revenue DESC
-      LIMIT 5
-    ''');
+    final topItems = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT item_name, SUM(total_price) AS revenue, SUM(quantity) AS qty
+              FROM order_items
+              WHERE order_id IN (SELECT id FROM orders WHERE created_by = ? OR assigned_worker_id = ?)
+              GROUP BY item_name
+              ORDER BY revenue DESC
+              LIMIT 5
+              '''
+            : '''
+              SELECT item_name, SUM(total_price) AS revenue, SUM(quantity) AS qty
+              FROM order_items
+              GROUP BY item_name
+              ORDER BY revenue DESC
+              LIMIT 5
+              ''',
+        isWorker ? [workerId, workerId] : null);
 
     // Low stock items
     final lowStock = await db.rawQuery(
@@ -332,19 +428,34 @@ class OrderDao {
 
     // Status counts
     final deliveredOrders = await db.rawQuery(
-        "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'delivered'");
+        isWorker
+            ? "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'delivered' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'delivered'",
+        isWorker ? [workerId, workerId] : null);
     final pendingOrders = await db.rawQuery(
-        "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'pending'");
+        isWorker
+            ? "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'pending' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'pending'",
+        isWorker ? [workerId, workerId] : null);
     final cancelledOrders = await db.rawQuery(
-        "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'cancelled'");
+        isWorker
+            ? "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'cancelled' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'cancelled'",
+        isWorker ? [workerId, workerId] : null);
 
     // All-time sales
     final allTimeSales = await db.rawQuery(
-        'SELECT COALESCE(SUM(grand_total),0) AS v FROM orders');
+        isWorker
+            ? 'SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(grand_total),0) AS v FROM orders',
+        isWorker ? [workerId, workerId] : null);
 
     // Delivery fees collected
     final allTimeDelivery = await db.rawQuery(
-        'SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders');
+        isWorker
+            ? 'SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders',
+        isWorker ? [workerId, workerId] : null);
 
     return {
       'today_sales':      (todaySales.first['v'] as num?)?.toDouble()    ?? 0,

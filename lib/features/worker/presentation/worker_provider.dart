@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/database/database_helper.dart';
 import '../data/worker_dao.dart';
 import '../domain/worker.dart';
 
@@ -44,4 +45,13 @@ final workerListProvider =
 final workerCommissionProvider =
     FutureProvider.family<Map<String, double>, String>((ref, workerId) {
   return ref.watch(workerDaoProvider).getWorkerCommissionSummary(workerId);
+});
+
+final activeWorkersListProvider = FutureProvider<List<Map<String, String>>>((ref) async {
+  final db = await DatabaseHelper.instance.database;
+  final rows = await db.query('workers', columns: ['id', 'name'], orderBy: 'name ASC');
+  return rows.map((r) => {
+    'id': r['id']?.toString() ?? '',
+    'name': r['name']?.toString() ?? '',
+  }).toList();
 });

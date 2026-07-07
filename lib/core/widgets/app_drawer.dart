@@ -266,14 +266,10 @@ class AppDrawer extends ConsumerWidget {
                     ),
                   _DrawerItem(
                     icon: Icons.sync_alt_rounded,
-                    title: 'Import & Export Data',
+                    title: isWorker ? 'Sync & Export' : 'Import & Export Data',
                     onTap: () {
                       Navigator.pop(context);
-                      if (isWorker) {
-                        Navigator.pushNamed(context, AppRoutes.backupRestore);
-                      } else {
-                        Navigator.pushNamed(context, AppRoutes.backupRestore);
-                      }
+                      Navigator.pushNamed(context, AppRoutes.backupRestore);
                     },
                   ),
 

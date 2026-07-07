@@ -128,9 +128,7 @@ final overpaidCustomersProvider = FutureProvider<List<Customer>>((ref) async {
 
 // All customers list
 final allCustomersProvider = FutureProvider<List<Customer>>((ref) async {
-  final db = await DatabaseHelper.instance.database;
-  final maps = await db.query('customers', orderBy: 'serial_no ASC');
-  return maps.map(Customer.fromMap).toList();
+  return CustomerDao().getAllCustomers();
 });
 
 // Location info provider (Street and Area name)

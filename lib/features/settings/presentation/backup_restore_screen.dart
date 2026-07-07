@@ -20,6 +20,7 @@ import 'dialogs/export_wizard_dialog.dart';
 import '../../../core/services/package_exporter.dart';
 import '../../../core/services/package_validator.dart';
 import '../../../core/security/app_mode_service.dart';
+import '../../../core/services/worker_session.dart';
 import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/widgets/hotspot_sync_control_card.dart';
 import '../../area/presentation/area_provider.dart';
@@ -70,6 +71,11 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final modeAsync = ref.watch(appModeProvider);
+    final isWorker = modeAsync.valueOrNull == AppMode.worker;
+    final workerId = isWorker ? (WorkerSession.instance.currentWorkerId ?? 'worker_guest') : 'owner';
+    final workerName = isWorker ? (WorkerSession.instance.currentWorkerName ?? 'Worker') : 'Owner';
+
     return AppScaffold(
       title: 'Backup & Restore',
       body: ListView(
@@ -97,38 +103,40 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
               ),
             ],
           ),
-          HotspotSyncControlCard(
-            workerId: 'owner',
-            workerName: 'Owner',
+           HotspotSyncControlCard(
+            workerId: workerId,
+            workerName: workerName,
             onSyncCompleted: () {
               _invalidateAllProviders();
               if (mounted) setState(() {});
             },
           ),
           const SizedBox(height: 16),
-          _SectionCard(
-            title:    'Import & Merge Data',
-            icon:     Icons.download_rounded,
-            iconColor: AppColors.primary,
-            children: [
-              _ActionTile(
-                icon:     Icons.auto_mode_rounded,
-                title:    '4-Step Import Wizard (Preview & Merge)',
-                subtitle: 'Preview incoming record counts, review conflict policy, and merge safely',
-                onTap:    () => Navigator.pushNamed(context, AppRoutes.importWizard),
-                loading:  _loading,
-              ),
-              const Divider(height: 1),
-              _ActionTile(
-                icon:     Icons.folder_open_rounded,
-                title:    'Full Restore from File (Overwrite)',
-                subtitle: 'Replace entire database with a .db or .zip backup file',
-                onTap:    _importDatabase,
-                loading:  _loading,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          if (!isWorker) ...[
+            _SectionCard(
+              title:    'Import & Merge Data',
+              icon:     Icons.download_rounded,
+              iconColor: AppColors.primary,
+              children: [
+                _ActionTile(
+                  icon:     Icons.auto_mode_rounded,
+                  title:    '4-Step Import Wizard (Preview & Merge)',
+                  subtitle: 'Preview incoming record counts, review conflict policy, and merge safely',
+                  onTap:    () => Navigator.pushNamed(context, AppRoutes.importWizard),
+                  loading:  _loading,
+                ),
+                const Divider(height: 1),
+                _ActionTile(
+                  icon:     Icons.folder_open_rounded,
+                  title:    'Full Restore from File (Overwrite)',
+                  subtitle: 'Replace entire database with a .db or .zip backup file',
+                  onTap:    _importDatabase,
+                  loading:  _loading,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
           _SectionCard(
             title:    'Cloud Sync (Coming Soon)',
             icon:     Icons.cloud_rounded,

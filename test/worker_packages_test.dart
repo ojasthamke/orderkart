@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:orderkart/core/database/database_helper.dart';
 import 'package:orderkart/core/constants/app_constants.dart';
 import 'package:orderkart/core/services/worker_package_service.dart';
@@ -38,6 +39,7 @@ void main() {
 
     setUpAll(() {
       TestWidgetsFlutterBinding.ensureInitialized();
+      SharedPreferences.setMockInitialValues({});
       DatabaseHelper.dbNameOverride = 'orderkart_test_packages.db';
       
       // Mock Share channel

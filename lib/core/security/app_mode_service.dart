@@ -8,7 +8,6 @@ import '../database/database_helper.dart';
 enum AppMode { owner, worker }
 
 class AppModeService {
-  static const String ownerActivationCode = '860549';
   static const String keyAppMode = 'app_mode';
   static const String keyOwnerPinHash = 'owner_pin_hash';
   static const String keyOwnerPinSalt = 'owner_pin_salt';
@@ -51,20 +50,36 @@ class AppModeService {
 
   /// Get current App Mode
   static Future<AppMode> getAppMode() async {
-    final db = await DatabaseHelper.instance.database;
-    final res = await db.query('settings', where: 'key = ?', whereArgs: [keyAppMode]);
-    if (res.isEmpty) return AppMode.owner;
-    final val = res.first['value'] as String?;
-    return val == 'worker' ? AppMode.worker : AppMode.owner;
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(keyAppMode);
+    if (val != null) {
+      return val == 'worker' ? AppMode.worker : AppMode.owner;
+    }
+    // Fallback to SQLite settings table
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final res = await db.query('settings', where: 'key = ?', whereArgs: [keyAppMode]);
+      if (res.isNotEmpty) {
+        final dbVal = res.first['value'] as String?;
+        return dbVal == 'worker' ? AppMode.worker : AppMode.owner;
+      }
+    } catch (_) {}
+    return AppMode.owner;
   }
 
   /// Set App Mode
   static Future<void> setAppMode(AppMode mode) async {
-    final db = await DatabaseHelper.instance.database;
-    await db.insert('settings', {
-      'key': keyAppMode,
-      'value': mode == AppMode.worker ? 'worker' : 'owner',
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(keyAppMode, mode == AppMode.worker ? 'worker' : 'owner');
+
+    // Sync to SQLite database
+    try {
+      final db = await DatabaseHelper.instance.database;
+      await db.insert('settings', {
+        'key': keyAppMode,
+        'value': mode == AppMode.worker ? 'worker' : 'owner',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (_) {}
   }
 
   /// Check if Owner PIN is set up
@@ -74,12 +89,13 @@ class AppModeService {
     return res.isNotEmpty && (res.first['value'] as String? ?? '').isNotEmpty;
   }
 
-  /// Validate Activation Code ('860549').
+  /// Validate Activation Code.
   /// Returns false once Owner PIN setup is completed.
   static Future<bool> validateActivationCode(String input) async {
     final pinSet = await isOwnerPinSet();
     if (pinSet) return false; // Default activation code disabled after setup
-    return input.trim() == ownerActivationCode;
+    final hash = sha256.convert(utf8.encode(input.trim())).toString();
+    return hash == '460d235c0ac08c373da0a269e57569aeaa50721061ea966758f57eef78e6e946';
   }
 
   /// Save new Owner 6-digit PIN

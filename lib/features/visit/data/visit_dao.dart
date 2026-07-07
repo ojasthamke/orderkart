@@ -65,10 +65,49 @@ class VisitDao {
 
   Future<List<AppVisit>> getVisitsByDate(String date) async {
     final database = await db;
+    String where = 'date = ?';
+    List<dynamic> args = [date];
+
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final settingsRes = await database.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await database.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
+        final assignmentRows = await database.query(
+          'worker_assignments',
+          where: 'worker_id = ? AND entity_type = ?',
+          whereArgs: [workerId, 'area'],
+        );
+        final assignedAreaIds = assignmentRows
+            .map((e) => e['entity_id']?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final placeholders = assignedAreaIds.isNotEmpty
+            ? List.filled(assignedAreaIds.length, '?').join(',')
+            : "''";
+
+        where += ' AND (created_by = ? OR assigned_worker_id = ? OR area_id IN ($placeholders))';
+        args.addAll([workerId, workerId]);
+        if (assignedAreaIds.isNotEmpty) {
+          args.addAll(assignedAreaIds);
+        }
+      } else {
+        return [];
+      }
+    }
+
     final List<Map<String, dynamic>> maps = await database.query(
       tableName,
-      where: 'date = ?',
-      whereArgs: [date],
+      where: where,
+      whereArgs: args,
       orderBy: 'priority DESC, created_at ASC',
     );
 
@@ -79,8 +118,49 @@ class VisitDao {
 
   Future<List<AppVisit>> getAllVisits() async {
     final database = await db;
+    String? where;
+    List<dynamic>? args;
+
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      final settingsRes = await database.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await database.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
+        final assignmentRows = await database.query(
+          'worker_assignments',
+          where: 'worker_id = ? AND entity_type = ?',
+          whereArgs: [workerId, 'area'],
+        );
+        final assignedAreaIds = assignmentRows
+            .map((e) => e['entity_id']?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final placeholders = assignedAreaIds.isNotEmpty
+            ? List.filled(assignedAreaIds.length, '?').join(',')
+            : "''";
+
+        where = '(created_by = ? OR assigned_worker_id = ? OR area_id IN ($placeholders))';
+        args = [workerId, workerId];
+        if (assignedAreaIds.isNotEmpty) {
+          args.addAll(assignedAreaIds);
+        }
+      } else {
+        return [];
+      }
+    }
+
     final List<Map<String, dynamic>> maps = await database.query(
       tableName,
+      where: where,
+      whereArgs: args,
       orderBy: 'date DESC',
     );
 
