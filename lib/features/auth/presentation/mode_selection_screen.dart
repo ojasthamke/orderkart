@@ -3,16 +3,19 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:archive/archive.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../../core/services/package_validator.dart';
 import '../../../core/services/worker_session.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import 'welcome_splash_screen.dart';
 
 class ModeSelectionScreen extends ConsumerStatefulWidget {
   const ModeSelectionScreen({super.key});
@@ -69,7 +72,7 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter the 6-digit Owner Activation Code to register as Master Owner:\n(Default Code: 860549)',
+              'Enter the 6-digit Owner Activation Code to register as Master Owner:',
               style: TextStyle(fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 16),
@@ -79,7 +82,7 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
               maxLength: 6,
               style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 2, fontSize: 18),
               decoration: const InputDecoration(
-                hintText: '860549',
+                hintText: 'Enter Code',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.key_rounded),
               ),
@@ -100,7 +103,7 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
               } else {
                 AppHaptics.error();
                 if (context.mounted) {
-                  SnackbarHelper.showError(context, 'Invalid Activation Code! Use 860549');
+                  SnackbarHelper.showError(context, 'code 1 error');
                 }
               }
             },
@@ -200,7 +203,13 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
       if (!mounted) return;
       ref.invalidate(appModeProvider);
       SnackbarHelper.showSuccess(context, 'Owner Mode Activated Successfully!');
-      Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+      Navigator.of(context).pushReplacementNamed(
+        AppRoutes.welcome,
+        arguments: WelcomeSplashScreenArgs(
+          name: 'Nayan',
+          nextRoute: AppRoutes.dashboard,
+        ),
+      );
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Setup failed: $e');
     } finally {
@@ -275,13 +284,33 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
   Future<void> _completeWorkerSetup() async {
     setState(() => _loading = true);
     try {
+      final name = _workerNameCon.text.trim();
+      final empId = _workerIdCon.text.trim();
+      final workerId = empId.isNotEmpty ? empId : 'worker_${const Uuid().v4().substring(0, 8)}';
+
+      final db = await DatabaseHelper.instance.database;
+      final nowStr = DateTime.now().toIso8601String();
+      await db.insert('workers', {
+        'id': workerId,
+        'name': name,
+        'created_at': nowStr,
+        'pin_hash': '',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+      await WorkerSession.instance.setWorker(workerId, workerName: name);
       await AppModeService.setAppMode(AppMode.worker);
       await AppModeService.setAppInitialized(true);
 
       if (!mounted) return;
       ref.invalidate(appModeProvider);
       SnackbarHelper.showSuccess(context, 'Worker Mode Configured Successfully!');
-      Navigator.of(context).pushReplacementNamed(AppRoutes.workerDashboard);
+      Navigator.of(context).pushReplacementNamed(
+        AppRoutes.welcome,
+        arguments: WelcomeSplashScreenArgs(
+          name: name,
+          nextRoute: AppRoutes.workerDashboard,
+        ),
+      );
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Setup failed: $e');
     } finally {
@@ -325,8 +354,9 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
       );
 
       final workerId = validation.manifest['generated_by_worker_id'] as String?;
+      final workerName = validation.manifest['generated_by_worker_name'] as String? ?? 'Worker';
       if (workerId != null) {
-        await WorkerSession.instance.setWorker(workerId);
+        await WorkerSession.instance.setWorker(workerId, workerName: workerName);
       }
 
       await AppModeService.setAppMode(AppMode.worker);
@@ -335,7 +365,13 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
       if (!mounted) return;
       ref.invalidate(appModeProvider);
       SnackbarHelper.showSuccess(context, '🎉 Worker Device Provisioned!');
-      Navigator.of(context).pushReplacementNamed(AppRoutes.workerDashboard);
+      Navigator.of(context).pushReplacementNamed(
+        AppRoutes.welcome,
+        arguments: WelcomeSplashScreenArgs(
+          name: workerName,
+          nextRoute: AppRoutes.workerDashboard,
+        ),
+      );
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Provisioning import failed: $e');
     } finally {

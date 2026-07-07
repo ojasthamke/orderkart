@@ -38,6 +38,8 @@ import 'features/note/domain/app_note.dart';
 import 'features/visit/domain/app_visit.dart';
 import 'features/auth/presentation/mode_selection_screen.dart';
 import 'features/auth/presentation/pin_lock_screen.dart';
+import 'features/auth/presentation/welcome_splash_screen.dart';
+import 'core/services/worker_session.dart';
 import 'features/worker/presentation/worker_management_screen.dart';
 import 'features/worker/presentation/worker_self_profile_screen.dart';
 import 'features/dashboard/presentation/worker_dashboard_screen.dart';
@@ -220,6 +222,10 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
       case AppRoutes.pinLock:
         return _slide(const PinLockScreen());
 
+      case AppRoutes.welcome:
+        final args = settings.arguments as WelcomeSplashScreenArgs;
+        return _slide(WelcomeSplashScreen(args: args));
+
       case AppRoutes.workers:
         return _slide(const WorkerManagementScreen());
 
@@ -280,10 +286,18 @@ class AppStartupScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // If Owner is already logged in for this run, bypass splash and show MainScreen directly
+    if (AppModeService.isOwnerSessionActive) {
+      return const MainScreen();
+    }
+
     return FutureBuilder<Map<String, dynamic>>(
       future: () async {
         final initialized = await AppModeService.isAppInitialized();
         final mode = await AppModeService.getAppMode();
+        if (mode == AppMode.worker) {
+          await WorkerSession.instance.load();
+        }
         return {'initialized': initialized, 'mode': mode};
       }(),
       builder: (context, snapshot) {
@@ -304,12 +318,16 @@ class AppStartupScreen extends ConsumerWidget {
           return const ModeSelectionScreen();
         }
 
-        if (mode == AppMode.worker) {
-          return const WorkerDashboardScreen();
+        final nextRoute = (mode == AppMode.worker) ? AppRoutes.workerDashboard : AppRoutes.dashboard;
+        final name = (mode == AppMode.owner) ? 'Nayan' : (WorkerSession.instance.currentWorkerName ?? 'Worker');
+
+        if (mode == AppMode.owner) {
+          AppModeService.loginOwnerSuccess();
         }
 
-        AppModeService.loginOwnerSuccess();
-        return const MainScreen();
+        return WelcomeSplashScreen(
+          args: WelcomeSplashScreenArgs(name: name, nextRoute: nextRoute),
+        );
       },
     );
   }

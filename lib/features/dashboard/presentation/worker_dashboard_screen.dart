@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
@@ -6,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/stat_card.dart';
+import '../../../core/services/worker_session.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../order/presentation/order_provider.dart';
 
@@ -106,6 +108,16 @@ class WorkerDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reportAsync = ref.watch(todaysDetailedReportProvider);
+    final workerName = WorkerSession.instance.currentWorkerName ?? 'Worker';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final headerGradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: isDark
+          ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+          : [AppColors.primary, const Color(0xFF0284C7)],
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -127,167 +139,256 @@ class WorkerDashboardScreen extends ConsumerWidget {
       ),
       drawer: const AppDrawer(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-
-            // --- TARGET PROGRESS BANNER ---
-            reportAsync.maybeWhen(
-              data: (rpt) {
-                final collected = (rpt['cash_received'] as num?)?.toDouble() ?? 0.0;
-                const double target = 50000.0;
-                final pct = (collected / target).clamp(0.0, 1.0);
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.gray200),
-                    boxShadow: AppColors.cardShadow,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text("Today's Collection Target", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-                          Text('${(pct * 100).toStringAsFixed(0)}% Achieved',
-                              style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 13)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: pct,
-                          minHeight: 8,
-                          backgroundColor: AppColors.gray200,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Collected: ${AppFormatters.currency(collected)}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                          Text('Target: ${AppFormatters.currency(target)}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-              orElse: () => const SizedBox.shrink(),
-            ),
-            const SizedBox(height: 20),
-
-            // --- QUICK ACTIONS GRID ---
-            const Text("Quick Actions", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 12),
-
-            GridView.count(
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _actionCard(
-                  context,
-                  title: 'Areas & Routes',
-                  subtitle: 'Area → Street',
-                  icon: Icons.map_rounded,
-                  color: Colors.orange,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.areas),
-                ),
-                _actionCard(
-                  context,
-                  title: 'My Customers',
-                  subtitle: 'Assigned List',
-                  icon: Icons.people_outline_rounded,
-                  color: AppColors.primary,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.customers),
-                ),
-                _actionCard(
-                  context,
-                  title: 'Quick Order',
-                  subtitle: '+ New Order',
-                  icon: Icons.add_shopping_cart_rounded,
-                  color: AppColors.success,
-                  onTap: () => _showCustomerPickerForOrder(context, ref),
-                ),
-                _actionCard(
-                  context,
-                  title: 'My Orders',
-                  subtitle: 'Order History',
-                  icon: Icons.receipt_long_rounded,
-                  color: Colors.purple,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.orderManagement),
-                ),
-                _actionCard(
-                  context,
-                  title: 'Field Visit',
-                  subtitle: 'Log Note',
-                  icon: Icons.note_alt_outlined,
-                  color: Colors.teal,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
-                ),
-                _actionCard(
-                  context,
-                  title: 'Sync Queue',
-                  subtitle: 'Offline Queue',
-                  icon: Icons.sync_rounded,
-                  color: Colors.deepOrange,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.pendingSync),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-            const Text("Today's Performance Metrics", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 12),
-
-            reportAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-              error: (e, _) => Text('Error: $e'),
-              data: (rpt) => GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  StatCard(
-                    label: "Today's Sales",
-                    value: AppFormatters.currency((rpt['total_sales'] as num?)?.toDouble() ?? 0),
-                    icon: Icons.shopping_bag_outlined,
-                    color: AppColors.primary,
-                  ),
-                  StatCard(
-                    label: "Cash Collected",
-                    value: AppFormatters.currency((rpt['cash_received'] as num?)?.toDouble() ?? 0),
-                    icon: Icons.payments_outlined,
-                    color: AppColors.success,
-                  ),
-                  StatCard(
-                    label: "Online Collected",
-                    value: AppFormatters.currency((rpt['online_received'] as num?)?.toDouble() ?? 0),
-                    icon: Icons.account_balance_outlined,
-                    color: Colors.purple,
-                  ),
-                  StatCard(
-                    label: "Pending Dues",
-                    value: AppFormatters.currency((rpt['pending_amount'] as num?)?.toDouble() ?? 0),
-                    icon: Icons.hourglass_empty_rounded,
-                    color: Colors.red,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              decoration: BoxDecoration(
+                gradient: headerGradient,
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
                   ),
                 ],
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome back,',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white60 : Colors.white.withOpacity(0.8),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    workerName,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.calendar_today_rounded, size: 12, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text(
+                          AppFormatters.shortDate(DateTime.now()),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+                .animate()
+                .fadeIn(duration: 500.ms)
+                .slideY(begin: -0.1, end: 0, curve: Curves.easeOutCubic),
+
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  reportAsync.maybeWhen(
+                    data: (rpt) {
+                      final collected = (rpt['cash_received'] as num?)?.toDouble() ?? 0.0;
+                      const double target = 50000.0;
+                      final pct = (collected / target).clamp(0.0, 1.0);
+                      return Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: isDark ? Colors.transparent : AppColors.gray200),
+                          boxShadow: AppColors.cardShadow,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text("Today's Collection Target",
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                                Text('${(pct * 100).toStringAsFixed(0)}% Achieved',
+                                    style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 13)),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value: pct,
+                                minHeight: 10,
+                                backgroundColor: isDark ? const Color(0xFF334155) : AppColors.gray200,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Collected: ${AppFormatters.currency(collected)}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                                Text('Target: ${AppFormatters.currency(target)}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      )
+                          .animate()
+                          .fadeIn(duration: 600.ms, delay: 100.ms)
+                          .scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1), curve: Curves.easeOutBack);
+                    },
+                    orElse: () => const SizedBox.shrink(),
+                  ),
+                  const SizedBox(height: 24),
+
+                  const Text("Quick Actions", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 12),
+
+                  GridView.count(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _actionCard(
+                        context,
+                        title: 'Areas & Routes',
+                        subtitle: 'Area → Street',
+                        icon: Icons.map_rounded,
+                        color: Colors.orange,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.areas),
+                        index: 0,
+                      ),
+                      _actionCard(
+                        context,
+                        title: 'My Customers',
+                        subtitle: 'Assigned List',
+                        icon: Icons.people_outline_rounded,
+                        color: AppColors.primary,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.customers),
+                        index: 1,
+                      ),
+                      _actionCard(
+                        context,
+                        title: 'Quick Order',
+                        subtitle: '+ New Order',
+                        icon: Icons.add_shopping_cart_rounded,
+                        color: AppColors.success,
+                        onTap: () => _showCustomerPickerForOrder(context, ref),
+                        index: 2,
+                      ),
+                      _actionCard(
+                        context,
+                        title: 'My Orders',
+                        subtitle: 'Order History',
+                        icon: Icons.receipt_long_rounded,
+                        color: Colors.purple,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.orderManagement),
+                        index: 3,
+                      ),
+                      _actionCard(
+                        context,
+                        title: 'Field Visit',
+                        subtitle: 'Log Note',
+                        icon: Icons.note_alt_outlined,
+                        color: Colors.teal,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
+                        index: 4,
+                      ),
+                      _actionCard(
+                        context,
+                        title: 'Sync Queue',
+                        subtitle: 'Offline Queue',
+                        icon: Icons.sync_rounded,
+                        color: Colors.deepOrange,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.pendingSync),
+                        index: 5,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 28),
+                  const Text("Today's Performance Metrics", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 12),
+
+                  reportAsync.when(
+                    loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                    error: (e, _) => Text('Error: $e'),
+                    data: (rpt) => GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        StatCard(
+                          label: "Today's Sales",
+                          value: AppFormatters.currency((rpt['total_sales'] as num?)?.toDouble() ?? 0),
+                          icon: Icons.shopping_bag_outlined,
+                          color: AppColors.primary,
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 200.ms)
+                            .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
+                        StatCard(
+                          label: "Cash Collected",
+                          value: AppFormatters.currency((rpt['cash_received'] as num?)?.toDouble() ?? 0),
+                          icon: Icons.payments_outlined,
+                          color: AppColors.success,
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 300.ms)
+                            .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
+                        StatCard(
+                          label: "Online Collected",
+                          value: AppFormatters.currency((rpt['online_received'] as num?)?.toDouble() ?? 0),
+                          icon: Icons.account_balance_outlined,
+                          color: Colors.purple,
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 400.ms)
+                            .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
+                        StatCard(
+                          label: "Pending Dues",
+                          value: AppFormatters.currency((rpt['pending_amount'] as num?)?.toDouble() ?? 0),
+                          icon: Icons.hourglass_empty_rounded,
+                          color: Colors.red,
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 500.ms)
+                            .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -301,41 +402,52 @@ class WorkerDashboardScreen extends ConsumerWidget {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    required int index,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: () {
         AppHaptics.buttonClick();
         onTap();
       },
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.gray200),
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isDark ? Colors.transparent : AppColors.gray200),
           boxShadow: AppColors.cardShadow,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(title,
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            const SizedBox(height: 2),
             Text(subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 9, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
-    );
+    )
+        .animate()
+        .fadeIn(duration: 400.ms, delay: (index * 60).ms)
+        .scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1), curve: Curves.easeOutBack);
   }
 }

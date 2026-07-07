@@ -105,10 +105,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                       customer: customers[i],
                       streetId: effectiveStreetId,
                       ref: ref,
-                    )
-                        .animate(delay: (i * 40).ms)
-                        .fadeIn()
-                        .slideX(begin: 0.05),
+                    ),
                   ),
                 );
               },

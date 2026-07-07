@@ -63,6 +63,7 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
     _ref.invalidate(pendingCustomersProvider);
     _ref.invalidate(overpaidCustomersProvider);
     _ref.invalidate(allCustomersProvider);
+    _ref.invalidate(todaysDetailedReportProvider);
   }
 
   void setStatus(String status) {

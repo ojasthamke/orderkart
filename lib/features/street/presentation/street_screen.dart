@@ -137,7 +137,7 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                       ),
                       onEdit:   () => _showAddEdit(context, st),
                       onDelete: () => _confirmDelete(context, st),
-                    ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.1);
+                    );
                   },
                 );
               },

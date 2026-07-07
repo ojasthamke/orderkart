@@ -157,7 +157,7 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                     ),
                     onEdit: () => _showAddEditDialog(context, areas[i]),
                     onDelete: () => _confirmDelete(context, areas[i]),
-                  ).animate(delay: (i * 50).ms).fadeIn().slideX(begin: 0.1),
+                  ),
                 );
               },
             ),
