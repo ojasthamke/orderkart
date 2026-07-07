@@ -365,9 +365,9 @@ class WorkerPackageService {
         ? []
         : await mainDb.query('order_items', where: 'order_id IN (${orderIds.map((e) => "'$e'").join(',')})');
     
-    final List<Map<String, dynamic>> paymentsRows = orderIds.isEmpty
-        ? []
-        : await mainDb.query('payments', where: 'order_id IN (${orderIds.map((e) => "'$e'").join(',')})');
+    final List<Map<String, dynamic>> paymentsRows = lastSyncTime.isNotEmpty
+        ? await mainDb.query('payments', where: 'created_at >= ? OR order_id IN (${orderIds.isEmpty ? "''" : orderIds.map((e) => "'$e'").join(',')})', whereArgs: [lastSyncTime])
+        : await mainDb.query('payments');
 
     final expensesRows = await mainDb.query('expenses');
     final notesRows = await mainDb.query('notes');

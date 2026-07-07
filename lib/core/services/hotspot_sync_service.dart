@@ -326,9 +326,9 @@ class HotspotSyncService {
       dataMap['order_items'] = orderIds.isEmpty
           ? []
           : await mainDb.query('order_items', where: 'order_id IN (${orderIds.map((e) => "'$e'").join(',')})');
-      dataMap['payments'] = orderIds.isEmpty
-          ? []
-          : await mainDb.query('payments', where: 'order_id IN (${orderIds.map((e) => "'$e'").join(',')})');
+      dataMap['payments'] = lastSyncTime.isNotEmpty
+          ? await mainDb.query('payments', where: 'created_at >= ? OR order_id IN (${orderIds.isEmpty ? "''" : orderIds.map((e) => "'$e'").join(',')})', whereArgs: [lastSyncTime])
+          : await mainDb.query('payments');
     }
 
     // 4. Products & Selling Prices selection
