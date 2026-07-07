@@ -1,14 +1,9 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:archive/archive.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
-import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../../core/services/package_validator.dart';
@@ -217,106 +212,7 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
     }
   }
 
-  void _showWorkerSetupDialog() {
-    _workerNameCon.clear();
-    _workerIdCon.clear();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.badge_rounded, color: AppColors.primary, size: 26),
-            SizedBox(width: 10),
-            Text('Worker Registration', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Enter your name and optional Employee ID to configure this device for Worker Mode:',
-              style: TextStyle(fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _workerNameCon,
-              decoration: const InputDecoration(
-                labelText: 'Worker Name',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person_rounded),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _workerIdCon,
-              decoration: const InputDecoration(
-                labelText: 'Employee ID (Optional)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.confirmation_number_rounded),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (_workerNameCon.text.trim().isEmpty) {
-                SnackbarHelper.showError(context, 'Worker Name is required');
-                return;
-              }
-              Navigator.pop(ctx);
-              await _completeWorkerSetup();
-            },
-            child: const Text('Start Worker App'),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Future<void> _completeWorkerSetup() async {
-    setState(() => _loading = true);
-    try {
-      final name = _workerNameCon.text.trim();
-      final empId = _workerIdCon.text.trim();
-      final workerId = empId.isNotEmpty ? empId : 'worker_${const Uuid().v4().substring(0, 8)}';
-
-      final db = await DatabaseHelper.instance.database;
-      final nowStr = DateTime.now().toIso8601String();
-      await db.insert('workers', {
-        'id': workerId,
-        'name': name,
-        'created_at': nowStr,
-        'pin_hash': '',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-
-      await WorkerSession.instance.setWorker(workerId, workerName: name);
-      await AppModeService.setAppMode(AppMode.worker);
-      await AppModeService.setAppInitialized(true);
-
-      if (!mounted) return;
-      ref.invalidate(appModeProvider);
-      SnackbarHelper.showSuccess(context, 'Worker Mode Configured Successfully!');
-      Navigator.of(context).pushReplacementNamed(
-        AppRoutes.welcome,
-        arguments: WelcomeSplashScreenArgs(
-          name: name,
-          nextRoute: AppRoutes.workerDashboard,
-        ),
-      );
-    } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Setup failed: $e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
 
   Future<void> _importOwnerProvisioningZip() async {
     try {
@@ -337,9 +233,7 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
         return;
       }
 
-      final tempDir = await getTemporaryDirectory();
-      final bytes = File(filePath).readAsBytesSync();
-      final archive = ZipDecoder().decodeBytes(bytes);
+
 
       final extractedDbPath = validation.dbPath;
       if (extractedDbPath.isEmpty || !File(extractedDbPath).existsSync()) {

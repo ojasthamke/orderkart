@@ -10,7 +10,6 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/customer_avatar.dart';
 import 'package:orderkart/features/customer/presentation/customer_provider.dart';
 import 'package:orderkart/features/settings/presentation/settings_provider.dart';
-import 'package:orderkart/features/settings/domain/app_settings.dart';
 import '../../../../core/constants/app_routes.dart';
 
 class PaymentDetailsScreen extends ConsumerStatefulWidget {

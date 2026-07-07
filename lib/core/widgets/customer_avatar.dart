@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_constants.dart';
-import 'package:path/path.dart' as p;
 
 class CustomerAvatar extends StatelessWidget {
   final String? photoPath;

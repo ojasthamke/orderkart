@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,7 +15,6 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/constants/app_colors.dart';
 import '../domain/street.dart';
 import 'street_provider.dart';
-import '../../../core/database/database_helper.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../worker/presentation/worker_provider.dart';
 

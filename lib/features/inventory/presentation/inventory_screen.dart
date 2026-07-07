@@ -1,11 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:archive/archive.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
@@ -107,7 +103,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         selectedModules: ['items', 'prices'],
       );
 
-      ref.refresh(inventoryProvider);
+      ref.invalidate(inventoryProvider);
       if (mounted) {
         SnackbarHelper.showSuccess(context, '✅ Official Owner Stock & Price List updated!');
       }

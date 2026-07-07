@@ -55,10 +55,8 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
           final expiredVip = vipList.where((c) => c.isVip && !c.isVipActive).toList();
 
           double totalSubscriptionIncome = 0;
-          int totalVipOrders = 0;
           for (final c in vipList) {
             totalSubscriptionIncome += c.vipSubscriptionFee;
-            totalVipOrders += c.totalOrders;
           }
 
           // Apply UI Filters

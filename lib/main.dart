@@ -6,7 +6,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'app.dart';
 import 'core/database/database_helper.dart';
 import 'core/constants/app_constants.dart';
@@ -55,7 +54,7 @@ Future<void> main() async {
         child: OrderKartApp(),
       ),
     );
-  } catch (e, st) {
+  } catch (e) {
     runApp(
       MaterialApp(
         home: Scaffold(

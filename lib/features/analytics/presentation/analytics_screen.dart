@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/constants/app_colors.dart';
@@ -49,7 +48,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           final double totalExpenses   = summary['total_expenses'] ?? 0;
           final double cashReceived    = summary['cash_received'] ?? 0;
           final double onlineReceived  = summary['online_received'] ?? 0;
-          final int    customerCount   = summary['customer_count'] ?? 0;
           final int    orderCount      = summary['order_count'] ?? 0;
           final int    deliveredCount  = summary['delivered_count'] ?? 0;
           final int    pendingCount    = summary['pending_count'] ?? 0;

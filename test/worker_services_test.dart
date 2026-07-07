@@ -8,7 +8,6 @@ import 'package:orderkart/core/models/worker_permission.dart';
 import 'package:orderkart/core/services/worker_service.dart';
 import 'package:orderkart/core/services/worker_permission_service.dart';
 import 'package:orderkart/core/services/worker_assignment_service.dart';
-import 'package:orderkart/core/error/failures.dart';
 
 void main() {
   // Initialize FFI for local SQLite tests

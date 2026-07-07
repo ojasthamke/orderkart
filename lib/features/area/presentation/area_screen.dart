@@ -1,7 +1,6 @@
 /// AreaScreen — List of all areas with search, sort, stats
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
@@ -18,7 +17,6 @@ import 'area_provider.dart';
 import 'dialogs/add_edit_area_dialog.dart';
 import 'widgets/area_card.dart';
 
-import '../../../core/database/database_helper.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../worker/presentation/worker_provider.dart';
 
@@ -31,7 +29,6 @@ class AreaScreen extends ConsumerStatefulWidget {
 }
 
 class _AreaScreenState extends ConsumerState<AreaScreen> {
-  String _sort = 'name';
   String _filterMode = 'all'; // 'all', 'owner', or workerId
 
   @override
@@ -50,7 +47,6 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
           icon: const Icon(Icons.sort_rounded),
           tooltip: 'Sort',
           onSelected: (v) {
-            setState(() => _sort = v);
             ref.read(areaProvider.notifier).sort(v);
           },
           itemBuilder: (_) => [

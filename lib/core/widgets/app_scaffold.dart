@@ -1,7 +1,6 @@
 /// AppScaffold — Consistent scaffold with back-button safety
 
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
 
 class AppScaffold extends StatelessWidget {
   final String title;

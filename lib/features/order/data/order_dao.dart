@@ -276,7 +276,6 @@ class OrderDao {
   Future<void> insertPayment(Payment payment, {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     final id = payment.id.isEmpty ? _uuid.v4() : payment.id;
-    final now = DateTime.now().toIso8601String();
 
     final mode = await AppModeService.getAppMode();
     String createdBy = 'owner';

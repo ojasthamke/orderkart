@@ -771,7 +771,6 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     );
 
     String encodedText = Uri.encodeComponent(text);
-    Uri? url;
 
     if (isCustomer) {
       final phone = order.customerPhone ?? '';

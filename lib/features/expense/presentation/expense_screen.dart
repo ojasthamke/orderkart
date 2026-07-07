@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -10,7 +9,6 @@ import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
-import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/expense.dart';
 import 'expense_provider.dart';
 
@@ -31,8 +29,8 @@ class ExpenseScreen extends ConsumerWidget {
         onPressed: () => Navigator.of(context)
             .pushNamed(AppRoutes.addEditExpense)
             .then((_) {
-          ref.refresh(expenseProvider);
-          ref.refresh(monthlySummaryProvider);
+          ref.invalidate(expenseProvider);
+          ref.invalidate(monthlySummaryProvider);
         }),
         child: const Icon(Icons.add_rounded),
       ),
@@ -62,7 +60,7 @@ class ExpenseScreen extends ConsumerWidget {
                       actionLabel: 'Add Expense',
                       onAction: () => Navigator.of(context)
                           .pushNamed(AppRoutes.addEditExpense)
-                          .then((_) => ref.refresh(expenseProvider)),
+                          .then((_) => ref.invalidate(expenseProvider)),
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.only(bottom: 96),
@@ -73,8 +71,8 @@ class ExpenseScreen extends ConsumerWidget {
                             .pushNamed(AppRoutes.addEditExpense,
                                 arguments: {'expenseId': expenses[i].id})
                             .then((_) {
-                          ref.refresh(expenseProvider);
-                          ref.refresh(monthlySummaryProvider);
+                          ref.invalidate(expenseProvider);
+                          ref.invalidate(monthlySummaryProvider);
                         }),
                         onDelete: () async {
                           final ok = await ConfirmDeleteDialog.show(
@@ -84,7 +82,7 @@ class ExpenseScreen extends ConsumerWidget {
                           );
                           if (!ok) return;
                           await ref.read(expenseProvider.notifier).delete(expenses[i].id);
-                          ref.refresh(monthlySummaryProvider);
+                          ref.invalidate(monthlySummaryProvider);
                         },
                       ).animate(delay: (i * 30).ms).fadeIn(),
                     ),

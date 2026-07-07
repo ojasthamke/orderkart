@@ -22,7 +22,6 @@ import 'customer_provider.dart';
 import '../../order/domain/order.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../settings/presentation/settings_provider.dart';
-import '../../order/presentation/order_provider.dart';
 import '../../../core/utils/contact_exporter.dart';
 
 class CustomerProfileScreen extends ConsumerWidget {
@@ -65,7 +64,7 @@ class CustomerProfileScreen extends ConsumerWidget {
                       'customerId': customer.id,
                     },
                   )
-                  .then((_) => ref.refresh(customerDetailProvider(customerId))),
+                  .then((_) => ref.invalidate(customerDetailProvider(customerId))),
             ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert_rounded),
@@ -94,7 +93,7 @@ class CustomerProfileScreen extends ConsumerWidget {
                             'customerId': customer.id,
                           },
                         )
-                        .then((_) => ref.refresh(customerDetailProvider(customerId)));
+                        .then((_) => ref.invalidate(customerDetailProvider(customerId)));
                     break;
                   case 'vip':
                     Navigator.of(context).pushNamed(AppRoutes.vipDashboard);
@@ -174,8 +173,8 @@ class CustomerProfileScreen extends ConsumerWidget {
                                 'orderId':      null,
                               },
                             ).then((_) {
-                              ref.refresh(customerDetailProvider(customerId));
-                              ref.refresh(customerOrdersProvider(customerId));
+                              ref.invalidate(customerDetailProvider(customerId));
+                              ref.invalidate(customerOrdersProvider(customerId));
                             }),
                             icon: const Icon(Icons.add_shopping_cart_rounded, size: 20),
                             label: const Text(
@@ -209,8 +208,8 @@ class CustomerProfileScreen extends ConsumerWidget {
                                         'orderId':      latestOrder.id, // loads items into cart
                                       },
                                     ).then((_) {
-                                      ref.refresh(customerDetailProvider(customerId));
-                                      ref.refresh(customerOrdersProvider(customerId));
+                                       ref.invalidate(customerDetailProvider(customerId));
+                                       ref.invalidate(customerOrdersProvider(customerId));
                                     });
                                   },
                                   icon: const Icon(Icons.bolt_rounded, color: Colors.amber, size: 20),
@@ -294,8 +293,8 @@ class CustomerProfileScreen extends ConsumerWidget {
                                     arguments: {'orderId': order.id},
                                   )
                                   .then((_) {
-                                    ref.refresh(customerDetailProvider(customerId));
-                                    ref.refresh(customerOrdersProvider(customerId));
+                                    ref.invalidate(customerDetailProvider(customerId));
+                                    ref.invalidate(customerOrdersProvider(customerId));
                                   }),
                             ).animate(delay: (i * 30).ms).fadeIn();
                           },
@@ -837,8 +836,8 @@ class CustomerProfileScreen extends ConsumerWidget {
               notes:      notes,
               createdAt:  DateTime.now(),
             ));
-        ref.refresh(customerDetailProvider(customer.id));
-        ref.refresh(customerOrdersProvider(customer.id));
+        ref.invalidate(customerDetailProvider(customer.id));
+        ref.invalidate(customerOrdersProvider(customer.id));
         if (context.mounted) {
           SnackbarHelper.showSuccess(context, 'Payment of ₹$amount applied to Order ${oldest.orderNoLabel}');
         }

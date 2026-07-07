@@ -6,8 +6,6 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
-import '../../../core/widgets/snackbar_helper.dart';
-import '../../../core/widgets/customer_avatar.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../customer/presentation/customer_provider.dart';

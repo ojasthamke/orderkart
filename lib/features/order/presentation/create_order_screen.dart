@@ -19,7 +19,6 @@ import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../../settings/domain/app_settings.dart';
-import '../../../core/widgets/qr_full_screen_preview.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
 import '../domain/order.dart';

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_routes.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -22,7 +21,6 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
   List<Map<String, dynamic>> _workerCustomers = [];
   List<Map<String, dynamic>> _workerOrders = [];
   List<Map<String, dynamic>> _workerAreas = [];
-  List<Map<String, dynamic>> _workerStreets = [];
   List<Map<String, dynamic>> _importLogs = [];
   List<Map<String, dynamic>> _workers = [];
   String _selectedWorkerId = 'all';
@@ -103,23 +101,6 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
       };
     }).toList();
 
-    final streetRows = await db.query(
-      'streets',
-      where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
-      orderBy: 'created_at DESC',
-    );
-    final streets = streetRows.map((s) {
-      final wid = s['assigned_worker_id']?.toString() ?? s['created_by']?.toString() ?? '';
-      final wName = (s['worker_name']?.toString() ?? '').isNotEmpty 
-          ? s['worker_name']!.toString() 
-          : (workerNameMap[wid] ?? 'Worker');
-      return {
-        ...s,
-        'worker_name': wName,
-        'worker_id': wid,
-      };
-    }).toList();
-
     // 4. Import Logs
     final imports = await db.query('import_history', orderBy: 'imported_at DESC');
 
@@ -129,7 +110,6 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         _workerCustomers = customers;
         _workerOrders = orders;
         _workerAreas = areas;
-        _workerStreets = streets;
         _importLogs = imports;
         _loading = false;
       });
