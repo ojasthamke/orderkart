@@ -92,7 +92,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
   Route<dynamic>? _generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case AppRoutes.dashboard:
-        return _slide(const AppStartupScreen());
+        return _slide(const AppStartupScreen(), settings);
 
       case AppRoutes.areas:
         return _slide(const AreaScreen());
@@ -232,7 +232,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const WorkerManagementScreen());
 
       case AppRoutes.workerDashboard:
-        return _slide(const WorkerDashboardScreen());
+        return _slide(const WorkerDashboardScreen(), settings);
 
       case AppRoutes.pendingSync:
         return _slide(const PendingSyncScreen());
@@ -259,15 +259,21 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const WorkerSyncActivityScreen());
 
       default:
-        return _slide(const AppStartupScreen());
+        return _slide(const AppStartupScreen(), settings);
     }
   }
 
   /// Custom slide transition for smooth navigation
-  PageRouteBuilder<T> _slide<T>(Widget page) {
+  PageRouteBuilder<T> _slide<T>(Widget page, [RouteSettings? settings]) {
+    final args = settings?.arguments;
+    final bool instant = (args is Map && args['instant'] == true);
     return PageRouteBuilder<T>(
+      settings: settings,
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        if (instant) {
+          return child;
+        }
         const begin = Offset(1.0, 0.0);
         const end = Offset.zero;
         const curve = Curves.easeInOutCubic;
@@ -278,13 +284,16 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
           child: child,
         );
       },
-      transitionDuration: const Duration(milliseconds: 280),
+      transitionDuration: instant ? Duration.zero : const Duration(milliseconds: 280),
     );
   }
 }
 
 class AppStartupScreen extends ConsumerStatefulWidget {
   const AppStartupScreen({super.key});
+
+  // Track if welcome screen was already shown in the current app session
+  static bool welcomeShown = false;
 
   @override
   ConsumerState<AppStartupScreen> createState() => _AppStartupScreenState();
@@ -296,7 +305,7 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
   @override
   Widget build(BuildContext context) {
     // If Owner is already logged in for this run, bypass splash and show MainScreen directly
-    if (AppModeService.isOwnerSessionActive && _unlockedSession) {
+    if (AppModeService.isOwnerSessionActive && (AppStartupScreen.welcomeShown || _unlockedSession)) {
       return const MainScreen();
     }
 
