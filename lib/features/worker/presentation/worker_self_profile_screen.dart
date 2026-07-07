@@ -21,6 +21,9 @@ import '../../customer/presentation/customer_provider.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../expense/presentation/expense_provider.dart';
 import '../../settings/presentation/sync_history_screen.dart';
+import '../../inventory/presentation/inventory_provider.dart';
+import '../../street/presentation/street_provider.dart';
+import '../../notification/presentation/notification_provider.dart';
 
 final currentWorkerProfileProvider = FutureProvider<Worker?>((ref) async {
   final db = await DatabaseHelper.instance.database;
@@ -51,6 +54,33 @@ class WorkerSelfProfileScreen extends ConsumerStatefulWidget {
 
 class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScreen> {
 
+  void _invalidateAllProviders() {
+    ref.invalidate(currentWorkerProfileProvider);
+    ref.invalidate(areaProvider);
+    ref.invalidate(streetProviderFamily);
+    ref.invalidate(allCustomersProvider);
+    ref.invalidate(customerListProvider);
+    ref.invalidate(pendingCustomersProvider);
+    ref.invalidate(overpaidCustomersProvider);
+    ref.invalidate(inventoryProvider);
+    ref.invalidate(lowStockProvider);
+    ref.invalidate(outOfStockProvider);
+    ref.invalidate(stockSummaryProvider);
+    ref.invalidate(orderManagementProvider);
+    ref.invalidate(customerOrdersProvider);
+    ref.invalidate(analyticsSummaryProvider);
+    ref.invalidate(weeklyChartProvider);
+    ref.invalidate(monthlyChartProvider);
+    ref.invalidate(topCustomersProvider);
+    ref.invalidate(todaysDetailedReportProvider);
+    ref.invalidate(profitLossProvider);
+    ref.invalidate(expenseProvider);
+    ref.invalidate(monthlySummaryProvider);
+    ref.invalidate(importHistoryProvider);
+    ref.invalidate(workerSyncHistoryProvider);
+    ref.invalidate(notificationListProvider);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -70,17 +100,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
           if (mounted) {
             SnackbarHelper.showInfo(context, msg);
             if (msg.contains('SUCCESS')) {
-              ref.invalidate(currentWorkerProfileProvider);
-              ref.invalidate(areaProvider);
-              ref.invalidate(allCustomersProvider);
-              ref.invalidate(orderManagementProvider);
-              ref.invalidate(analyticsSummaryProvider);
-              ref.invalidate(weeklyChartProvider);
-              ref.invalidate(monthlyChartProvider);
-              ref.invalidate(expenseProvider);
-              ref.invalidate(monthlySummaryProvider);
-              ref.invalidate(importHistoryProvider);
-              ref.invalidate(workerSyncHistoryProvider);
+              _invalidateAllProviders();
             }
           }
         },
@@ -290,17 +310,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
             workerId: worker.id,
             workerName: worker.name,
             onSyncCompleted: () {
-              ref.invalidate(currentWorkerProfileProvider);
-              ref.invalidate(areaProvider);
-              ref.invalidate(allCustomersProvider);
-              ref.invalidate(orderManagementProvider);
-              ref.invalidate(analyticsSummaryProvider);
-              ref.invalidate(weeklyChartProvider);
-              ref.invalidate(monthlyChartProvider);
-              ref.invalidate(expenseProvider);
-              ref.invalidate(monthlySummaryProvider);
-              ref.invalidate(importHistoryProvider);
-              ref.invalidate(workerSyncHistoryProvider);
+              _invalidateAllProviders();
             },
           ),
           const SizedBox(height: 24),
@@ -327,17 +337,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                            return;
                          }
                          await DatabaseHelper.instance.mergeDatabaseFromPath(val.dbPath, selectedModules: ['entire_db']);
-                         ref.invalidate(currentWorkerProfileProvider);
-                         ref.invalidate(areaProvider);
-                         ref.invalidate(allCustomersProvider);
-                         ref.invalidate(orderManagementProvider);
-                         ref.invalidate(analyticsSummaryProvider);
-                         ref.invalidate(weeklyChartProvider);
-                         ref.invalidate(monthlyChartProvider);
-                         ref.invalidate(expenseProvider);
-                         ref.invalidate(monthlySummaryProvider);
-                         ref.invalidate(importHistoryProvider);
-                         ref.invalidate(workerSyncHistoryProvider);
+                         _invalidateAllProviders();
                          if (context.mounted) SnackbarHelper.showSuccess(context, '✅ Owner package imported successfully!');
                        } catch (e) {
                          if (context.mounted) SnackbarHelper.showError(context, 'Import failed: $e');

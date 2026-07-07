@@ -11,6 +11,14 @@ import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import 'settings_provider.dart';
+import '../../area/presentation/area_provider.dart';
+import '../../customer/presentation/customer_provider.dart';
+import '../../order/presentation/order_provider.dart';
+import '../../expense/presentation/expense_provider.dart';
+import '../../inventory/presentation/inventory_provider.dart';
+import '../../street/presentation/street_provider.dart';
+import '../../notification/presentation/notification_provider.dart';
+import '../../settings/presentation/sync_history_screen.dart';
 
 class MergeConflict {
   final String table;
@@ -42,6 +50,32 @@ class ImportWizardScreen extends ConsumerStatefulWidget {
 class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
   int _currentStep = 0;
   bool _loading = false;
+
+  void _invalidateAllProviders() {
+    ref.invalidate(areaProvider);
+    ref.invalidate(streetProviderFamily);
+    ref.invalidate(allCustomersProvider);
+    ref.invalidate(customerListProvider);
+    ref.invalidate(pendingCustomersProvider);
+    ref.invalidate(overpaidCustomersProvider);
+    ref.invalidate(inventoryProvider);
+    ref.invalidate(lowStockProvider);
+    ref.invalidate(outOfStockProvider);
+    ref.invalidate(stockSummaryProvider);
+    ref.invalidate(orderManagementProvider);
+    ref.invalidate(customerOrdersProvider);
+    ref.invalidate(analyticsSummaryProvider);
+    ref.invalidate(weeklyChartProvider);
+    ref.invalidate(monthlyChartProvider);
+    ref.invalidate(topCustomersProvider);
+    ref.invalidate(todaysDetailedReportProvider);
+    ref.invalidate(profitLossProvider);
+    ref.invalidate(expenseProvider);
+    ref.invalidate(monthlySummaryProvider);
+    ref.invalidate(importHistoryProvider);
+    ref.invalidate(workerSyncHistoryProvider);
+    ref.invalidate(notificationListProvider);
+  }
 
   Map<String, dynamic> _manifest = {};
   Map<String, Map<String, int>> _previewStats = {};
@@ -328,6 +362,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       if (backupFile.existsSync()) backupFile.deleteSync();
 
       ref.read(settingsProvider.notifier).load();
+      _invalidateAllProviders();
 
       setState(() {
         _previewStats = finalStats;

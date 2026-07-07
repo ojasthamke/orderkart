@@ -178,11 +178,17 @@ class WorkerPackageService {
       await srcQr.copy('${qrDir.path}/qr.png');
     }
 
+    // Encrypt database.db to database.enc for provisioning
+    final dbBytes = await dbFile.readAsBytes();
+    final encryptedDbBytes = SecurityHelper.encryptBytes(dbBytes, secretKey);
+    final destDbEnc = File('${packageDir.path}/database.enc');
+    await destDbEnc.writeAsBytes(encryptedDbBytes);
+
     // Calculate file hashes
     final fileHashes = <String, String>{};
     final List<String> jsonFiles = [
       'worker.json', 'permissions.json', 'assignments.json', 'areas.json', 'streets.json',
-      'customers.json', 'inventory.json', 'price_list.json', 'business_profile.json', 'settings.json', 'database.db'
+      'customers.json', 'inventory.json', 'price_list.json', 'business_profile.json', 'settings.json', 'database.enc'
     ];
     for (final f in jsonFiles) {
       fileHashes[f] = await _calculateFileHash(File('${packageDir.path}/$f'));
@@ -216,7 +222,7 @@ class WorkerPackageService {
       'generated_by_worker_id': workerId,
       'generated_by_worker_name': workerName,
       'is_worker_provisioning_package': true,
-      'worker_secret': secretKey,
+      'worker_secret': SecurityHelper.obfuscateSecret(secretKey),
       'device_name': Platform.localHostname,
       'platform': Platform.operatingSystem,
       'device_id': 'mock_device_id_${Platform.operatingSystem.hashCode.abs()}',
@@ -248,7 +254,8 @@ class WorkerPackageService {
     encoder.addFile(manifestFile, 'manifest.json');
     encoder.addFile(checksumFile, 'checksum.sha256');
     for (final f in jsonFiles) {
-      encoder.addFile(File('${packageDir.path}/$f'), f);
+      final file = File('${packageDir.path}/$f');
+      if (file.existsSync()) encoder.addFile(file, f);
     }
     for (final f in photoList) {
       if (f is File) encoder.addFile(f, 'photos/${p.basename(f.path)}');
@@ -353,21 +360,41 @@ class WorkerPackageService {
     packageDir.createSync();
 
     // Query Data Scoped to the Worker's field edits
+    // Query Data Scoped to the Worker's field edits
     final areasRows = await mainDb.query('areas');
     final streetsRows = await mainDb.query('streets');
     final customersRows = await mainDb.query('customers');
+    final itemsRows = await mainDb.query('items');
+    final itemPriceHistoryRows = await mainDb.query('item_price_history');
+    
     final ordersRows = lastSyncTime.isNotEmpty
         ? await mainDb.query('orders', where: 'created_at >= ? OR updated_at >= ?', whereArgs: [lastSyncTime, lastSyncTime])
         : await mainDb.query('orders');
 
     final List<String> orderIds = ordersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
-    final List<Map<String, dynamic>> orderItemsRows = orderIds.isEmpty
-        ? []
-        : await mainDb.query('order_items', where: 'order_id IN (${orderIds.map((e) => "'$e'").join(',')})');
+    final List<Map<String, dynamic>> orderItemsRows;
+    if (orderIds.isNotEmpty) {
+      final placeholders = List.filled(orderIds.length, '?').join(',');
+      orderItemsRows = await mainDb.query('order_items', where: 'order_id IN ($placeholders)', whereArgs: orderIds);
+    } else {
+      orderItemsRows = [];
+    }
     
-    final List<Map<String, dynamic>> paymentsRows = lastSyncTime.isNotEmpty
-        ? await mainDb.query('payments', where: 'created_at >= ? OR order_id IN (${orderIds.isEmpty ? "''" : orderIds.map((e) => "'$e'").join(',')})', whereArgs: [lastSyncTime])
-        : await mainDb.query('payments');
+    final List<Map<String, dynamic>> paymentsRows;
+    if (lastSyncTime.isNotEmpty) {
+      if (orderIds.isNotEmpty) {
+        final placeholders = List.filled(orderIds.length, '?').join(',');
+        paymentsRows = await mainDb.query('payments',
+            where: 'created_at >= ? OR order_id IN ($placeholders)',
+            whereArgs: [lastSyncTime, ...orderIds]);
+      } else {
+        paymentsRows = await mainDb.query('payments',
+            where: 'created_at >= ?',
+            whereArgs: [lastSyncTime]);
+      }
+    } else {
+      paymentsRows = await mainDb.query('payments');
+    }
 
     final expensesRows = await mainDb.query('expenses');
     final notesRows = await mainDb.query('notes');
@@ -378,10 +405,14 @@ class WorkerPackageService {
     final scopedDbFile = File('${packageDir.path}/database.db');
     if (scopedDbFile.existsSync()) scopedDbFile.deleteSync();
     final scopedDb = await openDatabase(scopedDbFile.path, version: AppConstants.dbVersion, onCreate: (db, v) async {
-      await DatabaseHelper.instance.createTablesForDatabase(db);
+      await DatabaseHelper.instance.createSchema(db);
     });
 
+    for (final r in areasRows) { await scopedDb.insert('areas', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in streetsRows) { await scopedDb.insert('streets', r, conflictAlgorithm: ConflictAlgorithm.replace); }
     for (final r in customersRows) { await scopedDb.insert('customers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in itemsRows) { await scopedDb.insert('items', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in itemPriceHistoryRows) { await scopedDb.insert('item_price_history', r, conflictAlgorithm: ConflictAlgorithm.replace); }
     for (final r in ordersRows) { await scopedDb.insert('orders', r, conflictAlgorithm: ConflictAlgorithm.replace); }
     for (final r in orderItemsRows) { await scopedDb.insert('order_items', r, conflictAlgorithm: ConflictAlgorithm.replace); }
     for (final r in paymentsRows) { await scopedDb.insert('payments', r, conflictAlgorithm: ConflictAlgorithm.replace); }
@@ -391,6 +422,13 @@ class WorkerPackageService {
     for (final r in workerReportsRows) { await scopedDb.insert('worker_reports', r, conflictAlgorithm: ConflictAlgorithm.replace); }
     await scopedDb.close();
 
+    // Encrypt database.db to database.enc for report
+    final dbBytes = await scopedDbFile.readAsBytes();
+    final encryptedDbBytes = SecurityHelper.encryptBytes(dbBytes, secretKey);
+    final destDbEnc = File('${packageDir.path}/database.enc');
+    await destDbEnc.writeAsBytes(encryptedDbBytes);
+    if (scopedDbFile.existsSync()) scopedDbFile.deleteSync();
+
     // Serialize and Encrypt JSON files helper
     Future<void> writeEncryptedJson(String filename, dynamic data) async {
       final jsonStr = jsonEncode(data);
@@ -399,7 +437,11 @@ class WorkerPackageService {
       await file.writeAsBytes(encryptedBytes);
     }
 
+    await writeEncryptedJson('areas.json', areasRows);
+    await writeEncryptedJson('streets.json', streetsRows);
     await writeEncryptedJson('customers.json', customersRows);
+    await writeEncryptedJson('inventory.json', itemsRows);
+    await writeEncryptedJson('price_list.json', itemPriceHistoryRows);
     await writeEncryptedJson('orders.json', ordersRows);
     await writeEncryptedJson('order_items.json', orderItemsRows);
     await writeEncryptedJson('payments.json', paymentsRows);
@@ -456,9 +498,10 @@ class WorkerPackageService {
 
     // Calculate file hashes
     final fileHashes = <String, String>{};
-    fileHashes['database.db'] = await _calculateFileHash(scopedDbFile);
+    fileHashes['database.enc'] = await _calculateFileHash(destDbEnc);
     final List<String> jsonFiles = [
-      'customers.json', 'orders.json', 'order_items.json', 'payments.json', 'expenses.json',
+      'areas.json', 'streets.json', 'customers.json', 'inventory.json', 'price_list.json',
+      'orders.json', 'order_items.json', 'payments.json', 'expenses.json',
       'notes.json', 'visits.json', 'worker_reports.json'
     ];
     for (final f in jsonFiles) {
@@ -487,7 +530,7 @@ class WorkerPackageService {
       'generated_by_worker_id': workerId,
       'generated_by_worker_name': workerName,
       'is_worker_provisioning_package': false,
-      'worker_secret': secretKey,
+      'worker_secret': SecurityHelper.obfuscateSecret(secretKey),
       'device_name': Platform.localHostname,
       'platform': Platform.operatingSystem,
       'device_id': 'mock_device_id_${Platform.operatingSystem.hashCode.abs()}',
@@ -519,7 +562,7 @@ class WorkerPackageService {
     encoder.create(zipFile.path);
     encoder.addFile(manifestFile, 'manifest.json');
     encoder.addFile(checksumFile, 'checksum.sha256');
-    encoder.addFile(scopedDbFile, 'database.db');
+    encoder.addFile(destDbEnc, 'database.enc');
     for (final f in jsonFiles) {
       final file = File('${packageDir.path}/$f');
       if (file.existsSync()) encoder.addFile(file, f);

@@ -27,6 +27,9 @@ import '../../customer/presentation/customer_provider.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../expense/presentation/expense_provider.dart';
 import '../../settings/presentation/sync_history_screen.dart';
+import '../../inventory/presentation/inventory_provider.dart';
+import '../../street/presentation/street_provider.dart';
+import '../../notification/presentation/notification_provider.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
@@ -38,6 +41,32 @@ class BackupRestoreScreen extends ConsumerStatefulWidget {
 
 class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   bool _loading = false;
+
+  void _invalidateAllProviders() {
+    ref.invalidate(areaProvider);
+    ref.invalidate(streetProviderFamily);
+    ref.invalidate(allCustomersProvider);
+    ref.invalidate(customerListProvider);
+    ref.invalidate(pendingCustomersProvider);
+    ref.invalidate(overpaidCustomersProvider);
+    ref.invalidate(inventoryProvider);
+    ref.invalidate(lowStockProvider);
+    ref.invalidate(outOfStockProvider);
+    ref.invalidate(stockSummaryProvider);
+    ref.invalidate(orderManagementProvider);
+    ref.invalidate(customerOrdersProvider);
+    ref.invalidate(analyticsSummaryProvider);
+    ref.invalidate(weeklyChartProvider);
+    ref.invalidate(monthlyChartProvider);
+    ref.invalidate(topCustomersProvider);
+    ref.invalidate(todaysDetailedReportProvider);
+    ref.invalidate(profitLossProvider);
+    ref.invalidate(expenseProvider);
+    ref.invalidate(monthlySummaryProvider);
+    ref.invalidate(importHistoryProvider);
+    ref.invalidate(workerSyncHistoryProvider);
+    ref.invalidate(notificationListProvider);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,16 +101,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             workerId: 'owner',
             workerName: 'Owner',
             onSyncCompleted: () {
-              ref.invalidate(areaProvider);
-              ref.invalidate(allCustomersProvider);
-              ref.invalidate(orderManagementProvider);
-              ref.invalidate(analyticsSummaryProvider);
-              ref.invalidate(weeklyChartProvider);
-              ref.invalidate(monthlyChartProvider);
-              ref.invalidate(expenseProvider);
-              ref.invalidate(monthlySummaryProvider);
-              ref.invalidate(importHistoryProvider);
-              ref.invalidate(workerSyncHistoryProvider);
+              _invalidateAllProviders();
               if (mounted) setState(() {});
             },
           ),
@@ -213,16 +233,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       await DatabaseHelper.instance.database;
 
       // Invalidate cache to auto-update screens
-      ref.invalidate(areaProvider);
-      ref.invalidate(allCustomersProvider);
-      ref.invalidate(orderManagementProvider);
-      ref.invalidate(analyticsSummaryProvider);
-      ref.invalidate(weeklyChartProvider);
-      ref.invalidate(monthlyChartProvider);
-      ref.invalidate(expenseProvider);
-      ref.invalidate(monthlySummaryProvider);
-      ref.invalidate(importHistoryProvider);
-      ref.invalidate(workerSyncHistoryProvider);
+      _invalidateAllProviders();
 
       // Restore current app mode and active session so Owner is NEVER logged out!
       await AppModeService.setAppMode(currentMode);
@@ -270,16 +281,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       final stats = await DatabaseHelper.instance.mergeDatabaseFromPath(dbFileToMerge);
 
       // Invalidate cache to auto-update screens
-      ref.invalidate(areaProvider);
-      ref.invalidate(allCustomersProvider);
-      ref.invalidate(orderManagementProvider);
-      ref.invalidate(analyticsSummaryProvider);
-      ref.invalidate(weeklyChartProvider);
-      ref.invalidate(monthlyChartProvider);
-      ref.invalidate(expenseProvider);
-      ref.invalidate(monthlySummaryProvider);
-      ref.invalidate(importHistoryProvider);
-      ref.invalidate(workerSyncHistoryProvider);
+      _invalidateAllProviders();
 
       // Record in import_history table for worker updates tracking
       try {

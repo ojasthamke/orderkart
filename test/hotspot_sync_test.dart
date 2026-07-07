@@ -77,6 +77,9 @@ void main() {
       );
       final syncReq = await client.post('127.0.0.1', 8292, '/sync');
       syncReq.headers.contentType = ContentType.json;
+      if (HotspotSyncService.currentSyncToken != null) {
+        syncReq.headers.add('x-sync-token', HotspotSyncService.currentSyncToken!);
+      }
       syncReq.write(jsonEncode({'data': payload}));
       final syncResp = await syncReq.close();
       final syncBody = await utf8.decoder.bind(syncResp).join();

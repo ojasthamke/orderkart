@@ -62,172 +62,176 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
-    final bool isServer = HotspotSyncService.isServerRunning;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.gray200),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
+    return ValueListenableBuilder<bool>(
+      valueListenable: HotspotSyncService.isServerRunningNotifier,
+      builder: (context, isServer, child) {
+        return Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.gray200),
+            boxShadow: AppColors.cardShadow,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isServer ? AppColors.successSurface : AppColors.primarySurface,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.wifi_tethering_rounded,
-                  color: isServer ? AppColors.success : AppColors.primary,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'P2P Hotspot Sync Control',
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isServer ? AppColors.successSurface : AppColors.primarySurface,
+                      shape: BoxShape.circle,
                     ),
-                    Text(
-                      _localIp != null ? 'My IP: $_localIp' : 'Connect to a hotspot to start',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                    child: Icon(
+                      Icons.wifi_tethering_rounded,
+                      color: isServer ? AppColors.success : AppColors.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'P2P Hotspot Sync Control',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                        ),
+                        Text(
+                          _localIp != null ? 'My IP: $_localIp' : 'Connect to a hotspot to start',
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Server Status Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isServer ? AppColors.successSurface : AppColors.gray100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      isServer ? 'RECEIVING ON' : 'RECEIVER OFF',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: isServer ? AppColors.success : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+
+              // Selection checkboxes title
+              const Text(
+                'Select data modules to sync:',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+
+              // Checkboxes Grid
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 3.2,
+                mainAxisSpacing: 4,
+                crossAxisSpacing: 8,
+                children: [
+                  _buildCheckbox('Areas & Streets', 'areas_streets', Icons.map_rounded),
+                  _buildCheckbox('Customer Info & VIP', 'customers', Icons.people_rounded),
+                  _buildCheckbox('Orders & Payments', 'orders_payments', Icons.receipt_rounded),
+                  _buildCheckbox('Products Catalog', 'products', Icons.inventory_2_rounded),
+                  _buildCheckbox('Expenses Log', 'expenses', Icons.payments_rounded),
+                  _buildCheckbox('Customer Photos', 'photos', Icons.photo_library_rounded),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+
+              // Status log box
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.gray50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.gray200),
+                ),
+                child: Row(
+                  children: [
+                    _loading
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                          )
+                        : Icon(
+                            isServer ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                            size: 14,
+                            color: isServer ? AppColors.success : AppColors.textHint,
+                          ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _status,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      ),
                     ),
                   ],
                 ),
               ),
-              // Server Status Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isServer ? AppColors.successSurface : AppColors.gray100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  isServer ? 'RECEIVING ON' : 'RECEIVER OFF',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: isServer ? AppColors.success : AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
-          // Selection checkboxes title
-          const Text(
-            'Select data modules to sync:',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 8),
-
-          // Checkboxes Grid
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 3.2,
-            mainAxisSpacing: 4,
-            crossAxisSpacing: 8,
-            children: [
-              _buildCheckbox('Areas & Streets', 'areas_streets', Icons.map_rounded),
-              _buildCheckbox('Customer Info & VIP', 'customers', Icons.people_rounded),
-              _buildCheckbox('Orders & Payments', 'orders_payments', Icons.receipt_rounded),
-              _buildCheckbox('Products Catalog', 'products', Icons.inventory_2_rounded),
-              _buildCheckbox('Expenses Log', 'expenses', Icons.payments_rounded),
-              _buildCheckbox('Customer Photos', 'photos', Icons.photo_library_rounded),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-
-          // Status log box
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.gray50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.gray200),
-            ),
-            child: Row(
-              children: [
-                _loading
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                      )
-                    : Icon(
-                        isServer ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                        size: 14,
-                        color: isServer ? AppColors.success : AppColors.textHint,
+              // Bidirectional Action Buttons
+              Row(
+                children: [
+                  // Button 1: Receiver Server Toggle
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _loading ? null : _toggleReceiverServer,
+                      icon: Icon(isServer ? Icons.stop_rounded : Icons.play_arrow_rounded),
+                      label: Text(isServer ? 'Stop Receiver' : 'Start Receiver', style: const TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isServer ? AppColors.error : AppColors.primary,
+                        side: BorderSide(color: isServer ? AppColors.error : AppColors.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _status,
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+                  const SizedBox(width: 10),
 
-          // Bidirectional Action Buttons
-          Row(
-            children: [
-              // Button 1: Receiver Server Toggle
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _loading ? null : _toggleReceiverServer,
-                  icon: Icon(isServer ? Icons.stop_rounded : Icons.play_arrow_rounded),
-                  label: Text(isServer ? 'Stop Receiver' : 'Start Receiver', style: const TextStyle(fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isServer ? AppColors.error : AppColors.primary,
-                    side: BorderSide(color: isServer ? AppColors.error : AppColors.primary),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  // Button 2: Send Client P2P
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _loading ? null : _sendSyncPacket,
+                      icon: const Icon(Icons.send_rounded),
+                      label: const Text('Send / Sync Now', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-
-              // Button 2: Send Client P2P
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _loading ? null : _sendSyncPacket,
-                  icon: const Icon(Icons.send_rounded),
-                  label: const Text('Send / Sync Now', style: TextStyle(fontSize: 12)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -320,6 +324,45 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
       return;
     }
 
+    final tokenController = TextEditingController();
+    final bool? proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enter Pairing Code', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter the 6-digit Sync Token displayed on the receiver device:'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: tokenController,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: const InputDecoration(
+                hintText: 'e.g. 123456',
+                border: OutlineInputBorder(),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Proceed'),
+          ),
+        ],
+      ),
+    );
+
+    if (proceed != true || tokenController.text.trim().length != 6) {
+      return;
+    }
+    final enteredToken = tokenController.text.trim();
+
     setState(() {
       _loading = true;
       _status = 'Scanning subnet to discover receiver device...';
@@ -348,6 +391,7 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
         workerId: widget.workerId,
         workerName: widget.workerName,
         modules: selected,
+        syncToken: enteredToken,
       );
 
       if (mounted) {
@@ -361,7 +405,7 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
           setState(() {
             _status = 'Upload failed. Receiver returned error.';
           });
-          SnackbarHelper.showError(context, '❌ Sync upload failed.');
+          SnackbarHelper.showError(context, '❌ Sync upload failed (possibly incorrect pairing code).');
         }
       }
     } catch (e) {

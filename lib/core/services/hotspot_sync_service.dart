@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
+import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:archive/archive.dart';
@@ -18,8 +19,10 @@ class HotspotSyncService {
   static HttpServer? _server;
   static StreamSubscription<List<ConnectivityResult>>? _connectionSubscription;
   static bool _isSyncing = false;
+  static String? currentSyncToken;
 
-  static bool get isServerRunning => _server != null;
+  static final ValueNotifier<bool> isServerRunningNotifier = ValueNotifier<bool>(false);
+  static bool get isServerRunning => isServerRunningNotifier.value;
 
   // ---------------------------------------------------------------------------
   // 1. DISCOVERY & SUBNET SCANNING
@@ -61,35 +64,39 @@ class HotspotSyncService {
       if (await _pingDevice(gateway)) return gateway;
     }
 
-    // 2. Fallback to scanning all client IPs concurrently on subnet (covers third-phone hotspot configuration)
-    final List<Future<String?>> pingFutures = [];
-    final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 400);
-
+    // 2. Scan all client IPs in batches of 20 to avoid exhausting file descriptors (H19)
+    final List<String> ipsToPing = [];
     for (int i = 1; i <= 254; i++) {
       final targetIp = '$subnet.$i';
       if (targetIp == localIp || targetIp == gateway) continue;
+      ipsToPing.add(targetIp);
+    }
 
-      pingFutures.add(
-        client.getUrl(Uri.parse('http://$targetIp:8292/handshake'))
-          .then((req) => req.close())
-          .then((resp) async {
+    final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 400);
+
+    try {
+      const batchSize = 20;
+      for (int i = 0; i < ipsToPing.length; i += batchSize) {
+        final end = i + batchSize > ipsToPing.length ? ipsToPing.length : i + batchSize;
+        final batch = ipsToPing.sublist(i, end);
+        final results = await Future.wait(batch.map((ip) async {
+          try {
+            final req = await client.getUrl(Uri.parse('http://$ip:8292/handshake'));
+            final resp = await req.close();
             if (resp.statusCode == HttpStatus.ok) {
               final body = await utf8.decoder.bind(resp).join();
               final res = jsonDecode(body);
               if (res['app'] == 'orderkart') {
-                return targetIp;
+                return ip;
               }
             }
-            return null;
-          })
-          .catchError((_) => null)
-      );
-    }
+          } catch (_) {}
+          return null;
+        }));
 
-    try {
-      final results = await Future.wait(pingFutures);
-      for (final result in results) {
-        if (result != null) return result;
+        for (final res in results) {
+          if (res != null) return res; // Return immediately on first found device (N5)
+        }
       }
     } catch (_) {} finally {
       client.close();
@@ -110,8 +117,13 @@ class HotspotSyncService {
     if (_server != null) return;
 
     try {
+      final random = Random.secure();
+      final token = List.generate(6, (_) => random.nextInt(10).toString()).join();
+      currentSyncToken = token;
+
       _server = await HttpServer.bind(InternetAddress.anyIPv4, 8292);
-      onStatusUpdate('Server listening. Waiting for other device to sync...');
+      isServerRunningNotifier.value = true;
+      onStatusUpdate('Sync Token: $token\nServer listening. Waiting for other device to sync...');
 
       _server!.listen((HttpRequest request) async {
         final path = request.uri.path;
@@ -128,11 +140,39 @@ class HotspotSyncService {
           await request.response.close();
         } else if (method == 'POST' && path == '/sync') {
           try {
-            final body = await utf8.decoder.bind(request).join();
+            // C4: Auth check via header token
+            final tokenHeader = request.headers.value('x-sync-token');
+            if (tokenHeader == null || tokenHeader != currentSyncToken) {
+              request.response
+                ..statusCode = HttpStatus.unauthorized
+                ..write(jsonEncode({'status': 'error', 'message': 'Unauthorized — Sync Token Mismatch'}));
+              await request.response.close();
+              return;
+            }
+
+            // C5: Payload size limit check
+            final contentLength = request.contentLength;
+            if (contentLength > 50 * 1024 * 1024) {
+              throw Exception('Payload exceeds maximum size limit of 50MB');
+            }
+
+            final bytesBuilder = BytesBuilder();
+            int totalBytesRead = 0;
+            await for (final chunk in request) {
+              totalBytesRead += chunk.length;
+              if (totalBytesRead > 50 * 1024 * 1024) {
+                throw Exception('Payload exceeds maximum size limit of 50MB');
+              }
+              bytesBuilder.add(chunk);
+            }
+
+            final body = utf8.decode(bytesBuilder.takeBytes());
             final Map<String, dynamic> payload = jsonDecode(body);
 
             final String base64Data = payload['data']?.toString() ?? '';
             if (base64Data.isEmpty) throw Exception('Empty sync payload');
+
+            payload.remove('data'); // Free memory immediately
 
             // Decompress data
             final compressedBytes = base64Url.decode(base64Data);
@@ -145,8 +185,9 @@ class HotspotSyncService {
 
             // 1. Schema Version Check
             final schemaVer = manifest['schema_version']?.toString() ?? '';
-            if (schemaVer != '4') {
-              throw Exception('Incompatible database schema version: $schemaVer. Expected: 4.');
+            final schemaInt = int.tryParse(schemaVer) ?? 0;
+            if (schemaInt < 1 || schemaInt > 4) {
+              throw Exception('Incompatible database schema version: $schemaVer. Expected: 1-4.');
             }
 
             // 2. Minimum Supported Version Check
@@ -191,20 +232,14 @@ class HotspotSyncService {
               for (final photo in photos) {
                 if (photo is Map) {
                   final filename = photo['filename']?.toString();
+                  final folder = photo['folder']?.toString() ?? 'customer_photos';
                   final base64Str = photo['base64']?.toString();
                   if (filename != null && base64Str != null) {
                     final bytes = base64Decode(base64Str);
-                    final photoDirs = [
-                      '${AppConstants.appDocsDir}/customer_photos/$filename',
-                      '${AppConstants.appDocsDir}/area_photos/$filename',
-                      '${AppConstants.appDocsDir}/street_photos/$filename',
-                      '${AppConstants.appDocsDir}/note_photos/$filename',
-                    ];
-                    for (final targetPath in photoDirs) {
-                      final destFile = File(targetPath);
-                      await destFile.parent.create(recursive: true);
-                      await destFile.writeAsBytes(bytes);
-                    }
+                    final targetPath = '${AppConstants.appDocsDir}/$folder/$filename';
+                    final destFile = File(targetPath);
+                    await destFile.parent.create(recursive: true);
+                    await destFile.writeAsBytes(bytes);
                   }
                 }
               }
@@ -267,6 +302,7 @@ class HotspotSyncService {
     if (_server != null) {
       await _server!.close(force: true);
       _server = null;
+      isServerRunningNotifier.value = false;
     }
   }
 
@@ -323,12 +359,32 @@ class HotspotSyncService {
       dataMap['orders'] = ordersRows;
 
       final List<String> orderIds = ordersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
-      dataMap['order_items'] = orderIds.isEmpty
-          ? []
-          : await mainDb.query('order_items', where: 'order_id IN (${orderIds.map((e) => "'$e'").join(',')})');
-      dataMap['payments'] = lastSyncTime.isNotEmpty
-          ? await mainDb.query('payments', where: 'created_at >= ? OR order_id IN (${orderIds.isEmpty ? "''" : orderIds.map((e) => "'$e'").join(',')})', whereArgs: [lastSyncTime])
-          : await mainDb.query('payments');
+      
+      final List<Map<String, dynamic>> orderItemsRows;
+      if (orderIds.isNotEmpty) {
+        final placeholders = List.filled(orderIds.length, '?').join(',');
+        orderItemsRows = await mainDb.query('order_items', where: 'order_id IN ($placeholders)', whereArgs: orderIds);
+      } else {
+        orderItemsRows = [];
+      }
+      dataMap['order_items'] = orderItemsRows;
+
+      final List<Map<String, dynamic>> paymentsRows;
+      if (lastSyncTime.isNotEmpty) {
+        if (orderIds.isNotEmpty) {
+          final placeholders = List.filled(orderIds.length, '?').join(',');
+          paymentsRows = await mainDb.query('payments',
+              where: 'created_at >= ? OR order_id IN ($placeholders)',
+              whereArgs: [lastSyncTime, ...orderIds]);
+        } else {
+          paymentsRows = await mainDb.query('payments',
+              where: 'created_at >= ?',
+              whereArgs: [lastSyncTime]);
+        }
+      } else {
+        paymentsRows = await mainDb.query('payments');
+      }
+      dataMap['payments'] = paymentsRows;
     }
 
     // 4. Products & Selling Prices selection
@@ -357,20 +413,23 @@ class HotspotSyncService {
 
       for (final dir in photoDirsToScan) {
         if (dir.existsSync()) {
+          final folderName = p.basename(dir.path);
           final files = dir.listSync();
           for (final f in files) {
             if (f is File) {
               final filename = p.basename(f.path);
-              if (processedFilenames.contains(filename)) continue;
+              final uniqueKey = '$folderName/$filename';
+              if (processedFilenames.contains(uniqueKey)) continue;
 
               final stat = f.statSync();
               if (lastSyncDate == null || stat.modified.isAfter(lastSyncDate)) {
                 final bytes = await f.readAsBytes();
                 photosPayload.add({
+                  'folder': folderName,
                   'filename': filename,
                   'base64': base64Encode(bytes),
                 });
-                processedFilenames.add(filename);
+                processedFilenames.add(uniqueKey);
               }
             }
           }
@@ -392,13 +451,14 @@ class HotspotSyncService {
     required String workerId,
     required String workerName,
     required List<String> modules,
+    String syncToken = '',
   }) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
     try {
       // 1. Handshake verification
       final handshakeUri = Uri.parse('http://$gatewayIp:8292/handshake');
-      final handshakeReq = await client.getUrl(handshakeUri);
-      final handshakeResp = await handshakeReq.close();
+      final handshakeReq = await client.getUrl(handshakeUri).timeout(const Duration(seconds: 5));
+      final handshakeResp = await handshakeReq.close().timeout(const Duration(seconds: 5));
       if (handshakeResp.statusCode != HttpStatus.ok) return false;
 
       final body = await utf8.decoder.bind(handshakeResp).join();
@@ -413,11 +473,14 @@ class HotspotSyncService {
       );
       
       final syncUri = Uri.parse('http://$gatewayIp:8292/sync');
-      final syncReq = await client.postUrl(syncUri);
+      final syncReq = await client.postUrl(syncUri).timeout(const Duration(seconds: 30));
       syncReq.headers.contentType = ContentType.json;
+      if (syncToken.isNotEmpty) {
+        syncReq.headers.add('x-sync-token', syncToken);
+      }
       syncReq.write(jsonEncode({'data': payload}));
 
-      final syncResp = await syncReq.close();
+      final syncResp = await syncReq.close().timeout(const Duration(seconds: 30));
       if (syncResp.statusCode == HttpStatus.ok) {
         final mainDb = await DatabaseHelper.instance.database;
         await mainDb.insert('settings', {

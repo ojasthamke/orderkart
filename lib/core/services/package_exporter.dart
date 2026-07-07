@@ -47,7 +47,8 @@ class PackageExporter {
     final tempDir = await getTemporaryDirectory();
     
     // Create a temporary copy of the database to prune
-    final tempDbFile = File('${tempDir.path}/orderkart_export_temp.db');
+    final tempDbFileName = 'orderkart_export_${const Uuid().v4().substring(0, 8)}.db';
+    final tempDbFile = File('${tempDir.path}/$tempDbFileName');
     if (tempDbFile.existsSync()) tempDbFile.deleteSync();
     await dbFile.copy(tempDbFile.path);
 
@@ -56,6 +57,8 @@ class PackageExporter {
 
     // Disable foreign key checks during pruning so we can clean table-by-table without constraint errors
     await tempDb.execute('PRAGMA foreign_keys = OFF');
+
+    final List<String> referencedPhotos = [];
 
     try {
       final isEntireDb = selectedModules.contains('entire_db');
@@ -75,6 +78,7 @@ class PackageExporter {
         if (!selectedModules.contains('items')) {
           await tempDb.delete('items');
           await tempDb.delete('item_price_history');
+          await tempDb.delete('stock_history');
         }
         if (!selectedModules.contains('orders')) {
           await tempDb.delete('orders');
@@ -108,56 +112,53 @@ class PackageExporter {
         }
       }
 
-      // Helper to convert list of IDs into sql quote list
-      String sqlInClause(List<String> ids) => ids.map((id) => "'$id'").join(',');
-
       // --- 2. Entity-Based Pruning ---
       if (selectedAreaIds != null && selectedAreaIds.isNotEmpty) {
-        final list = sqlInClause(selectedAreaIds);
-        await tempDb.delete('areas', where: 'id NOT IN ($list)');
-        await tempDb.delete('streets', where: 'area_id NOT IN ($list)');
+        final placeholders = List.filled(selectedAreaIds.length, '?').join(',');
+        await tempDb.delete('areas', where: 'id NOT IN ($placeholders)', whereArgs: selectedAreaIds);
+        await tempDb.delete('streets', where: 'area_id NOT IN ($placeholders)', whereArgs: selectedAreaIds);
         await tempDb.delete('customers', where: 'street_id NOT IN (SELECT id FROM streets)');
         await tempDb.delete('orders', where: 'customer_id NOT IN (SELECT id FROM customers)');
       }
 
       if (selectedStreetIds != null && selectedStreetIds.isNotEmpty) {
-        final list = sqlInClause(selectedStreetIds);
-        await tempDb.delete('streets', where: 'id NOT IN ($list)');
-        await tempDb.delete('customers', where: 'street_id NOT IN ($list)');
+        final placeholders = List.filled(selectedStreetIds.length, '?').join(',');
+        await tempDb.delete('streets', where: 'id NOT IN ($placeholders)', whereArgs: selectedStreetIds);
+        await tempDb.delete('customers', where: 'street_id NOT IN ($placeholders)', whereArgs: selectedStreetIds);
         await tempDb.delete('orders', where: 'customer_id NOT IN (SELECT id FROM customers)');
       }
 
       if (selectedCustomerIds != null && selectedCustomerIds.isNotEmpty) {
-        final list = sqlInClause(selectedCustomerIds);
-        await tempDb.delete('customers', where: 'id NOT IN ($list)');
-        await tempDb.delete('orders', where: 'customer_id NOT IN ($list)');
+        final placeholders = List.filled(selectedCustomerIds.length, '?').join(',');
+        await tempDb.delete('customers', where: 'id NOT IN ($placeholders)', whereArgs: selectedCustomerIds);
+        await tempDb.delete('orders', where: 'customer_id NOT IN ($placeholders)', whereArgs: selectedCustomerIds);
       }
 
       if (selectedWorkerIds != null && selectedWorkerIds.isNotEmpty) {
-        final list = sqlInClause(selectedWorkerIds);
-        await tempDb.delete('workers', where: 'id NOT IN ($list)');
-        await tempDb.delete('worker_security', where: 'worker_id NOT IN ($list)');
-        await tempDb.delete('worker_assignments', where: 'worker_id NOT IN ($list)');
-        await tempDb.delete('worker_reports', where: 'worker_id NOT IN ($list)');
-        await tempDb.delete('commission_history', where: 'worker_id NOT IN ($list)');
-        await tempDb.delete('orders', where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" AND assigned_worker_id NOT IN ($list)');
-        await tempDb.delete('customers', where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" AND assigned_worker_id NOT IN ($list)');
+        final placeholders = List.filled(selectedWorkerIds.length, '?').join(',');
+        await tempDb.delete('workers', where: 'id NOT IN ($placeholders)', whereArgs: selectedWorkerIds);
+        await tempDb.delete('worker_security', where: 'worker_id NOT IN ($placeholders)', whereArgs: selectedWorkerIds);
+        await tempDb.delete('worker_assignments', where: 'worker_id NOT IN ($placeholders)', whereArgs: selectedWorkerIds);
+        await tempDb.delete('worker_reports', where: 'worker_id NOT IN ($placeholders)', whereArgs: selectedWorkerIds);
+        await tempDb.delete('commission_history', where: 'worker_id NOT IN ($placeholders)', whereArgs: selectedWorkerIds);
+        await tempDb.delete('orders', where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" AND assigned_worker_id NOT IN ($placeholders)', whereArgs: selectedWorkerIds);
+        await tempDb.delete('customers', where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" AND assigned_worker_id NOT IN ($placeholders)', whereArgs: selectedWorkerIds);
       }
 
       if (selectedItemIds != null && selectedItemIds.isNotEmpty) {
-        final list = sqlInClause(selectedItemIds);
-        await tempDb.delete('items', where: 'id NOT IN ($list)');
-        await tempDb.delete('item_price_history', where: 'item_id NOT IN ($list)');
+        final placeholders = List.filled(selectedItemIds.length, '?').join(',');
+        await tempDb.delete('items', where: 'id NOT IN ($placeholders)', whereArgs: selectedItemIds);
+        await tempDb.delete('item_price_history', where: 'item_id NOT IN ($placeholders)', whereArgs: selectedItemIds);
       }
 
       if (selectedExpenseIds != null && selectedExpenseIds.isNotEmpty) {
-        final list = sqlInClause(selectedExpenseIds);
-        await tempDb.delete('expenses', where: 'id NOT IN ($list)');
+        final placeholders = List.filled(selectedExpenseIds.length, '?').join(',');
+        await tempDb.delete('expenses', where: 'id NOT IN ($placeholders)', whereArgs: selectedExpenseIds);
       }
 
       if (selectedNoteIds != null && selectedNoteIds.isNotEmpty) {
-        final list = sqlInClause(selectedNoteIds);
-        await tempDb.delete('notes', where: 'id NOT IN ($list)');
+        final placeholders = List.filled(selectedNoteIds.length, '?').join(',');
+        await tempDb.delete('notes', where: 'id NOT IN ($placeholders)', whereArgs: selectedNoteIds);
       }
 
       // --- 3. Date Range Pruning ---
@@ -177,13 +178,37 @@ class PackageExporter {
         await tempDb.delete('worker_reports', where: 'report_date > ?', whereArgs: [endStr.substring(0, 10)]);
       }
 
+      // Always strip sensitive/internal tables from non-entire DB exports
+      if (!isEntireDb) {
+        for (final sensitiveTable in ['worker_security', 'audit_logs', 'sync_history', 'pending_sync', 'worker_devices', 'repair_logs', 'export_history', 'import_history']) {
+          try { await tempDb.delete(sensitiveTable); } catch (_) {}
+        }
+      }
+
       // --- 4. Post-Filter Cascading Cleanup ---
       await tempDb.delete('order_items', where: 'order_id NOT IN (SELECT id FROM orders)');
       await tempDb.delete('payments', where: 'order_id NOT IN (SELECT id FROM orders)');
+      await tempDb.delete('vip_membership', where: 'customer_id NOT IN (SELECT id FROM customers)');
+      await tempDb.delete('item_price_history', where: 'item_id NOT IN (SELECT id FROM items)');
+      await tempDb.delete('stock_history', where: 'item_id NOT IN (SELECT id FROM items)');
 
       if (workerId.isNotEmpty) {
         await tempDb.delete('settings', where: "key LIKE 'owner_secret%'");
+        await tempDb.delete('worker_security', where: "worker_id != ?", whereArgs: [workerId]);
       }
+
+      // Query photo_path columns from cloned tables to scope photo exports (H17)
+      try {
+        final List<Map<String, dynamic>> custPhotos = await tempDb.rawQuery('SELECT photo_path FROM customers WHERE photo_path IS NOT NULL AND photo_path != ""');
+        final List<Map<String, dynamic>> areaPhotos = await tempDb.rawQuery('SELECT photo_path FROM areas WHERE photo_path IS NOT NULL AND photo_path != ""');
+        final List<Map<String, dynamic>> streetPhotos = await tempDb.rawQuery('SELECT photo_path FROM streets WHERE photo_path IS NOT NULL AND photo_path != ""');
+        final List<Map<String, dynamic>> notePhotos = await tempDb.rawQuery('SELECT photo_path FROM notes WHERE photo_path IS NOT NULL AND photo_path != ""');
+        
+        for (final r in custPhotos) referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        for (final r in areaPhotos) referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        for (final r in streetPhotos) referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        for (final r in notePhotos) referencedPhotos.add(p.basename(r['photo_path'].toString()));
+      } catch (_) {}
 
     } finally {
       // Re-enable foreign key constraints & close
@@ -325,12 +350,19 @@ class PackageExporter {
     // 1. Export photos if selected
     final isEntireDb = selectedModules.contains('entire_db');
     if (selectedModules.contains('photos') || isEntireDb) {
-      final srcPhotoDir = Directory('${AppConstants.appDocsDir}/customer_photos');
-      if (srcPhotoDir.existsSync()) {
-        final files = srcPhotoDir.listSync();
-        for (final f in files) {
-          if (f is File) {
-            await f.copy('${photosDir.path}/${p.basename(f.path)}');
+      final List<String> folders = ['customer_photos', 'area_photos', 'street_photos', 'note_photos', 'attachments'];
+      for (final folder in folders) {
+        final srcPhotoDir = Directory('${AppConstants.appDocsDir}/$folder');
+        if (srcPhotoDir.existsSync()) {
+          final files = srcPhotoDir.listSync();
+          for (final f in files) {
+            if (f is File) {
+              final filename = p.basename(f.path);
+              if (isEntireDb || referencedPhotos.contains(filename)) {
+                final targetDir = Directory('${photosDir.path}/$folder')..createSync(recursive: true);
+                await f.copy('${targetDir.path}/$filename');
+              }
+            }
           }
         }
       }
@@ -352,10 +384,11 @@ class PackageExporter {
     final fileHashes = <String, String>{};
     fileHashes['database.enc'] = await calculateFileHash(destDbEnc);
 
-    final photoList = photosDir.listSync();
+    final photoList = photosDir.listSync(recursive: true);
     for (final f in photoList) {
       if (f is File) {
-        fileHashes['photos/${p.basename(f.path)}'] = await calculateFileHash(f);
+        final relativePath = p.relative(f.path, from: packageDir.path).replaceAll('\\', '/');
+        fileHashes[relativePath] = await calculateFileHash(f);
       }
     }
 
@@ -389,9 +422,9 @@ class PackageExporter {
       'generated_by_worker_id': workerId,
       'generated_by_worker_name': workerName,
       'is_worker_provisioning_package': workerId.isNotEmpty,
-      if (workerId.isNotEmpty) 'worker_secret': secretKey,
-      // Embed owner_secret inline for full backups so restore works after reinstall
-      if (workerId.isEmpty && selectedModules.contains('entire_db')) 'owner_secret': secretKey,
+      if (workerId.isNotEmpty) 'worker_secret': SecurityHelper.obfuscateSecret(secretKey),
+      // Embed owner_secret inline (obfuscated) for full backups so restore works after reinstall
+      if (workerId.isEmpty && selectedModules.contains('entire_db')) 'owner_secret': SecurityHelper.obfuscateSecret(secretKey),
       'device_name': Platform.localHostname,
       'platform': Platform.operatingSystem,
       'device_id': 'mock_device_id_${Platform.operatingSystem.hashCode.abs()}',
@@ -428,7 +461,10 @@ class PackageExporter {
     encoder.addFile(destDbEnc, 'database.enc');
     
     for (final f in photoList) {
-      if (f is File) encoder.addFile(f, 'photos/${p.basename(f.path)}');
+      if (f is File) {
+        final relativePath = p.relative(f.path, from: packageDir.path).replaceAll('\\', '/');
+        encoder.addFile(f, relativePath);
+      }
     }
     for (final f in logoList) {
       if (f is File) encoder.addFile(f, 'logo/${p.basename(f.path)}');

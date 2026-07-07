@@ -3,6 +3,7 @@
 /// Designed for future cloud sync — all IDs are UUIDs (string), not auto-increment
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -11,6 +12,25 @@ import '../constants/app_constants.dart';
 class DatabaseHelper {
   DatabaseHelper._();
   static final DatabaseHelper instance = DatabaseHelper._();
+
+  static final Map<String, List<String>> _tableColumnCache = {};
+
+  static Future<List<String>> _getTableColumns(DatabaseExecutor db, String table) async {
+    if (_tableColumnCache.containsKey(table)) return _tableColumnCache[table]!;
+    try {
+      final info = await db.rawQuery('PRAGMA table_info("$table")');
+      final cols = info.map((r) => r['name']?.toString() ?? '').where((c) => c.isNotEmpty).toList();
+      _tableColumnCache[table] = cols;
+      return cols;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Map<String, dynamic> _filterColumns(Map<String, dynamic> row, List<String> validColumns) {
+    if (validColumns.isEmpty) return row;
+    return Map.fromEntries(row.entries.where((e) => validColumns.contains(e.key)));
+  }
 
   static String? dbNameOverride;
 
@@ -487,6 +507,7 @@ class DatabaseHelper {
       'vip_membership',
       'items',
       'item_price_history',
+      'stock_history',
       'orders',
       'order_items',
       'payments',
@@ -503,9 +524,12 @@ class DatabaseHelper {
       'settings'
     ];
 
+    _tableColumnCache.clear();
     final Map<String, Map<String, int>> resultStats = {};
 
     Future<void> runMerge(DatabaseExecutor dbExecutor) async {
+      await dbExecutor.execute('PRAGMA defer_foreign_keys = ON');
+
       for (final table in tables) {
         int inserted = 0;
         int updated = 0;
@@ -527,6 +551,8 @@ class DatabaseHelper {
             ? List<Map<String, dynamic>>.from(rawList.map((item) => Map<String, dynamic>.from(item)))
             : [];
 
+        final validCols = await _getTableColumns(dbExecutor, table);
+
         for (final row in incomingRows) {
           final id = row['id']?.toString() ?? 
                      row['key']?.toString() ?? 
@@ -535,6 +561,8 @@ class DatabaseHelper {
             skipped++;
             continue;
           }
+
+          final filteredRow = _filterColumns(row, validCols);
 
           List<Map<String, dynamic>> existing;
           if (table == 'settings') {
@@ -565,19 +593,22 @@ class DatabaseHelper {
           if (existing.isEmpty) {
             try {
               if (!dryRun) {
-                await dbExecutor.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
+                await dbExecutor.insert(table, filteredRow, conflictAlgorithm: ConflictAlgorithm.replace);
               }
               inserted++;
-            } catch (_) {
+            } catch (e) {
+              debugPrint('[Merge JSON] Insert error on table $table: $e');
               conflicted++;
             }
           } else {
             if (table == 'settings') {
               final existingVal = existing.first['value']?.toString() ?? '';
-              final incomingVal = row['value']?.toString() ?? '';
-              if (existingVal != incomingVal) {
+              final incomingVal = filteredRow['value']?.toString() ?? '';
+              // Settings: Only update if the local setting value is empty and incoming is not.
+              // This strictly prevents older imports from downgrading newer settings.
+              if (existingVal.isEmpty && incomingVal.isNotEmpty) {
                 if (!dryRun) {
-                  await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
+                  await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
                 }
                 updated++;
               } else {
@@ -587,7 +618,7 @@ class DatabaseHelper {
             }
 
             final existingUpdated = existing.first['updated_at']?.toString() ?? existing.first['created_at']?.toString() ?? '';
-            final incomingUpdated = row['updated_at']?.toString() ?? row['created_at']?.toString() ?? '';
+            final incomingUpdated = filteredRow['updated_at']?.toString() ?? filteredRow['created_at']?.toString() ?? '';
 
             if (incomingUpdated.isNotEmpty && existingUpdated.isNotEmpty) {
               final incDt = DateTime.tryParse(incomingUpdated);
@@ -596,11 +627,11 @@ class DatabaseHelper {
               if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
                 if (!dryRun) {
                   if (table == 'settings') {
-                    await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
+                    await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
                   } else if (table == 'worker_permissions') {
-                    await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
+                    await dbExecutor.update(table, filteredRow, where: 'worker_id = ?', whereArgs: [id]);
                   } else {
-                    await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);
+                    await dbExecutor.update(table, filteredRow, where: 'id = ?', whereArgs: [id]);
                   }
                 }
                 updated++;
@@ -611,7 +642,7 @@ class DatabaseHelper {
               // Fallback for tables without timestamps: check if any value has changed
               bool hasChanged = false;
               final existingMap = existing.first;
-              for (final entry in row.entries) {
+              for (final entry in filteredRow.entries) {
                 final key = entry.key;
                 if (existingMap.containsKey(key)) {
                   if (existingMap[key]?.toString() != entry.value?.toString()) {
@@ -626,11 +657,11 @@ class DatabaseHelper {
               if (hasChanged) {
                 if (!dryRun) {
                   if (table == 'settings') {
-                    await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
+                    await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
                   } else if (table == 'worker_permissions') {
-                    await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
+                    await dbExecutor.update(table, filteredRow, where: 'worker_id = ?', whereArgs: [id]);
                   } else {
-                    await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);
+                    await dbExecutor.update(table, filteredRow, where: 'id = ?', whereArgs: [id]);
                   }
                 }
                 updated++;
@@ -673,207 +704,220 @@ class DatabaseHelper {
     final targetDb = await database;
     final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
 
-    // Topological dependency order: Parents before Children
-    final tables = [
-      'areas',
-      'streets',
-      'customers',
-      'vip_membership',
-      'items',
-      'item_price_history',
-      'orders',
-      'order_items',
-      'payments',
-      'expenses',
-      'notes',
-      'visits',
-      'notifications',
-      'workers',
-      'worker_assignments',
-      'worker_permissions',
-      'worker_reports',
-      'commission_history',
-      'business_profile',
-      'settings'
-    ];
+    try {
+      // Topological dependency order: Parents before Children
+      final tables = [
+        'areas',
+        'streets',
+        'customers',
+        'vip_membership',
+        'items',
+        'item_price_history',
+        'stock_history',
+        'orders',
+        'order_items',
+        'payments',
+        'expenses',
+        'notes',
+        'visits',
+        'notifications',
+        'workers',
+        'worker_assignments',
+        'worker_permissions',
+        'worker_reports',
+        'commission_history',
+        'business_profile',
+        'settings'
+      ];
 
-    // First count total rows to calculate progress
-    int totalRows = 0;
-    final Map<String, List<Map<String, dynamic>>> incomingData = {};
-    for (final table in tables) {
-      if (!_isTableSelected(table, selectedModules)) continue;
-      try {
-        final rows = await incomingDb.query(table);
-        incomingData[table] = rows;
-        totalRows += rows.length;
-      } catch (_) {}
-    }
+      _tableColumnCache.clear();
 
-    final Map<String, Map<String, int>> resultStats = {};
-    int processedRows = 0;
-    final safeTotalRows = totalRows == 0 ? 1 : totalRows;
-
-    Future<void> runMerge(DatabaseExecutor dbExecutor) async {
+      // First count total rows to calculate progress
+      int totalRows = 0;
+      final Map<String, List<Map<String, dynamic>>> incomingData = {};
       for (final table in tables) {
-        int inserted = 0;
-        int updated = 0;
-        int skipped = 0;
-        int conflicted = 0;
+        if (!_isTableSelected(table, selectedModules)) continue;
+        try {
+          final rows = await incomingDb.query(table);
+          incomingData[table] = rows;
+          totalRows += rows.length;
+        } catch (_) {}
+      }
 
-        if (!_isTableSelected(table, selectedModules)) {
-          resultStats[table] = {
-            'inserted': 0,
-            'updated': 0,
-            'skipped': 0,
-            'conflicted': 0,
-          };
-          continue;
-        }
+      final Map<String, Map<String, int>> resultStats = {};
+      int processedRows = 0;
+      final safeTotalRows = totalRows == 0 ? 1 : totalRows;
 
-        final incomingRows = incomingData[table] ?? [];
-        for (final row in incomingRows) {
-          final id = row['id']?.toString() ?? 
-                     row['key']?.toString() ?? 
-                     row['worker_id']?.toString() ?? '';
-          if (id.isEmpty) {
-            skipped++;
-            processedRows++;
-            onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+      Future<void> runMerge(DatabaseExecutor dbExecutor) async {
+        await dbExecutor.execute('PRAGMA defer_foreign_keys = ON');
+
+        for (final table in tables) {
+          int inserted = 0;
+          int updated = 0;
+          int skipped = 0;
+          int conflicted = 0;
+
+          if (!_isTableSelected(table, selectedModules)) {
+            resultStats[table] = {
+              'inserted': 0,
+              'updated': 0,
+              'skipped': 0,
+              'conflicted': 0,
+            };
             continue;
           }
 
-          List<Map<String, dynamic>> existing;
-          if (table == 'settings') {
-            final key = id.toLowerCase();
-            const protectedKeys = {
-              'app_mode',
-              'owner_pin_hash',
-              'owner_pin_salt',
-              'app_initialized',
-              'active_worker_id',
-              'owner_secret',
-              'owner_secret_v1',
-              'owner_secret_v2',
-              'owner_failed_pin_attempts',
-              'owner_pin_lockout_until',
-            };
-            if (protectedKeys.contains(key)) {
-              skipped++;
-              processedRows++;
-              onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
-              continue; // Protect local session keys from being overwritten!
-            }
-            existing = await dbExecutor.query(table, where: 'key = ?', whereArgs: [id]);
-          } else if (table == 'worker_permissions') {
-            existing = await dbExecutor.query(table, where: 'worker_id = ?', whereArgs: [id]);
-          } else {
-            existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
-          }
+          final incomingRows = incomingData[table] ?? [];
+          final validCols = await _getTableColumns(dbExecutor, table);
 
-          if (existing.isEmpty) {
-            try {
-              if (!dryRun) {
-                await dbExecutor.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
-              }
-              inserted++;
-            } catch (_) {
-              conflicted++;
-            }
-          } else {
-            // Compare values or timestamps (LWW - Last-Write-Wins)
-            if (table == 'settings') {
-              final existingVal = existing.first['value']?.toString() ?? '';
-              final incomingVal = row['value']?.toString() ?? '';
-              if (existingVal != incomingVal) {
-                if (!dryRun) {
-                  await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
-                }
-                updated++;
-              } else {
-                skipped++;
-              }
+          for (final row in incomingRows) {
+            final id = row['id']?.toString() ?? 
+                       row['key']?.toString() ?? 
+                       row['worker_id']?.toString() ?? '';
+            if (id.isEmpty) {
+              skipped++;
               processedRows++;
               onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
               continue;
             }
 
-            final existingUpdated = existing.first['updated_at']?.toString() ?? existing.first['created_at']?.toString() ?? '';
-            final incomingUpdated = row['updated_at']?.toString() ?? row['created_at']?.toString() ?? '';
+            final filteredRow = _filterColumns(row, validCols);
 
-            if (incomingUpdated.isNotEmpty && existingUpdated.isNotEmpty) {
-              final incDt = DateTime.tryParse(incomingUpdated);
-              final exDt  = DateTime.tryParse(existingUpdated);
-
-              if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
-                if (!dryRun) {
-                  if (table == 'settings') {
-                    await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
-                  } else if (table == 'worker_permissions') {
-                    await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
-                  } else {
-                    await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);
-                  }
-                }
-                updated++;
-              } else {
+            List<Map<String, dynamic>> existing;
+            if (table == 'settings') {
+              final key = id.toLowerCase();
+              const protectedKeys = {
+                'app_mode',
+                'owner_pin_hash',
+                'owner_pin_salt',
+                'app_initialized',
+                'active_worker_id',
+                'owner_secret',
+                'owner_secret_v1',
+                'owner_secret_v2',
+                'owner_failed_pin_attempts',
+                'owner_pin_lockout_until',
+              };
+              if (protectedKeys.contains(key)) {
                 skipped++;
+                processedRows++;
+                onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+                continue; // Protect local session keys from being overwritten!
+              }
+              existing = await dbExecutor.query(table, where: 'key = ?', whereArgs: [id]);
+            } else if (table == 'worker_permissions') {
+              existing = await dbExecutor.query(table, where: 'worker_id = ?', whereArgs: [id]);
+            } else {
+              existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
+            }
+
+            if (existing.isEmpty) {
+              try {
+                if (!dryRun) {
+                  await dbExecutor.insert(table, filteredRow, conflictAlgorithm: ConflictAlgorithm.replace);
+                }
+                inserted++;
+              } catch (e) {
+                debugPrint('[Merge Path] Insert error on table $table: $e');
+                conflicted++;
               }
             } else {
-              // Fallback for tables without timestamps: check if any value has changed
-              bool hasChanged = false;
-              final existingMap = existing.first;
-              for (final entry in row.entries) {
-                final key = entry.key;
-                if (existingMap.containsKey(key)) {
-                  if (existingMap[key]?.toString() != entry.value?.toString()) {
+              // Compare values or timestamps (LWW - Last-Write-Wins)
+              if (table == 'settings') {
+                final existingVal = existing.first['value']?.toString() ?? '';
+                final incomingVal = filteredRow['value']?.toString() ?? '';
+                if (existingVal.isEmpty && incomingVal.isNotEmpty) {
+                  if (!dryRun) {
+                    await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
+                  }
+                  updated++;
+                } else {
+                  skipped++;
+                }
+                processedRows++;
+                onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+                continue;
+              }
+
+              final existingUpdated = existing.first['updated_at']?.toString() ?? existing.first['created_at']?.toString() ?? '';
+              final incomingUpdated = filteredRow['updated_at']?.toString() ?? filteredRow['created_at']?.toString() ?? '';
+
+              if (incomingUpdated.isNotEmpty && existingUpdated.isNotEmpty) {
+                final incDt = DateTime.tryParse(incomingUpdated);
+                final exDt  = DateTime.tryParse(existingUpdated);
+
+                if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
+                  if (!dryRun) {
+                    if (table == 'settings') {
+                      await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
+                    } else if (table == 'worker_permissions') {
+                      await dbExecutor.update(table, filteredRow, where: 'worker_id = ?', whereArgs: [id]);
+                    } else {
+                      await dbExecutor.update(table, filteredRow, where: 'id = ?', whereArgs: [id]);
+                    }
+                  }
+                  updated++;
+                } else {
+                  skipped++;
+                }
+              } else {
+                // Fallback for tables without timestamps: check if any value has changed
+                bool hasChanged = false;
+                final existingMap = existing.first;
+                for (final entry in filteredRow.entries) {
+                  final key = entry.key;
+                  if (existingMap.containsKey(key)) {
+                    if (existingMap[key]?.toString() != entry.value?.toString()) {
+                      hasChanged = true;
+                      break;
+                    }
+                  } else {
                     hasChanged = true;
                     break;
                   }
-                } else {
-                  hasChanged = true;
-                  break;
                 }
-              }
-              if (hasChanged) {
-                if (!dryRun) {
-                  if (table == 'settings') {
-                    await dbExecutor.update(table, row, where: 'key = ?', whereArgs: [id]);
-                  } else if (table == 'worker_permissions') {
-                    await dbExecutor.update(table, row, where: 'worker_id = ?', whereArgs: [id]);
-                  } else {
-                    await dbExecutor.update(table, row, where: 'id = ?', whereArgs: [id]);
+                if (hasChanged) {
+                  if (!dryRun) {
+                    if (table == 'settings') {
+                      await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
+                    } else if (table == 'worker_permissions') {
+                      await dbExecutor.update(table, filteredRow, where: 'worker_id = ?', whereArgs: [id]);
+                    } else {
+                      await dbExecutor.update(table, filteredRow, where: 'id = ?', whereArgs: [id]);
+                    }
                   }
+                  updated++;
+                } else {
+                  skipped++;
                 }
-                updated++;
-              } else {
-                skipped++;
               }
             }
+            processedRows++;
+            onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
           }
-          processedRows++;
-          onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+
+          resultStats[table] = {
+            'inserted': inserted,
+            'updated': updated,
+            'skipped': skipped,
+            'conflicted': conflicted,
+          };
         }
-
-        resultStats[table] = {
-          'inserted': inserted,
-          'updated': updated,
-          'skipped': skipped,
-          'conflicted': conflicted,
-        };
       }
-    }
 
-    if (dryRun) {
-      await runMerge(targetDb);
-    } else {
-      await targetDb.transaction((txn) async {
-        await runMerge(txn);
-        await _runRecalculations(txn);
-      });
-    }
+      if (dryRun) {
+        await runMerge(targetDb);
+      } else {
+        await targetDb.transaction((txn) async {
+          await runMerge(txn);
+          await _runRecalculations(txn);
+        });
+      }
 
-    await incomingDb.close();
-    return resultStats;
+      return resultStats;
+    } finally {
+      await incomingDb.close();
+    }
   }
 
   /// Recalculates outstanding balances, VIP memberships, worker stats/commissions upon import

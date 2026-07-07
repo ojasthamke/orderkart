@@ -71,7 +71,13 @@ class SecurityHelper {
   static bool verifyManifest(Map<String, dynamic> manifestMap, String signature, String secretKey) {
     if (signature.isEmpty || secretKey.isEmpty) return false;
     final expectedSignature = signManifest(manifestMap, secretKey);
-    return expectedSignature == signature;
+    // Constant-time comparison to prevent timing attacks
+    if (expectedSignature.length != signature.length) return false;
+    int result = 0;
+    for (int i = 0; i < expectedSignature.length; i++) {
+      result |= expectedSignature.codeUnitAt(i) ^ signature.codeUnitAt(i);
+    }
+    return result == 0;
   }
 
   /// Hashes a worker's numerical PIN using SHA-256 (with a constant salt for offline validation).
@@ -112,5 +118,33 @@ class SecurityHelper {
     final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
     
     return encrypter.decryptBytes(enc.Encrypted(Uint8List.fromList(encryptedDataBytes)), iv: iv);
+  }
+
+  /// Obfuscates a secret key to prevent plaintext storage in JSON/manifest files.
+  static String obfuscateSecret(String secret) {
+    if (secret.isEmpty) return '';
+    try {
+      final keyBytes = sha256.convert(utf8.encode('orderkart_obfuscator_salt_12345')).bytes;
+      final key = enc.Key(Uint8List.fromList(keyBytes));
+      final iv = enc.IV(Uint8List(16)); // Fixed IV for stable obfuscation
+      final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
+      return encrypter.encrypt(secret, iv: iv).base64;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /// Deobfuscates a secret key from manifest files.
+  static String deobfuscateSecret(String obfuscated) {
+    if (obfuscated.isEmpty) return '';
+    try {
+      final keyBytes = sha256.convert(utf8.encode('orderkart_obfuscator_salt_12345')).bytes;
+      final key = enc.Key(Uint8List.fromList(keyBytes));
+      final iv = enc.IV(Uint8List(16)); // Fixed IV for stable obfuscation
+      final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
+      return encrypter.decrypt64(obfuscated, iv: iv);
+    } catch (_) {
+      return '';
+    }
   }
 }
