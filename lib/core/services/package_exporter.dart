@@ -113,25 +113,112 @@ class PackageExporter {
       }
 
       // --- 2. Entity-Based Pruning ---
-      if (selectedAreaIds != null && selectedAreaIds.isNotEmpty) {
-        final placeholders = List.filled(selectedAreaIds.length, '?').join(',');
-        await tempDb.delete('areas', where: 'id NOT IN ($placeholders)', whereArgs: selectedAreaIds);
-        await tempDb.delete('streets', where: 'area_id NOT IN ($placeholders)', whereArgs: selectedAreaIds);
-        await tempDb.delete('customers', where: 'street_id NOT IN (SELECT id FROM streets)');
-        await tempDb.delete('orders', where: 'customer_id NOT IN (SELECT id FROM customers)');
-      }
+      final hasAreaFilter = selectedAreaIds != null && selectedAreaIds.isNotEmpty;
+      final hasStreetFilter = selectedStreetIds != null && selectedStreetIds.isNotEmpty;
+      final hasCustomerFilter = selectedCustomerIds != null && selectedCustomerIds.isNotEmpty;
 
-      if (selectedStreetIds != null && selectedStreetIds.isNotEmpty) {
-        final placeholders = List.filled(selectedStreetIds.length, '?').join(',');
-        await tempDb.delete('streets', where: 'id NOT IN ($placeholders)', whereArgs: selectedStreetIds);
-        await tempDb.delete('customers', where: 'street_id NOT IN ($placeholders)', whereArgs: selectedStreetIds);
-        await tempDb.delete('orders', where: 'customer_id NOT IN (SELECT id FROM customers)');
-      }
+      if (hasAreaFilter || hasStreetFilter || hasCustomerFilter) {
+        final Set<String> keepAreaIds = {};
+        final Set<String> keepStreetIds = {};
+        final Set<String> keepCustomerIds = {};
 
-      if (selectedCustomerIds != null && selectedCustomerIds.isNotEmpty) {
-        final placeholders = List.filled(selectedCustomerIds.length, '?').join(',');
-        await tempDb.delete('customers', where: 'id NOT IN ($placeholders)', whereArgs: selectedCustomerIds);
-        await tempDb.delete('orders', where: 'customer_id NOT IN ($placeholders)', whereArgs: selectedCustomerIds);
+        if (hasAreaFilter) keepAreaIds.addAll(selectedAreaIds);
+        if (hasStreetFilter) keepStreetIds.addAll(selectedStreetIds);
+        if (hasCustomerFilter) keepCustomerIds.addAll(selectedCustomerIds);
+
+        // 1. Resolve customers to keep:
+        // - Explicitly selected customers
+        // - Customers on explicitly selected streets
+        // - Customers in explicitly selected areas
+        List<String> custConditions = [];
+        List<dynamic> custArgs = [];
+        if (hasCustomerFilter) {
+          custConditions.add('id IN (${List.filled(selectedCustomerIds!.length, '?').join(',')})');
+          custArgs.addAll(selectedCustomerIds);
+        }
+        if (hasStreetFilter) {
+          custConditions.add('street_id IN (${List.filled(selectedStreetIds!.length, '?').join(',')})');
+          custArgs.addAll(selectedStreetIds);
+        }
+        if (hasAreaFilter) {
+          custConditions.add('street_id IN (SELECT id FROM streets WHERE area_id IN (${List.filled(selectedAreaIds!.length, '?').join(',')}))');
+          custArgs.addAll(selectedAreaIds);
+        }
+        final resolvedCustomers = await tempDb.query('customers',
+            where: custConditions.isEmpty ? null : custConditions.join(' OR '),
+            whereArgs: custArgs.isEmpty ? null : custArgs);
+        
+        for (final c in resolvedCustomers) {
+          keepCustomerIds.add(c['id'].toString());
+          if (c['street_id'] != null) {
+            keepStreetIds.add(c['street_id'].toString());
+          }
+        }
+
+        // 2. Resolve streets to keep:
+        // - Explicitly selected streets
+        // - Streets in explicitly selected areas
+        // - Streets of resolved customers
+        List<String> streetConditions = [];
+        List<dynamic> streetArgs = [];
+        if (keepStreetIds.isNotEmpty) {
+          streetConditions.add('id IN (${List.filled(keepStreetIds.length, '?').join(',')})');
+          streetArgs.addAll(keepStreetIds);
+        }
+        if (hasAreaFilter) {
+          streetConditions.add('area_id IN (${List.filled(selectedAreaIds!.length, '?').join(',')})');
+          streetArgs.addAll(selectedAreaIds);
+        }
+        final resolvedStreets = await tempDb.query('streets',
+            where: streetConditions.isEmpty ? null : streetConditions.join(' OR '),
+            whereArgs: streetArgs.isEmpty ? null : streetArgs);
+        
+        for (final s in resolvedStreets) {
+          keepStreetIds.add(s['id'].toString());
+          if (s['area_id'] != null) {
+            keepAreaIds.add(s['area_id'].toString());
+          }
+        }
+
+        // 3. Resolve areas to keep:
+        // - Explicitly selected areas
+        // - Areas of resolved streets
+        List<String> areaConditions = [];
+        List<dynamic> areaArgs = [];
+        if (keepAreaIds.isNotEmpty) {
+          areaConditions.add('id IN (${List.filled(keepAreaIds.length, '?').join(',')})');
+          areaArgs.addAll(keepAreaIds);
+        }
+        final resolvedAreas = await tempDb.query('areas',
+            where: areaConditions.isEmpty ? null : areaConditions.join(' OR '),
+            whereArgs: areaArgs.isEmpty ? null : areaArgs);
+        for (final a in resolvedAreas) {
+          keepAreaIds.add(a['id'].toString());
+        }
+
+        // Now prune the tables by deleting anything NOT in the resolved sets!
+        if (keepAreaIds.isNotEmpty) {
+          final placeholders = List.filled(keepAreaIds.length, '?').join(',');
+          await tempDb.delete('areas', where: 'id NOT IN ($placeholders)', whereArgs: keepAreaIds.toList());
+        } else {
+          await tempDb.delete('areas');
+        }
+
+        if (keepStreetIds.isNotEmpty) {
+          final placeholders = List.filled(keepStreetIds.length, '?').join(',');
+          await tempDb.delete('streets', where: 'id NOT IN ($placeholders)', whereArgs: keepStreetIds.toList());
+        } else {
+          await tempDb.delete('streets');
+        }
+
+        if (keepCustomerIds.isNotEmpty) {
+          final placeholders = List.filled(keepCustomerIds.length, '?').join(',');
+          await tempDb.delete('customers', where: 'id NOT IN ($placeholders)', whereArgs: keepCustomerIds.toList());
+          await tempDb.delete('orders', where: 'customer_id NOT IN ($placeholders)', whereArgs: keepCustomerIds.toList());
+        } else {
+          await tempDb.delete('customers');
+          await tempDb.delete('orders');
+        }
       }
 
       if (selectedWorkerIds != null && selectedWorkerIds.isNotEmpty) {

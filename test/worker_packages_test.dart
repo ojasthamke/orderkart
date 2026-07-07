@@ -182,6 +182,110 @@ void main() {
       await valDb.close();
     });
 
+    test('Worker Provisioning with Granular Assignments (Area, Street, Customer)', () async {
+      final db = await DatabaseHelper.instance.database;
+
+      // Clean existing assignments, areas, streets, customers
+      await db.delete('worker_assignments');
+      await db.delete('customers');
+      await db.delete('streets');
+      await db.delete('areas');
+
+      // Seed Area-1 and its Street-1 and Customer-1
+      await db.insert('areas', {
+        'id': 'area-1', 'name': 'North Area', 'description': '', 'color': 0,
+        'created_at': DateTime.now().toIso8601String(), 'updated_at': DateTime.now().toIso8601String(),
+      });
+      await db.insert('streets', {
+        'id': 'street-1', 'area_id': 'area-1', 'name': 'Main Street', 'description': '',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      await db.insert('customers', {
+        'id': 'cust-1', 'street_id': 'street-1', 'name': 'John Customer', 'phone1': '9876543210',
+        'address': '123 Main St', 'customer_since': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toIso8601String(), 'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      // Seed Area-2 and its Street-2 and Customer-2
+      await db.insert('areas', {
+        'id': 'area-2', 'name': 'South Area', 'description': '', 'color': 0,
+        'created_at': DateTime.now().toIso8601String(), 'updated_at': DateTime.now().toIso8601String(),
+      });
+      await db.insert('streets', {
+        'id': 'street-2', 'area_id': 'area-2', 'name': 'Second Street', 'description': '',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      await db.insert('customers', {
+        'id': 'cust-2', 'street_id': 'street-2', 'name': 'Jane Customer', 'phone1': '9876543211',
+        'address': '456 Second St', 'customer_since': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toIso8601String(), 'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      // Seed Area-3 and its Street-3 and Customer-3
+      await db.insert('areas', {
+        'id': 'area-3', 'name': 'West Area', 'description': '', 'color': 0,
+        'created_at': DateTime.now().toIso8601String(), 'updated_at': DateTime.now().toIso8601String(),
+      });
+      await db.insert('streets', {
+        'id': 'street-3', 'area_id': 'area-3', 'name': 'Third Street', 'description': '',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      await db.insert('customers', {
+        'id': 'cust-3', 'street_id': 'street-3', 'name': 'Jim Customer', 'phone1': '9876543212',
+        'address': '789 Third St', 'customer_since': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toIso8601String(), 'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      // Assign Area-1, Street-2, and Customer-3 to the worker
+      await db.insert('worker_assignments', {
+        'id': 'assign-1', 'worker_id': workerId, 'entity_type': 'area', 'entity_id': 'area-1',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      await db.insert('worker_assignments', {
+        'id': 'assign-2', 'worker_id': workerId, 'entity_type': 'street', 'entity_id': 'street-2',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      await db.insert('worker_assignments', {
+        'id': 'assign-3', 'worker_id': workerId, 'entity_type': 'customer', 'entity_id': 'cust-3',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      // Generate provisioning package
+      await WorkerPackageService.generateWorkerProvisioningPackage(
+        workerId: workerId,
+        workerName: workerName,
+      );
+
+      final packageFile = File('${tempDocsDir.path}/WorkerPackage.orderkart');
+      expect(packageFile.existsSync(), isTrue);
+
+      final validationResult = await PackageValidator.validatePackage(packageFile.path);
+      expect(validationResult.isValid, isTrue);
+
+      // Verify validation DB contents
+      final valDb = await openDatabase(validationResult.dbPath, readOnly: true);
+      
+      // Areas check: Should contain Area-1, Area-2, and Area-3
+      final areasVal = await valDb.query('areas');
+      expect(areasVal.length, equals(3));
+      final areaIds = areasVal.map((e) => e['id'].toString()).toSet();
+      expect(areaIds, containsAll(['area-1', 'area-2', 'area-3']));
+
+      // Streets check: Should contain Street-1, Street-2, and Street-3
+      final streetsVal = await valDb.query('streets');
+      expect(streetsVal.length, equals(3));
+      final streetIds = streetsVal.map((e) => e['id'].toString()).toSet();
+      expect(streetIds, containsAll(['street-1', 'street-2', 'street-3']));
+
+      // Customers check: Should contain Customer-1, Customer-2, and Customer-3
+      final customersVal = await valDb.query('customers');
+      expect(customersVal.length, equals(3));
+      final customerIds = customersVal.map((e) => e['id'].toString()).toSet();
+      expect(customerIds, containsAll(['cust-1', 'cust-2', 'cust-3']));
+
+      await valDb.close();
+    });
+
     test('Worker Report Generation & Validation', () async {
       final db = await DatabaseHelper.instance.database;
 
