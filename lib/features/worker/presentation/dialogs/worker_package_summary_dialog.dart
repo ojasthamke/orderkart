@@ -14,8 +14,6 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
   final int categoriesCount;
   final int itemsCount;
   final int routesCount;
-  final int activePermissionsCount;
-  final int hiddenPermissionsCount;
   final double estimatedSizeMb;
   final VoidCallback onConfirmExport;
 
@@ -28,8 +26,6 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
     required this.categoriesCount,
     required this.itemsCount,
     required this.routesCount,
-    required this.activePermissionsCount,
-    required this.hiddenPermissionsCount,
     required this.estimatedSizeMb,
     required this.onConfirmExport,
   });
@@ -43,8 +39,6 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
     required int categoriesCount,
     required int itemsCount,
     required int routesCount,
-    required int activePermissionsCount,
-    required int hiddenPermissionsCount,
     required double estimatedSizeMb,
     required VoidCallback onConfirmExport,
   }) {
@@ -58,8 +52,6 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
         categoriesCount: categoriesCount,
         itemsCount: itemsCount,
         routesCount: routesCount,
-        activePermissionsCount: activePermissionsCount,
-        hiddenPermissionsCount: hiddenPermissionsCount,
         estimatedSizeMb: estimatedSizeMb,
         onConfirmExport: onConfirmExport,
       ),
@@ -69,8 +61,7 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool hasAreaError = areasCount == 0;
-    final bool hasPermissionError = activePermissionsCount == 0;
-    final bool isBlocked = hasAreaError || hasPermissionError;
+    final bool isBlocked = hasAreaError;
 
     final bool hasCustomerWarning = customersCount == 0;
     final bool hasItemWarning = itemsCount == 0;
@@ -161,19 +152,13 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
                   title: 'No Areas Assigned',
                   message: 'You must assign at least 1 Area before generating a worker provisioning package.',
                 ),
-              if (hasPermissionError)
-                _validationAlert(
-                  isError: true,
-                  title: 'No Permissions Configured',
-                  message: 'Module permissions must be granted to generate worker package.',
-                ),
               if (!hasAreaError && hasCustomerWarning)
                 _validationAlert(
                   isError: false,
                   title: 'No Customers Assigned',
                   message: 'Worker will be provisioned with 0 customer records.',
                 ),
-              if (!hasPermissionError && hasItemWarning)
+              if (hasItemWarning)
                 _validationAlert(
                   isError: false,
                   title: 'No Inventory Items Assigned',
@@ -206,12 +191,6 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
                     _metricRow(Icons.inventory_2_rounded, 'Assigned Inventory Items', '$itemsCount Items'),
                     const Divider(height: 1),
                     _metricRow(Icons.route_rounded, 'Assigned Route Visits', '$routesCount Visits'),
-                    const Divider(height: 1),
-                    _metricRow(
-                      Icons.shield_rounded,
-                      'Module Permissions',
-                      '$activePermissionsCount Active ($hiddenPermissionsCount Hidden)',
-                    ),
                     const Divider(height: 1),
                     _metricRow(Icons.sd_storage_rounded, 'Estimated Package Size', '~${estimatedSizeMb.toStringAsFixed(1)} MB'),
                   ],

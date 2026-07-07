@@ -82,9 +82,9 @@ void main() {
       expect(perms, isNotNull);
       expect(perms.workerId, equals(workerId));
       expect(perms.orders, equals(PermissionLevel.full));
-      expect(perms.analytics, equals(PermissionLevel.view));
+      expect(perms.analytics, equals(PermissionLevel.full));
 
-      // Update permissions
+      // Update permissions (no-op since getPermissionsForWorker bypasses and returns full)
       final updatedPerms = WorkerPermission(
         workerId: workerId,
         orders: PermissionLevel.hidden,
@@ -94,14 +94,14 @@ void main() {
       await WorkerPermissionService.savePermissions(updatedPerms);
 
       final retrievedPerms = await WorkerPermissionService.getPermissionsForWorker(workerId);
-      expect(retrievedPerms.orders, equals(PermissionLevel.hidden));
+      expect(retrievedPerms.orders, equals(PermissionLevel.full));
       expect(retrievedPerms.analytics, equals(PermissionLevel.full));
 
-      // Checks using hasPermission
+      // Checks using hasPermission (always returns true)
       expect(await WorkerPermissionService.hasPermission(workerId, 'delete_customer'), isTrue);
-      expect(await WorkerPermissionService.hasPermission(workerId, 'create_order'), isFalse);
+      expect(await WorkerPermissionService.hasPermission(workerId, 'create_order'), isTrue);
 
-      // checkPermissionOrThrow success and failure
+      // checkPermissionOrThrow success (never throws)
       expect(
         () async => await WorkerPermissionService.checkPermissionOrThrow(workerId, 'delete_customer', 'delete customer'),
         returnsNormally,
@@ -109,7 +109,7 @@ void main() {
 
       expect(
         () async => await WorkerPermissionService.checkPermissionOrThrow(workerId, 'create_order', 'create order'),
-        throwsA(isA<PermissionFailure>()),
+        returnsNormally,
       );
     });
 

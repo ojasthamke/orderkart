@@ -5,11 +5,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:sqflite/sqflite.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/database_helper.dart';
-import '../../../core/models/worker_permission.dart';
 import '../../../core/services/package_exporter.dart';
 import '../../../core/services/package_validator.dart';
 import '../../../core/services/worker_package_service.dart';
-import '../../../core/services/worker_permission_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/services/hotspot_sync_service.dart';
@@ -52,26 +50,17 @@ class WorkerSelfProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScreen> {
-  WorkerPermission? _permissions;
-  bool _loadingPerms = true;
 
   @override
   void initState() {
     super.initState();
-    _loadPermissions();
+    _initProfile();
   }
 
-  Future<void> _loadPermissions() async {
+  Future<void> _initProfile() async {
     final worker = await ref.read(currentWorkerProfileProvider.future);
     if (worker != null) {
-      final perms = await WorkerPermissionService.getPermissionsForWorker(worker.id);
       await _ensureWorkerSecurity(worker.id);
-      if (mounted) {
-        setState(() {
-          _permissions = perms;
-          _loadingPerms = false;
-        });
-      }
       
       // Start Wi-Fi automatic connection sync listener
       HotspotSyncService.startAutoSyncListener(
@@ -96,8 +85,6 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
           }
         },
       );
-    } else {
-      if (mounted) setState(() => _loadingPerms = false);
     }
   }
 
@@ -297,69 +284,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                 ),
                 const SizedBox(height: 24),
 
-                // --- OWNER AUTHORIZED PERMISSIONS ---
-                const Text('Owner Authorized Permissions', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                const SizedBox(height: 4),
-                const Text('Permissions configured specifically for this device by Master Owner:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 10),
 
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.gray200),
-                    boxShadow: AppColors.cardShadow,
-                  ),
-                  child: _loadingPerms || _permissions == null
-                      ? const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
-                      : Column(
-                          children: [
-                            _buildPermissionGroup(
-                              'Core Operations',
-                              Icons.assignment_ind_rounded,
-                              [
-                                _permBadge('Customers Catalog', _permissions!.customers),
-                                _permBadge('Orders Creation & Billing', _permissions!.orders),
-                                _permBadge('Payments Collection', _permissions!.payments),
-                                _permBadge('Expenses Entry', _permissions!.expenses),
-                                _permBadge('Field Visit Notes', _permissions!.notes),
-                              ],
-                            ),
-                            const Divider(height: 1),
-                            _buildPermissionGroup(
-                              'Product & Inventory',
-                              Icons.inventory_2_rounded,
-                              [
-                                _permBadge('Items Catalog', _permissions!.items),
-                                _permBadge('Selling Price Adjustments', _permissions!.sellingPrice),
-                                _permBadge('Cost Price Visibility', _permissions!.costPrice),
-                                _permBadge('Stock Quantity Edits', _permissions!.stock),
-                              ],
-                            ),
-                            const Divider(height: 1),
-                            _buildPermissionGroup(
-                              'Reports & Insights',
-                              Icons.analytics_rounded,
-                              [
-                                _permBadge('Reports Dashboard', _permissions!.reports),
-                                _permBadge('Analytics Dashboard', _permissions!.analytics),
-                                _permBadge('VIP Customers', _permissions!.vip),
-                              ],
-                            ),
-                            const Divider(height: 1),
-                            _buildPermissionGroup(
-                              'System & Data',
-                              Icons.settings_suggest_rounded,
-                              [
-                                _permBadge('Data Export Slices', _permissions!.export),
-                                _permBadge('Data Import Merges', _permissions!.import),
-                                _permBadge('System Settings', _permissions!.settings),
-                              ],
-                            ),
-                          ],
-                        ),
-                ),
-                const SizedBox(height: 24),
 
           HotspotSyncControlCard(
             workerId: worker.id,
@@ -380,74 +305,45 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
           ),
           const SizedBox(height: 24),
 
-                // --- WORKER IMPORT & EXPORT SECTION ---
-                const Text('Worker Data Import & Export', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                const SizedBox(height: 4),
-                const Text('Import packages from Owner or export work updates with custom file names:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 12),
+                 // --- WORKER IMPORT & EXPORT SECTION ---
+                 const Text('Worker Data Import & Export', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                 const SizedBox(height: 4),
+                 const Text('Import packages from Owner or export work updates with custom file names:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                 const SizedBox(height: 12),
 
-                if (_permissions != null && _permissions!.export == PermissionLevel.hidden) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.shade300),
-                    ),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.lock_rounded, color: Colors.red),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Data Export Permission is DISABLED by Owner for your account. Contact Owner to grant export permission.',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                // 1. Import Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      AppHaptics.buttonClick();
-                      if (_permissions != null && _permissions!.import == PermissionLevel.hidden) {
-                        SnackbarHelper.showError(context, '❌ Data Import is disabled by Owner for your profile.');
-                        return;
-                      }
-                      try {
-                        final result = await FilePicker.platform.pickFiles(type: FileType.any);
-                        if (result == null || result.files.single.path == null) return;
-                        final path = result.files.single.path!;
-                        final val = await PackageValidator.validatePackage(path);
-                        if (!val.isValid) {
-                          if (context.mounted) SnackbarHelper.showError(context, 'Invalid Package: ${val.errorMessage}');
-                          return;
-                        }
-                        await DatabaseHelper.instance.mergeDatabaseFromPath(val.dbPath, selectedModules: ['entire_db']);
-                        ref.invalidate(currentWorkerProfileProvider);
-                        if (context.mounted) SnackbarHelper.showSuccess(context, '✅ Owner package imported successfully!');
-                      } catch (e) {
-                        if (context.mounted) SnackbarHelper.showError(context, 'Import failed: $e');
-                      }
-                    },
-                    icon: const Icon(Icons.file_download_rounded),
-                    label: const Text('Import Package from Owner'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
+                 // 1. Import Button
+                 SizedBox(
+                   width: double.infinity,
+                   child: ElevatedButton.icon(
+                     onPressed: () async {
+                       AppHaptics.buttonClick();
+                       try {
+                         final result = await FilePicker.platform.pickFiles(type: FileType.any);
+                         if (result == null || result.files.single.path == null) return;
+                         final path = result.files.single.path!;
+                         final val = await PackageValidator.validatePackage(path);
+                         if (!val.isValid) {
+                           if (context.mounted) SnackbarHelper.showError(context, 'Invalid Package: ${val.errorMessage}');
+                           return;
+                         }
+                         await DatabaseHelper.instance.mergeDatabaseFromPath(val.dbPath, selectedModules: ['entire_db']);
+                         ref.invalidate(currentWorkerProfileProvider);
+                         if (context.mounted) SnackbarHelper.showSuccess(context, '✅ Owner package imported successfully!');
+                       } catch (e) {
+                         if (context.mounted) SnackbarHelper.showError(context, 'Import failed: $e');
+                       }
+                     },
+                     icon: const Icon(Icons.file_download_rounded),
+                     label: const Text('Import Package from Owner'),
+                     style: ElevatedButton.styleFrom(
+                       backgroundColor: Colors.teal,
+                       foregroundColor: Colors.white,
+                       padding: const EdgeInsets.symmetric(vertical: 14),
+                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                     ),
+                   ),
+                 ),
+                 const SizedBox(height: 12),
 
                 // 2 Export Buttons Side-by-Side
                 Row(
@@ -457,10 +353,6 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           AppHaptics.buttonClick();
-                          if (_permissions != null && _permissions!.export == PermissionLevel.hidden) {
-                            SnackbarHelper.showError(context, '❌ Data Export is disabled by Owner for your profile.');
-                            return;
-                          }
                           await _ensureWorkerSecurity(worker.id);
                           final defaultName = 'Worker_FullBackup_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
                           final customName = await ExportFilenameDialog.show(
@@ -488,7 +380,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                         icon: const Icon(Icons.inventory_2_rounded),
                         label: const Text('Export Entire Backup', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: (_permissions != null && _permissions!.export == PermissionLevel.hidden) ? AppColors.gray500 : Colors.indigo,
+                          backgroundColor: Colors.indigo,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -502,10 +394,6 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           AppHaptics.buttonClick();
-                          if (_permissions != null && _permissions!.export == PermissionLevel.hidden) {
-                            SnackbarHelper.showError(context, '❌ Data Export is disabled by Owner for your profile.');
-                            return;
-                          }
                           await _ensureWorkerSecurity(worker.id);
                           final defaultName = 'Update_Owner_Data_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
                           final customName = await ExportFilenameDialog.show(
@@ -533,7 +421,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                         icon: const Icon(Icons.sync_alt_rounded),
                         label: const Text('Share Data to Update Owner', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: (_permissions != null && _permissions!.export == PermissionLevel.hidden) ? AppColors.gray500 : AppColors.primary,
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -571,69 +459,5 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
     );
   }
 
-  Widget _permBadge(String label, PermissionLevel level) {
-    final bool isHidden = level == PermissionLevel.hidden;
-    Color color;
-    String badgeText;
-    IconData icon;
 
-    switch (level) {
-      case PermissionLevel.full:
-        color = AppColors.success;
-        badgeText = 'FULL ACCESS';
-        icon = Icons.check_circle_rounded;
-        break;
-      case PermissionLevel.edit:
-        color = Colors.teal;
-        badgeText = 'CAN EDIT';
-        icon = Icons.edit_rounded;
-        break;
-      case PermissionLevel.view:
-        color = Colors.blue;
-        badgeText = 'VIEW ONLY';
-        icon = Icons.visibility_rounded;
-        break;
-      case PermissionLevel.hidden:
-        color = AppColors.error;
-        badgeText = 'LOCKED BY OWNER';
-        icon = Icons.lock_rounded;
-        break;
-    }
-
-    return ListTile(
-      dense: true,
-      leading: Icon(
-        icon,
-        color: isHidden ? AppColors.gray400 : color,
-        size: 20,
-      ),
-      title: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          badgeText,
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPermissionGroup(String title, IconData groupIcon, List<Widget> permissionsList) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        leading: Icon(groupIcon, color: AppColors.primary),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-        children: permissionsList,
-      ),
-    );
-  }
 }

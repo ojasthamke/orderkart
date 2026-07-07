@@ -7,12 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/database_helper.dart';
-import '../../../core/models/worker_permission.dart';
 import '../../../core/services/worker_package_service.dart';
-import '../../../core/services/worker_permission_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
-import '../../../core/utils/responsive_helper.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -36,7 +33,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   final _dao = WorkerDao();
   late TabController _tabController;
   late Worker _currentWorker;
-  WorkerPermission? _permissions;
   bool _loading = true;
 
   // Cached assigned entity IDs
@@ -50,7 +46,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _currentWorker = widget.worker;
     _loadData();
   }
@@ -64,7 +60,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   Future<void> _loadData() async {
     setState(() => _loading = true);
     final freshWorker = await _dao.getWorkerById(widget.worker.id) ?? widget.worker;
-    final perms = await WorkerPermissionService.getPermissionsForWorker(freshWorker.id);
 
     final areaIds     = await _dao.getAssignedEntityIds(freshWorker.id, 'area');
     final streetIds   = await _dao.getAssignedEntityIds(freshWorker.id, 'street');
@@ -76,7 +71,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     if (mounted) {
       setState(() {
         _currentWorker = freshWorker;
-        _permissions = perms;
         _assignedAreaIds = areaIds;
         _assignedStreetIds = streetIds;
         _assignedCustomerIds = customerIds;
@@ -328,20 +322,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   Future<void> _triggerPackageSummary() async {
     AppHaptics.buttonClick();
 
-    final Map<String, dynamic> permMap = _permissions?.toMap() ?? {};
-    int activePerms = 0;
-    int hiddenPerms = 0;
-
-    permMap.forEach((key, val) {
-      if (key != 'worker_id' && key != 'updated_at') {
-        if (val is int && val > 0) {
-          activePerms++;
-        } else {
-          hiddenPerms++;
-        }
-      }
-    });
-
     final double sizeEstimateMb = 0.5 + (_assignedCustomerIds.length * 0.01) + (_assignedItemIds.length * 0.005);
 
     WorkerPackageSummaryDialog.show(
@@ -353,8 +333,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
       categoriesCount: _assignedCategoryIds.length,
       itemsCount: _assignedItemIds.length,
       routesCount: _assignedRouteIds.length,
-      activePermissionsCount: activePerms,
-      hiddenPermissionsCount: hiddenPerms,
       estimatedSizeMb: sizeEstimateMb,
       onConfirmExport: _executePackageExport,
     );
@@ -378,43 +356,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     }
   }
 
-  Future<void> _changePermissionLevel(String field, PermissionLevel newLevel) async {
-    if (_permissions == null) return;
-    AppHaptics.buttonClick();
 
-    final map = _permissions!.toMap();
-    String dbCol = field;
-    if (field == 'customers') dbCol = 'add_customer';
-    if (field == 'orders') dbCol = 'create_order';
-    if (field == 'payments') dbCol = 'receive_payment';
-    if (field == 'expenses') dbCol = 'add_expenses';
-    if (field == 'sellingPrice') dbCol = 'edit_selling_price';
-    if (field == 'costPrice') dbCol = 'edit_cost_price';
-    if (field == 'stock') dbCol = 'edit_stock_quantity';
-    if (field == 'items') dbCol = 'add_new_item';
-    if (field == 'vip') dbCol = 'manage_vip';
-    if (field == 'reports') dbCol = 'view_reports';
-    if (field == 'notes') dbCol = 'edit_notes';
-    if (field == 'export') dbCol = 'export_data';
-    if (field == 'import') dbCol = 'import_data';
-    if (field == 'settings') dbCol = 'backup_restore';
-    if (field == 'analytics') dbCol = 'delete_customer';
-
-    map[dbCol] = newLevel.toInt();
-    map['updated_at'] = DateTime.now().toIso8601String();
-
-    final updatedPerms = WorkerPermission.fromMap(map);
-    await WorkerPermissionService.savePermissions(updatedPerms);
-
-    // Mark worker package outdated on permission change!
-    final db = await DatabaseHelper.instance.database;
-    await db.update('workers', {'is_package_outdated': 1}, where: 'id = ?', whereArgs: [_currentWorker.id]);
-
-    await _loadData();
-    if (mounted) {
-      SnackbarHelper.showSuccess(context, 'Permissions updated. Package status marked as Outdated.');
-    }
-  }
 
   Future<void> _toggleWorkerStatus() async {
     AppHaptics.buttonClick();
@@ -501,7 +443,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
         tabs: const [
           Tab(text: 'Overview', icon: Icon(Icons.person_rounded, size: 20)),
           Tab(text: 'Assignments', icon: Icon(Icons.playlist_add_check_circle_rounded, size: 20)),
-          Tab(text: 'Permissions', icon: Icon(Icons.shield_rounded, size: 20)),
           Tab(text: 'Stats', icon: Icon(Icons.analytics_rounded, size: 20)),
         ],
       ),
@@ -510,7 +451,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
         children: [
           _buildOverviewTab(),
           _buildAssignmentsTab(),
-          _buildPermissionsTab(),
           _buildStatsTab(),
         ],
       ),
@@ -737,20 +677,9 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
         ),
         const SizedBox(height: 12),
 
-        // 7. Assign Permissions
+        // 7. Assign Routes
         _assignmentCard(
-          title: '7. Assign Permissions',
-          subtitle: 'Configure module permission levels (View, Edit, Full, Hidden)',
-          countLabel: '14 Module Permissions',
-          icon: Icons.shield_rounded,
-          color: Colors.redAccent,
-          onTap: () => _tabController.animateTo(2),
-        ),
-        const SizedBox(height: 12),
-
-        // 8. Assign Routes
-        _assignmentCard(
-          title: '8. Assign Routes & Visits',
+          title: '7. Assign Routes & Visits',
           subtitle: 'Assign scheduled route visits for field delivery',
           countLabel: '${_assignedRouteIds.length} Routes Assigned',
           icon: Icons.route_rounded,
@@ -780,54 +709,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     );
   }
 
-  // ── TAB 3: WORKER PERMISSIONS TAB ─────────────────────────────────────────
-  Widget _buildPermissionsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _sectionTitle('Worker Module Permission Locks'),
-        const Text(
-          'Modules marked as HIDDEN will be completely pruned and excluded from the generated Worker Package.',
-          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 12),
-        _card([
-          _permissionLevelRow('Customers Catalog', 'customers'),
-          const Divider(height: 1),
-          _permissionLevelRow('Orders Creation', 'orders'),
-          const Divider(height: 1),
-          _permissionLevelRow('Payments Collection', 'payments'),
-          const Divider(height: 1),
-          _permissionLevelRow('Expenses Entry', 'expenses'),
-          const Divider(height: 1),
-          _permissionLevelRow('Selling Price Adjustments', 'sellingPrice'),
-          const Divider(height: 1),
-          _permissionLevelRow('Cost Price Visibility', 'costPrice'),
-          const Divider(height: 1),
-          _permissionLevelRow('Stock Quantity Edits', 'stock'),
-          const Divider(height: 1),
-          _permissionLevelRow('Items Catalog', 'items'),
-          const Divider(height: 1),
-          _permissionLevelRow('VIP Customers', 'vip'),
-          const Divider(height: 1),
-          _permissionLevelRow('Reports Dashboard', 'reports'),
-          const Divider(height: 1),
-          _permissionLevelRow('Notes Manager', 'notes'),
-          const Divider(height: 1),
-          _permissionLevelRow('Data Export Slices', 'export'),
-          const Divider(height: 1),
-          _permissionLevelRow('Data Import Merges', 'import'),
-          const Divider(height: 1),
-          _permissionLevelRow('System Settings', 'settings'),
-          const Divider(height: 1),
-          _permissionLevelRow('Analytics Dashboard', 'analytics'),
-        ]),
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  // ── TAB 4: STATS & SYNC PROVENANCE TAB ────────────────────────────────────
+  // ── TAB 3: STATS & SYNC PROVENANCE TAB ────────────────────────────────────
   Widget _buildStatsTab() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1057,50 +939,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     );
   }
 
-  Widget _permissionLevelRow(String title, String field) {
-    if (_permissions == null) return const SizedBox.shrink();
-    final map = _permissions!.toMap();
 
-    String dbCol = field;
-    if (field == 'customers') dbCol = 'add_customer';
-    if (field == 'orders') dbCol = 'create_order';
-    if (field == 'payments') dbCol = 'receive_payment';
-    if (field == 'expenses') dbCol = 'add_expenses';
-    if (field == 'sellingPrice') dbCol = 'edit_selling_price';
-    if (field == 'costPrice') dbCol = 'edit_cost_price';
-    if (field == 'stock') dbCol = 'edit_stock_quantity';
-    if (field == 'items') dbCol = 'add_new_item';
-    if (field == 'vip') dbCol = 'manage_vip';
-    if (field == 'reports') dbCol = 'view_reports';
-    if (field == 'notes') dbCol = 'edit_notes';
-    if (field == 'export') dbCol = 'export_data';
-    if (field == 'import') dbCol = 'import_data';
-    if (field == 'settings') dbCol = 'backup_restore';
-    if (field == 'analytics') dbCol = 'delete_customer';
-
-    final int rawVal = map[dbCol] as int? ?? 0;
-    final PermissionLevel currentLevel = PermissionLevel.fromInt(rawVal);
-
-    return ListTile(
-      dense: true,
-      title: Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-      trailing: DropdownButton<PermissionLevel>(
-        value: currentLevel,
-        underline: const SizedBox.shrink(),
-        items: PermissionLevel.values.map((lvl) {
-          return DropdownMenuItem<PermissionLevel>(
-            value: lvl,
-            child: Text(lvl.name.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: lvl == PermissionLevel.hidden ? Colors.red : AppColors.primary)),
-          );
-        }).toList(),
-        onChanged: (val) {
-          if (val != null) {
-            _changePermissionLevel(field, val);
-          }
-        },
-      ),
-    );
-  }
 
   Widget _actionTile({
     required String title,

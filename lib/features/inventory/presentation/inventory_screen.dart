@@ -11,7 +11,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/database/database_helper.dart';
-import '../../../core/security/app_mode_service.dart';
 import '../../../core/services/package_exporter.dart';
 import '../../../core/services/package_validator.dart';
 import '../../../core/utils/formatters.dart';
@@ -57,13 +56,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   }
 
   Future<void> _handleEditItem(Item item) async {
-    final canPrices = await AppModeService.hasWorkerPermission('change_prices');
-    if (!canPrices) {
-      if (mounted) {
-        SnackbarHelper.showError(context, '⚠️ Price & item edits are locked to Owner Official Price List.');
-      }
-      return;
-    }
     if (mounted) {
       Navigator.of(context)
           .pushNamed(AppRoutes.addEditItem, arguments: {'itemId': item.id})
@@ -71,14 +63,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     }
   }
 
-  Future<void> _handleStockAdjust(Item item) async {
-    final canStock = await AppModeService.hasWorkerPermission('change_stock');
-    if (!canStock) {
-      if (mounted) {
-        SnackbarHelper.showError(context, '⚠️ Stock adjustments are locked by Owner.');
-      }
-      return;
-    }
+  void _handleStockAdjust(Item item) {
     if (mounted) _showStockAdjustDialog(context, item);
   }
 

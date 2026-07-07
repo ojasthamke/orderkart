@@ -8,41 +8,27 @@ import '../error/failures.dart';
 class WorkerPermissionService {
   WorkerPermissionService._();
 
-  /// Retrieve the permission set for a given worker.
-  /// If no permission row exists, a default active one is returned/created.
+  /// Retrieve the permission set for a given worker (always returns full access).
   static Future<WorkerPermission> getPermissionsForWorker(String workerId) async {
-    final db = await DatabaseHelper.instance.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'worker_permissions',
-      where: 'worker_id = ?',
-      whereArgs: [workerId],
+    return WorkerPermission(
+      workerId: workerId,
+      customers: PermissionLevel.full,
+      orders: PermissionLevel.full,
+      payments: PermissionLevel.full,
+      expenses: PermissionLevel.full,
+      sellingPrice: PermissionLevel.full,
+      costPrice: PermissionLevel.full,
+      stock: PermissionLevel.full,
+      items: PermissionLevel.full,
+      vip: PermissionLevel.full,
+      reports: PermissionLevel.full,
+      notes: PermissionLevel.full,
+      export: PermissionLevel.full,
+      import: PermissionLevel.full,
+      settings: PermissionLevel.full,
+      analytics: PermissionLevel.full,
+      updatedAt: DateTime.now(),
     );
-
-    if (maps.isEmpty) {
-      final defaultPerm = WorkerPermission(
-        workerId: workerId,
-        customers: PermissionLevel.full,
-        orders: PermissionLevel.full,
-        payments: PermissionLevel.full,
-        expenses: PermissionLevel.full,
-        sellingPrice: PermissionLevel.full,
-        costPrice: PermissionLevel.hidden,
-        stock: PermissionLevel.full,
-        items: PermissionLevel.view,
-        vip: PermissionLevel.hidden,
-        reports: PermissionLevel.view,
-        notes: PermissionLevel.full,
-        export: PermissionLevel.full,
-        import: PermissionLevel.hidden,
-        settings: PermissionLevel.hidden,
-        analytics: PermissionLevel.view,
-        updatedAt: DateTime.now(),
-      );
-      await savePermissions(defaultPerm);
-      return defaultPerm;
-    }
-
-    return WorkerPermission.fromMap(maps.first);
   }
 
   /// Save or update the permission set for a worker.
@@ -55,24 +41,11 @@ class WorkerPermissionService {
     );
   }
 
-  /// Check if a worker has a specific permission at or above the [requiredLevel].
-  /// [requiredLevel]: 1 for View, 2 for Edit, 3 for Full.
+  /// Check if a worker has a specific permission (always returns true).
   static Future<bool> hasPermission(String workerId, String permissionField, {int requiredLevel = 2}) async {
-    final permissions = await getPermissionsForWorker(workerId);
-    final map = permissions.toMap();
-    
-    if (map.containsKey(permissionField)) {
-      final actualVal = map[permissionField] as int? ?? 0;
-      return actualVal >= requiredLevel;
-    }
-    return false;
+    return true;
   }
 
-  /// Check if a worker has a specific permission, throwing a [PermissionFailure] if they do not.
-  static Future<void> checkPermissionOrThrow(String workerId, String permissionField, String actionName, {int requiredLevel = 2}) async {
-    final allowed = await hasPermission(workerId, permissionField, requiredLevel: requiredLevel);
-    if (!allowed) {
-      throw PermissionFailure('Worker is not authorized to perform action: $actionName');
-    }
-  }
+  /// Check if a worker has a specific permission, throwing a [PermissionFailure] if they do not (no-op).
+  static Future<void> checkPermissionOrThrow(String workerId, String permissionField, String actionName, {int requiredLevel = 2}) async {}
 }
