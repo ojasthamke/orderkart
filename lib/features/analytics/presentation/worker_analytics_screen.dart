@@ -25,10 +25,10 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       SELECT COALESCE(SUM(o.grand_total), 0) as total_sales, COUNT(o.id) as order_count 
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
-      WHERE c.assigned_worker_id = ? OR o.id IN (
+      WHERE o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR c.assigned_worker_id = ? OR o.id IN (
         SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
       )
-    ''', [wid, wid]);
+    ''', [wid, wid, wid, wid, wid]);
     
     final totalSales = (orderRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
     final orderCount = (orderRes.first['order_count'] as num?)?.toInt() ?? 0;
@@ -38,21 +38,25 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       SELECT COALESCE(SUM(p.amount), 0) as sum 
       FROM payments p
       JOIN orders o ON p.order_id = o.id
-      JOIN customers c ON o.customer_id = c.id
-      WHERE (c.assigned_worker_id = ? OR o.id IN (
-        SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
-      )) AND LOWER(p.method) = 'cash'
-    ''', [wid, wid]);
+      LEFT JOIN customers c ON o.customer_id = c.id
+      WHERE (p.assigned_worker_id = ? OR p.created_by = ? OR p.worker_id = ? OR 
+             o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
+             c.assigned_worker_id = ? OR o.id IN (
+               SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
+             )) AND LOWER(p.method) = 'cash'
+    ''', [wid, wid, wid, wid, wid, wid, wid, wid]);
 
     final onlineRes = await db.rawQuery('''
       SELECT COALESCE(SUM(p.amount), 0) as sum 
       FROM payments p
       JOIN orders o ON p.order_id = o.id
-      JOIN customers c ON o.customer_id = c.id
-      WHERE (c.assigned_worker_id = ? OR o.id IN (
-        SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
-      )) AND LOWER(p.method) != 'cash'
-    ''', [wid, wid]);
+      LEFT JOIN customers c ON o.customer_id = c.id
+      WHERE (p.assigned_worker_id = ? OR p.created_by = ? OR p.worker_id = ? OR 
+             o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
+             c.assigned_worker_id = ? OR o.id IN (
+               SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
+             )) AND LOWER(p.method) != 'cash'
+    ''', [wid, wid, wid, wid, wid, wid, wid, wid]);
 
     final cashColl = (cashRes.first['sum'] as num?)?.toDouble() ?? 0.0;
     final onlineColl = (onlineRes.first['sum'] as num?)?.toDouble() ?? 0.0;

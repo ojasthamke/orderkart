@@ -24,6 +24,7 @@ import '../../settings/presentation/sync_history_screen.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../street/presentation/street_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
+import '../../../core/services/worker_session.dart';
 
 class WorkerProfileData {
   final Worker worker;
@@ -43,7 +44,13 @@ class WorkerProfileData {
 
 final currentWorkerProfileProvider = FutureProvider<WorkerProfileData?>((ref) async {
   final db = await DatabaseHelper.instance.database;
-  final workers = await db.query('workers', limit: 1);
+  final workerId = WorkerSession.instance.currentWorkerId;
+  final List<Map<String, dynamic>> workers;
+  if (workerId != null && workerId.isNotEmpty) {
+    workers = await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
+  } else {
+    workers = await db.query('workers', limit: 1);
+  }
   if (workers.isEmpty) return null;
 
   final w = Worker.fromMap(workers.first);

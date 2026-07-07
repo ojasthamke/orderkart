@@ -325,6 +325,22 @@ class OrderDao {
     );
   }
 
+  Future<String?> _getWorkerId() async {
+    final db = await _db;
+    final mode = await AppModeService.getAppMode();
+    if (mode != AppMode.worker) return null;
+    
+    final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+    String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+    if (workerId == null || workerId.isEmpty) {
+      final workerRows = await db.query('workers', limit: 1);
+      if (workerRows.isNotEmpty) {
+        workerId = workerRows.first['id']?.toString();
+      }
+    }
+    return workerId;
+  }
+
   /// Analytics summary query
   Future<Map<String, dynamic>> getAnalyticsSummary() async {
     final db = await _db;
@@ -332,19 +348,7 @@ class OrderDao {
     final today  = DateTime(now.year, now.month, now.day).toIso8601String();
     final month  = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
-    final mode = await AppModeService.getAppMode();
-    String? workerId;
-    if (mode == AppMode.worker) {
-      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
-      if (workerId == null || workerId.isEmpty) {
-        final workerRows = await db.query('workers', limit: 1);
-        if (workerRows.isNotEmpty) {
-          workerId = workerRows.first['id']?.toString();
-        }
-      }
-    }
-
+    final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
 
     final todaySales = await db.rawQuery(
@@ -483,29 +487,56 @@ class OrderDao {
   /// Comprehensive Profit & Loss Statement calculation
   Future<Map<String, dynamic>> getProfitLossStatement() async {
     final db = await _db;
+    final workerId = await _getWorkerId();
+    final bool isWorker = workerId != null && workerId.isNotEmpty;
     
     // 1. Gross Revenue
-    final revenueRes = await db.rawQuery('SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders');
+    final revenueRes = await db.rawQuery(
+        isWorker
+            ? 'SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders',
+        isWorker ? [workerId, workerId] : null);
     final totalRevenue = (revenueRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     // 2. Cost of Goods Sold (COGS)
-    final cogsRes = await db.rawQuery('''
-      SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0)), 0) AS v
-      FROM order_items oi
-      LEFT JOIN items i ON oi.item_id = i.id
-    ''');
+    final cogsRes = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0)), 0) AS v
+              FROM order_items oi
+              LEFT JOIN items i ON oi.item_id = i.id
+              WHERE oi.order_id IN (SELECT id FROM orders WHERE created_by = ? OR assigned_worker_id = ?)
+              '''
+            : '''
+              SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0)), 0) AS v
+              FROM order_items oi
+              LEFT JOIN items i ON oi.item_id = i.id
+              ''',
+        isWorker ? [workerId, workerId] : null);
     final cogs = (cogsRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     // 3. Operating Expenses
-    final expensesRes = await db.rawQuery('SELECT COALESCE(SUM(amount), 0) AS v FROM expenses');
+    final expensesRes = await db.rawQuery(
+        isWorker
+            ? 'SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(amount), 0) AS v FROM expenses',
+        isWorker ? [workerId, workerId] : null);
     final totalExpenses = (expensesRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     // 4. Discounts Given
-    final discountRes = await db.rawQuery('SELECT COALESCE(SUM(discount), 0) AS v FROM orders');
+    final discountRes = await db.rawQuery(
+        isWorker
+            ? 'SELECT COALESCE(SUM(discount), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(discount), 0) AS v FROM orders',
+        isWorker ? [workerId, workerId] : null);
     final totalDiscounts = (discountRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     // 5. Delivery Income
-    final deliveryRes = await db.rawQuery('SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders');
+    final deliveryRes = await db.rawQuery(
+        isWorker
+            ? 'SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders',
+        isWorker ? [workerId, workerId] : null);
     final totalDeliveryIncome = (deliveryRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     // Calculations
@@ -529,46 +560,94 @@ class OrderDao {
   /// Weekly chart data
   Future<List<Map<String, dynamic>>> getWeeklySales() async {
     final db = await _db;
-    final maps = await db.rawQuery('''
-      SELECT DATE(created_at) AS day, COALESCE(SUM(grand_total), 0) AS total
-      FROM orders
-      WHERE created_at >= datetime('now', '-7 days')
-      GROUP BY DATE(created_at)
-      ORDER BY day ASC
-    ''');
+    final workerId = await _getWorkerId();
+    final bool isWorker = workerId != null && workerId.isNotEmpty;
+
+    final maps = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT DATE(created_at) AS day, COALESCE(SUM(grand_total), 0) AS total
+              FROM orders
+              WHERE created_at >= datetime('now', '-7 days') AND (created_by = ? OR assigned_worker_id = ?)
+              GROUP BY DATE(created_at)
+              ORDER BY day ASC
+              '''
+            : '''
+              SELECT DATE(created_at) AS day, COALESCE(SUM(grand_total), 0) AS total
+              FROM orders
+              WHERE created_at >= datetime('now', '-7 days')
+              GROUP BY DATE(created_at)
+              ORDER BY day ASC
+              ''',
+        isWorker ? [workerId, workerId] : null);
     return List<Map<String, dynamic>>.from(maps);
   }
 
   /// Monthly chart data (last 6 months)
   Future<List<Map<String, dynamic>>> getMonthlySales() async {
     final db = await _db;
-    final maps = await db.rawQuery('''
-      SELECT strftime('%Y-%m', created_at) AS month, COALESCE(SUM(grand_total), 0) AS total
-      FROM orders
-      WHERE created_at >= datetime('now', '-6 months')
-      GROUP BY strftime('%Y-%m', created_at)
-      ORDER BY month ASC
-    ''');
+    final workerId = await _getWorkerId();
+    final bool isWorker = workerId != null && workerId.isNotEmpty;
+
+    final maps = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT strftime('%Y-%m', created_at) AS month, COALESCE(SUM(grand_total), 0) AS total
+              FROM orders
+              WHERE created_at >= datetime('now', '-6 months') AND (created_by = ? OR assigned_worker_id = ?)
+              GROUP BY strftime('%Y-%m', created_at)
+              ORDER BY month ASC
+              '''
+            : '''
+              SELECT strftime('%Y-%m', created_at) AS month, COALESCE(SUM(grand_total), 0) AS total
+              FROM orders
+              WHERE created_at >= datetime('now', '-6 months')
+              GROUP BY strftime('%Y-%m', created_at)
+              ORDER BY month ASC
+              ''',
+        isWorker ? [workerId, workerId] : null);
     return List<Map<String, dynamic>>.from(maps);
   }
 
   Future<List<Map<String, dynamic>>> getTopCustomers() async {
     final db = await _db;
-    final maps = await db.rawQuery('''
-      SELECT
-        c.id,
-        c.name,
-        c.photo_path,
-        c.outstanding_balance,
-        COUNT(o.id) AS total_orders,
-        COALESCE(SUM(o.grand_total), 0) AS total_purchase,
-        COALESCE(SUM(o.paid_amount), 0) AS total_paid,
-        COALESCE(SUM(o.remaining_amount), 0) AS pending_amount,
-        MAX(o.created_at) AS last_order_date
-      FROM customers c
-      LEFT JOIN orders o ON c.id = o.customer_id AND o.delivery_status != 'cancelled'
-      GROUP BY c.id
-    ''');
+    final workerId = await _getWorkerId();
+    final bool isWorker = workerId != null && workerId.isNotEmpty;
+
+    final maps = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT
+                c.id,
+                c.name,
+                c.photo_path,
+                c.outstanding_balance,
+                COUNT(o.id) AS total_orders,
+                COALESCE(SUM(o.grand_total), 0) AS total_purchase,
+                COALESCE(SUM(o.paid_amount), 0) AS total_paid,
+                COALESCE(SUM(o.remaining_amount), 0) AS pending_amount,
+                MAX(o.created_at) AS last_order_date
+              FROM customers c
+              LEFT JOIN orders o ON c.id = o.customer_id AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)
+              WHERE (c.assigned_worker_id = ? OR c.created_by = ? OR c.id IN (SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'customer'))
+              GROUP BY c.id
+              '''
+            : '''
+              SELECT
+                c.id,
+                c.name,
+                c.photo_path,
+                c.outstanding_balance,
+                COUNT(o.id) AS total_orders,
+                COALESCE(SUM(o.grand_total), 0) AS total_purchase,
+                COALESCE(SUM(o.paid_amount), 0) AS total_paid,
+                COALESCE(SUM(o.remaining_amount), 0) AS pending_amount,
+                MAX(o.created_at) AS last_order_date
+              FROM customers c
+              LEFT JOIN orders o ON c.id = o.customer_id AND o.delivery_status != 'cancelled'
+              GROUP BY c.id
+              ''',
+        isWorker ? [workerId, workerId, workerId, workerId, workerId] : null);
     return List<Map<String, dynamic>>.from(maps);
   }
 
@@ -577,49 +656,102 @@ class OrderDao {
     final now    = DateTime.now();
     final today  = DateTime(now.year, now.month, now.day).toIso8601String();
 
+    final workerId = await _getWorkerId();
+    final bool isWorker = workerId != null && workerId.isNotEmpty;
+
     // Today's orders
-    final orderMaps = await db.rawQuery('''
-      SELECT o.*, o.rowid AS order_number, c.name AS customer_name
-      FROM orders o
-      LEFT JOIN customers c ON o.customer_id = c.id
-      WHERE DATE(o.created_at) = DATE(?)
-      ORDER BY o.created_at DESC
-    ''', [today]);
+    final orderMaps = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT o.*, o.rowid AS order_number, c.name AS customer_name
+              FROM orders o
+              LEFT JOIN customers c ON o.customer_id = c.id
+              WHERE DATE(o.created_at) = DATE(?) AND (o.created_by = ? OR o.assigned_worker_id = ?)
+              ORDER BY o.created_at DESC
+              '''
+            : '''
+              SELECT o.*, o.rowid AS order_number, c.name AS customer_name
+              FROM orders o
+              LEFT JOIN customers c ON o.customer_id = c.id
+              WHERE DATE(o.created_at) = DATE(?)
+              ORDER BY o.created_at DESC
+              ''',
+        isWorker ? [today, workerId, workerId] : [today]);
 
     // Today's items sold
-    final itemMaps = await db.rawQuery('''
-      SELECT item_name, item_unit, SUM(quantity) AS qty, SUM(total_price) AS total
-      FROM order_items
-      WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?))
-      GROUP BY item_name, item_unit
-      ORDER BY qty DESC
-    ''', [today]);
+    final itemMaps = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT item_name, item_unit, SUM(quantity) AS qty, SUM(total_price) AS total
+              FROM order_items
+              WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?) AND (created_by = ? OR assigned_worker_id = ?))
+              GROUP BY item_name, item_unit
+              ORDER BY qty DESC
+              '''
+            : '''
+              SELECT item_name, item_unit, SUM(quantity) AS qty, SUM(total_price) AS total
+              FROM order_items
+              WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?))
+              GROUP BY item_name, item_unit
+              ORDER BY qty DESC
+              ''',
+        isWorker ? [today, workerId, workerId] : [today]);
 
     // Today's payment breakdown
-    final cashPayments = await db.rawQuery('''
-      SELECT COALESCE(SUM(amount), 0) AS v
-      FROM payments
-      WHERE DATE(created_at) = DATE(?) AND method = 'cash'
-    ''', [today]);
+    final cashPayments = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT COALESCE(SUM(amount), 0) AS v
+              FROM payments
+              WHERE DATE(created_at) = DATE(?) AND method = 'cash' AND (created_by = ? OR assigned_worker_id = ?)
+              '''
+            : '''
+              SELECT COALESCE(SUM(amount), 0) AS v
+              FROM payments
+              WHERE DATE(created_at) = DATE(?) AND method = 'cash'
+              ''',
+        isWorker ? [today, workerId, workerId] : [today]);
 
-    final onlinePayments = await db.rawQuery('''
-      SELECT COALESCE(SUM(amount), 0) AS v
-      FROM payments
-      WHERE DATE(created_at) = DATE(?) AND method != 'cash'
-    ''', [today]);
+    final onlinePayments = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT COALESCE(SUM(amount), 0) AS v
+              FROM payments
+              WHERE DATE(created_at) = DATE(?) AND method != 'cash' AND (created_by = ? OR assigned_worker_id = ?)
+              '''
+            : '''
+              SELECT COALESCE(SUM(amount), 0) AS v
+              FROM payments
+              WHERE DATE(created_at) = DATE(?) AND method != 'cash'
+              ''',
+        isWorker ? [today, workerId, workerId] : [today]);
 
-    final totalSales = await db.rawQuery('''
-      SELECT COALESCE(SUM(grand_total), 0) AS v
-      FROM orders
-      WHERE DATE(created_at) = DATE(?)
-    ''', [today]);
+    final totalSales = await db.rawQuery(
+        isWorker
+            ? '''
+              SELECT COALESCE(SUM(grand_total), 0) AS v
+              FROM orders
+              WHERE DATE(created_at) = DATE(?) AND (created_by = ? OR assigned_worker_id = ?)
+              '''
+            : '''
+              SELECT COALESCE(SUM(grand_total), 0) AS v
+              FROM orders
+              WHERE DATE(created_at) = DATE(?)
+              ''',
+        isWorker ? [today, workerId, workerId] : [today]);
+
+    final double totalSalesVal = (totalSales.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double cashReceivedVal = (cashPayments.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double onlineReceivedVal = (onlinePayments.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double pendingVal = totalSalesVal - (cashReceivedVal + onlineReceivedVal);
 
     return {
       'orders': orderMaps.map(AppOrder.fromMap).toList(),
       'items': itemMaps,
-      'cash_received': (cashPayments.first['v'] as num?)?.toDouble() ?? 0.0,
-      'online_received': (onlinePayments.first['v'] as num?)?.toDouble() ?? 0.0,
-      'total_sales': (totalSales.first['v'] as num?)?.toDouble() ?? 0.0,
+      'cash_received': cashReceivedVal,
+      'online_received': onlineReceivedVal,
+      'total_sales': totalSalesVal,
+      'pending_amount': pendingVal,
     };
   }
 

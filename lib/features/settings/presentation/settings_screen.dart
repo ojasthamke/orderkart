@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as p;
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
@@ -14,6 +13,7 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/database/database_seeder.dart';
 import '../domain/app_settings.dart';
 import 'settings_provider.dart';
+import '../../../core/utils/image_utils.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -64,30 +64,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _pickQrImage(AppSettings current) async {
-    final picker = ImagePicker();
-    final img = await picker.pickImage(source: ImageSource.gallery);
+    final img = await ImageUtils.pickAndCompress(source: ImageSource.gallery);
     if (img != null) {
-      final file = File(img.path);
-      if (file.existsSync()) {
-        final photosDir = Directory('${AppConstants.appDocsDir}/customer_photos');
-        if (!photosDir.existsSync()) {
-          await photosDir.create(recursive: true);
+      // Delete old QR image to prevent bloat
+      if (current.qrCustomImage.isNotEmpty) {
+        final oldFile = File(current.qrCustomImage);
+        if (oldFile.existsSync()) {
+          try { oldFile.deleteSync(); } catch (_) {}
         }
-        final ext = p.extension(img.path);
-        final destFile = File('${photosDir.path}/qr_custom_image$ext');
+      }
 
-        // Delete old QR image to prevent bloat
-        if (current.qrCustomImage.isNotEmpty) {
-          final oldFile = File(current.qrCustomImage);
-          if (oldFile.existsSync()) {
-            try { oldFile.deleteSync(); } catch (_) {}
-          }
-        }
+      final savedPath = await ImageUtils.saveImagePermanently(
+        sourcePath: img.path,
+        subFolder: 'qr_codes',
+        fileName: 'qr_custom_image',
+      );
 
-        await file.copy(destFile.path);
-
+      if (savedPath != null) {
         await ref.read(settingsProvider.notifier).update(
-              current.copyWith(qrCustomImage: destFile.path),
+              current.copyWith(qrCustomImage: savedPath),
             );
         if (mounted) SnackbarHelper.showSuccess(context, 'QR Code image uploaded');
       }

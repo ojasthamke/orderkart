@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../domain/area.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../../core/utils/image_utils.dart';
 
 class AddEditAreaDialog extends StatefulWidget {
   final Area? area;
@@ -56,7 +57,6 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -78,7 +78,7 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
       ),
     );
     if (source != null) {
-      final file = await picker.pickImage(source: source, imageQuality: 85);
+      final file = await ImageUtils.pickAndCompress(source: source);
       if (file != null) {
         setState(() => _photoPath = file.path);
       }

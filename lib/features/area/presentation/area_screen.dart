@@ -15,6 +15,7 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/area.dart';
 import 'area_provider.dart';
 import 'dialogs/add_edit_area_dialog.dart';
+import '../../../core/utils/image_utils.dart';
 import 'widgets/area_card.dart';
 
 import '../../../core/security/app_mode_service.dart';
@@ -170,13 +171,27 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
         area: area,
         onSave: (name, description, color, photoPath, mapsLocation) async {
           final now = DateTime.now();
+          final areaId = area?.id ?? const Uuid().v4();
+
+          String finalPhotoPath = photoPath;
+          if (photoPath.isNotEmpty) {
+            final savedPath = await ImageUtils.saveImagePermanently(
+              sourcePath: photoPath,
+              subFolder: 'area_photos',
+              fileName: areaId,
+            );
+            if (savedPath != null) {
+              finalPhotoPath = savedPath;
+            }
+          }
+
           if (area == null) {
             await ref.read(areaProvider.notifier).addArea(Area(
-                  id:           const Uuid().v4(),
+                  id:           areaId,
                   name:         name,
                   description:  description,
                   color:        color,
-                  photoPath:    photoPath,
+                  photoPath:    finalPhotoPath,
                   mapsLocation: mapsLocation,
                   createdAt:    now,
                   updatedAt:    now,
@@ -187,7 +202,7 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                   name:         name,
                   description:  description,
                   color:        color,
-                  photoPath:    photoPath,
+                  photoPath:    finalPhotoPath,
                   mapsLocation: mapsLocation,
                   updatedAt:    now,
                 ));

@@ -5,7 +5,6 @@ import 'package:uuid/uuid.dart';
 import 'dart:io';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
-import 'package:path/path.dart' as p;
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -14,6 +13,7 @@ import '../domain/customer.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/contact_exporter.dart';
 import 'customer_provider.dart';
+import '../../../core/utils/image_utils.dart';
 
 class AddEditCustomerScreen extends ConsumerStatefulWidget {
   final String? streetId;
@@ -300,7 +300,6 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -323,7 +322,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     );
 
     if (source != null) {
-      final img = await picker.pickImage(source: source);
+      final img = await ImageUtils.pickAndCompress(source: source);
       if (img != null) {
         setState(() => _photoPath = img.path);
       }
@@ -420,18 +419,13 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
       String finalPhotoPath = _photoPath;
       if (_photoPath.isNotEmpty) {
-        final file = File(_photoPath);
-        if (file.existsSync()) {
-          final photosDir = Directory('${AppConstants.appDocsDir}/customer_photos');
-          if (!photosDir.existsSync()) {
-            await photosDir.create(recursive: true);
-          }
-          if (!p.isWithin(photosDir.path, _photoPath)) {
-            final ext = p.extension(_photoPath);
-            final destFile = File('${photosDir.path}/$customerId$ext');
-            await file.copy(destFile.path);
-            finalPhotoPath = destFile.path;
-          }
+        final savedPath = await ImageUtils.saveImagePermanently(
+          sourcePath: _photoPath,
+          subFolder: 'customer_photos',
+          fileName: customerId,
+        );
+        if (savedPath != null) {
+          finalPhotoPath = savedPath;
         }
       }
 

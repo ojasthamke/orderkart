@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/models/business_profile.dart';
 import '../../../core/services/business_profile_service.dart';
+import '../../../core/utils/image_utils.dart';
 
 class BusinessProfileScreen extends ConsumerStatefulWidget {
   const BusinessProfileScreen({super.key});
@@ -105,19 +105,16 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
   }
 
   Future<void> _pickLogo() async {
-    final picker = ImagePicker();
-    final img = await picker.pickImage(source: ImageSource.gallery);
+    final img = await ImageUtils.pickAndCompress(source: ImageSource.gallery);
     if (img != null) {
-      final file = File(img.path);
-      if (file.existsSync()) {
-        final dir = Directory('${AppConstants.appDocsDir}/business_branding');
-        if (!dir.existsSync()) {
-          await dir.create(recursive: true);
-        }
-        final dest = File('${dir.path}/logo_${DateTime.now().millisecondsSinceEpoch}.jpg');
-        await file.copy(dest.path);
+      final savedPath = await ImageUtils.saveImagePermanently(
+        sourcePath: img.path,
+        subFolder: 'business_branding',
+        fileName: 'logo_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (savedPath != null) {
         setState(() {
-          _logoPath = dest.path;
+          _logoPath = savedPath;
         });
         SnackbarHelper.showSuccess(context, 'Logo selected successfully');
       }

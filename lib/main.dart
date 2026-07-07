@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'core/services/notification_service.dart';
 import 'core/services/background_service.dart';
+import 'core/utils/image_utils.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +40,9 @@ Future<void> main() async {
     // Initialize App Documents Directory path
     final docDir = await getApplicationDocumentsDirectory();
     AppConstants.appDocsDir = docDir.path;
+
+    // Clear any temporary image picker cache on startup
+    await ImageUtils.clearImagePickerCache();
 
     // Initialize SQLite database
     await DatabaseHelper.instance.database;

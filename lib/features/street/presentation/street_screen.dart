@@ -17,6 +17,7 @@ import '../domain/street.dart';
 import 'street_provider.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../worker/presentation/worker_provider.dart';
+import '../../../core/utils/image_utils.dart';
 
 class StreetScreen extends ConsumerStatefulWidget {
   final String areaId;
@@ -167,7 +168,6 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                   // Photo Picker
                   GestureDetector(
                     onTap: () async {
-                      final picker = ImagePicker();
                       final source = await showModalBottomSheet<ImageSource>(
                         context: dlgCtx,
                         builder: (ctx) => SafeArea(
@@ -189,7 +189,7 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                         ),
                       );
                       if (source != null) {
-                        final file = await picker.pickImage(source: source, imageQuality: 85);
+                        final file = await ImageUtils.pickAndCompress(source: source);
                         if (file != null) {
                           setDlgState(() => photoPath = file.path);
                         }
@@ -267,13 +267,27 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                 final notifier =
                     ref.read(streetProviderFamily(widget.areaId).notifier);
                 final now = DateTime.now();
+                final streetId = street?.id ?? const Uuid().v4();
+
+                String finalPhotoPath = photoPath;
+                if (photoPath.isNotEmpty) {
+                  final savedPath = await ImageUtils.saveImagePermanently(
+                    sourcePath: photoPath,
+                    subFolder: 'street_photos',
+                    fileName: streetId,
+                  );
+                  if (savedPath != null) {
+                    finalPhotoPath = savedPath;
+                  }
+                }
+
                 if (street == null) {
                   await notifier.add(Street(
-                    id:           const Uuid().v4(),
+                    id:           streetId,
                     areaId:       widget.areaId,
                     name:         nameCon.text.trim(),
                     description:  descCon.text.trim(),
-                    photoPath:    photoPath,
+                    photoPath:    finalPhotoPath,
                     mapsLocation: locationCon.text.trim(),
                     createdAt:    now,
                   ));
@@ -283,7 +297,7 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                   await notifier.update(street.copyWith(
                     name:         nameCon.text.trim(),
                     description:  descCon.text.trim(),
-                    photoPath:    photoPath,
+                    photoPath:    finalPhotoPath,
                     mapsLocation: locationCon.text.trim(),
                   ));
                   if (mounted)
