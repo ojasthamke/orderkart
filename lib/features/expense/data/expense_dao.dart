@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/security/app_mode_service.dart';
 import '../domain/expense.dart';
 
 class ExpenseDao {
@@ -65,13 +66,37 @@ class ExpenseDao {
     final db = await _db;
     final id  = expense.id.isEmpty ? _uuid.v4() : expense.id;
     final now = DateTime.now().toIso8601String();
-    final map = expense.toMap();
 
+    final mode = await AppModeService.getAppMode();
+    String createdBy = 'owner';
+    String assignedWorkerId = '';
+    String workerName = '';
+    String deviceName = '';
+
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
+        createdBy = activeWorkerId;
+        assignedWorkerId = activeWorkerId;
+        final workerRow = await db.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        if (workerRow.isNotEmpty) {
+          workerName = workerRow.first['name']?.toString() ?? '';
+        }
+        deviceName = 'Worker Mobile';
+      }
+    }
+
+    final map = expense.toMap();
     await db.insert('expenses', {
       ...map,
-      'id':         id,
-      'created_at': now,
-      'updated_at': now,
+      'id':                 id,
+      'created_by':         createdBy,
+      'assigned_worker_id': assignedWorkerId,
+      'worker_name':        workerName,
+      'device_name':        deviceName,
+      'created_at':         now,
+      'updated_at':         now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
     return id;
   }

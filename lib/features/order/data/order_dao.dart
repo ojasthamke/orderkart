@@ -160,12 +160,35 @@ class OrderDao {
       }
     }
 
+    final mode = await AppModeService.getAppMode();
+    String createdBy = order.createdBy;
+    String assignedWorkerId = workerId.isNotEmpty ? workerId : order.assignedWorkerId;
+    String workerName = order.workerName;
+    String deviceName = order.deviceName;
+
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
+        createdBy = activeWorkerId;
+        assignedWorkerId = activeWorkerId;
+        final workerRow = await db.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        if (workerRow.isNotEmpty) {
+          workerName = workerRow.first['name']?.toString() ?? '';
+        }
+        deviceName = 'Worker Mobile';
+      }
+    }
+
     final map = order.toMap();
 
     await db.insert('orders', {
       ...map,
       'id':                 id,
-      'assigned_worker_id': workerId.isNotEmpty ? workerId : order.assignedWorkerId,
+      'assigned_worker_id': assignedWorkerId,
+      'created_by':         createdBy,
+      'worker_name':        workerName,
+      'device_name':        deviceName,
       'commission_rate':    commRate > 0 ? commRate : 5.0,
       'commission_type':    commType.isNotEmpty ? commType : 'pct_order',
       'created_at':         order.createdAt.toIso8601String().isEmpty ? now : order.createdAt.toIso8601String(),
@@ -215,9 +238,36 @@ class OrderDao {
 
   Future<void> insertPayment(Payment payment, {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
+    final id = payment.id.isEmpty ? _uuid.v4() : payment.id;
+    final now = DateTime.now().toIso8601String();
+
+    final mode = await AppModeService.getAppMode();
+    String createdBy = 'owner';
+    String assignedWorkerId = '';
+    String workerName = '';
+    String deviceName = '';
+
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
+        createdBy = activeWorkerId;
+        assignedWorkerId = activeWorkerId;
+        final workerRow = await db.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        if (workerRow.isNotEmpty) {
+          workerName = workerRow.first['name']?.toString() ?? '';
+        }
+        deviceName = 'Worker Mobile';
+      }
+    }
+
     await db.insert('payments', {
       ...payment.toMap(),
-      'id': payment.id.isEmpty ? _uuid.v4() : payment.id,
+      'id':                 id,
+      'created_by':         createdBy,
+      'assigned_worker_id': assignedWorkerId,
+      'worker_name':        workerName,
+      'device_name':        deviceName,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 

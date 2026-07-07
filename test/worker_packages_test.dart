@@ -1,25 +1,30 @@
 // test/worker_packages_test.dart
 
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:orderkart/core/database/database_helper.dart';
 import 'package:orderkart/core/constants/app_constants.dart';
 import 'package:orderkart/core/services/worker_package_service.dart';
 import 'package:orderkart/core/services/package_exporter.dart';
 import 'package:orderkart/core/services/package_validator.dart';
 import 'package:orderkart/core/utils/security_helper.dart';
-import 'package:orderkart/core/security/app_mode_service.dart';
 import 'package:orderkart/features/area/data/area_dao.dart';
 import 'package:orderkart/features/area/domain/area.dart';
 import 'package:orderkart/features/street/data/street_dao.dart';
 import 'package:orderkart/features/street/domain/street.dart';
 import 'package:orderkart/features/customer/data/customer_dao.dart';
 import 'package:orderkart/features/customer/domain/customer.dart';
-import 'package:uuid/uuid.dart';
+import 'package:orderkart/features/order/data/order_dao.dart';
+import 'package:orderkart/features/order/domain/order.dart';
+import 'package:orderkart/features/order/domain/payment.dart';
+import 'package:orderkart/features/expense/data/expense_dao.dart';
+import 'package:orderkart/features/expense/domain/expense.dart';
+import 'package:orderkart/features/note/data/note_dao.dart';
+import 'package:orderkart/features/note/domain/app_note.dart';
+import 'package:orderkart/features/visit/data/visit_dao.dart';
+import 'package:orderkart/features/visit/domain/app_visit.dart';
 
 void main() {
   // Initialize FFI for local SQLite tests
@@ -476,6 +481,81 @@ void main() {
         whereArgs: [workerId, 'customer', customerId],
       );
       expect(customerAssigns.length, equals(1));
+
+      // 4. Test Order & Payment insertion under worker mode
+      final orderId = 'WK12345';
+      final order = AppOrder(
+        id: orderId,
+        customerId: customerId,
+        subtotal: 100.0,
+        grandTotal: 100.0,
+        remainingAmount: 0.0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await OrderDao().insertOrder(order);
+
+      final orderRow = await db.query('orders', where: 'id = ?', whereArgs: [orderId]);
+      expect(orderRow.first['created_by'], equals(workerId));
+
+      final paymentId = 'worker-pay-1';
+      final payment = Payment(
+        id: paymentId,
+        orderId: orderId,
+        customerId: customerId,
+        amount: 100.0,
+        method: 'cash',
+        createdAt: DateTime.now(),
+      );
+      await OrderDao().insertPayment(payment);
+
+      final paymentRow = await db.query('payments', where: 'id = ?', whereArgs: [paymentId]);
+      expect(paymentRow.first['created_by'], equals(workerId));
+
+      // 5. Test Expense insertion under worker mode
+      final expenseId = 'worker-exp-1';
+      final expense = Expense(
+        id: expenseId,
+        name: 'Lunch',
+        amount: 15.0,
+        category: 'Food',
+        date: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await ExpenseDao().insertExpense(expense);
+
+      final expenseRow = await db.query('expenses', where: 'id = ?', whereArgs: [expenseId]);
+      expect(expenseRow.first['created_by'], equals(workerId));
+
+      // 6. Test Note insertion under worker mode
+      final noteId = 'worker-note-1';
+      final note = AppNote(
+        id: noteId,
+        title: 'Call customer',
+        content: 'Call john',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await NoteDao().insert(note);
+
+      final noteRow = await db.query('notes', where: 'id = ?', whereArgs: [noteId]);
+      expect(noteRow.first['created_by'], equals(workerId));
+
+      // 7. Test Visit insertion under worker mode
+      final visitId = 'worker-visit-1';
+      final visit = AppVisit(
+        id: visitId,
+        areaId: areaId,
+        date: '2026-07-07',
+        status: 'pending',
+        notes: 'Delivery visit',
+        createdAt: DateTime.now(),
+      );
+      await VisitDao().insert(visit);
+
+      final visitRow = await db.query('visits', where: 'id = ?', whereArgs: [visitId]);
+      expect(visitRow.first['created_by'], equals(workerId));
 
       // Revert settings to default
       await db.delete('settings');
