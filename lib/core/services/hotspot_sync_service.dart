@@ -188,18 +188,23 @@ class HotspotSyncService {
             // Decode and Write Photos
             final photos = dataMap['photos'];
             if (photos is List) {
-              final destDir = Directory('${AppConstants.appDocsDir}/customer_photos');
-              if (!destDir.existsSync()) {
-                destDir.createSync(recursive: true);
-              }
               for (final photo in photos) {
                 if (photo is Map) {
                   final filename = photo['filename']?.toString();
                   final base64Str = photo['base64']?.toString();
                   if (filename != null && base64Str != null) {
                     final bytes = base64Decode(base64Str);
-                    final destFile = File('${destDir.path}/$filename');
-                    await destFile.writeAsBytes(bytes);
+                    final photoDirs = [
+                      '${AppConstants.appDocsDir}/customer_photos/$filename',
+                      '${AppConstants.appDocsDir}/area_photos/$filename',
+                      '${AppConstants.appDocsDir}/street_photos/$filename',
+                      '${AppConstants.appDocsDir}/note_photos/$filename',
+                    ];
+                    for (final targetPath in photoDirs) {
+                      final destFile = File(targetPath);
+                      await destFile.parent.create(recursive: true);
+                      await destFile.writeAsBytes(bytes);
+                    }
                   }
                 }
               }
@@ -340,19 +345,33 @@ class HotspotSyncService {
     // 6. Base64 Photos selection
     final List<Map<String, String>> photosPayload = [];
     if (modules.contains('photos')) {
-      final photosDir = Directory('${AppConstants.appDocsDir}/customer_photos');
-      if (photosDir.existsSync()) {
-        final lastSyncDate = lastSyncTime.isNotEmpty ? DateTime.tryParse(lastSyncTime) : null;
-        final files = photosDir.listSync();
-        for (final f in files) {
-          if (f is File) {
-            final stat = f.statSync();
-            if (lastSyncDate == null || stat.modified.isAfter(lastSyncDate)) {
-              final bytes = await f.readAsBytes();
-              photosPayload.add({
-                'filename': p.basename(f.path),
-                'base64': base64Encode(bytes),
-              });
+      final photoDirsToScan = [
+        Directory('${AppConstants.appDocsDir}/customer_photos'),
+        Directory('${AppConstants.appDocsDir}/area_photos'),
+        Directory('${AppConstants.appDocsDir}/street_photos'),
+        Directory('${AppConstants.appDocsDir}/note_photos'),
+        Directory('${AppConstants.appDocsDir}/attachments'),
+      ];
+      final lastSyncDate = lastSyncTime.isNotEmpty ? DateTime.tryParse(lastSyncTime) : null;
+      final Set<String> processedFilenames = {};
+
+      for (final dir in photoDirsToScan) {
+        if (dir.existsSync()) {
+          final files = dir.listSync();
+          for (final f in files) {
+            if (f is File) {
+              final filename = p.basename(f.path);
+              if (processedFilenames.contains(filename)) continue;
+
+              final stat = f.statSync();
+              if (lastSyncDate == null || stat.modified.isAfter(lastSyncDate)) {
+                final bytes = await f.readAsBytes();
+                photosPayload.add({
+                  'filename': filename,
+                  'base64': base64Encode(bytes),
+                });
+                processedFilenames.add(filename);
+              }
             }
           }
         }

@@ -332,6 +332,24 @@ class PackageValidator {
         }
       }
 
+      // Verify logo hashes
+      for (final l in logoList(archive)) {
+        final expectedHash = fileHashes[l] ?? '';
+        final actualHash = sha256.convert(logoFiles[l]!).toString();
+        if (actualHash != expectedHash) {
+          return _fail('Logo file integrity check failed for $l (SHA-256 mismatch).');
+        }
+      }
+
+      // Verify QR hashes
+      for (final q in qrList(archive)) {
+        final expectedHash = fileHashes[q] ?? '';
+        final actualHash = sha256.convert(qrFiles[q]!).toString();
+        if (actualHash != expectedHash) {
+          return _fail('QR file integrity check failed for $q (SHA-256 mismatch).');
+        }
+      }
+
       final tempDir = await getTemporaryDirectory();
       final tempDbFile = File('${tempDir.path}/wizard_incoming.db');
       if (tempDbFile.existsSync()) tempDbFile.deleteSync();
