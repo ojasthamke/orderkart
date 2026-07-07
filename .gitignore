@@ -33,3 +33,8 @@ Thumbs.db
 *.iml
 *.ipr
 *.iws
+
+# iOS related
+/ios/Pods/
+/ios/.symlinks/
+/ios/Flutter/flutter_export_environment.sh
