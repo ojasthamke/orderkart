@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/security/app_mode_service.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
 
@@ -36,6 +37,13 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final mode = ref.read(appModeProvider).value;
+      if (mode == AppMode.worker) {
+        SnackbarHelper.showError(context, 'Access Denied: Workers cannot manage items.');
+        Navigator.pop(context);
+      }
+    });
     if (widget.itemId != null) {
       _isEdit = true;
       _loadItem();

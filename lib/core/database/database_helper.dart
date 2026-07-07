@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
 
 class DatabaseHelper {
@@ -602,6 +603,24 @@ class DatabaseHelper {
             try {
               if (!dryRun) {
                 await dbExecutor.insert(table, filteredRow, conflictAlgorithm: ConflictAlgorithm.replace);
+                if (table == 'order_items') {
+                  final itemId = filteredRow['item_id']?.toString() ?? '';
+                  final qty = (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
+                  if (itemId.isNotEmpty && qty > 0) {
+                    await dbExecutor.execute(
+                      'UPDATE items SET stock = stock - ? WHERE id = ?',
+                      [qty, itemId],
+                    );
+                    await dbExecutor.insert('stock_history', {
+                      'id': const Uuid().v4(),
+                      'item_id': itemId,
+                      'item_name': filteredRow['item_name']?.toString() ?? '',
+                      'change_amount': -qty,
+                      'reason': 'Imported Order Line (P2P)',
+                      'created_at': DateTime.now().toIso8601String(),
+                    });
+                  }
+                }
               }
               inserted++;
             } catch (e) {
@@ -823,6 +842,24 @@ class DatabaseHelper {
               try {
                 if (!dryRun) {
                   await dbExecutor.insert(table, filteredRow, conflictAlgorithm: ConflictAlgorithm.replace);
+                  if (table == 'order_items') {
+                    final itemId = filteredRow['item_id']?.toString() ?? '';
+                    final qty = (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
+                    if (itemId.isNotEmpty && qty > 0) {
+                      await dbExecutor.execute(
+                        'UPDATE items SET stock = stock - ? WHERE id = ?',
+                        [qty, itemId],
+                      );
+                      await dbExecutor.insert('stock_history', {
+                        'id': const Uuid().v4(),
+                        'item_id': itemId,
+                        'item_name': filteredRow['item_name']?.toString() ?? '',
+                        'change_amount': -qty,
+                        'reason': 'Imported Order Line (Zip)',
+                        'created_at': DateTime.now().toIso8601String(),
+                      });
+                    }
+                  }
                 }
                 inserted++;
               } catch (e) {

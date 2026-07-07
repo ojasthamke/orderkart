@@ -80,6 +80,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
   Map<String, dynamic> _manifest = {};
   Map<String, Map<String, int>> _previewStats = {};
   String _dbFileToMerge = '';
+  String _pickedFilePath = '';
   int _incomingPhotosCount = 0;
 
   // Import selection states
@@ -168,6 +169,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
 
       _manifest = valResult.manifest;
       _dbFileToMerge = valResult.dbPath;
+      _pickedFilePath = srcPath;
       _incomingPhotosCount = valResult.photosCount;
 
       // Generate preview counts (dry run)
@@ -343,7 +345,10 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
         },
       );
 
-      // Log import into Import History table
+      // Extract assets (photos, logo, QR) from package
+      if (_pickedFilePath.isNotEmpty) {
+        await PackageValidator.extractAssets(_pickedFilePath);
+      }
       final packageId = _manifest['package_id']?.toString() ?? const Uuid().v4();
       final workerName = _manifest['generated_by_worker_name']?.toString() ?? '';
       final deviceName = _manifest['device_name']?.toString() ?? '';

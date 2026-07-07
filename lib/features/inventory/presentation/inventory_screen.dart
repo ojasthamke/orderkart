@@ -17,6 +17,7 @@ import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/security/app_mode_service.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
 import '../data/item_dao.dart';
@@ -115,16 +116,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   @override
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(inventoryProvider);
+    final isWorker = ref.watch(appModeProvider).value == AppMode.worker;
 
     return AppScaffold(
       title: 'Inventory & Prices',
       showBack: widget.showBack,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.share_rounded),
-          tooltip: 'Export Stock & Price List (Owner)',
-          onPressed: _exportPriceList,
-        ),
+        if (!isWorker)
+          IconButton(
+            icon: const Icon(Icons.share_rounded),
+            tooltip: 'Export Stock & Price List (Owner)',
+            onPressed: _exportPriceList,
+          ),
         IconButton(
           icon: const Icon(Icons.download_rounded),
           tooltip: 'Import Stock & Price List (Worker)',
@@ -152,18 +155,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           Tab(icon: Icon(Icons.history_rounded), text: 'Price History'),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'add_item',
-        onPressed: () => Navigator.of(context)
-            .pushNamed(AppRoutes.addEditItem)
-            .then((_) => ref.refresh(inventoryProvider)),
-        child: const Icon(Icons.add_rounded),
-      ),
+      floatingActionButton: isWorker
+          ? null
+          : FloatingActionButton(
+              heroTag: 'add_item',
+              onPressed: () => Navigator.of(context)
+                  .pushNamed(AppRoutes.addEditItem)
+                  .then((_) => ref.refresh(inventoryProvider)),
+              child: const Icon(Icons.add_rounded),
+            ),
       body: TabBarView(
         controller: _tabController,
         children: [
           // ── TAB 1: Stock Items List ────────────────────────────────────────
-          _buildStockTab(context, itemsAsync),
+          _buildStockTab(context, itemsAsync, isWorker),
 
           // ── TAB 2: Market Price & Customer Savings Calculator ──────────────
           _buildMarketSavingsTab(context, itemsAsync),
@@ -176,7 +181,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   }
 
   // ── TAB 1: Stock List ──────────────────────────────────────────────────────
-  Widget _buildStockTab(BuildContext context, AsyncValue<List<Item>> itemsAsync) {
+  Widget _buildStockTab(BuildContext context, AsyncValue<List<Item>> itemsAsync, bool isWorker) {
     return Column(
       children: [
         CustomSearchBar(
@@ -240,6 +245,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   itemCount: items.length,
                   itemBuilder: (_, i) => _ItemTile(
                     item: items[i],
+                    isWorker: isWorker,
                     onEdit: () => _handleEditItem(items[i]),
                     onAdjustStock: () => _handleStockAdjust(items[i]),
                     onDelete: () => _confirmDelete(context, items[i]),
@@ -883,12 +889,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
 class _ItemTile extends StatelessWidget {
   final Item item;
+  final bool isWorker;
   final VoidCallback onEdit;
   final VoidCallback onAdjustStock;
   final VoidCallback onDelete;
 
   const _ItemTile({
     required this.item,
+    required this.isWorker,
     required this.onEdit,
     required this.onAdjustStock,
     required this.onDelete,
@@ -968,18 +976,20 @@ class _ItemTile extends StatelessWidget {
             ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (v) {
-            if (v == 'edit') onEdit();
-            if (v == 'stock') onAdjustStock();
-            if (v == 'delete') onDelete();
-          },
-          itemBuilder: (_) => [
-            const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_rounded, size: 18), SizedBox(width: 8), Text('Edit Item')])),
-            const PopupMenuItem(value: 'stock', child: Row(children: [Icon(Icons.swap_vert_rounded, size: 18), SizedBox(width: 8), Text('Adjust Stock')])),
-            const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error), SizedBox(width: 8), Text('Delete', style: TextStyle(color: AppColors.error))])),
-          ],
-        ),
+        trailing: isWorker
+            ? null
+            : PopupMenuButton<String>(
+                onSelected: (v) {
+                  if (v == 'edit') onEdit();
+                  if (v == 'stock') onAdjustStock();
+                  if (v == 'delete') onDelete();
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_rounded, size: 18), SizedBox(width: 8), Text('Edit Item')])),
+                  const PopupMenuItem(value: 'stock', child: Row(children: [Icon(Icons.swap_vert_rounded, size: 18), SizedBox(width: 8), Text('Adjust Stock')])),
+                  const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error), SizedBox(width: 8), Text('Delete', style: TextStyle(color: AppColors.error))])),
+                ],
+              ),
       ),
     );
   }
