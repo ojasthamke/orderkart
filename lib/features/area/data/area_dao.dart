@@ -32,9 +32,16 @@ class AreaDao {
 
     final mode = await AppModeService.getAppMode();
     if (mode == AppMode.worker) {
-      final workerRows = await db.query('workers', limit: 1);
-      if (workerRows.isNotEmpty) {
-        final workerId = workerRows.first['id'] as String;
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (workerId == null || workerId.isEmpty) {
+        final workerRows = await db.query('workers', limit: 1);
+        if (workerRows.isNotEmpty) {
+          workerId = workerRows.first['id'] as String;
+        }
+      }
+
+      if (workerId != null && workerId.isNotEmpty) {
         final assignmentRows = await db.query(
           'worker_assignments',
           where: 'worker_id = ? AND entity_type = ?',
@@ -45,12 +52,13 @@ class AreaDao {
             .where((e) => e.isNotEmpty)
             .toList();
 
-        if (assignedAreaIds.isEmpty) {
-          return []; // Worker has no assigned areas!
-        }
-
-        final inClause = assignedAreaIds.map((id) => "'$id'").join(',');
-        whereClauses.add('a.id IN ($inClause)');
+        final inClause = assignedAreaIds.isNotEmpty
+            ? assignedAreaIds.map((id) => "'$id'").join(',')
+            : "''";
+        whereClauses.add('(a.id IN ($inClause) OR a.created_by = ? OR a.assigned_worker_id = ?)');
+        args.addAll([workerId, workerId]);
+      } else {
+        return [];
       }
     }
 
@@ -92,11 +100,39 @@ class AreaDao {
     final db = await _db;
     final id = area.id.isEmpty ? _uuid.v4() : area.id;
     final now = DateTime.now().toIso8601String();
-    final map = area.toMap();
 
+    final mode = await AppModeService.getAppMode();
+    String createdBy = area.createdBy;
+    String assignedWorkerId = area.assignedWorkerId;
+    String workerName = area.workerName;
+
+    if (mode == AppMode.worker) {
+      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
+        createdBy = activeWorkerId;
+        assignedWorkerId = activeWorkerId;
+        final workerRow = await db.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        if (workerRow.isNotEmpty) {
+          workerName = workerRow.first['name']?.toString() ?? '';
+        }
+        await db.insert('worker_assignments', {
+          'id': const Uuid().v4(),
+          'worker_id': activeWorkerId,
+          'entity_type': 'area',
+          'entity_id': id,
+          'created_at': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    }
+
+    final map = area.toMap();
     await db.insert('areas', {
       ...map,
       'id':         id,
+      'created_by': createdBy,
+      'assigned_worker_id': assignedWorkerId,
+      'worker_name': workerName,
       'created_at': now,
       'updated_at': now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);

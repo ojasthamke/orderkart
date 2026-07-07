@@ -12,8 +12,13 @@ import 'package:orderkart/core/services/worker_package_service.dart';
 import 'package:orderkart/core/services/package_exporter.dart';
 import 'package:orderkart/core/services/package_validator.dart';
 import 'package:orderkart/core/utils/security_helper.dart';
-import 'package:orderkart/core/models/worker.dart';
-import 'package:orderkart/core/services/worker_service.dart';
+import 'package:orderkart/core/security/app_mode_service.dart';
+import 'package:orderkart/features/area/data/area_dao.dart';
+import 'package:orderkart/features/area/domain/area.dart';
+import 'package:orderkart/features/street/data/street_dao.dart';
+import 'package:orderkart/features/street/domain/street.dart';
+import 'package:orderkart/features/customer/data/customer_dao.dart';
+import 'package:orderkart/features/customer/domain/customer.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
@@ -394,6 +399,86 @@ void main() {
       expect(workersVal.first['name'], equals(workerName));
 
       await valDb.close();
+    });
+
+    test('Worker Mode Entity Insertion and Visibility Scoping', () async {
+      final db = await DatabaseHelper.instance.database;
+
+      // Clean existing assignments, areas, streets, customers
+      await db.delete('worker_assignments');
+      await db.delete('customers');
+      await db.delete('streets');
+      await db.delete('areas');
+      await db.delete('settings');
+
+      // Set worker mode and active worker ID
+      await db.insert('settings', {'key': 'app_mode', 'value': 'worker'});
+      await db.insert('settings', {'key': 'active_worker_id', 'value': workerId});
+
+      // 1. Test Area insertion under worker mode
+      final areaId = 'worker-area-1';
+      final area = Area(
+        id: areaId,
+        name: 'Worker Added Area',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await AreaDao().insertArea(area);
+
+      // Verify the area shows up in getAllAreas()
+      final areas = await AreaDao().getAllAreas();
+      expect(areas.length, equals(1));
+      expect(areas.first.name, equals('Worker Added Area'));
+
+      // Verify assignment was automatically created
+      final areaAssigns = await db.query(
+        'worker_assignments',
+        where: 'worker_id = ? AND entity_type = ? AND entity_id = ?',
+        whereArgs: [workerId, 'area', areaId],
+      );
+      expect(areaAssigns.length, equals(1));
+
+      // 2. Test Street insertion under worker mode
+      final streetId = 'worker-street-1';
+      final street = Street(
+        id: streetId,
+        areaId: areaId,
+        name: 'Worker Added Street',
+        createdAt: DateTime.now(),
+      );
+      await StreetDao().insertStreet(street);
+
+      // Verify street assignment was automatically created
+      final streetAssigns = await db.query(
+        'worker_assignments',
+        where: 'worker_id = ? AND entity_type = ? AND entity_id = ?',
+        whereArgs: [workerId, 'street', streetId],
+      );
+      expect(streetAssigns.length, equals(1));
+
+      // 3. Test Customer insertion under worker mode
+      final customerId = 'worker-cust-1';
+      final customer = Customer(
+        id: customerId,
+        streetId: streetId,
+        name: 'Worker Added Customer',
+        phone1: '9876543210',
+        customerSince: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await CustomerDao().insertCustomer(customer);
+
+      // Verify customer assignment was automatically created
+      final customerAssigns = await db.query(
+        'worker_assignments',
+        where: 'worker_id = ? AND entity_type = ? AND entity_id = ?',
+        whereArgs: [workerId, 'customer', customerId],
+      );
+      expect(customerAssigns.length, equals(1));
+
+      // Revert settings to default
+      await db.delete('settings');
     });
   });
 }
