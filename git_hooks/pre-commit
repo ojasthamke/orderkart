@@ -1,0 +1,20 @@
+#!/bin/sh
+# Auto-increment version code in pubspec.yaml on every commit
+
+PUBSPEC="pubspec.yaml"
+if [ -f "$PUBSPEC" ]; then
+  VERSION_LINE=$(grep "^version:" "$PUBSPEC")
+  if [ ! -z "$VERSION_LINE" ]; then
+    VERSION_NAME=$(echo "$VERSION_LINE" | cut -d'+' -f1 | sed 's/version: //')
+    VERSION_CODE=$(echo "$VERSION_LINE" | cut -d'+' -f2)
+    NEW_CODE=$((VERSION_CODE + 1))
+    NEW_LINE="version: $VERSION_NAME+$NEW_CODE"
+    
+    # Use sed to replace the line in-place
+    sed -i "s/$VERSION_LINE/$NEW_LINE/g" "$PUBSPEC"
+    
+    # Stage the changed file
+    git add "$PUBSPEC"
+    echo "?? Auto-incremented build version to $VERSION_NAME+$NEW_CODE in pubspec.yaml"
+  fi
+fi

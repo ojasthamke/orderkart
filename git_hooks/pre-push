@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "Pushing version $(grep "^version:" pubspec.yaml)"
