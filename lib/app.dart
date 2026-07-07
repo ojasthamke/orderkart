@@ -39,6 +39,8 @@ import 'features/visit/domain/app_visit.dart';
 import 'features/auth/presentation/mode_selection_screen.dart';
 import 'features/auth/presentation/pin_lock_screen.dart';
 import 'features/auth/presentation/welcome_splash_screen.dart';
+import 'features/auth/presentation/ten_day_lock_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/services/worker_session.dart';
 import 'features/worker/presentation/worker_management_screen.dart';
 import 'features/worker/presentation/worker_self_profile_screen.dart';
@@ -280,13 +282,20 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
   }
 }
 
-class AppStartupScreen extends ConsumerWidget {
+class AppStartupScreen extends ConsumerStatefulWidget {
   const AppStartupScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppStartupScreen> createState() => _AppStartupScreenState();
+}
+
+class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
+  bool _unlockedSession = false;
+
+  @override
+  Widget build(BuildContext context) {
     // If Owner is already logged in for this run, bypass splash and show MainScreen directly
-    if (AppModeService.isOwnerSessionActive) {
+    if (AppModeService.isOwnerSessionActive && _unlockedSession) {
       return const MainScreen();
     }
 
@@ -297,7 +306,27 @@ class AppStartupScreen extends ConsumerWidget {
         if (mode == AppMode.worker) {
           await WorkerSession.instance.load();
         }
-        return {'initialized': initialized, 'mode': mode};
+
+        // 10-day lock check
+        final prefs = await SharedPreferences.getInstance();
+        final lastUnlock = prefs.getInt('last_10day_unlock_time');
+        final now = DateTime.now().millisecondsSinceEpoch;
+        bool is10DayLocked = false;
+
+        if (lastUnlock == null) {
+          await prefs.setInt('last_10day_unlock_time', now);
+        } else {
+          final tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+          if (now - lastUnlock >= tenDaysMs) {
+            is10DayLocked = true;
+          }
+        }
+
+        return {
+          'initialized': initialized,
+          'mode': mode,
+          'is10DayLocked': is10DayLocked,
+        };
       }(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -309,7 +338,23 @@ class AppStartupScreen extends ConsumerWidget {
           );
         }
 
-        final data = snapshot.data ?? {'initialized': false, 'mode': AppMode.owner};
+        final data = snapshot.data ?? {
+          'initialized': false,
+          'mode': AppMode.owner,
+          'is10DayLocked': false,
+        };
+
+        final bool is10DayLocked = data['is10DayLocked'] as bool;
+        if (is10DayLocked && !_unlockedSession) {
+          return TenDayLockScreen(
+            onUnlocked: () {
+              setState(() {
+                _unlockedSession = true;
+              });
+            },
+          );
+        }
+
         final bool initialized = data['initialized'] as bool;
         final AppMode mode = data['mode'] as AppMode;
 

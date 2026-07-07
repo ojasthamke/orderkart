@@ -316,6 +316,104 @@ class HotspotSyncService {
     final mainDb = await DatabaseHelper.instance.database;
     final lastSyncTime = await _getLastSyncTime();
 
+    final assignmentsRows = workerId.isNotEmpty
+        ? await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId])
+        : [];
+
+    final List<String> explicitAreaIds = assignmentsRows
+        .where((e) => e['entity_type'] == 'area')
+        .map((e) => e['entity_id']?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    final List<String> explicitStreetIds = assignmentsRows
+        .where((e) => e['entity_type'] == 'street')
+        .map((e) => e['entity_id']?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    final List<String> explicitCustomerIds = assignmentsRows
+        .where((e) => e['entity_type'] == 'customer')
+        .map((e) => e['entity_id']?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    // 1. Resolve Customers
+    List<Map<String, dynamic>> customersRows = [];
+    if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
+      List<String> conditions = [];
+      List<dynamic> args = [];
+      if (explicitCustomerIds.isNotEmpty) {
+        final placeholders = List.filled(explicitCustomerIds.length, '?').join(',');
+        conditions.add('id IN ($placeholders)');
+        args.addAll(explicitCustomerIds);
+      }
+      if (explicitStreetIds.isNotEmpty) {
+        final placeholders = List.filled(explicitStreetIds.length, '?').join(',');
+        conditions.add('street_id IN ($placeholders)');
+        args.addAll(explicitStreetIds);
+      }
+      if (explicitAreaIds.isNotEmpty) {
+        final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
+        conditions.add('street_id IN (SELECT id FROM streets WHERE area_id IN ($placeholders))');
+        args.addAll(explicitAreaIds);
+      }
+      if (conditions.isNotEmpty) {
+        final whereClause = conditions.join(' OR ');
+        customersRows = await mainDb.query('customers', where: whereClause, whereArgs: args);
+      }
+    } else {
+      customersRows = await mainDb.query('customers');
+    }
+
+    // 2. Resolve Streets
+    final Set<String> resolvedStreetIds = {};
+    resolvedStreetIds.addAll(explicitStreetIds);
+    for (final c in customersRows) {
+      final sId = c['street_id']?.toString() ?? '';
+      if (sId.isNotEmpty) resolvedStreetIds.add(sId);
+    }
+
+    List<Map<String, dynamic>> streetsRows = [];
+    if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
+      if (resolvedStreetIds.isNotEmpty || explicitAreaIds.isNotEmpty) {
+        List<String> conditions = [];
+        List<dynamic> args = [];
+        if (resolvedStreetIds.isNotEmpty) {
+          final placeholders = List.filled(resolvedStreetIds.length, '?').join(',');
+          conditions.add('id IN ($placeholders)');
+          args.addAll(resolvedStreetIds.toList());
+        }
+        if (explicitAreaIds.isNotEmpty) {
+          final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
+          conditions.add('area_id IN ($placeholders)');
+          args.addAll(explicitAreaIds);
+        }
+        final whereClause = conditions.join(' OR ');
+        streetsRows = await mainDb.query('streets', where: whereClause, whereArgs: args);
+      }
+    } else {
+      streetsRows = await mainDb.query('streets');
+    }
+
+    // 3. Resolve Areas
+    final Set<String> resolvedAreaIds = {};
+    resolvedAreaIds.addAll(explicitAreaIds);
+    for (final s in streetsRows) {
+      final aId = s['area_id']?.toString() ?? '';
+      if (aId.isNotEmpty) resolvedAreaIds.add(aId);
+    }
+
+    List<Map<String, dynamic>> areasRows = [];
+    if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
+      if (resolvedAreaIds.isNotEmpty) {
+        final placeholders = List.filled(resolvedAreaIds.length, '?').join(',');
+        areasRows = await mainDb.query('areas', where: 'id IN ($placeholders)', whereArgs: resolvedAreaIds.toList());
+      }
+    } else {
+      areasRows = await mainDb.query('areas');
+    }
+
     final dataMap = <String, dynamic>{
       'manifest': {
         'package_id': const Uuid().v4(),
@@ -331,21 +429,50 @@ class HotspotSyncService {
 
     // 1. Areas & Streets Route Selection
     if (modules.contains('areas_streets')) {
-      dataMap['areas'] = await mainDb.query('areas');
-      dataMap['streets'] = await mainDb.query('streets');
+      dataMap['areas'] = areasRows;
+      dataMap['streets'] = streetsRows;
     }
 
     // 2. Customers catalog selection
     if (modules.contains('customers')) {
-      dataMap['customers'] = await mainDb.query('customers');
-      dataMap['vip_membership'] = await mainDb.query('vip_membership');
+      dataMap['customers'] = customersRows;
+      final List<String> customerIds = customersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
+      if (customerIds.isNotEmpty) {
+        final placeholders = List.filled(customerIds.length, '?').join(',');
+        dataMap['vip_membership'] = await mainDb.query('vip_membership', where: 'customer_id IN ($placeholders)', whereArgs: customerIds);
+      } else {
+        dataMap['vip_membership'] = [];
+      }
     }
 
     // 3. Orders & Payments selection
     if (modules.contains('orders_payments')) {
-      final ordersRows = lastSyncTime.isNotEmpty
-          ? await mainDb.query('orders', where: 'created_at >= ? OR updated_at >= ?', whereArgs: [lastSyncTime, lastSyncTime])
-          : await mainDb.query('orders');
+      final List<String> customerIds = customersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
+      List<Map<String, dynamic>> ordersRows = [];
+      if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
+        if (customerIds.isNotEmpty) {
+          final placeholders = List.filled(customerIds.length, '?').join(',');
+          final whereClause = lastSyncTime.isNotEmpty
+              ? '(customer_id IN ($placeholders) OR assigned_worker_id = ? OR created_by = ?) AND (created_at >= ? OR updated_at >= ?)'
+              : 'customer_id IN ($placeholders) OR assigned_worker_id = ? OR created_by = ?';
+          final args = lastSyncTime.isNotEmpty
+              ? [...customerIds, workerId, workerId, lastSyncTime, lastSyncTime]
+              : [...customerIds, workerId, workerId];
+          ordersRows = await mainDb.query('orders', where: whereClause, whereArgs: args);
+        } else {
+          final whereClause = lastSyncTime.isNotEmpty
+              ? '(assigned_worker_id = ? OR created_by = ?) AND (created_at >= ? OR updated_at >= ?)'
+              : 'assigned_worker_id = ? OR created_by = ?';
+          final args = lastSyncTime.isNotEmpty
+              ? [workerId, workerId, lastSyncTime, lastSyncTime]
+              : [workerId, workerId];
+          ordersRows = await mainDb.query('orders', where: whereClause, whereArgs: args);
+        }
+      } else {
+        ordersRows = lastSyncTime.isNotEmpty
+            ? await mainDb.query('orders', where: 'created_at >= ? OR updated_at >= ?', whereArgs: [lastSyncTime, lastSyncTime])
+            : await mainDb.query('orders');
+      }
       dataMap['orders'] = ordersRows;
 
       final List<String> orderIds = ordersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
@@ -360,19 +487,40 @@ class HotspotSyncService {
       dataMap['order_items'] = orderItemsRows;
 
       final List<Map<String, dynamic>> paymentsRows;
-      if (lastSyncTime.isNotEmpty) {
+      if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
         if (orderIds.isNotEmpty) {
           final placeholders = List.filled(orderIds.length, '?').join(',');
-          paymentsRows = await mainDb.query('payments',
-              where: 'created_at >= ? OR order_id IN ($placeholders)',
-              whereArgs: [lastSyncTime, ...orderIds]);
+          final whereClause = lastSyncTime.isNotEmpty
+              ? '(created_at >= ? OR order_id IN ($placeholders) OR customer_id IN (SELECT id FROM customers WHERE created_by = ?))'
+              : 'order_id IN ($placeholders) OR customer_id IN (SELECT id FROM customers WHERE created_by = ?)';
+          final args = lastSyncTime.isNotEmpty
+              ? [lastSyncTime, ...orderIds, workerId]
+              : [...orderIds, workerId];
+          paymentsRows = await mainDb.query('payments', where: whereClause, whereArgs: args);
         } else {
-          paymentsRows = await mainDb.query('payments',
-              where: 'created_at >= ?',
-              whereArgs: [lastSyncTime]);
+          final whereClause = lastSyncTime.isNotEmpty
+              ? 'created_at >= ? AND customer_id IN (SELECT id FROM customers WHERE created_by = ?)'
+              : 'customer_id IN (SELECT id FROM customers WHERE created_by = ?)';
+          final args = lastSyncTime.isNotEmpty
+              ? [lastSyncTime, workerId]
+              : [workerId];
+          paymentsRows = await mainDb.query('payments', where: whereClause, whereArgs: args);
         }
       } else {
-        paymentsRows = await mainDb.query('payments');
+        if (lastSyncTime.isNotEmpty) {
+          if (orderIds.isNotEmpty) {
+            final placeholders = List.filled(orderIds.length, '?').join(',');
+            paymentsRows = await mainDb.query('payments',
+                where: 'created_at >= ? OR order_id IN ($placeholders)',
+                whereArgs: [lastSyncTime, ...orderIds]);
+          } else {
+            paymentsRows = await mainDb.query('payments',
+                where: 'created_at >= ?',
+                whereArgs: [lastSyncTime]);
+          }
+        } else {
+          paymentsRows = await mainDb.query('payments');
+        }
       }
       dataMap['payments'] = paymentsRows;
     }
@@ -385,12 +533,24 @@ class HotspotSyncService {
 
     // 5. Expenses selection
     if (modules.contains('expenses')) {
-      dataMap['expenses'] = await mainDb.query('expenses');
+      if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
+        dataMap['expenses'] = await mainDb.query('expenses', where: 'assigned_worker_id = ? OR created_by = ?', whereArgs: [workerId, workerId]);
+      } else {
+        dataMap['expenses'] = await mainDb.query('expenses');
+      }
     }
 
     // 6. Base64 Photos selection
     final List<Map<String, String>> photosPayload = [];
     if (modules.contains('photos')) {
+      final Set<String> assignedPhotoNames = {};
+      if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
+        for (final c in customersRows) {
+          final pathStr = c['photo_path']?.toString() ?? '';
+          if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+        }
+      }
+
       final photoDirsToScan = [
         Directory('${AppConstants.appDocsDir}/customer_photos'),
         Directory('${AppConstants.appDocsDir}/area_photos'),
@@ -408,6 +568,9 @@ class HotspotSyncService {
           for (final f in files) {
             if (f is File) {
               final filename = p.basename(f.path);
+              if (workerId.isNotEmpty && assignmentsRows.isNotEmpty && !assignedPhotoNames.contains(filename)) {
+                continue;
+              }
               final uniqueKey = '$folderName/$filename';
               if (processedFilenames.contains(uniqueKey)) continue;
 

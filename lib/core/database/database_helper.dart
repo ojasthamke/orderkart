@@ -599,6 +599,24 @@ class DatabaseHelper {
             existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
           }
 
+          // If the worker exists, ignore. If they do not, create the worker and assignments/permissions.
+          if (table == 'workers') {
+            final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [id]);
+            if (localWorker.isNotEmpty) {
+              skipped++;
+              continue;
+            }
+          } else if (table == 'worker_assignments' || table == 'worker_permissions') {
+            final wId = filteredRow['worker_id']?.toString() ?? '';
+            if (wId.isNotEmpty) {
+              final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [wId]);
+              if (localWorker.isNotEmpty) {
+                skipped++;
+                continue;
+              }
+            }
+          }
+
           if (existing.isEmpty) {
             try {
               if (!dryRun) {
@@ -836,6 +854,28 @@ class DatabaseHelper {
               existing = await dbExecutor.query(table, where: 'worker_id = ?', whereArgs: [id]);
             } else {
               existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
+            }
+
+            // If the worker exists, ignore. If they do not, create the worker and assignments/permissions.
+            if (table == 'workers') {
+              final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [id]);
+              if (localWorker.isNotEmpty) {
+                skipped++;
+                processedRows++;
+                onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+                continue;
+              }
+            } else if (table == 'worker_assignments' || table == 'worker_permissions') {
+              final wId = filteredRow['worker_id']?.toString() ?? '';
+              if (wId.isNotEmpty) {
+                final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [wId]);
+                if (localWorker.isNotEmpty) {
+                  skipped++;
+                  processedRows++;
+                  onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+                  continue;
+                }
+              }
             }
 
             if (existing.isEmpty) {

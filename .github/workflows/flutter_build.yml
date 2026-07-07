@@ -9,8 +9,8 @@ on:
       - main
 
 jobs:
-  build:
-    name: Build Flutter App
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
@@ -70,3 +70,42 @@ jobs:
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      # 1. Checkout repository code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Set up Flutter — latest stable
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      # 3. Get all packages/dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 4. Generate Launcher Icons and Splash Screens
+      - name: Generate Native Assets
+        run: |
+          dart run flutter_launcher_icons
+          dart run flutter_native_splash:create
+
+      # 5. Build iOS Release Application without codesigning
+      - name: Build iOS IPA (No Codesign)
+        run: |
+          flutter build ipa --no-codesign --release
+
+      # 6. Upload iOS Build Archive/IPA Artifact
+      - name: Upload iOS Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-ipa
+          path: build/ios/archive/Runner.xcarchive

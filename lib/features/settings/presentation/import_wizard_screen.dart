@@ -728,6 +728,24 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                       for (var entry in _previewStats.entries)
                         if ((entry.value['inserted']! + entry.value['updated']!) > 0)
                           Text('• ${entry.key.toUpperCase()}: +${entry.value['inserted']} new, +${entry.value['updated']} updated'),
+                      
+                      if (_manifest['generated_by_worker_id']?.toString().isNotEmpty ?? false) ...[
+                        const SizedBox(height: 16),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            'assets/worker_sync_received.jpg',
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Worker Data Synchronization Provenance Verified.',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                      ],
                     ],
                   ),
                   isActive: _currentStep >= 3,

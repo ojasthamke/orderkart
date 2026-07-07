@@ -18,6 +18,7 @@ import '../data/worker_dao.dart';
 import '../domain/worker.dart';
 import 'dialogs/worker_assignment_dialog.dart';
 import 'dialogs/worker_package_summary_dialog.dart';
+import 'dialogs/add_edit_worker_dialog.dart';
 import 'worker_provider.dart';
 
 class WorkerControlPanelScreen extends ConsumerStatefulWidget {
@@ -356,7 +357,19 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     }
   }
 
-
+  Future<void> _editWorker() async {
+    AppHaptics.buttonClick();
+    final updatedWorker = await AddEditWorkerDialog.show(context, worker: _currentWorker);
+    if (updatedWorker != null) {
+      await ref.read(workerListProvider.notifier).update(updatedWorker);
+      setState(() {
+        _currentWorker = updatedWorker;
+      });
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Worker details updated successfully');
+      }
+    }
+  }
 
   Future<void> _toggleWorkerStatus() async {
     AppHaptics.buttonClick();
@@ -435,6 +448,13 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
 
     return AppScaffold(
       title: _currentWorker.name,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit_rounded),
+          tooltip: 'Edit Worker Profile',
+          onPressed: _editWorker,
+        ),
+      ],
       bottom: TabBar(
         controller: _tabController,
         labelColor: AppColors.primary,

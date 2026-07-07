@@ -432,17 +432,139 @@ class WorkerPackageService {
     if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
     packageDir.createSync();
 
-    // Query Data Scoped to the Worker's field edits
-    // Query Data Scoped to the Worker's field edits
-    final areasRows = await mainDb.query('areas');
-    final streetsRows = await mainDb.query('streets');
-    final customersRows = await mainDb.query('customers');
+    // Query Data Scoped to the Worker's field edits and assignments
+    final assignmentsRows = await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId]);
+
+    final List<String> explicitAreaIds = assignmentsRows
+        .where((e) => e['entity_type'] == 'area')
+        .map((e) => e['entity_id']?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    final List<String> explicitStreetIds = assignmentsRows
+        .where((e) => e['entity_type'] == 'street')
+        .map((e) => e['entity_id']?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    final List<String> explicitCustomerIds = assignmentsRows
+        .where((e) => e['entity_type'] == 'customer')
+        .map((e) => e['entity_id']?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    // 1. Resolve Customers
+    List<Map<String, dynamic>> customersRows = [];
+    if (assignmentsRows.isNotEmpty) {
+      List<String> conditions = [];
+      List<dynamic> args = [];
+      
+      if (explicitCustomerIds.isNotEmpty) {
+        final placeholders = List.filled(explicitCustomerIds.length, '?').join(',');
+        conditions.add('id IN ($placeholders)');
+        args.addAll(explicitCustomerIds);
+      }
+      
+      if (explicitStreetIds.isNotEmpty) {
+        final placeholders = List.filled(explicitStreetIds.length, '?').join(',');
+        conditions.add('street_id IN ($placeholders)');
+        args.addAll(explicitStreetIds);
+      }
+      
+      if (explicitAreaIds.isNotEmpty) {
+        final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
+        conditions.add('street_id IN (SELECT id FROM streets WHERE area_id IN ($placeholders))');
+        args.addAll(explicitAreaIds);
+      }
+      
+      if (conditions.isNotEmpty) {
+        final whereClause = conditions.join(' OR ');
+        customersRows = await mainDb.query('customers', where: whereClause, whereArgs: args);
+      }
+    } else {
+      customersRows = await mainDb.query('customers');
+    }
+
+    // 2. Resolve Streets
+    final Set<String> resolvedStreetIds = {};
+    resolvedStreetIds.addAll(explicitStreetIds);
+    for (final c in customersRows) {
+      final sId = c['street_id']?.toString() ?? '';
+      if (sId.isNotEmpty) resolvedStreetIds.add(sId);
+    }
+    
+    List<Map<String, dynamic>> streetsRows = [];
+    if (assignmentsRows.isNotEmpty) {
+      if (resolvedStreetIds.isNotEmpty || explicitAreaIds.isNotEmpty) {
+        List<String> conditions = [];
+        List<dynamic> args = [];
+        
+        if (resolvedStreetIds.isNotEmpty) {
+          final placeholders = List.filled(resolvedStreetIds.length, '?').join(',');
+          conditions.add('id IN ($placeholders)');
+          args.addAll(resolvedStreetIds.toList());
+        }
+        
+        if (explicitAreaIds.isNotEmpty) {
+          final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
+          conditions.add('area_id IN ($placeholders)');
+          args.addAll(explicitAreaIds);
+        }
+        
+        final whereClause = conditions.join(' OR ');
+        streetsRows = await mainDb.query('streets', where: whereClause, whereArgs: args);
+      }
+    } else {
+      streetsRows = await mainDb.query('streets');
+    }
+
+    // 3. Resolve Areas
+    final Set<String> resolvedAreaIds = {};
+    resolvedAreaIds.addAll(explicitAreaIds);
+    for (final s in streetsRows) {
+      final aId = s['area_id']?.toString() ?? '';
+      if (aId.isNotEmpty) resolvedAreaIds.add(aId);
+    }
+    
+    List<Map<String, dynamic>> areasRows = [];
+    if (assignmentsRows.isNotEmpty) {
+      if (resolvedAreaIds.isNotEmpty) {
+        final placeholders = List.filled(resolvedAreaIds.length, '?').join(',');
+        areasRows = await mainDb.query('areas', where: 'id IN ($placeholders)', whereArgs: resolvedAreaIds.toList());
+      }
+    } else {
+      areasRows = await mainDb.query('areas');
+    }
+
     final itemsRows = await mainDb.query('items');
     final itemPriceHistoryRows = await mainDb.query('item_price_history');
     
-    final ordersRows = lastSyncTime.isNotEmpty
-        ? await mainDb.query('orders', where: 'created_at >= ? OR updated_at >= ?', whereArgs: [lastSyncTime, lastSyncTime])
-        : await mainDb.query('orders');
+    final List<String> customerIds = customersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
+    List<Map<String, dynamic>> ordersRows = [];
+    if (assignmentsRows.isNotEmpty) {
+      if (customerIds.isNotEmpty) {
+        final placeholders = List.filled(customerIds.length, '?').join(',');
+        final whereClause = lastSyncTime.isNotEmpty
+            ? '(customer_id IN ($placeholders) OR assigned_worker_id = ? OR created_by = ?) AND (created_at >= ? OR updated_at >= ?)'
+            : 'customer_id IN ($placeholders) OR assigned_worker_id = ? OR created_by = ?';
+        final args = lastSyncTime.isNotEmpty
+            ? [...customerIds, workerId, workerId, lastSyncTime, lastSyncTime]
+            : [...customerIds, workerId, workerId];
+        ordersRows = await mainDb.query('orders', where: whereClause, whereArgs: args);
+      } else {
+        final whereClause = lastSyncTime.isNotEmpty
+            ? '(assigned_worker_id = ? OR created_by = ?) AND (created_at >= ? OR updated_at >= ?)'
+            : 'assigned_worker_id = ? OR created_by = ?';
+        final args = lastSyncTime.isNotEmpty
+            ? [workerId, workerId, lastSyncTime, lastSyncTime]
+            : [workerId, workerId];
+        ordersRows = await mainDb.query('orders', where: whereClause, whereArgs: args);
+      }
+    } else {
+      ordersRows = lastSyncTime.isNotEmpty
+          ? await mainDb.query('orders', where: 'created_at >= ? OR updated_at >= ?', whereArgs: [lastSyncTime, lastSyncTime])
+          : await mainDb.query('orders');
+    }
 
     final List<String> orderIds = ordersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
     final List<Map<String, dynamic>> orderItemsRows;
@@ -454,24 +576,62 @@ class WorkerPackageService {
     }
     
     final List<Map<String, dynamic>> paymentsRows;
-    if (lastSyncTime.isNotEmpty) {
+    if (assignmentsRows.isNotEmpty) {
       if (orderIds.isNotEmpty) {
         final placeholders = List.filled(orderIds.length, '?').join(',');
-        paymentsRows = await mainDb.query('payments',
-            where: 'created_at >= ? OR order_id IN ($placeholders)',
-            whereArgs: [lastSyncTime, ...orderIds]);
+        final whereClause = lastSyncTime.isNotEmpty
+            ? '(created_at >= ? OR order_id IN ($placeholders) OR customer_id IN (SELECT id FROM customers WHERE created_by = ?))'
+            : 'order_id IN ($placeholders) OR customer_id IN (SELECT id FROM customers WHERE created_by = ?)';
+        final args = lastSyncTime.isNotEmpty
+            ? [lastSyncTime, ...orderIds, workerId]
+            : [...orderIds, workerId];
+        paymentsRows = await mainDb.query('payments', where: whereClause, whereArgs: args);
       } else {
-        paymentsRows = await mainDb.query('payments',
-            where: 'created_at >= ?',
-            whereArgs: [lastSyncTime]);
+        final whereClause = lastSyncTime.isNotEmpty
+            ? 'created_at >= ? AND customer_id IN (SELECT id FROM customers WHERE created_by = ?)'
+            : 'customer_id IN (SELECT id FROM customers WHERE created_by = ?)';
+        final args = lastSyncTime.isNotEmpty
+            ? [lastSyncTime, workerId]
+            : [workerId];
+        paymentsRows = await mainDb.query('payments', where: whereClause, whereArgs: args);
       }
     } else {
-      paymentsRows = await mainDb.query('payments');
+      if (lastSyncTime.isNotEmpty) {
+        if (orderIds.isNotEmpty) {
+          final placeholders = List.filled(orderIds.length, '?').join(',');
+          paymentsRows = await mainDb.query('payments',
+              where: 'created_at >= ? OR order_id IN ($placeholders)',
+              whereArgs: [lastSyncTime, ...orderIds]);
+        } else {
+          paymentsRows = await mainDb.query('payments',
+              where: 'created_at >= ?',
+              whereArgs: [lastSyncTime]);
+        }
+      } else {
+        paymentsRows = await mainDb.query('payments');
+      }
     }
 
-    final expensesRows = await mainDb.query('expenses');
-    final notesRows = await mainDb.query('notes');
-    final visitsRows = await mainDb.query('visits');
+    final List<Map<String, dynamic>> expensesRows;
+    final List<Map<String, dynamic>> notesRows;
+    final List<Map<String, dynamic>> visitsRows;
+
+    if (assignmentsRows.isNotEmpty) {
+      expensesRows = await mainDb.query('expenses', where: 'assigned_worker_id = ? OR created_by = ?', whereArgs: [workerId, workerId]);
+      if (customerIds.isNotEmpty) {
+        final placeholders = List.filled(customerIds.length, '?').join(',');
+        notesRows = await mainDb.query('notes', where: 'customer_id IN ($placeholders) OR created_by = ?', whereArgs: [...customerIds, workerId]);
+        visitsRows = await mainDb.query('visits', where: 'customer_id IN ($placeholders) OR worker_id = ?', whereArgs: [...customerIds, workerId]);
+      } else {
+        notesRows = await mainDb.query('notes', where: 'created_by = ?', whereArgs: [workerId]);
+        visitsRows = await mainDb.query('visits', where: 'worker_id = ?', whereArgs: [workerId]);
+      }
+    } else {
+      expensesRows = await mainDb.query('expenses');
+      notesRows = await mainDb.query('notes');
+      visitsRows = await mainDb.query('visits');
+    }
+
     final workerReportsRows = await mainDb.query('worker_reports', where: 'worker_id = ?', whereArgs: [workerId]);
 
     // Create scoped SQLite database file for direct DB import compatibility
