@@ -10,6 +10,7 @@ import '../../../core/widgets/stat_card.dart';
 import '../../../core/services/worker_session.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../order/presentation/order_provider.dart';
+import '../../worker/presentation/worker_provider.dart';
 
 class WorkerDashboardScreen extends ConsumerWidget {
   const WorkerDashboardScreen({super.key});
@@ -108,6 +109,8 @@ class WorkerDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reportAsync = ref.watch(todaysDetailedReportProvider);
+    final workerId = WorkerSession.instance.currentWorkerId ?? '';
+    final commissionAsync = ref.watch(workerCommissionProvider(workerId));
     final workerName = WorkerSession.instance.currentWorkerName ?? 'Worker';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -307,7 +310,7 @@ class WorkerDashboardScreen extends ConsumerWidget {
                       ),
                       _actionCard(
                         context,
-                        title: 'My Orders',
+                        title: 'Quick Orders',
                         subtitle: 'Order History',
                         icon: Icons.receipt_long_rounded,
                         color: Colors.purple,
@@ -316,12 +319,30 @@ class WorkerDashboardScreen extends ConsumerWidget {
                       ),
                       _actionCard(
                         context,
-                        title: 'Field Visit',
-                        subtitle: 'Log Note',
-                        icon: Icons.note_alt_outlined,
-                        color: Colors.teal,
-                        onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
+                        title: 'Call Center',
+                        subtitle: 'Logs & Directory',
+                        icon: Icons.phone_callback_rounded,
+                        color: Colors.blue,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.callLogs),
                         index: 4,
+                      ),
+                      _actionCard(
+                        context,
+                        title: 'Field Visits',
+                        subtitle: 'Check-ins / Logs',
+                        icon: Icons.directions_walk_rounded,
+                        color: Colors.teal,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.visits),
+                        index: 5,
+                      ),
+                      _actionCard(
+                        context,
+                        title: 'Field Notes',
+                        subtitle: 'Log Notes',
+                        icon: Icons.note_alt_outlined,
+                        color: Colors.blueGrey,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
+                        index: 6,
                       ),
                       _actionCard(
                         context,
@@ -330,7 +351,7 @@ class WorkerDashboardScreen extends ConsumerWidget {
                         icon: Icons.bar_chart_rounded,
                         color: Colors.deepOrange,
                         onTap: () => Navigator.pushNamed(context, AppRoutes.workerAnalytics),
-                        index: 5,
+                        index: 7,
                       ),
                     ],
                   ),
@@ -339,57 +360,55 @@ class WorkerDashboardScreen extends ConsumerWidget {
                   const Text("Today's Performance Metrics", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 12),
 
-                  reportAsync.when(
+                  commissionAsync.when(
                     loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                    error: (e, _) => Text('Error: $e'),
-                    data: (rpt) => GridView.count(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: MediaQuery.textScalerOf(context).scale(1.0) > 1.4
-                          ? 0.80
-                          : (MediaQuery.textScalerOf(context).scale(1.0) > 1.1 ? 0.90 : 1.05),
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        StatCard(
-                          label: "Today's Sales",
-                          value: AppFormatters.currency((rpt['total_sales'] as num?)?.toDouble() ?? 0),
-                          icon: Icons.shopping_bag_outlined,
-                          color: AppColors.primary,
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 200.ms)
-                            .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
-                        StatCard(
-                          label: "Cash Collected",
-                          value: AppFormatters.currency((rpt['cash_received'] as num?)?.toDouble() ?? 0),
-                          icon: Icons.payments_outlined,
-                          color: AppColors.success,
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 300.ms)
-                            .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
-                        StatCard(
-                          label: "Online Collected",
-                          value: AppFormatters.currency((rpt['online_received'] as num?)?.toDouble() ?? 0),
-                          icon: Icons.account_balance_outlined,
-                          color: Colors.purple,
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 400.ms)
-                            .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
-                        StatCard(
-                          label: "Pending Dues",
-                          value: AppFormatters.currency((rpt['pending_amount'] as num?)?.toDouble() ?? 0),
-                          icon: Icons.hourglass_empty_rounded,
-                          color: Colors.red,
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 500.ms)
-                            .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
-                      ],
-                    ),
+                    error: (e, _) => Text('Error loading earnings: $e'),
+                    data: (comm) {
+                      final todayEarning = comm['today'] ?? 0.0;
+                      final monthlyEarning = comm['monthly'] ?? 0.0;
+
+                      return reportAsync.when(
+                        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                        error: (e, _) => Text('Error loading report: $e'),
+                        data: (rpt) {
+                          final pendingDues = (rpt['pending_amount'] as num?)?.toDouble() ?? 0.0;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: StatCard(
+                                      label: "Today's Earning",
+                                      value: AppFormatters.currency(todayEarning),
+                                      icon: Icons.monetization_on_rounded,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: StatCard(
+                                      label: "This Month's Earnings",
+                                      value: AppFormatters.currency(monthlyEarning),
+                                      icon: Icons.trending_up_rounded,
+                                      color: AppColors.success,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              StatCard(
+                                label: "Pending Dues",
+                                value: AppFormatters.currency(pendingDues),
+                                icon: Icons.hourglass_empty_rounded,
+                                color: Colors.red,
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
                   ),
                   const SizedBox(height: 24),
                 ],
