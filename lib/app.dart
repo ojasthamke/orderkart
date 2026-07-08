@@ -53,9 +53,12 @@ import 'features/settings/presentation/activity_timeline_screen.dart';
 import 'features/settings/presentation/business_profile_screen.dart';
 import 'features/analytics/presentation/worker_analytics_screen.dart';
 import 'features/worker/presentation/worker_sync_activity_screen.dart';
+import 'features/customer/presentation/call_logs_screen.dart';
 
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
+
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   ConsumerState<OrderKartApp> createState() => _OrderKartAppState();
@@ -67,6 +70,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
+      navigatorKey: OrderKartApp.navigatorKey,
       title: 'OrderKart',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -257,6 +261,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.workerSyncActivity:
         return _slide(const WorkerSyncActivityScreen());
+
+      case AppRoutes.callLogs:
+        return _slide(const CallLogsScreen());
 
       default:
         return _slide(const AppStartupScreen(), settings);

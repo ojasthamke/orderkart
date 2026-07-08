@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -11,7 +13,6 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/customer.dart';
 import '../../../core/constants/app_routes.dart';
-import '../../../core/utils/contact_exporter.dart';
 import 'customer_provider.dart';
 import '../../../core/utils/image_utils.dart';
 
@@ -473,20 +474,20 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       } else {
         SnackbarHelper.showSuccess(context, 'Customer added successfully');
 
-        // Offer Save to Device Contacts
-        final saveContact = await showDialog<bool>(
+        // Offer Copy Name & Dial Directly
+        final dialContact = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(
               children: [
-                Icon(Icons.contacts_rounded, color: AppColors.primary, size: 26),
+                Icon(Icons.phone_enabled_rounded, color: AppColors.primary, size: 26),
                 SizedBox(width: 10),
-                Text('Save to Contacts?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                Text('Copy Name & Dial?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               ],
             ),
             content: Text(
-              'Save ${_nameCon.text.trim()} (${_phone1Con.text.trim()}) to your phone device contacts?',
+              'Copy ${_nameCon.text.trim()} to clipboard and open your phone dialer for ${_phone1Con.text.trim()}?',
               style: const TextStyle(fontSize: 14, height: 1.4),
             ),
             actions: [
@@ -496,20 +497,35 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               ),
               ElevatedButton.icon(
                 onPressed: () => Navigator.pop(ctx, true),
-                icon: const Icon(Icons.person_add_rounded, size: 18),
-                label: const Text('Save Contact'),
+                icon: const Icon(Icons.phone_enabled_rounded, size: 18),
+                label: const Text('Copy & Dial'),
               ),
             ],
           ),
         );
 
-        if (saveContact == true && mounted) {
-          await ContactExporter.saveCustomerToContacts(
-            context,
-            name: _nameCon.text.trim(),
-            phone: _phone1Con.text.trim(),
-            address: _addressCon.text.trim(),
+        if (dialContact == true && mounted) {
+          final cName = _nameCon.text.trim();
+          final cPhone = _phone1Con.text.trim();
+
+          // Copy name to clipboard
+          await Clipboard.setData(ClipboardData(text: cName));
+
+          // Log the call in our Call Logs table
+          await DatabaseHelper.instance.insertCallLog(
+            customerId: customerId,
+            customerName: cName,
+            phone: cPhone,
           );
+
+          // Open dialpad directly
+          final cleanPhone = cPhone.replaceAll(RegExp(r'[^\d+]'), '');
+          final telUri = Uri.parse('tel:$cleanPhone');
+          if (await canLaunchUrl(telUri)) {
+            await launchUrl(telUri);
+          } else {
+            SnackbarHelper.showError(context, 'Could not open dialpad');
+          }
         }
 
         if (!mounted) return;

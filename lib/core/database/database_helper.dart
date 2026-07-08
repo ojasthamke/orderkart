@@ -72,6 +72,7 @@ class DatabaseHelper {
         await _ensureVipColumns(db);
         await _ensurePriceHistoryTables(db);
         await _ensureAreaAndStreetColumns(db);
+        await _ensureCallLogsTable(db);
         await _createV4Tables(db);
         await _ensureV4Columns(db);
         await _runStartupHealthCheck(db);
@@ -390,6 +391,7 @@ class DatabaseHelper {
     await db.execute('DELETE FROM workers');
     await db.execute('DELETE FROM audit_logs');
     await db.execute('DELETE FROM vip_membership');
+    await db.execute('DELETE FROM call_logs');
     // Re-seed defaults but keep settings
   }
 
@@ -422,6 +424,43 @@ class DatabaseHelper {
         // Column already exists, ignore
       }
     }
+  }
+
+  Future<void> _ensureCallLogsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS call_logs (
+        id            TEXT PRIMARY KEY,
+        customer_id   TEXT,
+        customer_name TEXT,
+        phone         TEXT NOT NULL,
+        called_at     TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> insertCallLog({
+    required String customerId,
+    required String customerName,
+    required String phone,
+  }) async {
+    final db = await database;
+    await db.insert('call_logs', {
+      'id': const Uuid().v4(),
+      'customer_id': customerId,
+      'customer_name': customerName,
+      'phone': phone,
+      'called_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getCallLogs() async {
+    final db = await database;
+    return await db.query('call_logs', orderBy: 'called_at DESC');
+  }
+
+  Future<void> clearCallLogs() async {
+    final db = await database;
+    await db.delete('call_logs');
   }
 
   Future<void> _ensurePriceHistoryTables(Database db) async {
@@ -509,6 +548,18 @@ class DatabaseHelper {
     bool dryRun = false,
   }) async {
     final targetDb = await database;
+
+    // Strict prevention of worker-to-worker sharing
+    final settingsRows = await targetDb.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+    final currentAppModeStr = settingsRows.isNotEmpty ? settingsRows.first['value']?.toString() : '';
+    final isLocalWorker = currentAppModeStr == 'worker';
+
+    final manifest = incomingData['manifest'] ?? {};
+    final generatedByWorkerId = manifest['generated_by_worker_id']?.toString() ?? '';
+
+    if (isLocalWorker && generatedByWorkerId.isNotEmpty) {
+      throw Exception('Worker-to-worker sync is strictly prohibited. Imports are only allowed from Owner.');
+    }
 
     final tables = [
       'areas',
@@ -748,6 +799,32 @@ class DatabaseHelper {
     Function(double progress, int processed, int total)? onProgress,
   }) async {
     final targetDb = await database;
+
+    // Strict prevention of worker-to-worker sharing for path imports
+    final settingsRows = await targetDb.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+    final currentAppModeStr = settingsRows.isNotEmpty ? settingsRows.first['value']?.toString() : '';
+    final isLocalWorker = currentAppModeStr == 'worker';
+
+    if (isLocalWorker) {
+      final checkDb = await openDatabase(incomingDbPath, readOnly: true);
+      try {
+        final incomingSettings = await checkDb.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+        final incomingModeStr = incomingSettings.isNotEmpty ? incomingSettings.first['value']?.toString() : '';
+        
+        final incomingWorkerIdSettings = await checkDb.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+        final incomingWorkerId = incomingWorkerIdSettings.isNotEmpty ? incomingWorkerIdSettings.first['value']?.toString() : '';
+
+        if (incomingModeStr == 'worker' || (incomingWorkerId != null && incomingWorkerId.toString().isNotEmpty)) {
+          await checkDb.close();
+          throw Exception('Worker-to-worker database import is prohibited. Imports are only allowed from Owner.');
+        }
+      } catch (_) {
+        // Safe to ignore if tables/keys don't exist
+      } finally {
+        try { await checkDb.close(); } catch (_) {}
+      }
+    }
+
     final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
 
     try {

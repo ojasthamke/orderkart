@@ -4,6 +4,7 @@ import '../constants/app_colors.dart';
 import '../utils/haptics.dart';
 import '../services/hotspot_sync_service.dart';
 import 'snackbar_helper.dart';
+import '../../app.dart';
 
 class HotspotSyncControlCard extends StatefulWidget {
   final String workerId;
@@ -287,12 +288,28 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
 
     try {
       if (isRunning) {
+        HotspotSyncService.onConfirmIncomingSync = null;
         await HotspotSyncService.stopServer();
         setState(() {
           _status = 'Sync receiver stopped.';
         });
       } else {
         await _fetchNetworkInfo();
+        
+        HotspotSyncService.onConfirmIncomingSync = (manifest, incomingCounts) async {
+          final context = OrderKartApp.navigatorKey.currentContext;
+          if (context == null) return null;
+          
+          return await showDialog<List<String>?>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => ConfirmSyncDialog(
+              manifest: manifest,
+              incomingCounts: incomingCounts,
+            ),
+          );
+        };
+
         await HotspotSyncService.startServer(
           onStatusUpdate: (msg) {
             if (mounted) setState(() => _status = msg);
@@ -379,5 +396,126 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+}
+
+class ConfirmSyncDialog extends StatefulWidget {
+  final Map<String, dynamic> manifest;
+  final Map<String, int> incomingCounts;
+
+  const ConfirmSyncDialog({
+    super.key,
+    required this.manifest,
+    required this.incomingCounts,
+  });
+
+  @override
+  State<ConfirmSyncDialog> createState() => _ConfirmSyncDialogState();
+}
+
+class _ConfirmSyncDialogState extends State<ConfirmSyncDialog> {
+  final Map<String, bool> _selections = {
+    'areas_streets': true,
+    'customers': true,
+    'orders_payments': true,
+    'products': true,
+    'expenses': true,
+    'photos': true,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final senderName = widget.manifest['generated_by_worker_name']?.toString() ?? 'Worker';
+    final devName = widget.manifest['device_name']?.toString() ?? 'Device';
+    final counts = widget.incomingCounts;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.sync_alt_rounded, color: AppColors.primary, size: 28),
+              SizedBox(width: 8),
+              Text('Incoming Sync', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('From: $senderName ($devName)', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select which data modules you want to import. Uncheck any items you want to skip:',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            _buildRow('Areas & Streets (${counts['areas'] ?? 0} areas, ${counts['streets'] ?? 0} streets)', 'areas_streets', Icons.map_rounded),
+            _buildRow('Customers & VIP (${counts['customers'] ?? 0} customers)', 'customers', Icons.people_rounded),
+            _buildRow('Orders & Payments (${counts['orders'] ?? 0} orders)', 'orders_payments', Icons.receipt_rounded),
+            _buildRow('Products Catalog (${counts['items'] ?? 0} items)', 'products', Icons.inventory_2_rounded),
+            _buildRow('Expenses Log (${counts['expenses'] ?? 0} expenses)', 'expenses', Icons.payments_rounded),
+            _buildRow('Customer Photos (${counts['photos'] ?? 0} photos)', 'photos', Icons.photo_library_rounded),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Cancel / Reject', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final modules = <String>[];
+            if (_selections['areas_streets'] == true) {
+              modules.addAll(['areas', 'streets', 'visits']);
+            }
+            if (_selections['customers'] == true) {
+              modules.addAll(['customers', 'vip_membership']);
+            }
+            if (_selections['orders_payments'] == true) {
+              modules.addAll(['orders', 'order_items', 'payments']);
+            }
+            if (_selections['products'] == true) {
+              modules.addAll(['items', 'item_price_history']);
+            }
+            if (_selections['expenses'] == true) {
+              modules.add('expenses');
+            }
+            if (_selections['photos'] == true) {
+              modules.add('photos');
+            }
+            Navigator.pop(context, modules);
+          },
+          child: const Text('Import Selected'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRow(String label, String key, IconData icon) {
+    final isChecked = _selections[key] ?? false;
+    return CheckboxListTile(
+      value: isChecked,
+      title: Row(
+        children: [
+          Icon(icon, size: 18, color: isChecked ? AppColors.primary : AppColors.gray400),
+          const SizedBox(width: 8),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
+        ],
+      ),
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      onChanged: (val) {
+        setState(() {
+          _selections[key] = val ?? false;
+        });
+      },
+    );
   }
 }

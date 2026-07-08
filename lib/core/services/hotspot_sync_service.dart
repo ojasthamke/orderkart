@@ -24,6 +24,11 @@ class HotspotSyncService {
   static final ValueNotifier<bool> isServerRunningNotifier = ValueNotifier<bool>(false);
   static bool get isServerRunning => isServerRunningNotifier.value;
 
+  static Future<List<String>?> Function(
+    Map<String, dynamic> manifest,
+    Map<String, int> incomingCounts,
+  )? onConfirmIncomingSync;
+
   // ---------------------------------------------------------------------------
   // 1. DISCOVERY & SUBNET SCANNING
   // ---------------------------------------------------------------------------
@@ -210,15 +215,59 @@ class HotspotSyncService {
               }
             }
 
+            final mainDb = await DatabaseHelper.instance.database;
+
+            // Strict worker-to-worker prevention check
+            final settingsRows = await mainDb.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+            final currentAppModeStr = settingsRows.isNotEmpty ? settingsRows.first['value']?.toString() : '';
+            final isLocalWorker = currentAppModeStr == 'worker';
+            final generatedByWorkerId = manifest['generated_by_worker_id']?.toString() ?? '';
+
+            if (isLocalWorker && generatedByWorkerId.isNotEmpty) {
+              throw Exception('Worker-to-worker sync is strictly prohibited. Imports are only allowed from Owner.');
+            }
+
+            // Prepare counts of incoming elements for the confirmation dialog
+            final Map<String, int> incomingCounts = {
+              'areas': (dataMap['areas'] as List?)?.length ?? 0,
+              'streets': (dataMap['streets'] as List?)?.length ?? 0,
+              'customers': (dataMap['customers'] as List?)?.length ?? 0,
+              'orders': (dataMap['orders'] as List?)?.length ?? 0,
+              'items': (dataMap['items'] as List?)?.length ?? 0,
+              'expenses': (dataMap['expenses'] as List?)?.length ?? 0,
+              'photos': (dataMap['photos'] as List?)?.length ?? 0,
+            };
+
+            List<String> selectedModules = ['entire_db'];
+            bool importPhotos = true;
+
+            if (onConfirmIncomingSync != null) {
+              final confirmedModules = await onConfirmIncomingSync!(manifest, incomingCounts);
+              if (confirmedModules == null) {
+                request.response
+                  ..statusCode = HttpStatus.badRequest
+                  ..headers.contentType = ContentType.json
+                  ..write(jsonEncode({
+                    'status': 'cancelled',
+                    'message': 'Sync rejected by receiver.',
+                  }));
+                await request.response.close();
+                onStatusUpdate('Sync request rejected by user.');
+                return;
+              }
+              selectedModules = confirmedModules;
+              importPhotos = confirmedModules.contains('photos');
+            }
+
             // Merge Database Records
             final stats = await DatabaseHelper.instance.mergeDatabaseFromJson(
               dataMap,
-              selectedModules: ['entire_db'],
+              selectedModules: selectedModules,
             );
 
             // Decode and Write Photos
             final photos = dataMap['photos'];
-            if (photos is List) {
+            if (photos is List && importPhotos) {
               for (final photo in photos) {
                 if (photo is Map) {
                   final filename = photo['filename']?.toString();
@@ -245,7 +294,6 @@ class HotspotSyncService {
               recordsCount += (val['inserted'] ?? 0) + (val['updated'] ?? 0);
             });
 
-            final mainDb = await DatabaseHelper.instance.database;
             await mainDb.insert('import_history', {
               'id': const Uuid().v4(),
               'package_id': packageId,

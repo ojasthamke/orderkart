@@ -131,6 +131,15 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                   _DrawerItem(
+                    icon: Icons.phone_callback_rounded,
+                    title: 'Call Logs & Directory',
+                    iconColor: Colors.blue,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.callLogs);
+                    },
+                  ),
+                  _DrawerItem(
                     icon: Icons.shopping_cart_rounded,
                     title: isWorker ? 'My Orders & Sales' : 'Orders & Sales',
                     onTap: () {

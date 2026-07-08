@@ -54,4 +54,5 @@ class AppRoutes {
   static const String notifications   = '/notifications';
   static const String pinLock         = '/pin-lock';
   static const String welcome         = '/welcome';
+  static const String callLogs        = '/call-logs';
 }
