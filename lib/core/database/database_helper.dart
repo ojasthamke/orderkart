@@ -802,6 +802,10 @@ class DatabaseHelper {
             'UPDATE areas SET is_archived = 1 WHERE id NOT IN ($placeholders)',
             incomingAreaIds,
           );
+          await dbExecutor.execute(
+            'UPDATE areas SET is_archived = 0 WHERE id IN ($placeholders)',
+            incomingAreaIds,
+          );
         }
       }
     }
@@ -1109,6 +1113,10 @@ class DatabaseHelper {
             final placeholders = List.filled(incomingAreaIds.length, '?').join(',');
             await dbExecutor.execute(
               'UPDATE areas SET is_archived = 1 WHERE id NOT IN ($placeholders)',
+              incomingAreaIds,
+            );
+            await dbExecutor.execute(
+              'UPDATE areas SET is_archived = 0 WHERE id IN ($placeholders)',
               incomingAreaIds,
             );
           }
