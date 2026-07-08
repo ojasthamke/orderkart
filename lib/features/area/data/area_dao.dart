@@ -23,7 +23,7 @@ class AreaDao {
     if (sortBy == 'street_count')  orderClause = 'street_count DESC';
     if (sortBy == 'customer_count')orderClause = 'customer_count DESC';
 
-    List<String> whereClauses = [];
+    List<String> whereClauses = ['a.is_archived = 0'];
     List<dynamic> args = [];
 
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {

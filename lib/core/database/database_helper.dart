@@ -10,6 +10,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
+import '../security/app_mode_service.dart';
 
 class DatabaseHelper {
   DatabaseHelper._();
@@ -776,6 +777,27 @@ class DatabaseHelper {
           'conflicted': conflicted,
         };
       }
+
+      // In worker mode, disable (archive) existing areas that are not in the new incoming package
+      final settingsRows = await dbExecutor.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+      final isWorkerMode = settingsRows.isNotEmpty && settingsRows.first['value']?.toString() == 'worker';
+      final incomingAreas = incomingData['areas'];
+      if (isWorkerMode && incomingAreas is List && incomingAreas.isNotEmpty && !dryRun) {
+        final List<String> incomingAreaIds = [];
+        for (final a in incomingAreas) {
+          if (a is Map) {
+            final id = a['id']?.toString() ?? '';
+            if (id.isNotEmpty) incomingAreaIds.add(id);
+          }
+        }
+        if (incomingAreaIds.isNotEmpty) {
+          final placeholders = List.filled(incomingAreaIds.length, '?').join(',');
+          await dbExecutor.execute(
+            'UPDATE areas SET is_archived = 1 WHERE id NOT IN ($placeholders)',
+            incomingAreaIds,
+          );
+        }
+      }
     }
 
     if (dryRun) {
@@ -1065,6 +1087,21 @@ class DatabaseHelper {
             'skipped': skipped,
             'conflicted': conflicted,
           };
+        }
+
+        // In worker mode, disable (archive) existing areas that are not in the new incoming package
+        final settingsRows = await dbExecutor.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+        final isWorkerMode = settingsRows.isNotEmpty && settingsRows.first['value']?.toString() == 'worker';
+        final List<Map<String, dynamic>>? incomingAreas = incomingData['areas'];
+        if (isWorkerMode && incomingAreas != null && incomingAreas.isNotEmpty && !dryRun) {
+          final incomingAreaIds = incomingAreas.map((a) => a['id']?.toString() ?? '').where((id) => id.isNotEmpty).toList();
+          if (incomingAreaIds.isNotEmpty) {
+            final placeholders = List.filled(incomingAreaIds.length, '?').join(',');
+            await dbExecutor.execute(
+              'UPDATE areas SET is_archived = 1 WHERE id NOT IN ($placeholders)',
+              incomingAreaIds,
+            );
+          }
         }
       }
 
