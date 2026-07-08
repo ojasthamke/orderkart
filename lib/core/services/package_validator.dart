@@ -214,7 +214,7 @@ class PackageValidator {
 
       if (isWorkerProvisioning && manifest.containsKey('worker_secret')) {
         secretKey = SecurityHelper.deobfuscateSecret(manifest['worker_secret']?.toString() ?? '');
-      } else if (generatedByWorkerId.isNotEmpty) {
+      } else if (generatedByWorkerId.isNotEmpty && generatedByWorkerId != 'owner') {
         final List<Map<String, dynamic>> localWorker = await db.query(
           'worker_security',
           columns: ['worker_secret'],

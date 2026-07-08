@@ -557,7 +557,7 @@ class DatabaseHelper {
     final manifest = incomingData['manifest'] ?? {};
     final generatedByWorkerId = manifest['generated_by_worker_id']?.toString() ?? '';
 
-    if (isLocalWorker && generatedByWorkerId.isNotEmpty) {
+    if (isLocalWorker && generatedByWorkerId.isNotEmpty && generatedByWorkerId != 'owner') {
       throw Exception('Worker-to-worker sync is strictly prohibited. Imports are only allowed from Owner.');
     }
 
