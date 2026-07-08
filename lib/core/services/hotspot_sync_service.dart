@@ -13,6 +13,7 @@ import 'package:crypto/crypto.dart';
 import '../database/database_helper.dart';
 import '../constants/app_constants.dart';
 import 'package_validator.dart';
+import 'worker_package_service.dart';
 
 class HotspotSyncService {
   HotspotSyncService._();
@@ -344,12 +345,22 @@ class HotspotSyncService {
               'error_log': jsonEncode(stats),
             });
 
+            Map<String, dynamic>? scopedWorkerData;
+            if (wId != 'unknown' && wId.isNotEmpty && !isLocalWorker) {
+              try {
+                scopedWorkerData = await WorkerPackageService.getScopedDataForWorker(wId);
+              } catch (err) {
+                debugPrint('Failed to compile scoped data for worker: $err');
+              }
+            }
+
             request.response
               ..statusCode = HttpStatus.ok
               ..headers.contentType = ContentType.json
               ..write(jsonEncode({
                 'status': 'success',
                 'merged_records': recordsCount,
+                if (scopedWorkerData != null) 'scoped_data': scopedWorkerData,
               }));
             await request.response.close();
 
@@ -720,6 +731,18 @@ class HotspotSyncService {
 
       final syncResp = await syncReq.close().timeout(const Duration(seconds: 30));
       if (syncResp.statusCode == HttpStatus.ok) {
+        final responseBody = await utf8.decoder.bind(syncResp).join();
+        try {
+          final resMap = jsonDecode(responseBody);
+          if (resMap is Map && resMap['scoped_data'] != null) {
+            await DatabaseHelper.instance.mergeDatabaseFromJson(
+              Map<String, dynamic>.from(resMap['scoped_data']),
+            );
+          }
+        } catch (e) {
+          debugPrint('Failed to merge updated scoped data from sync response: $e');
+        }
+
         final mainDb = await DatabaseHelper.instance.database;
         await mainDb.insert('settings', {
           'key': 'last_owner_sync_timestamp',
