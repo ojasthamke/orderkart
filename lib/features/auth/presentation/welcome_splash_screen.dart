@@ -41,13 +41,12 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
     
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3500),
+      duration: const Duration(milliseconds: 10),
     );
 
-    // 0.0 to 2.45 seconds: Normal welcome screen displays
-    // 2.45 to 3.5 seconds: Zoom in logo, slide up dashboard, fade out UI
+    // Instant transition
     final startTransitionInterval = CurveTween(
-      curve: const Interval(0.70, 1.0, curve: Curves.easeInOutCubic),
+      curve: const Interval(0.0, 1.0, curve: Curves.linear),
     );
 
     _logoScale = Tween<double>(begin: 1.0, end: 25.0).animate(
