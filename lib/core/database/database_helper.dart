@@ -839,10 +839,7 @@ class DatabaseHelper {
         final incomingSettings = await checkDb.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
         final incomingModeStr = incomingSettings.isNotEmpty ? incomingSettings.first['value']?.toString() : '';
         
-        final incomingWorkerIdSettings = await checkDb.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-        final incomingWorkerId = incomingWorkerIdSettings.isNotEmpty ? incomingWorkerIdSettings.first['value']?.toString() : '';
-
-        if (incomingModeStr == 'worker' || (incomingWorkerId != null && incomingWorkerId.toString().isNotEmpty)) {
+        if (incomingModeStr == 'worker') {
           await checkDb.close();
           throw Exception('Worker-to-worker database import is prohibited. Imports are only allowed from Owner.');
         }
