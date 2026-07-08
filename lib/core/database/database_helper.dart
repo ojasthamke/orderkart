@@ -10,7 +10,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
-import '../security/app_mode_service.dart';
 
 class DatabaseHelper {
   DatabaseHelper._();
@@ -592,6 +591,11 @@ class DatabaseHelper {
     Future<void> runMerge(DatabaseExecutor dbExecutor) async {
       await dbExecutor.execute('PRAGMA defer_foreign_keys = ON');
 
+      if (isLocalWorker) {
+        await dbExecutor.delete('worker_assignments');
+        await dbExecutor.delete('worker_permissions');
+      }
+
       for (final table in tables) {
         int inserted = 0;
         int updated = 0;
@@ -652,20 +656,22 @@ class DatabaseHelper {
             existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
           }
 
-          // If the worker exists, ignore. If they do not, create the worker and assignments/permissions.
-          if (table == 'workers') {
-            final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [id]);
-            if (localWorker.isNotEmpty) {
-              skipped++;
-              continue;
-            }
-          } else if (table == 'worker_assignments' || table == 'worker_permissions') {
-            final wId = filteredRow['worker_id']?.toString() ?? '';
-            if (wId.isNotEmpty) {
-              final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [wId]);
+          // If the worker exists and we are in Owner mode, ignore.
+          if (!isLocalWorker) {
+            if (table == 'workers') {
+              final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [id]);
               if (localWorker.isNotEmpty) {
                 skipped++;
                 continue;
+              }
+            } else if (table == 'worker_assignments' || table == 'worker_permissions') {
+              final wId = filteredRow['worker_id']?.toString() ?? '';
+              if (wId.isNotEmpty) {
+                final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [wId]);
+                if (localWorker.isNotEmpty) {
+                  skipped++;
+                  continue;
+                }
               }
             }
           }
@@ -896,6 +902,11 @@ class DatabaseHelper {
       Future<void> runMerge(DatabaseExecutor dbExecutor) async {
         await dbExecutor.execute('PRAGMA defer_foreign_keys = ON');
 
+        if (isLocalWorker) {
+          await dbExecutor.delete('worker_assignments');
+          await dbExecutor.delete('worker_permissions');
+        }
+
         for (final table in tables) {
           int inserted = 0;
           int updated = 0;
@@ -956,24 +967,26 @@ class DatabaseHelper {
               existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
             }
 
-            // If the worker exists, ignore. If they do not, create the worker and assignments/permissions.
-            if (table == 'workers') {
-              final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [id]);
-              if (localWorker.isNotEmpty) {
-                skipped++;
-                processedRows++;
-                onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
-                continue;
-              }
-            } else if (table == 'worker_assignments' || table == 'worker_permissions') {
-              final wId = filteredRow['worker_id']?.toString() ?? '';
-              if (wId.isNotEmpty) {
-                final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [wId]);
+            // If the worker exists and we are in Owner mode, ignore.
+            if (!isLocalWorker) {
+              if (table == 'workers') {
+                final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [id]);
                 if (localWorker.isNotEmpty) {
                   skipped++;
                   processedRows++;
                   onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
                   continue;
+                }
+              } else if (table == 'worker_assignments' || table == 'worker_permissions') {
+                final wId = filteredRow['worker_id']?.toString() ?? '';
+                if (wId.isNotEmpty) {
+                  final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [wId]);
+                  if (localWorker.isNotEmpty) {
+                    skipped++;
+                    processedRows++;
+                    onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+                    continue;
+                  }
                 }
               }
             }
