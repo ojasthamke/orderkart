@@ -388,8 +388,9 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                        AppHaptics.buttonClick();
                        try {
                          final result = await FilePicker.platform.pickFiles(type: FileType.any);
-                         if (result == null || result.files.single.path == null) return;
-                         final path = result.files.single.path!;
+                         if (result == null) return;
+                         final path = result.files.single.path;
+                         if (path == null) return;
                          final val = await PackageValidator.validatePackage(path);
                          if (!val.isValid) {
                            if (context.mounted) SnackbarHelper.showError(context, 'Invalid Package: ${val.errorMessage}');

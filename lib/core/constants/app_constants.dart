@@ -191,6 +191,7 @@ class AppConstants {
   static const String keyLastDeliveryCharge = 'last_delivery_charge';
   static const String keyEnableVipPriceMarkup = 'enable_vip_price_markup';
   static const String keyOwnerSecret = 'owner_secret';
+  static const String keyLanguage = 'language';
 
   // Pagination
   static const int pageSize = 30;

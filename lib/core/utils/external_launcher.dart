@@ -55,7 +55,7 @@ class ExternalLauncher {
       // Last resort: Share sheet
       if (text != null) {
         Share.share(text);
-      } else {
+      } else if (context.mounted) {
         SnackbarHelper.showError(context, 'Could not open WhatsApp. Make sure it is installed.');
       }
     } catch (e) {

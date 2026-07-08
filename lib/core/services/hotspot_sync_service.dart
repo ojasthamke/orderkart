@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:crypto/crypto.dart';
 import '../database/database_helper.dart';
 import '../constants/app_constants.dart';
 import 'package_validator.dart';
@@ -24,6 +25,27 @@ class HotspotSyncService {
   static final ValueNotifier<bool> isServerRunningNotifier = ValueNotifier<bool>(false);
   static bool get isServerRunning => isServerRunningNotifier.value;
 
+  static Future<String> getSyncToken() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final res = await db.query('settings', columns: ['value'], where: 'key = ?', whereArgs: [AppConstants.keyOwnerSecret]);
+      if (res.isNotEmpty) {
+        final secret = res.first['value']?.toString() ?? '';
+        if (secret.isNotEmpty) {
+          return hmacSha256(secret);
+        }
+      }
+    } catch (_) {}
+    return 'default_hotspot_sync_token_fallback';
+  }
+
+  static String hmacSha256(String secret) {
+    final keyBytes = utf8.encode(secret);
+    final messageBytes = utf8.encode('hotspot_sync_token_salt');
+    final hmac = Hmac(sha256, keyBytes);
+    return hmac.convert(messageBytes).toString();
+  }
+
   static Future<List<String>?> Function(
     Map<String, dynamic> manifest,
     Map<String, int> incomingCounts,
@@ -37,7 +59,9 @@ class HotspotSyncService {
   static Future<bool> _pingDevice(String ip) async {
     final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 600);
     try {
+      final token = await getSyncToken();
       final req = await client.getUrl(Uri.parse('http://$ip:8292/handshake'));
+      req.headers.add('x-sync-token', token);
       final resp = await req.close();
       if (resp.statusCode == HttpStatus.ok) {
         final body = await utf8.decoder.bind(resp).join();
@@ -81,12 +105,14 @@ class HotspotSyncService {
 
     try {
       const batchSize = 20;
+      final token = await getSyncToken();
       for (int i = 0; i < ipsToPing.length; i += batchSize) {
         final end = i + batchSize > ipsToPing.length ? ipsToPing.length : i + batchSize;
         final batch = ipsToPing.sublist(i, end);
         final results = await Future.wait(batch.map((ip) async {
           try {
             final req = await client.getUrl(Uri.parse('http://$ip:8292/handshake'));
+            req.headers.add('x-sync-token', token);
             final resp = await req.close();
             if (resp.statusCode == HttpStatus.ok) {
               final body = await utf8.decoder.bind(resp).join();
@@ -132,6 +158,19 @@ class HotspotSyncService {
         final path = request.uri.path;
         final method = request.method;
 
+        final localToken = await getSyncToken();
+        final clientToken = request.headers.value('x-sync-token') ?? '';
+
+        if (clientToken != localToken) {
+          request.response
+            ..statusCode = HttpStatus.unauthorized
+            ..headers.contentType = ContentType.json
+            ..write(jsonEncode({'status': 'unauthorized', 'message': 'Invalid sync token'}));
+          await request.response.close();
+          onStatusUpdate('Rejected unauthorized sync request (token mismatch).');
+          return;
+        }
+
         if (method == 'GET' && path == '/handshake') {
           request.response
             ..statusCode = HttpStatus.ok
@@ -143,7 +182,6 @@ class HotspotSyncService {
           await request.response.close();
         } else if (method == 'POST' && path == '/sync') {
           try {
-            // Pairing code requirement is removed. Connection authorized directly.
 
             // C5: Payload size limit check
             final contentLength = request.contentLength;
@@ -646,7 +684,6 @@ class HotspotSyncService {
     return base64Url.encode(compressedBytes);
   }
 
-  /// Run direct HTTP POST request to sync with active receiver IP
   static Future<bool> syncWithGateway({
     required String gatewayIp,
     required String workerId,
@@ -656,9 +693,11 @@ class HotspotSyncService {
   }) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
     try {
+      final token = await getSyncToken();
       // 1. Handshake verification
       final handshakeUri = Uri.parse('http://$gatewayIp:8292/handshake');
       final handshakeReq = await client.getUrl(handshakeUri).timeout(const Duration(seconds: 5));
+      handshakeReq.headers.add('x-sync-token', token);
       final handshakeResp = await handshakeReq.close().timeout(const Duration(seconds: 5));
       if (handshakeResp.statusCode != HttpStatus.ok) return false;
 
@@ -676,9 +715,7 @@ class HotspotSyncService {
       final syncUri = Uri.parse('http://$gatewayIp:8292/sync');
       final syncReq = await client.postUrl(syncUri).timeout(const Duration(seconds: 30));
       syncReq.headers.contentType = ContentType.json;
-      if (syncToken.isNotEmpty) {
-        syncReq.headers.add('x-sync-token', syncToken);
-      }
+      syncReq.headers.add('x-sync-token', token);
       syncReq.write(jsonEncode({'data': payload}));
 
       final syncResp = await syncReq.close().timeout(const Duration(seconds: 30));

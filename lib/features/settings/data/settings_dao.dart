@@ -46,6 +46,7 @@ class SettingsDao {
       lastDeliveryCharge:   double.tryParse(m[AppConstants.keyLastDeliveryCharge] ?? '10') ?? 10,
       notificationTime:     m[AppConstants.keyNotifTime]       ?? '06:00',
       enableVipPriceMarkup: (m[AppConstants.keyEnableVipPriceMarkup] ?? 'true') == 'true',
+      language:             m[AppConstants.keyLanguage]        ?? 'en',
     );
   }
 }

@@ -84,9 +84,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
       );
-      if (result == null || result.files.single.path == null) return;
-
-      final filePath = result.files.single.path!;
+      if (result == null) return;
+      final filePath = result.files.single.path;
+      if (filePath == null) return;
       final validation = await PackageValidator.validatePackage(filePath);
       if (!validation.isValid) {
         if (mounted) SnackbarHelper.showError(context, 'Invalid Package: ${validation.errorMessage}');

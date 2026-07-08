@@ -14,6 +14,7 @@ import '../../../core/database/database_seeder.dart';
 import '../domain/app_settings.dart';
 import 'settings_provider.dart';
 import '../../../core/utils/image_utils.dart';
+import '../../../core/localization/app_localization.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -126,24 +127,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _init(settings);
         final isWorker = WorkerSession.instance.isWorker;
         return AppScaffold(
-          title: 'Settings',
+          title: AppLocalization.translate(ref, 'settings', 'Settings'),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
               if (isWorker) ...[
                 // ── Appearance ──────────────────────────────────────────
-                _sectionHeader('Appearance', Icons.palette_rounded),
+                _sectionHeader(AppLocalization.translate(ref, 'appearance', 'Appearance'), Icons.palette_rounded),
                 _card([
                   ListTile(
                     leading: const Icon(Icons.light_mode_rounded),
-                    title: const Text('Theme'),
+                    title: Text(AppLocalization.translate(ref, 'theme', 'Theme')),
                     trailing: DropdownButton<String>(
                       value: settings.themeMode,
                       underline: const SizedBox.shrink(),
-                      items: const [
-                        DropdownMenuItem(value: 'system', child: Text('System')),
-                        DropdownMenuItem(value: 'light',  child: Text('Light')),
-                        DropdownMenuItem(value: 'dark',   child: Text('Dark')),
+                      items: [
+                        DropdownMenuItem(value: 'system', child: Text(AppLocalization.translate(ref, 'system', 'System'))),
+                        DropdownMenuItem(value: 'light',  child: Text(AppLocalization.translate(ref, 'light', 'Light'))),
+                        DropdownMenuItem(value: 'dark',   child: Text(AppLocalization.translate(ref, 'dark', 'Dark'))),
                       ],
                       onChanged: (v) => ref
                           .read(settingsProvider.notifier)
@@ -154,30 +155,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 20),
 
                 // ── Language ────────────────────────────────────────────
-                _sectionHeader('Language', Icons.language_rounded),
+                _sectionHeader(AppLocalization.translate(ref, 'language', 'Language'), Icons.language_rounded),
                 _card([
                   ListTile(
                     leading: const Icon(Icons.translate_rounded),
-                    title: const Text('Language'),
+                    title: Text(AppLocalization.translate(ref, 'language', 'Language')),
                     trailing: DropdownButton<String>(
-                      value: 'en',
+                      value: settings.language,
                       underline: const SizedBox.shrink(),
-                      items: const [
-                        DropdownMenuItem(value: 'en', child: Text('English')),
-                        DropdownMenuItem(value: 'hi', child: Text('हिन्दी')),
+                      items: [
+                        DropdownMenuItem(value: 'en', child: Text(AppLocalization.translate(ref, 'english', 'English'))),
+                        DropdownMenuItem(value: 'hi', child: Text(AppLocalization.translate(ref, 'hindi', 'Hindi'))),
                       ],
-                      onChanged: (_) {},
+                      onChanged: (v) {
+                        if (v != null) {
+                          ref.read(settingsProvider.notifier).update(settings.copyWith(language: v));
+                        }
+                      },
                     ),
                   ),
                 ]),
                 const SizedBox(height: 20),
 
                 // ── Notifications ───────────────────────────────────────
-                _sectionHeader('Notifications', Icons.notifications_rounded),
+                _sectionHeader(AppLocalization.translate(ref, 'notifications', 'Notifications'), Icons.notifications_rounded),
                 _card([
                   SwitchListTile(
                     secondary: const Icon(Icons.notifications_active_rounded),
-                    title: const Text('Enable Notifications'),
+                    title: Text(AppLocalization.translate(ref, 'enable_notifications', 'Enable Notifications')),
                     value: settings.notificationsEnabled,
                     onChanged: (v) => ref
                         .read(settingsProvider.notifier)
@@ -187,27 +192,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 20),
 
                 // ── Backup Report ───────────────────────────────────────
-                _sectionHeader('Data Export', Icons.cloud_upload_rounded),
+                _sectionHeader(AppLocalization.translate(ref, 'data_export', 'Data Export'), Icons.cloud_upload_rounded),
                 _card([
                   ListTile(
                     leading: const Icon(Icons.backup_rounded, color: AppColors.primary),
-                    title: const Text('Backup Report'),
-                    subtitle: const Text('Export Daily WorkerReport.orderkart'),
+                    title: Text(AppLocalization.translate(ref, 'backup_report', 'Backup Report')),
+                    subtitle: Text(AppLocalization.translate(ref, 'backup_desc', 'Export Daily WorkerReport.orderkart')),
                     trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                     onTap: () async {
-                      Navigator.pushNamed(context, '/worker-dashboard');
+                      Navigator.pushNamed(context, AppRoutes.workerSelfProfile);
                     },
                   ),
                 ]),
                 const SizedBox(height: 20),
 
                 // ── Logout ──────────────────────────────────────────────
-                _sectionHeader('Exit Session', Icons.exit_to_app_rounded),
+                _sectionHeader(AppLocalization.translate(ref, 'exit_session', 'Exit Session'), Icons.exit_to_app_rounded),
                 _card([
                   ListTile(
                     leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-                    title: const Text('Logout Worker Session'),
-                    subtitle: const Text('End worker session and return to mode selection'),
+                    title: Text(AppLocalization.translate(ref, 'logout', 'Logout Worker Session')),
+                    subtitle: Text(AppLocalization.translate(ref, 'logout_desc', 'End worker session and return to mode selection')),
                     trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                     onTap: () {
                       WorkerSession.instance.clear();

@@ -61,8 +61,11 @@ void main() {
 
       final client = HttpClient();
       
+      final token = await HotspotSyncService.getSyncToken();
+
       // Test GET /handshake
       final handshakeReq = await client.get('127.0.0.1', 8292, '/handshake');
+      handshakeReq.headers.add('x-sync-token', token);
       final handshakeResp = await handshakeReq.close();
       expect(handshakeResp.statusCode, equals(HttpStatus.ok));
       final handshakeBody = await utf8.decoder.bind(handshakeResp).join();
@@ -77,9 +80,7 @@ void main() {
       );
       final syncReq = await client.post('127.0.0.1', 8292, '/sync');
       syncReq.headers.contentType = ContentType.json;
-      if (HotspotSyncService.currentSyncToken != null) {
-        syncReq.headers.add('x-sync-token', HotspotSyncService.currentSyncToken!);
-      }
+      syncReq.headers.add('x-sync-token', token);
       syncReq.write(jsonEncode({'data': payload}));
       final syncResp = await syncReq.close();
       final syncBody = await utf8.decoder.bind(syncResp).join();

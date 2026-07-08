@@ -138,7 +138,11 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
         return;
       }
 
-      final srcPath = result.files.first.path!;
+      final srcPath = result.files.first.path;
+      if (srcPath == null) {
+        setState(() => _loading = false);
+        return;
+      }
 
       // --- 1. RUN ENTERPRISE PACKAGE VALIDATION ---
       final valResult = await PackageValidator.validatePackage(srcPath);

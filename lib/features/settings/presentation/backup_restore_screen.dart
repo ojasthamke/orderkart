@@ -183,7 +183,10 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         setState(() => _loading = false);
         return;
       }
-      final srcPath = result.files.first.path!;
+      final srcPath = result.files.first.path;
+      if (srcPath == null || srcPath.isEmpty) {
+        throw Exception('Selected file has no valid local path.');
+      }
       final dbPath  = await DatabaseHelper.instance.database.then((db) => db.path);
 
       // Preserve current active mode before replacing database file
