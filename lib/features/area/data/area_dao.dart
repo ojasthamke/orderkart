@@ -31,40 +31,6 @@ class AreaDao {
       args.add('%${searchQuery.trim()}%');
     }
 
-    final mode = await AppModeService.getAppMode();
-    if (mode == AppMode.worker) {
-      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
-      if (workerId == null || workerId.isEmpty) {
-        final workerRows = await db.query('workers', limit: 1);
-        if (workerRows.isNotEmpty) {
-          workerId = workerRows.first['id'] as String;
-        }
-      }
-
-      if (workerId != null && workerId.isNotEmpty) {
-        final assignmentRows = await db.query(
-          'worker_assignments',
-          where: 'worker_id = ? AND entity_type = ?',
-          whereArgs: [workerId, 'area'],
-        );
-        final assignedAreaIds = assignmentRows
-            .map((e) => e['entity_id']?.toString() ?? '')
-            .where((e) => e.isNotEmpty)
-            .toList();
-
-        final placeholders = assignedAreaIds.isNotEmpty
-            ? List.filled(assignedAreaIds.length, '?').join(',')
-            : "''";
-        whereClauses.add('(a.id IN ($placeholders) OR a.created_by = ? OR a.assigned_worker_id = ?)');
-        if (assignedAreaIds.isNotEmpty) {
-          args.addAll(assignedAreaIds);
-        }
-        args.addAll([workerId, workerId]);
-      } else {
-        return [];
-      }
-    }
 
     final whereClauseSection = whereClauses.isNotEmpty
         ? 'WHERE ${whereClauses.join(' AND ')}'

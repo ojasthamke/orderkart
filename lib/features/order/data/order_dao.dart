@@ -93,42 +93,6 @@ class OrderDao {
       args.add(now.toIso8601String());
     }
 
-    final mode = await AppModeService.getAppMode();
-    if (mode == AppMode.worker) {
-      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
-      if (workerId == null || workerId.isEmpty) {
-        final workerRows = await db.query('workers', limit: 1);
-        if (workerRows.isNotEmpty) {
-          workerId = workerRows.first['id']?.toString();
-        }
-      }
-
-      if (workerId != null && workerId.isNotEmpty) {
-        final assignmentRows = await db.query(
-          'worker_assignments',
-          where: 'worker_id = ? AND entity_type = ?',
-          whereArgs: [workerId, 'customer'],
-        );
-        final assignedCustomerIds = assignmentRows
-            .map((e) => e['entity_id']?.toString() ?? '')
-            .where((e) => e.isNotEmpty)
-            .toList();
-
-        final placeholders = assignedCustomerIds.isNotEmpty
-            ? List.filled(assignedCustomerIds.length, '?').join(',')
-            : "''";
-
-        conditions.add('(o.created_by = ? OR o.assigned_worker_id = ? OR o.customer_id IN ($placeholders))');
-        args.add(workerId);
-        args.add(workerId);
-        if (assignedCustomerIds.isNotEmpty) {
-          args.addAll(assignedCustomerIds);
-        }
-      } else {
-        return [];
-      }
-    }
 
     final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
 

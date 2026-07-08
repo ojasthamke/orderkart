@@ -17,40 +17,6 @@ class StreetDao {
       args.add('%${searchQuery.trim()}%');
     }
 
-    final mode = await AppModeService.getAppMode();
-    if (mode == AppMode.worker) {
-      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
-      if (workerId == null || workerId.isEmpty) {
-        final workerRows = await db.query('workers', limit: 1);
-        if (workerRows.isNotEmpty) {
-          workerId = workerRows.first['id'] as String;
-        }
-      }
-
-      if (workerId != null && workerId.isNotEmpty) {
-        final assignmentRows = await db.query(
-          'worker_assignments',
-          where: 'worker_id = ? AND entity_type = ?',
-          whereArgs: [workerId, 'street'],
-        );
-        final assignedStreetIds = assignmentRows
-            .map((e) => e['entity_id']?.toString() ?? '')
-            .where((e) => e.isNotEmpty)
-            .toList();
-
-        final placeholders = assignedStreetIds.isNotEmpty
-            ? List.filled(assignedStreetIds.length, '?').join(',')
-            : "''";
-        where += ' AND (s.id IN ($placeholders) OR s.created_by = ? OR s.assigned_worker_id = ?)';
-        if (assignedStreetIds.isNotEmpty) {
-          args.addAll(assignedStreetIds);
-        }
-        args.addAll([workerId, workerId]);
-      } else {
-        return [];
-      }
-    }
 
     final maps = await db.rawQuery('''
       SELECT s.*,

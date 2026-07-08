@@ -78,96 +78,9 @@ class WorkerPackageService {
     final permissionsRow = await mainDb.query('worker_permissions', where: 'worker_id = ?', whereArgs: [workerId]);
     final assignmentsRows = await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId]);
 
-    final List<String> explicitAreaIds = assignmentsRows
-        .where((e) => e['entity_type'] == 'area')
-        .map((e) => e['entity_id']?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    final List<String> explicitStreetIds = assignmentsRows
-        .where((e) => e['entity_type'] == 'street')
-        .map((e) => e['entity_id']?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    final List<String> explicitCustomerIds = assignmentsRows
-        .where((e) => e['entity_type'] == 'customer')
-        .map((e) => e['entity_id']?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    // 1. Resolve Customers
-    List<Map<String, dynamic>> customersRows = [];
-    if (assignmentsRows.isNotEmpty) {
-      List<String> conditions = [];
-      List<dynamic> args = [];
-      
-      if (explicitCustomerIds.isNotEmpty) {
-        final placeholders = List.filled(explicitCustomerIds.length, '?').join(',');
-        conditions.add('id IN ($placeholders)');
-        args.addAll(explicitCustomerIds);
-      }
-      
-      if (explicitStreetIds.isNotEmpty) {
-        final placeholders = List.filled(explicitStreetIds.length, '?').join(',');
-        conditions.add('street_id IN ($placeholders)');
-        args.addAll(explicitStreetIds);
-      }
-      
-      if (explicitAreaIds.isNotEmpty) {
-        final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
-        conditions.add('street_id IN (SELECT id FROM streets WHERE area_id IN ($placeholders))');
-        args.addAll(explicitAreaIds);
-      }
-      
-      if (conditions.isNotEmpty) {
-        final whereClause = conditions.join(' OR ');
-        customersRows = await mainDb.query('customers', where: whereClause, whereArgs: args);
-      }
-    }
-
-    // 2. Resolve Streets
-    final Set<String> resolvedStreetIds = {};
-    resolvedStreetIds.addAll(explicitStreetIds);
-    for (final c in customersRows) {
-      final sId = c['street_id']?.toString() ?? '';
-      if (sId.isNotEmpty) resolvedStreetIds.add(sId);
-    }
-    
-    List<Map<String, dynamic>> streetsRows = [];
-    if (resolvedStreetIds.isNotEmpty || explicitAreaIds.isNotEmpty) {
-      List<String> conditions = [];
-      List<dynamic> args = [];
-      
-      if (resolvedStreetIds.isNotEmpty) {
-        final placeholders = List.filled(resolvedStreetIds.length, '?').join(',');
-        conditions.add('id IN ($placeholders)');
-        args.addAll(resolvedStreetIds.toList());
-      }
-      
-      if (explicitAreaIds.isNotEmpty) {
-        final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
-        conditions.add('area_id IN ($placeholders)');
-        args.addAll(explicitAreaIds);
-      }
-      
-      final whereClause = conditions.join(' OR ');
-      streetsRows = await mainDb.query('streets', where: whereClause, whereArgs: args);
-    }
-
-    // 3. Resolve Areas
-    final Set<String> resolvedAreaIds = {};
-    resolvedAreaIds.addAll(explicitAreaIds);
-    for (final s in streetsRows) {
-      final aId = s['area_id']?.toString() ?? '';
-      if (aId.isNotEmpty) resolvedAreaIds.add(aId);
-    }
-    
-    List<Map<String, dynamic>> areasRows = [];
-    if (resolvedAreaIds.isNotEmpty) {
-      final placeholders = List.filled(resolvedAreaIds.length, '?').join(',');
-      areasRows = await mainDb.query('areas', where: 'id IN ($placeholders)', whereArgs: resolvedAreaIds.toList());
-    }
+    final List<Map<String, dynamic>> areasRows = await mainDb.query('areas');
+    final List<Map<String, dynamic>> streetsRows = await mainDb.query('streets');
+    final List<Map<String, dynamic>> customersRows = await mainDb.query('customers');
 
     final itemsRows = await mainDb.query('items');
     final priceListRows = await mainDb.query('item_price_history');
@@ -839,87 +752,9 @@ class WorkerPackageService {
     final permissionsRow = await mainDb.query('worker_permissions', where: 'worker_id = ?', whereArgs: [workerId]);
     final assignmentsRows = await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId]);
 
-    final List<String> explicitAreaIds = assignmentsRows
-        .where((e) => e['entity_type'] == 'area')
-        .map((e) => e['entity_id']?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    final List<String> explicitStreetIds = assignmentsRows
-        .where((e) => e['entity_type'] == 'street')
-        .map((e) => e['entity_id']?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    final List<String> explicitCustomerIds = assignmentsRows
-        .where((e) => e['entity_type'] == 'customer')
-        .map((e) => e['entity_id']?.toString() ?? '')
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    List<Map<String, dynamic>> customersRows = [];
-    if (assignmentsRows.isNotEmpty) {
-      List<String> conditions = [];
-      List<dynamic> args = [];
-      
-      if (explicitCustomerIds.isNotEmpty) {
-        final placeholders = List.filled(explicitCustomerIds.length, '?').join(',');
-        conditions.add('id IN ($placeholders)');
-        args.addAll(explicitCustomerIds);
-      }
-      if (explicitStreetIds.isNotEmpty) {
-        final placeholders = List.filled(explicitStreetIds.length, '?').join(',');
-        conditions.add('street_id IN ($placeholders)');
-        args.addAll(explicitStreetIds);
-      }
-      if (explicitAreaIds.isNotEmpty) {
-        final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
-        conditions.add('street_id IN (SELECT id FROM streets WHERE area_id IN ($placeholders))');
-        args.addAll(explicitAreaIds);
-      }
-      if (conditions.isNotEmpty) {
-        customersRows = await mainDb.query('customers', where: conditions.join(' OR '), whereArgs: args);
-      }
-    }
-
-    final Set<String> resolvedStreetIds = {};
-    resolvedStreetIds.addAll(explicitStreetIds);
-    for (final c in customersRows) {
-      final sId = c['street_id']?.toString() ?? '';
-      if (sId.isNotEmpty) resolvedStreetIds.add(sId);
-    }
-    
-    List<Map<String, dynamic>> streetsRows = [];
-    if (resolvedStreetIds.isNotEmpty || explicitAreaIds.isNotEmpty) {
-      List<String> conditions = [];
-      List<dynamic> args = [];
-      
-      if (resolvedStreetIds.isNotEmpty) {
-        final placeholders = List.filled(resolvedStreetIds.length, '?').join(',');
-        conditions.add('id IN ($placeholders)');
-        args.addAll(resolvedStreetIds.toList());
-      }
-      if (explicitAreaIds.isNotEmpty) {
-        final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
-        conditions.add('area_id IN ($placeholders)');
-        args.addAll(explicitAreaIds);
-      }
-      
-      streetsRows = await mainDb.query('streets', where: conditions.join(' OR '), whereArgs: args);
-    }
-
-    final Set<String> resolvedAreaIds = {};
-    resolvedAreaIds.addAll(explicitAreaIds);
-    for (final s in streetsRows) {
-      final aId = s['area_id']?.toString() ?? '';
-      if (aId.isNotEmpty) resolvedAreaIds.add(aId);
-    }
-    
-    List<Map<String, dynamic>> areasRows = [];
-    if (resolvedAreaIds.isNotEmpty) {
-      final placeholders = List.filled(resolvedAreaIds.length, '?').join(',');
-      areasRows = await mainDb.query('areas', where: 'id IN ($placeholders)', whereArgs: resolvedAreaIds.toList());
-    }
+    final List<Map<String, dynamic>> areasRows = await mainDb.query('areas');
+    final List<Map<String, dynamic>> streetsRows = await mainDb.query('streets');
+    final List<Map<String, dynamic>> customersRows = await mainDb.query('customers');
 
     final itemsRows = await mainDb.query('items');
     final priceListRows = await mainDb.query('item_price_history');
