@@ -101,6 +101,12 @@ class BillTextGenerator {
       buf.writeln(sep);
     }
 
+    final hasRx = items.any((it) => it['prescription_required'] == true);
+    if (hasRx) {
+      buf.writeln('⚠️ *Prescription Note (Rx)*: Hand over subject to verification of a valid physical doctor note.');
+      buf.writeln(sep);
+    }
+
     return buf.toString();
   }
 }

@@ -15,6 +15,14 @@ class Item {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  // New V6 Fields for Groceries & Medicines
+  final String expiryDate;
+  final String batchNumber;
+  final bool prescriptionRequired;
+  final String dosageInfo;
+  final String bestBefore;
+  final String packDate;
+
   bool get isLowStock => stock <= minStock && minStock > 0;
   double get profitMargin => sellingPrice > 0 ? ((sellingPrice - costPrice) / sellingPrice) * 100 : 0;
   double get customerSavings => marketPrice > sellingPrice ? marketPrice - sellingPrice : 0.0;
@@ -33,6 +41,12 @@ class Item {
     this.barcode      = '',
     required this.createdAt,
     required this.updatedAt,
+    this.expiryDate   = '',
+    this.batchNumber  = '',
+    this.prescriptionRequired = false,
+    this.dosageInfo   = '',
+    this.bestBefore   = '',
+    this.packDate     = '',
   });
 
   Item copyWith({
@@ -48,6 +62,12 @@ class Item {
     String? barcode,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? expiryDate,
+    String? batchNumber,
+    bool? prescriptionRequired,
+    String? dosageInfo,
+    String? bestBefore,
+    String? packDate,
   }) {
     return Item(
       id:           id           ?? this.id,
@@ -62,6 +82,12 @@ class Item {
       barcode:      barcode      ?? this.barcode,
       createdAt:    createdAt    ?? this.createdAt,
       updatedAt:    updatedAt    ?? this.updatedAt,
+      expiryDate:   expiryDate   ?? this.expiryDate,
+      batchNumber:  batchNumber  ?? this.batchNumber,
+      prescriptionRequired: prescriptionRequired ?? this.prescriptionRequired,
+      dosageInfo:   dosageInfo   ?? this.dosageInfo,
+      bestBefore:   bestBefore   ?? this.bestBefore,
+      packDate:     packDate     ?? this.packDate,
     );
   }
 
@@ -78,6 +104,12 @@ class Item {
         'barcode':       barcode,
         'created_at':    createdAt.toIso8601String(),
         'updated_at':    updatedAt.toIso8601String(),
+        'expiry_date':   expiryDate,
+        'batch_number':  batchNumber,
+        'prescription_required': prescriptionRequired ? 1 : 0,
+        'dosage_info':   dosageInfo,
+        'best_before':   bestBefore,
+        'pack_date':     packDate,
       };
 
   factory Item.fromMap(Map<String, dynamic> map) => Item(
@@ -93,6 +125,12 @@ class Item {
         barcode:      map['barcode']       as String? ?? '',
         createdAt:    DateTime.parse(map['created_at'] as String),
         updatedAt:    DateTime.parse(map['updated_at'] as String),
+        expiryDate:   map['expiry_date']   as String? ?? '',
+        batchNumber:  map['batch_number']  as String? ?? '',
+        prescriptionRequired: (map['prescription_required'] as int? ?? 0) == 1,
+        dosageInfo:   map['dosage_info']   as String? ?? '',
+        bestBefore:   map['best_before']   as String? ?? '',
+        packDate:     map['pack_date']     as String? ?? '',
       );
 
   @override

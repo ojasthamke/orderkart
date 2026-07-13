@@ -56,6 +56,9 @@ import 'features/worker/presentation/worker_sync_activity_screen.dart';
 import 'features/customer/presentation/call_logs_screen.dart';
 import 'features/auth/presentation/worker_passcode_lock_screen.dart';
 import 'features/order/presentation/order_questions_config_screen.dart';
+import 'features/inventory/presentation/groceries_hub_screen.dart';
+import 'features/inventory/presentation/medicines_hub_screen.dart';
+import 'features/dashboard/presentation/owner_features_hub_screen.dart';
 
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
@@ -277,6 +280,15 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.orderQuestionsConfig:
         return _slide(const OrderQuestionsConfigScreen());
+
+      case AppRoutes.groceriesHub:
+        return _slide(const GroceriesHubScreen());
+
+      case AppRoutes.medicinesHub:
+        return _slide(const MedicinesHubScreen());
+
+      case AppRoutes.ownerFeaturesHub:
+        return _slide(const OwnerFeaturesHubScreen());
 
       default:
         return _slide(const AppStartupScreen(), settings);

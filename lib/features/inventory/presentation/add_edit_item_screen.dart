@@ -29,6 +29,14 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   final _minStockCon  = TextEditingController();
   final _barcodeCon   = TextEditingController();
 
+  // New V6 fields
+  final _expiryCon     = TextEditingController();
+  final _batchCon      = TextEditingController();
+  final _dosageCon     = TextEditingController();
+  final _bestBeforeCon = TextEditingController();
+  final _packCon       = TextEditingController();
+  bool  _rxRequired    = false;
+
   String _category = AppConstants.catVegetables;
   String _unit     = AppConstants.unitKg;
   bool   _loading  = false;
@@ -63,6 +71,12 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _barcodeCon.text  = item.barcode;
         _category         = item.category;
         _unit             = item.unit;
+        _expiryCon.text   = item.expiryDate;
+        _batchCon.text    = item.batchNumber;
+        _dosageCon.text   = item.dosageInfo;
+        _bestBeforeCon.text = item.bestBefore;
+        _packCon.text     = item.packDate;
+        _rxRequired       = item.prescriptionRequired;
       });
     }
   }
@@ -71,6 +85,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   void dispose() {
     _nameCon.dispose(); _costCon.dispose(); _sellCon.dispose(); _marketCon.dispose();
     _stockCon.dispose(); _minStockCon.dispose(); _barcodeCon.dispose();
+    _expiryCon.dispose(); _batchCon.dispose(); _dosageCon.dispose();
+    _bestBeforeCon.dispose(); _packCon.dispose();
     super.dispose();
   }
 
@@ -224,6 +240,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   ),
                 ],
               ),
+              
+              _buildCategorySpecificFields(),
               const SizedBox(height: 32),
 
               SizedBox(
@@ -280,6 +298,12 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         barcode:      _barcodeCon.text.trim(),
         createdAt:    now,
         updatedAt:    now,
+        expiryDate:   _category == AppConstants.catMedicines ? _expiryCon.text : '',
+        batchNumber:  _category == AppConstants.catMedicines ? _batchCon.text.trim() : '',
+        prescriptionRequired: _category == AppConstants.catMedicines ? _rxRequired : false,
+        dosageInfo:   _category == AppConstants.catMedicines ? _dosageCon.text.trim() : '',
+        bestBefore:   _category == AppConstants.catGroceries ? _bestBeforeCon.text : '',
+        packDate:     _category == AppConstants.catGroceries ? _packCon.text : '',
       );
 
       if (_isEdit) {
@@ -299,6 +323,130 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Widget _buildCategorySpecificFields() {
+    if (_category == AppConstants.catMedicines) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(height: 32),
+          Text(
+            'Medicines Configuration',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _batchCon,
+            decoration: const InputDecoration(
+              labelText: 'Batch Number',
+              prefixIcon: Icon(Icons.numbers_rounded),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _dosageCon,
+            decoration: const InputDecoration(
+              labelText: 'Dosage / Composition Info',
+              prefixIcon: Icon(Icons.medical_services_rounded),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _expiryCon,
+            readOnly: true,
+            decoration: const InputDecoration(
+              labelText: 'Expiry Date',
+              prefixIcon: Icon(Icons.calendar_today_rounded),
+            ),
+            onTap: () async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: _expiryCon.text.isNotEmpty
+                    ? DateTime.parse(_expiryCon.text)
+                    : DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (date != null) {
+                setState(() => _expiryCon.text = date.toIso8601String().substring(0, 10));
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            title: const Text('Prescription Required (Rx)'),
+            subtitle: const Text('Require prescription verification at checkout'),
+            value: _rxRequired,
+            onChanged: (val) => setState(() => _rxRequired = val),
+            activeColor: AppColors.primary,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ],
+      );
+    } else if (_category == AppConstants.catGroceries) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(height: 32),
+          Text(
+            'Groceries Configuration',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _packCon,
+            readOnly: true,
+            decoration: const InputDecoration(
+              labelText: 'Pack Date',
+              prefixIcon: Icon(Icons.date_range_rounded),
+            ),
+            onTap: () async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: _packCon.text.isNotEmpty
+                    ? DateTime.parse(_packCon.text)
+                    : DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (date != null) {
+                setState(() => _packCon.text = date.toIso8601String().substring(0, 10));
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _bestBeforeCon,
+            readOnly: true,
+            decoration: const InputDecoration(
+              labelText: 'Best Before Date',
+              prefixIcon: Icon(Icons.timer_rounded),
+            ),
+            onTap: () async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: _bestBeforeCon.text.isNotEmpty
+                    ? DateTime.parse(_bestBeforeCon.text)
+                    : DateTime.now().add(const Duration(days: 30)),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (date != null) {
+                setState(() => _bestBeforeCon.text = date.toIso8601String().substring(0, 10));
+              }
+            },
+          ),
+        ],
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 

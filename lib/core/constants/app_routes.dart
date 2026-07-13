@@ -57,4 +57,7 @@ class AppRoutes {
   static const String callLogs        = '/call-logs';
   static const String workerPasscodeLock = '/worker-passcode-lock';
   static const String orderQuestionsConfig = '/order-questions-config';
+  static const String groceriesHub = '/groceries-hub';
+  static const String medicinesHub = '/medicines-hub';
+  static const String ownerFeaturesHub = '/owner-features-hub';
 }

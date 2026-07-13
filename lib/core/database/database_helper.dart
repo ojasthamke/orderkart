@@ -78,6 +78,7 @@ class DatabaseHelper {
         await _ensureV4Columns(db);
         await _ensureSavingsColumn(db);
         await _createV5Tables(db);
+        await _createV6Tables(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
       },
@@ -105,6 +106,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 5) {
       await _createV5Tables(db);
+    }
+    if (oldVersion < 6) {
+      await _createV6Tables(db);
     }
   }
 
@@ -399,6 +403,14 @@ class DatabaseHelper {
     await db.execute('DELETE FROM audit_logs');
     await db.execute('DELETE FROM vip_membership');
     await db.execute('DELETE FROM call_logs');
+    await db.execute('DELETE FROM item_warehouses');
+    await db.execute('DELETE FROM supplier_ledger');
+    await db.execute('DELETE FROM supplier_price_tracker');
+    await db.execute('DELETE FROM purchase_order_items');
+    await db.execute('DELETE FROM purchase_orders');
+    await db.execute('DELETE FROM suppliers');
+    await db.execute('DELETE FROM custom_field_values');
+    await db.execute('DELETE FROM custom_fields');
     // Re-seed defaults but keep settings
   }
 
@@ -1725,6 +1737,126 @@ class DatabaseHelper {
         question_text   TEXT NOT NULL,
         selected_option TEXT NOT NULL,
         PRIMARY KEY (order_id, question_id)
+      )
+    ''');
+  }
+
+  Future<void> _createV6Tables(Database db) async {
+    // Add V6 columns to items table if they don't exist
+    final itemCols = [
+      {'name': 'expiry_date', 'type': 'TEXT DEFAULT \'\''},
+      {'name': 'batch_number', 'type': 'TEXT DEFAULT \'\''},
+      {'name': 'prescription_required', 'type': 'INTEGER DEFAULT 0'},
+      {'name': 'dosage_info', 'type': 'TEXT DEFAULT \'\''},
+      {'name': 'best_before', 'type': 'TEXT DEFAULT \'\''},
+      {'name': 'pack_date', 'type': 'TEXT DEFAULT \'\''},
+    ];
+
+    for (final col in itemCols) {
+      try {
+        await db.execute("ALTER TABLE items ADD COLUMN ${col['name']} ${col['type']}");
+      } catch (_) {}
+    }
+
+    // item_warehouses
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS item_warehouses (
+        id             TEXT PRIMARY KEY,
+        item_id        TEXT NOT NULL,
+        warehouse_name TEXT NOT NULL,
+        stock          REAL DEFAULT 0,
+        FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    ''');
+
+    // suppliers
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS suppliers (
+        id                  TEXT PRIMARY KEY,
+        name                TEXT NOT NULL,
+        phone               TEXT DEFAULT '',
+        email               TEXT DEFAULT '',
+        address             TEXT DEFAULT '',
+        outstanding_balance REAL DEFAULT 0,
+        created_at          TEXT NOT NULL,
+        updated_at          TEXT NOT NULL
+      )
+    ''');
+
+    // supplier_ledger
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS supplier_ledger (
+        id            TEXT PRIMARY KEY,
+        supplier_id   TEXT NOT NULL,
+        tx_date       TEXT NOT NULL,
+        tx_type       TEXT NOT NULL,
+        amount        REAL NOT NULL,
+        balance_after REAL NOT NULL,
+        description   TEXT DEFAULT '',
+        FOREIGN KEY(supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+      )
+    ''');
+
+    // supplier_price_tracker
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS supplier_price_tracker (
+        id          TEXT PRIMARY KEY,
+        item_id     TEXT NOT NULL,
+        supplier_id TEXT NOT NULL,
+        old_cost    REAL NOT NULL,
+        new_cost    REAL NOT NULL,
+        change_date TEXT NOT NULL,
+        FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE,
+        FOREIGN KEY(supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+      )
+    ''');
+
+    // purchase_orders
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS purchase_orders (
+        id           TEXT PRIMARY KEY,
+        supplier_id TEXT NOT NULL,
+        order_date  TEXT NOT NULL,
+        status      TEXT NOT NULL DEFAULT 'pending',
+        total_amount REAL DEFAULT 0,
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL,
+        FOREIGN KEY(supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+      )
+    ''');
+
+    // purchase_order_items
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS purchase_order_items (
+        id                TEXT PRIMARY KEY,
+        purchase_order_id TEXT NOT NULL,
+        item_id           TEXT NOT NULL,
+        cost_price        REAL NOT NULL,
+        quantity          REAL NOT NULL,
+        FOREIGN KEY(purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+        FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    ''');
+
+    // custom_fields
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS custom_fields (
+        id          TEXT PRIMARY KEY,
+        entity_type TEXT NOT NULL,
+        field_name  TEXT NOT NULL,
+        field_type  TEXT NOT NULL,
+        created_at  TEXT NOT NULL
+      )
+    ''');
+
+    // custom_field_values
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS custom_field_values (
+        entity_id TEXT NOT NULL,
+        field_id  TEXT NOT NULL,
+        value     TEXT NOT NULL,
+        PRIMARY KEY (entity_id, field_id),
+        FOREIGN KEY(field_id) REFERENCES custom_fields(id) ON DELETE CASCADE
       )
     ''');
   }

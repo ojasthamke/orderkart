@@ -60,6 +60,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   final _paidCon         = TextEditingController();
   AppOrder? _existingOrder;
   bool   _saving         = false;
+  bool   _rxVerified     = false;
 
   List<OrderQuestion> _questions = [];
   Map<String, String> _selectedAnswers = {};
@@ -239,7 +240,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   const SizedBox(height: 16),
 
                   // Order Summary card
-                  if (_cart.isNotEmpty) _buildSummaryCard(currency),
+                  if (_cart.isNotEmpty) ...[
+                    _buildSummaryCard(currency),
+                    _buildRxVerificationSection(),
+                  ],
 
                   const SizedBox(height: 16),
 
@@ -734,6 +738,34 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final inventoryAsync = ref.read(inventoryProvider);
     final inventoryList = inventoryAsync.value ?? [];
 
+    bool hasRxItems = false;
+    for (final cartItem in _cart) {
+      final dbItem = inventoryList.firstWhere(
+        (i) => i.id == cartItem.itemId,
+        orElse: () => Item(
+          id: '',
+          name: '',
+          category: 'Other',
+          unit: 'kg',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      if (dbItem.id.isNotEmpty && dbItem.prescriptionRequired) {
+        hasRxItems = true;
+        break;
+      }
+    }
+
+    if (hasRxItems && !_rxVerified) {
+      AppHaptics.error();
+      SnackbarHelper.showError(
+        context,
+        '⚠️ Prescription Required: You must physically verify the Doctor\'s Prescription for this order.',
+      );
+      return;
+    }
+
     for (final cartItem in _cart) {
       final dbItem = inventoryList.firstWhere((i) => i.id == cartItem.itemId,
           orElse: () => Item(
@@ -1190,6 +1222,79 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             }),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRxVerificationSection() {
+    final inventoryAsync = ref.read(inventoryProvider);
+    final inventoryList = inventoryAsync.value ?? [];
+
+    bool hasRxItems = false;
+    for (final cartItem in _cart) {
+      final dbItem = inventoryList.firstWhere(
+        (i) => i.id == cartItem.itemId,
+        orElse: () => Item(
+          id: '',
+          name: '',
+          category: 'Other',
+          unit: 'kg',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      if (dbItem.id.isNotEmpty && dbItem.prescriptionRequired) {
+        hasRxItems = true;
+        break;
+      }
+    }
+
+    if (!hasRxItems) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.error.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error.withOpacity(0.18), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+              const SizedBox(width: 8),
+              Text(
+                'Prescription Required (Rx)',
+                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error.withOpacity(0.9)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'This order contains prescription-only medicines. Please physically verify the doctor\'s prescription before proceeding.',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          CheckboxListTile(
+            title: const Text(
+              'Doctor Prescription Verified physically',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.error),
+            ),
+            value: _rxVerified,
+            onChanged: (val) {
+              if (val != null) {
+                AppHaptics.buttonClick();
+                setState(() => _rxVerified = val);
+              }
+            },
+            activeColor: AppColors.error,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+          ),
+        ],
       ),
     );
   }

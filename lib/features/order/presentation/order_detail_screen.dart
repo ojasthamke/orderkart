@@ -16,6 +16,7 @@ import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
+import '../../inventory/domain/item.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../data/order_questions_dao.dart';
 import '../domain/order.dart';
@@ -796,13 +797,27 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       }
     }
     final list = order.items
-            .map((it) => {
-                  'item_name':   it.itemName,
-                  'quantity':    it.quantity,
-                  'item_unit':   it.itemUnit,
-                  'unit_price':  it.unitPrice,
-                  'total_price': it.totalPrice,
-                })
+            .map((it) {
+              final matchedItem = itemsList.firstWhere(
+                (i) => i.id == it.itemId,
+                orElse: () => Item(
+                  id: '',
+                  name: '',
+                  category: 'Other',
+                  unit: 'kg',
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ),
+              );
+              return {
+                'item_name':   it.itemName,
+                'quantity':    it.quantity,
+                'item_unit':   it.itemUnit,
+                'unit_price':  it.unitPrice,
+                'total_price': it.totalPrice,
+                'prescription_required': matchedItem.prescriptionRequired,
+              };
+            })
             .toList();
 
     final qAnswers = await OrderQuestionDao.instance.getOrderAnswers(order.id);
