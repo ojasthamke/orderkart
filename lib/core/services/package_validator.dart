@@ -109,7 +109,10 @@ class PackageValidator {
         'expenses.json': 'expenses',
         'notes.json': 'notes',
         'visits.json': 'visits',
-        'worker_reports.json': 'worker_reports'
+        'worker_reports.json': 'worker_reports',
+        'order_questions.json': 'order_questions',
+        'customer_question_answers.json': 'customer_question_answers',
+        'order_question_answers.json': 'order_question_answers'
       };
 
       for (final f in archive) {
@@ -178,8 +181,8 @@ class PackageValidator {
 
       final schemaVer = manifest['schema_version']?.toString() ?? '';
       final schemaInt = int.tryParse(schemaVer) ?? 0;
-      if (schemaInt < 1 || schemaInt > 4) {
-        return _fail('Incompatible database schema version: $schemaVer. Expected 1-4.');
+      if (schemaInt < 1 || schemaInt > 5) {
+        return _fail('Incompatible database schema version: $schemaVer. Expected 1-5.');
       }
 
       final db = await DatabaseHelper.instance.database;

@@ -510,7 +510,7 @@ class PackageExporter {
       'minimum_supported_version': '1.0.0',
       'current_version': '1.0.0',
       'db_version': AppConstants.dbVersion.toString(),
-      'schema_version': '4',
+      'schema_version': '5',
       'export_version': '1',
       'selected_modules': selectedModules,
       'business_name': AppConstants.appName,
