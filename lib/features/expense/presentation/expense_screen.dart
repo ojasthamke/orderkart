@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -169,14 +170,38 @@ class _ExpenseCard extends StatelessWidget {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.errorSurface,
-            borderRadius: BorderRadius.circular(12),
+        leading: GestureDetector(
+          onTap: expense.receiptPhotoPath.isNotEmpty
+              ? () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      child: InteractiveViewer(
+                        child: Image.file(File(expense.receiptPhotoPath)),
+                      ),
+                    ),
+                  );
+                }
+              : null,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.errorSurface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: expense.receiptPhotoPath.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(expense.receiptPhotoPath),
+                      fit: BoxFit.cover,
+                      width: 44,
+                      height: 44,
+                    ),
+                  )
+                : const Icon(Icons.receipt_rounded, color: AppColors.error),
           ),
-          child: const Icon(Icons.receipt_rounded, color: AppColors.error),
         ),
         title: Text(expense.name,
             style: Theme.of(context)

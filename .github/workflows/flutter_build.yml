@@ -51,7 +51,7 @@ jobs:
 
       # 5. Analyze Dart code (non-blocking)
       - name: Analyze Code
-        run: flutter analyze --no-fatal-infos || true
+        run: flutter analyze --no-fatal-infos
 
       # 6. Build Android Release APK — capture full Gradle output for debugging
       - name: Build Android APK

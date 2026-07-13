@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'voice_search_dialog.dart';
 
 class CustomSearchBar extends StatefulWidget {
   final String hint;
@@ -62,13 +63,29 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
           hintText: widget.hint,
           prefixIcon:
               const Icon(Icons.search_rounded, color: AppColors.gray500),
-          suffixIcon: _controller.text.isNotEmpty
-              ? IconButton(
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_controller.text.isNotEmpty)
+                IconButton(
                   icon: const Icon(Icons.close_rounded,
                       color: AppColors.gray500, size: 18),
                   onPressed: _clear,
-                )
-              : null,
+                ),
+              IconButton(
+                icon: const Icon(Icons.mic_rounded, color: AppColors.primary, size: 20),
+                onPressed: () async {
+                  final text = await VoiceSearchDialog.show(context);
+                  if (text != null && text.trim().isNotEmpty) {
+                    setState(() {
+                      _controller.text = text;
+                    });
+                    widget.onChanged(text);
+                  }
+                },
+              ),
+            ],
+          ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,

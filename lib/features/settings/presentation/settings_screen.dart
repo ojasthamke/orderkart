@@ -212,6 +212,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   value: settings.enableVipPriceMarkup,
                   onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(enableVipPriceMarkup: v)),
                 ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.percent_rounded),
+                  title: const Text('Worker Allowed Discount Cap'),
+                  trailing: SizedBox(
+                    width: 80,
+                    child: TextField(
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textAlign: TextAlign.right,
+                      controller: TextEditingController(text: settings.workerDiscountCap.toStringAsFixed(0)),
+                      onChanged: (v) {
+                        final val = double.tryParse(v);
+                        if (val != null) {
+                          ref.read(settingsProvider.notifier).update(settings.copyWith(workerDiscountCap: val));
+                        }
+                      },
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: '10.0',
+                        suffixText: '%',
+                      ),
+                    ),
+                  ),
+                ),
               ]),
               const SizedBox(height: 8),
               SizedBox(

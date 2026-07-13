@@ -40,6 +40,7 @@ dependencies:
 
   # Image
   image_picker: ^1.1.2
+  speech_to_text: ^6.6.2
 
   # Permissions
   permission_handler: ^11.3.1

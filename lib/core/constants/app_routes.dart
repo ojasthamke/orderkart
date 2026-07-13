@@ -60,4 +60,5 @@ class AppRoutes {
   static const String groceriesHub = '/groceries-hub';
   static const String medicinesHub = '/medicines-hub';
   static const String ownerFeaturesHub = '/owner-features-hub';
+  static const String catalogShowroom = '/catalog-showroom';
 }

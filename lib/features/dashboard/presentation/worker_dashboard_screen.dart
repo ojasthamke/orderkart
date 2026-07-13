@@ -371,6 +371,15 @@ class WorkerDashboardScreen extends ConsumerWidget {
                         onTap: () => Navigator.pushNamed(context, AppRoutes.medicinesHub),
                         index: 9,
                       ),
+                      _actionCard(
+                        context,
+                        title: 'Catalog Showroom',
+                        subtitle: 'Present Showroom',
+                        icon: Icons.grid_view_rounded,
+                        color: Colors.pink,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.catalogShowroom),
+                        index: 10,
+                      ),
                     ],
                   ),
 

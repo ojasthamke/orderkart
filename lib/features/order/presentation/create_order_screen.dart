@@ -28,6 +28,8 @@ import '../domain/payment.dart';
 import 'order_provider.dart';
 import '../data/order_dao.dart';
 import '../data/order_questions_dao.dart';
+import '../../../core/security/app_mode_service.dart';
+import '../../../core/localization/app_localization.dart';
 import 'widgets/item_selector_widget.dart';
 import 'widgets/smart_round_banner.dart';
 
@@ -165,8 +167,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final settings = ref.watch(settingsProvider).value;
     final currency = settings?.currency ?? AppConstants.defaultCurrency;
 
+    final discountCapPct = settings?.workerDiscountCap ?? 10.0;
+    final isWorker = ref.watch(appModeProvider).valueOrNull == AppMode.worker;
+    final enteredDiscountPct = _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
+    final exceedsCap = isWorker && enteredDiscountPct > discountCapPct;
+
     return AppScaffold(
-      title: widget.orderId == null ? 'Create Order' : 'Edit Order',
+      title: widget.orderId == null
+          ? AppLocalization.translate(ref, 'create_order', 'Create Order')
+          : 'Edit Order',
       body: Column(
         children: [
           // Customer header
@@ -224,7 +233,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     onChanged: (v) =>
                         setState(() => _discount = double.tryParse(v) ?? 0),
                   ),
-
+                  if (exceedsCap)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        '⚠️ Discount of ${enteredDiscountPct.toStringAsFixed(1)}% exceeds maximum allowed worker limit of ${discountCapPct.toStringAsFixed(0)}%',
+                        style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   const SizedBox(height: 16),
 
                   // Smart Rounding banner
@@ -684,8 +700,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
-  // ── Bottom save bar ───────────────────────────────────────────────────────────
   Widget _buildBottomBar(BuildContext context, String currency) {
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final discountCapPct = settingsVal?.workerDiscountCap ?? 10.0;
+    final isWorker = ref.watch(appModeProvider).valueOrNull == AppMode.worker;
+    final enteredDiscountPct = _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
+    final exceedsCap = isWorker && enteredDiscountPct > discountCapPct;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
@@ -714,7 +735,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
           ),
           ElevatedButton.icon(
-            onPressed: _saveOrder,
+            onPressed: exceedsCap ? null : _saveOrder,
             icon: const Icon(Icons.check_circle_rounded),
             label: const Text('Save Order'),
             style: ElevatedButton.styleFrom(
@@ -731,6 +752,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     if (_saving) return;
     if (_cart.isEmpty) {
       SnackbarHelper.showError(context, 'Add at least one item');
+      return;
+    }
+
+    final settingsVal = ref.read(settingsProvider).value;
+    final discountCapPct = settingsVal?.workerDiscountCap ?? 10.0;
+    final isWorker = ref.read(appModeProvider).valueOrNull == AppMode.worker;
+    final enteredDiscountPct = _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
+    if (isWorker && enteredDiscountPct > discountCapPct) {
+      SnackbarHelper.showError(context, 'Discount of ${enteredDiscountPct.toStringAsFixed(1)}% exceeds maximum allowed worker limit of ${discountCapPct.toStringAsFixed(0)}%');
       return;
     }
 

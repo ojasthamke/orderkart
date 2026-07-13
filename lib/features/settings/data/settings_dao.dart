@@ -47,6 +47,7 @@ class SettingsDao {
       notificationTime:     m[AppConstants.keyNotifTime]       ?? '06:00',
       enableVipPriceMarkup: (m[AppConstants.keyEnableVipPriceMarkup] ?? 'true') == 'true',
       language:             m[AppConstants.keyLanguage]        ?? 'en',
+      workerDiscountCap:    double.tryParse(m[AppConstants.keyWorkerDiscountCap] ?? '10') ?? 10.0,
     );
   }
 }

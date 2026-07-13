@@ -31,7 +31,7 @@ class AppConstants {
 
   // Database
   static const String dbName = 'orderkart.db';
-  static const int dbVersion = 6;
+  static const int dbVersion = 7;
 
   // Defaults
   static const double defaultDeliveryCharge = 10.0;
@@ -192,6 +192,7 @@ class AppConstants {
   static const String keyEnableVipPriceMarkup = 'enable_vip_price_markup';
   static const String keyOwnerSecret = 'owner_secret';
   static const String keyLanguage = 'language';
+  static const String keyWorkerDiscountCap = 'worker_discount_cap';
 
   // Pagination
   static const int pageSize = 30;

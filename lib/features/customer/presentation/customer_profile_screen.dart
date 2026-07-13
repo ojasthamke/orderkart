@@ -18,6 +18,7 @@ import '../../order/domain/payment.dart';
 import '../../order/presentation/order_provider.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
+import 'widgets/instant_ledger_sheet.dart';
 import '../../order/domain/order.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../settings/presentation/settings_provider.dart';
@@ -816,6 +817,14 @@ class CustomerProfileScreen extends ConsumerWidget {
               color: AppColors.warning,
               onTap: () => _showPayDialog(context, ref, customer),
             ),
+          // Instant Ledger
+          _actionBtn(
+            context: context,
+            icon: Icons.account_balance_wallet_rounded,
+            label: 'Ledger',
+            color: Colors.blueGrey,
+            onTap: () => InstantLedgerSheet.show(context, customer),
+          ),
         ],
       ),
     );

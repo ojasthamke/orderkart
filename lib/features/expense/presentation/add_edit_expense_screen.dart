@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/utils/image_utils.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/expense.dart';
@@ -27,6 +31,7 @@ class _AddEditExpenseScreenState
   String   _category      = AppConstants.expTransport;
   String   _paymentMethod = AppConstants.paymentCash;
   DateTime _date          = DateTime.now();
+  String   _receiptPath   = '';
   bool     _loading       = false;
   bool     _isEdit        = false;
 
@@ -49,6 +54,7 @@ class _AddEditExpenseScreenState
         _category       = e.category;
         _paymentMethod  = e.paymentMethod;
         _date           = e.date;
+        _receiptPath    = e.receiptPhotoPath;
       });
     }
   }
@@ -159,6 +165,59 @@ class _AddEditExpenseScreenState
                 ),
                 maxLines: 2,
               ),
+              const SizedBox(height: 16),
+
+              // Receipt Photo
+              Text('Receipt Capture', style: Theme.of(context).textTheme.labelMedium),
+              const SizedBox(height: 8),
+              if (_receiptPath.isNotEmpty) ...[
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            child: InteractiveViewer(
+                              child: Image.file(File(_receiptPath)),
+                            ),
+                          ),
+                        );
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(_receiptPath),
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => setState(() => _receiptPath = ''),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade50,
+                        foregroundColor: Colors.red,
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.delete_rounded),
+                      label: const Text('Remove'),
+                    ),
+                  ],
+                ),
+              ] else
+                OutlinedButton.icon(
+                  onPressed: _pickReceiptImage,
+                  icon: const Icon(Icons.camera_alt_rounded),
+                  label: const Text('Capture Receipt Photo'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                    side: const BorderSide(color: AppColors.primary),
+                    foregroundColor: AppColors.primary,
+                  ),
+                ),
               const SizedBox(height: 32),
 
               SizedBox(
@@ -184,13 +243,57 @@ class _AddEditExpenseScreenState
     );
   }
 
+  Future<void> _pickReceiptImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Take a Photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source != null) {
+      final img = await ImageUtils.pickAndCompress(source: source);
+      if (img != null) {
+        setState(() => _receiptPath = img.path);
+      }
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
       final now = DateTime.now();
+      final expenseId = widget.expenseId ?? const Uuid().v4();
+
+      String finalReceiptPath = _receiptPath;
+      if (_receiptPath.isNotEmpty && !_receiptPath.startsWith('http')) {
+        final saved = await ImageUtils.saveImagePermanently(
+          sourcePath: _receiptPath,
+          subFolder: 'expense_receipts',
+          fileName: 'receipt_$expenseId',
+        );
+        if (saved != null) {
+          finalReceiptPath = saved;
+        }
+      }
+
       final expense = Expense(
-        id:            widget.expenseId ?? const Uuid().v4(),
+        id:            expenseId,
         name:          _nameCon.text.trim(),
         category:      _category,
         amount:        double.tryParse(_amountCon.text) ?? 0,
@@ -199,6 +302,7 @@ class _AddEditExpenseScreenState
         paymentMethod: _paymentMethod,
         createdAt:     now,
         updatedAt:     now,
+        receiptPhotoPath: finalReceiptPath,
       );
       if (_isEdit) {
         await ref.read(expenseProvider.notifier).update(expense);

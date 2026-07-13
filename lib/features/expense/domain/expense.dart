@@ -11,6 +11,7 @@ class Expense {
   final String paymentMethod;  // cash / online
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String receiptPhotoPath;
 
   const Expense({
     required this.id,
@@ -22,6 +23,7 @@ class Expense {
     this.paymentMethod = 'cash',
     required this.createdAt,
     required this.updatedAt,
+    this.receiptPhotoPath = '',
   });
 
   Expense copyWith({
@@ -34,6 +36,7 @@ class Expense {
     String? paymentMethod,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? receiptPhotoPath,
   }) {
     return Expense(
       id:            id            ?? this.id,
@@ -45,6 +48,7 @@ class Expense {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       createdAt:     createdAt     ?? this.createdAt,
       updatedAt:     updatedAt     ?? this.updatedAt,
+      receiptPhotoPath: receiptPhotoPath ?? this.receiptPhotoPath,
     );
   }
 
@@ -58,6 +62,7 @@ class Expense {
         'payment_method': paymentMethod,
         'created_at':     createdAt.toIso8601String(),
         'updated_at':     updatedAt.toIso8601String(),
+        'receipt_photo_path': receiptPhotoPath,
       };
 
   factory Expense.fromMap(Map<String, dynamic> map) => Expense(
@@ -70,6 +75,7 @@ class Expense {
         paymentMethod: map['payment_method'] as String? ?? 'cash',
         createdAt:     DateTime.parse(map['created_at'] as String),
         updatedAt:     DateTime.parse(map['updated_at'] as String),
+        receiptPhotoPath: map['receipt_photo_path'] as String? ?? '',
       );
 
   @override

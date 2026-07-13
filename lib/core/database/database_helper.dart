@@ -79,6 +79,7 @@ class DatabaseHelper {
         await _ensureSavingsColumn(db);
         await _createV5Tables(db);
         await _createV6Tables(db);
+        await _createV7Tables(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
       },
@@ -109,6 +110,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 6) {
       await _createV6Tables(db);
+    }
+    if (oldVersion < 7) {
+      await _createV7Tables(db);
     }
   }
 
@@ -1859,6 +1863,12 @@ class DatabaseHelper {
         FOREIGN KEY(field_id) REFERENCES custom_fields(id) ON DELETE CASCADE
       )
     ''');
+  }
+
+  Future<void> _createV7Tables(Database db) async {
+    try {
+      await db.execute("ALTER TABLE expenses ADD COLUMN receipt_photo_path TEXT DEFAULT ''");
+    } catch (_) {}
   }
 }
 

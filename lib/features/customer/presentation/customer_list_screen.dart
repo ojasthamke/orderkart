@@ -11,6 +11,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
+import 'widgets/instant_ledger_sheet.dart';
 
 class CustomerListScreen extends ConsumerStatefulWidget {
   final String? streetId;
@@ -312,6 +313,8 @@ class _CustomerCard extends StatelessWidget {
                       )
                           .then((_) =>
                               ref.refresh(customerListProvider(streetId)));
+                    } else if (v == 'ledger') {
+                      InstantLedgerSheet.show(context, customer);
                     } else if (v == 'delete') {
                       final ok = await ConfirmDeleteDialog.show(
                         context,
@@ -331,6 +334,13 @@ class _CustomerCard extends StatelessWidget {
                         child: ListTile(
                           leading: Icon(Icons.add_shopping_cart_rounded),
                           title: Text('Create Order'),
+                          contentPadding: EdgeInsets.zero,
+                        )),
+                    const PopupMenuItem(
+                        value: 'ledger',
+                        child: ListTile(
+                          leading: Icon(Icons.account_balance_wallet_rounded),
+                          title: Text('Instant Ledger'),
                           contentPadding: EdgeInsets.zero,
                         )),
                     const PopupMenuItem(

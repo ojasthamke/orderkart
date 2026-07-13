@@ -59,6 +59,7 @@ import 'features/order/presentation/order_questions_config_screen.dart';
 import 'features/inventory/presentation/groceries_hub_screen.dart';
 import 'features/inventory/presentation/medicines_hub_screen.dart';
 import 'features/dashboard/presentation/owner_features_hub_screen.dart';
+import 'features/inventory/presentation/catalog_showroom_screen.dart';
 
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
@@ -289,6 +290,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.ownerFeaturesHub:
         return _slide(const OwnerFeaturesHubScreen());
+
+      case AppRoutes.catalogShowroom:
+        return _slide(const CatalogShowroomScreen());
 
       default:
         return _slide(const AppStartupScreen(), settings);
