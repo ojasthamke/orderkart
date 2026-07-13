@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_constants.dart';
+import 'full_screen_image_viewer.dart';
 
 class CustomerAvatar extends StatelessWidget {
   final String? photoPath;
@@ -36,22 +37,31 @@ class CustomerAvatar extends StatelessWidget {
 
     if (!hasPhoto) return fallback;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: kIsWeb
-            ? Image.network(
-                photoPath!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => fallback,
-              )
-            : Image.file(
-                AppConstants.resolveFile(photoPath!),
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => fallback,
-              ),
+    return GestureDetector(
+      onTap: () {
+        FullScreenImageViewer.show(
+          context,
+          AppConstants.resolveFile(photoPath!).path,
+          isAsset: kIsWeb,
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: kIsWeb
+              ? Image.network(
+                  photoPath!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => fallback,
+                )
+              : Image.file(
+                  AppConstants.resolveFile(photoPath!),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => fallback,
+                ),
+        ),
       ),
     );
   }

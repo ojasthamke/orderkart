@@ -13,6 +13,7 @@ import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/full_screen_image_viewer.dart';
 import '../domain/street.dart';
 import 'street_provider.dart';
 import '../../../core/security/app_mode_service.dart';
@@ -362,19 +363,26 @@ class _StreetTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Photo or Icon Avatar
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(12),
-                  image: (street.photoPath.isNotEmpty && File(street.photoPath).existsSync())
-                      ? DecorationImage(image: FileImage(File(street.photoPath)), fit: BoxFit.cover)
+              GestureDetector(
+                onTap: () {
+                  if (street.photoPath.isNotEmpty && File(street.photoPath).existsSync()) {
+                    FullScreenImageViewer.show(context, street.photoPath, title: street.name);
+                  }
+                },
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: BorderRadius.circular(12),
+                    image: (street.photoPath.isNotEmpty && File(street.photoPath).existsSync())
+                        ? DecorationImage(image: FileImage(File(street.photoPath)), fit: BoxFit.cover)
+                        : null,
+                  ),
+                  child: (street.photoPath.isEmpty || !File(street.photoPath).existsSync())
+                      ? const Icon(Icons.turn_slight_right_rounded, color: AppColors.primary, size: 24)
                       : null,
                 ),
-                child: (street.photoPath.isEmpty || !File(street.photoPath).existsSync())
-                    ? const Icon(Icons.turn_slight_right_rounded, color: AppColors.primary, size: 24)
-                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(

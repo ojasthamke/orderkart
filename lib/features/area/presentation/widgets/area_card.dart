@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../domain/area.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/full_screen_image_viewer.dart';
 
 class AreaCard extends StatelessWidget {
   final Area area;
@@ -46,22 +47,29 @@ class AreaCard extends StatelessWidget {
             child: Row(
               children: [
                 // Color / Image avatar
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(14),
-                    image: (area.photoPath.isNotEmpty && File(area.photoPath).existsSync())
-                        ? DecorationImage(
-                            image: FileImage(File(area.photoPath)),
-                            fit: BoxFit.cover,
-                          )
+                GestureDetector(
+                  onTap: () {
+                    if (area.photoPath.isNotEmpty && File(area.photoPath).existsSync()) {
+                      FullScreenImageViewer.show(context, area.photoPath, title: area.name);
+                    }
+                  },
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      image: (area.photoPath.isNotEmpty && File(area.photoPath).existsSync())
+                          ? DecorationImage(
+                              image: FileImage(File(area.photoPath)),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: (area.photoPath.isEmpty || !File(area.photoPath).existsSync())
+                        ? Icon(Icons.map_rounded, color: color, size: 26)
                         : null,
                   ),
-                  child: (area.photoPath.isEmpty || !File(area.photoPath).existsSync())
-                      ? Icon(Icons.map_rounded, color: color, size: 26)
-                      : null,
                 ),
                 const SizedBox(width: 14),
                 // Info
