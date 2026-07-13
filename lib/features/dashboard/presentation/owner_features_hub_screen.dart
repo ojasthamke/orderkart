@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -256,6 +258,68 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
           ],
         ),
       );
+    }
+  }
+
+  Future<void> _rollbackAuditLog(Map<String, dynamic> log) async {
+    final entityType = log['entity_type'] as String? ?? '';
+    final entityId = log['entity_id'] as String? ?? '';
+    final oldValue = log['old_value'] as String? ?? '';
+
+    if (oldValue.isEmpty || entityType.isEmpty || entityId.isEmpty) {
+      SnackbarHelper.showError(context, 'This action cannot be rolled back (no historical data)');
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Rollback'),
+        content: Text('Are you sure you want to revert this "$entityType" to its previous state?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            child: const Text('Rollback'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final Map<String, dynamic> oldData = jsonDecode(oldValue);
+
+      if (entityType == 'item' || entityType == 'items') {
+        // Resolve target fields if conflict algorithms require it
+        await db.insert('items', oldData, conflictAlgorithm: ConflictAlgorithm.replace);
+        ref.invalidate(inventoryProvider);
+      } else if (entityType == 'customer' || entityType == 'customers') {
+        await db.insert('customers', oldData, conflictAlgorithm: ConflictAlgorithm.replace);
+      } else if (entityType == 'order' || entityType == 'orders') {
+        await db.insert('orders', oldData, conflictAlgorithm: ConflictAlgorithm.replace);
+      } else {
+        throw Exception('Unsupported entity rollback type: $entityType');
+      }
+
+      // Log the rollback action
+      final rollbackId = const Uuid().v4();
+      await db.insert('audit_logs', {
+        'id': rollbackId,
+        'user_type': 'owner',
+        'action': 'Rollback: Reverted $entityType modification (ID: $entityId)',
+        'entity_type': entityType,
+        'entity_id': entityId,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      await _loadAllData();
+      if (mounted) SnackbarHelper.showSuccess(context, 'Rollback successful! Entity restored.');
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Rollback failed: $e');
     }
   }
 
@@ -702,10 +766,22 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                         leading: const Icon(Icons.lock_person_rounded, size: 20),
                         title: Text(log['action'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                         subtitle: Text('User: ${log['user_type'] ?? ''} • ${log['created_at'] ?? ''}'),
-                        trailing: Text(
-                          log['entity_type'] ?? '',
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                        ),
+                        trailing: (log['old_value'] != null && (log['old_value'] as String).isNotEmpty)
+                            ? TextButton.icon(
+                                icon: const Icon(Icons.undo_rounded, size: 14),
+                                label: const Text('Revert', style: TextStyle(fontSize: 11)),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  foregroundColor: AppColors.primary,
+                                ),
+                                onPressed: () => _rollbackAuditLog(log),
+                              )
+                            : Text(
+                                log['entity_type'] ?? '',
+                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              ),
                       ),
                     );
                   },
