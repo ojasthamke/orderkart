@@ -514,6 +514,57 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
 
+                   const SizedBox(height: 24),
+                  
+                  const Text(
+                    'Advanced Operations Control',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.6,
+                    children: [
+                      _buildAdvancedActionCard(
+                        context,
+                        title: 'Sales Forecast & Cash',
+                        subtitle: 'AI demand & collections',
+                        icon: Icons.trending_up_rounded,
+                        color: Colors.purple,
+                        onTap: () => Navigator.of(context).pushNamed(AppRoutes.ownerFeaturesHub, arguments: {'initialTab': 3}),
+                      ),
+                      _buildAdvancedActionCard(
+                        context,
+                        title: 'Audit Logs & Rollback',
+                        subtitle: 'Trace user actions',
+                        icon: Icons.history_toggle_off_rounded,
+                        color: Colors.amber.shade900,
+                        onTap: () => Navigator.of(context).pushNamed(AppRoutes.ownerFeaturesHub, arguments: {'initialTab': 5}),
+                      ),
+                      _buildAdvancedActionCard(
+                        context,
+                        title: 'Digital PDF Catalog',
+                        subtitle: 'Export & share price list',
+                        icon: Icons.picture_as_pdf_rounded,
+                        color: Colors.redAccent,
+                        onTap: () => Navigator.of(context).pushNamed(AppRoutes.ownerFeaturesHub, arguments: {'initialTab': 4}),
+                      ),
+                      _buildAdvancedActionCard(
+                        context,
+                        title: 'Supplier Cost Ledger',
+                        subtitle: 'Track cost revisions',
+                        icon: Icons.business_center_rounded,
+                        color: Colors.indigo,
+                        onTap: () => Navigator.of(context).pushNamed(AppRoutes.ownerFeaturesHub, arguments: {'initialTab': 0}),
+                      ),
+                    ],
+                  ),
+
                   const SizedBox(height: 24),
 
                   // ── Orders History & Filter Header ───────────────────
@@ -665,6 +716,57 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildAdvancedActionCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.gray200),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: color.withOpacity(0.12),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

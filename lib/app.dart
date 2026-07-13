@@ -289,7 +289,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const MedicinesHubScreen());
 
       case AppRoutes.ownerFeaturesHub:
-        return _slide(const OwnerFeaturesHubScreen());
+        final args = settings.arguments as Map<String, dynamic>?;
+        final initialTab = args?['initialTab'] as int? ?? 0;
+        return _slide(OwnerFeaturesHubScreen(initialTab: initialTab));
 
       case AppRoutes.catalogShowroom:
         return _slide(const CatalogShowroomScreen());

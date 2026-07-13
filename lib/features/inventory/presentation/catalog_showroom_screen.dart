@@ -1,5 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -18,6 +23,60 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
   String _selectedCategory = 'all';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+
+  Future<void> _sharePdfCatalog(List<Item> items) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.all(24),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('ORDERKART OFFICIAL CATALOG', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 8),
+                pw.Text('Generated on: ${DateTime.now().toIso8601String().substring(0, 10)}', style: const pw.TextStyle(fontSize: 12)),
+                pw.Divider(thickness: 1),
+                pw.SizedBox(height: 16),
+                pw.TableHelper.fromTextArray(
+                  headers: ['Product Name', 'Category', 'Selling Price', 'Unit', 'Stock Status'],
+                  data: items.map((i) {
+                    return [
+                      i.name,
+                      i.category,
+                      'Rs. ${i.sellingPrice.toStringAsFixed(2)}',
+                      i.unit,
+                      i.stock > 0 ? 'In Stock (${i.stock})' : 'Out of Stock'
+                    ];
+                  }).toList(),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/OrderKart_Catalog.pdf');
+      await file.writeAsBytes(await pdf.save());
+      
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Sharing OrderKart Official Product Stock & Price List Catalog',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF Generation failed: $e')),
+        );
+      }
+    }
+  }
 
   final List<String> _categories = [
     'all',
@@ -171,6 +230,16 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
 
     return AppScaffold(
       title: 'Showroom Mode',
+      actions: [
+        itemsAsync.maybeWhen(
+          data: (items) => IconButton(
+            icon: const Icon(Icons.picture_as_pdf_rounded),
+            tooltip: 'Share PDF Catalog',
+            onPressed: () => _sharePdfCatalog(items),
+          ),
+          orElse: () => const SizedBox.shrink(),
+        ),
+      ],
       body: Column(
         children: [
           // Search & Filter Row

@@ -16,7 +16,8 @@ import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 
 class OwnerFeaturesHubScreen extends ConsumerStatefulWidget {
-  const OwnerFeaturesHubScreen({super.key});
+  final int initialTab;
+  const OwnerFeaturesHubScreen({super.key, this.initialTab = 0});
 
   @override
   ConsumerState<OwnerFeaturesHubScreen> createState() => _OwnerFeaturesHubScreenState();
@@ -49,7 +50,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 6, vsync: this, initialIndex: widget.initialTab);
     _loadAllData();
   }
 
