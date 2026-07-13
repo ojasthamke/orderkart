@@ -622,38 +622,91 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Widget _buildActionsSection(AppOrder order, String currency) {
+    Widget? statusButtons;
+
+    if (order.deliveryStatus == AppConstants.statusPending) {
+      statusButtons = Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => _updateStatus(order.id, AppConstants.statusDelivered),
+              icon: const Icon(Icons.check_circle_rounded),
+              label: const Text('Mark Delivered'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _updateStatus(order.id, AppConstants.statusCancelled),
+              icon: const Icon(Icons.cancel_rounded),
+              label: const Text('Cancel Order'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: const BorderSide(color: AppColors.error),
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
+          ),
+        ],
+      );
+    } else if (order.deliveryStatus == AppConstants.statusDelivered) {
+      statusButtons = Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => _updateStatus(order.id, AppConstants.statusPending),
+              icon: const Icon(Icons.history_rounded),
+              label: const Text('Mark Undelivered'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _updateStatus(order.id, AppConstants.statusCancelled),
+              icon: const Icon(Icons.cancel_rounded),
+              label: const Text('Cancel Order'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: const BorderSide(color: AppColors.error),
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
+          ),
+        ],
+      );
+    } else if (order.deliveryStatus == AppConstants.statusCancelled) {
+      statusButtons = Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => _updateStatus(order.id, AppConstants.statusPending),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Reactivate (Undelivered)'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
-        if (order.deliveryStatus == AppConstants.statusPending) ...[
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _updateStatus(order.id, AppConstants.statusDelivered),
-                  icon: const Icon(Icons.check_circle_rounded),
-                  label: const Text('Mark Delivered'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _updateStatus(order.id, AppConstants.statusCancelled),
-                  icon: const Icon(Icons.cancel_rounded),
-                  label: const Text('Cancel Order'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.error,
-                    side: const BorderSide(color: AppColors.error),
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                ),
-              ),
-            ],
-          ),
+        if (statusButtons != null) ...[
+          statusButtons,
           const SizedBox(height: 16),
         ],
         ElevatedButton.icon(

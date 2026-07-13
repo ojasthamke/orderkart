@@ -253,15 +253,17 @@ class _OrderManagementScreenState
   }
 
   Future<void> _toggleDelivery(AppOrder order) async {
-    final newStatus = order.deliveryStatus == AppConstants.statusPending
-        ? AppConstants.statusDelivered
-        : AppConstants.statusPending;
+    final newStatus = order.deliveryStatus == AppConstants.statusDelivered
+        ? AppConstants.statusPending
+        : (order.deliveryStatus == AppConstants.statusCancelled
+            ? AppConstants.statusPending
+            : AppConstants.statusDelivered);
     await ref
         .read(orderManagementProvider.notifier)
         .updateDeliveryStatus(order.id, newStatus);
     if (mounted) {
       SnackbarHelper.showSuccess(
-          context, 'Order marked as ${AppFormatters.deliveryStatus(newStatus)}');
+          context, 'Order marked as ${AppFormatters.deliveryStatus(newStatus).toUpperCase()}');
     }
   }
 
@@ -597,16 +599,19 @@ class _OrderCard extends ConsumerWidget {
                     ),
                     const Spacer(),
                     // Delivery toggle
-                    if (order.deliveryStatus != AppConstants.statusCancelled)
-                      _ActionBtn(
-                        label: order.deliveryStatus == AppConstants.statusDelivered
-                            ? 'Delivered ✓'
-                            : 'Mark Delivered',
-                        color: order.deliveryStatus == AppConstants.statusDelivered
-                            ? AppColors.success
-                            : AppColors.primary,
-                        onTap: onToggleDelivery,
-                      ),
+                    _ActionBtn(
+                      label: order.deliveryStatus == AppConstants.statusDelivered
+                          ? 'Delivered ✓'
+                          : (order.deliveryStatus == AppConstants.statusCancelled
+                              ? 'Reactivate'
+                              : 'Mark Delivered'),
+                      color: order.deliveryStatus == AppConstants.statusDelivered
+                          ? AppColors.success
+                          : (order.deliveryStatus == AppConstants.statusCancelled
+                              ? AppColors.warning
+                              : AppColors.primary),
+                      onTap: onToggleDelivery,
+                    ),
                     const SizedBox(width: 6),
                     // Pay button
                     if (order.remainingAmount > 0) ...[
