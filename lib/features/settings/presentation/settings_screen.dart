@@ -131,217 +131,134 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              if (isWorker) ...[
-                // ── Appearance ──────────────────────────────────────────
-                _sectionHeader(AppLocalization.translate(ref, 'appearance', 'Appearance'), Icons.palette_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.light_mode_rounded),
-                    title: Text(AppLocalization.translate(ref, 'theme', 'Theme')),
-                    trailing: DropdownButton<String>(
-                      value: settings.themeMode,
-                      underline: const SizedBox.shrink(),
-                      items: [
-                        DropdownMenuItem(value: 'system', child: Text(AppLocalization.translate(ref, 'system', 'System'))),
-                        DropdownMenuItem(value: 'light',  child: Text(AppLocalization.translate(ref, 'light', 'Light'))),
-                        DropdownMenuItem(value: 'dark',   child: Text(AppLocalization.translate(ref, 'dark', 'Dark'))),
-                      ],
-                      onChanged: (v) => ref
-                          .read(settingsProvider.notifier)
-                          .update(settings.copyWith(themeMode: v ?? 'system')),
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: 20),
+              // ── Business Info ───────────────────────────────────────
+              _sectionHeader('Business Info', Icons.business_rounded),
+              _card([
+                _textTile('Business Name', _bizNameCon, Icons.storefront_rounded),
+                _textTile('Owner Name', _ownerCon, Icons.person_rounded),
+                _textTile('Phone', _phoneCon, Icons.phone_rounded, keyboardType: TextInputType.phone),
+                _textTile('WhatsApp', _waCon, Icons.chat_rounded, keyboardType: TextInputType.phone),
+                _textTile('Staff Telegram Link / Username', _staffWaCon, Icons.send_rounded, keyboardType: TextInputType.text),
+              ]),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _save(settings),
+                  icon: const Icon(Icons.save_rounded),
+                  label: const Text('Save Business Info'),
+                ),
+              ),
 
-                // ── Language ────────────────────────────────────────────
-                _sectionHeader(AppLocalization.translate(ref, 'language', 'Language'), Icons.language_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.translate_rounded),
-                    title: Text(AppLocalization.translate(ref, 'language', 'Language')),
-                    trailing: DropdownButton<String>(
-                      value: settings.language,
-                      underline: const SizedBox.shrink(),
-                      items: [
-                        DropdownMenuItem(value: 'en', child: Text(AppLocalization.translate(ref, 'english', 'English'))),
-                        DropdownMenuItem(value: 'hi', child: Text(AppLocalization.translate(ref, 'hindi', 'Hindi'))),
-                      ],
+              const SizedBox(height: 20),
+
+              // ── Order Defaults ────────────────────────────────────
+              _sectionHeader('Order Defaults', Icons.shopping_cart_rounded),
+              _card([
+                ListTile(
+                  leading: const Icon(Icons.delivery_dining_rounded),
+                  title: const Text('Default Delivery Charge'),
+                  trailing: SizedBox(
+                    width: 80,
+                    child: TextField(
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textAlign: TextAlign.right,
+                      controller: TextEditingController(text: settings.deliveryCharge.toStringAsFixed(0)),
                       onChanged: (v) {
-                        if (v != null) {
-                          ref.read(settingsProvider.notifier).update(settings.copyWith(language: v));
+                        final d = double.tryParse(v);
+                        if (d != null) {
+                          ref.read(settingsProvider.notifier).update(settings.copyWith(deliveryCharge: d));
                         }
                       },
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: 20),
-
-                // ── Notifications ───────────────────────────────────────
-                _sectionHeader(AppLocalization.translate(ref, 'notifications', 'Notifications'), Icons.notifications_rounded),
-                _card([
-                  SwitchListTile(
-                    secondary: const Icon(Icons.notifications_active_rounded),
-                    title: Text(AppLocalization.translate(ref, 'enable_notifications', 'Enable Notifications')),
-                    value: settings.notificationsEnabled,
-                    onChanged: (v) => ref
-                        .read(settingsProvider.notifier)
-                        .update(settings.copyWith(notificationsEnabled: v)),
-                  ),
-                ]),
-                const SizedBox(height: 20),
-
-                // ── Backup Report ───────────────────────────────────────
-                _sectionHeader(AppLocalization.translate(ref, 'data_export', 'Data Export'), Icons.cloud_upload_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.backup_rounded, color: AppColors.primary),
-                    title: Text(AppLocalization.translate(ref, 'backup_report', 'Backup Report')),
-                    subtitle: Text(AppLocalization.translate(ref, 'backup_desc', 'Export Daily WorkerReport.orderkart')),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                    onTap: () async {
-                      Navigator.pushNamed(context, AppRoutes.workerSelfProfile);
-                    },
-                  ),
-                ]),
-                const SizedBox(height: 20),
-
-                // ── Storage & Cache ──────────────────────────────────────
-                _sectionHeader('Storage & Cache', Icons.storage_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.cleaning_services_rounded, color: Colors.orange),
-                    title: const Text('Clean Image Cache'),
-                    subtitle: const Text('Free up local cache from temporary pick files'),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                    onTap: () async {
-                      await ImageUtils.clearImagePickerCache();
-                      if (context.mounted) {
-                        SnackbarHelper.showSuccess(context, 'Image picker cache cleaned successfully.');
-                      }
-                    },
-                  ),
-                ]),
-                const SizedBox(height: 20),
-
-                // ── Logout ──────────────────────────────────────────────
-                _sectionHeader(AppLocalization.translate(ref, 'exit_session', 'Exit Session'), Icons.exit_to_app_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-                    title: Text(AppLocalization.translate(ref, 'logout', 'Logout Worker Session')),
-                    subtitle: Text(AppLocalization.translate(ref, 'logout_desc', 'End worker session and return to mode selection')),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                    onTap: () {
-                      WorkerSession.instance.clear();
-                      SnackbarHelper.showInfo(context, 'Worker logged out.');
-                      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.modeSelection, (r) => false);
-                    },
-                  ),
-                ]),
-              ] else ...[
-                // ── Business Info ───────────────────────────────────────
-                _sectionHeader('Business Info', Icons.business_rounded),
-                _card([
-                  _textTile('Business Name', _bizNameCon,
-                      Icons.storefront_rounded),
-                  _textTile('Owner Name', _ownerCon, Icons.person_rounded),
-                  _textTile('Phone', _phoneCon, Icons.phone_rounded,
-                      keyboardType: TextInputType.phone),
-                  _textTile('WhatsApp', _waCon, Icons.chat_rounded,
-                      keyboardType: TextInputType.phone),
-                  _textTile('Staff Telegram Link / Username', _staffWaCon,
-                      Icons.send_rounded,
-                      keyboardType: TextInputType.text),
-                ]),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _save(settings),
-                    icon: const Icon(Icons.save_rounded),
-                    label: const Text('Save Business Info'),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ── Order Defaults ────────────────────────────────────
-                _sectionHeader('Order Defaults', Icons.shopping_cart_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.delivery_dining_rounded),
-                    title: const Text('Default Delivery Charge'),
-                    trailing: SizedBox(
-                      width: 80,
-                      child: TextField(
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        textAlign: TextAlign.right,
-                        controller: TextEditingController(
-                            text: settings.deliveryCharge.toStringAsFixed(0)),
-                        onChanged: (v) {
-                          final d = double.tryParse(v);
-                          if (d != null) {
-                            ref.read(settingsProvider.notifier).update(
-                                settings.copyWith(deliveryCharge: d));
-                          }
-                        },
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          border: OutlineInputBorder(),
-                          prefixText: '₹',
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                        ),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: '0.0',
+                        prefixText: settings.currency,
                       ),
                     ),
                   ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.auto_awesome_rounded),
-                    title: const Text('Smart Rounding'),
-                    subtitle: const Text('Round total bill amount (e.g. ₹58 → ₹60)'),
-                    value: settings.smartRounding,
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.calculate_rounded),
+                  title: const Text('Smart Rounding'),
+                  value: settings.smartRounding,
+                  onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(smartRounding: v)),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.monetization_on_rounded),
+                  title: const Text('Currency Symbol'),
+                  trailing: DropdownButton<String>(
+                    value: settings.currency,
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: '₹', child: Text('INR (₹)')),
+                      DropdownMenuItem(value: '\$', child: Text('USD (\$)')),
+                      DropdownMenuItem(value: '€', child: Text('EUR (€)')),
+                      DropdownMenuItem(value: '£', child: Text('GBP (£)')),
+                    ],
                     onChanged: (v) {
-                      ref
-                          .read(settingsProvider.notifier)
-                          .update(settings.copyWith(smartRounding: v));
+                      if (v != null) {
+                        ref.read(settingsProvider.notifier).update(settings.copyWith(currency: v));
+                      }
                     },
                   ),
-                ]),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.trending_up_rounded),
+                  title: const Text('Enable VIP Price Markup (10%)'),
+                  value: settings.enableVipPriceMarkup,
+                  onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(enableVipPriceMarkup: v)),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _save(settings),
+                  icon: const Icon(Icons.save_rounded),
+                  label: const Text('Save Order Defaults'),
+                ),
+              ),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                // ── VIP Membership Settings ──────────────────────────────
-                _sectionHeader('VIP Membership & Pricing Settings', Icons.workspace_premium_rounded),
-                _card([
-                  SwitchListTile(
-                    secondary: const Icon(Icons.percent_rounded, color: Color(0xFFFFD700)),
-                    title: const Text('Custom VIP Price Markup'),
-                    subtitle: const Text('Adjust item prices (+5% / +10%) for VIP members so realization matches margins while displaying full VIP discount on receipts.'),
-                    value: settings.enableVipPriceMarkup,
-                    onChanged: (v) {
-                      ref.read(settingsProvider.notifier).update(
-                          settings.copyWith(enableVipPriceMarkup: v));
-                    },
-                  ),
-                ]),
-                const SizedBox(height: 20),
-
-                // ── QR Code ──────────────────────────────────────────────
-                _sectionHeader('Business QR Code', Icons.qr_code_rounded),
-                _card([
-                  _textTile('QR Content (UPI / URL / Text)', _qrCon,
-                      Icons.qr_code_2_rounded),
-                  const SizedBox(height: 12),
-                  if (settings.qrCustomImage.isNotEmpty) ...[
-                    const Center(
-                      child: Text('Custom QR Image Uploaded:',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              // ── UPI Payments & QR Code ─────────────────────────────
+              _sectionHeader('UPI Payments & QR Code', Icons.qr_code_rounded),
+              _card([
+                ListTile(
+                  leading: const Icon(Icons.payment_rounded),
+                  title: const Text('UPI ID (for payments)'),
+                  trailing: SizedBox(
+                    width: 180,
+                    child: TextField(
+                      controller: _qrCon,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'merchant@upi',
+                      ),
+                      onSubmitted: (_) => _save(settings),
                     ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: GestureDetector(
+                  ),
+                ),
+                const Divider(height: 1),
+                if (settings.qrCustomImage.isNotEmpty) ...[
+                  ListTile(
+                    leading: const Icon(Icons.image_rounded),
+                    title: const Text('Custom QR Image Uploaded'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_rounded, color: AppColors.error),
+                      onPressed: () => _deleteQrImage(settings),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
                         onTap: () => Navigator.pushNamed(
                           context,
                           AppRoutes.qrPreview,
@@ -363,268 +280,311 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                ] else ...[
+                  Center(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickQrImage(settings),
+                      icon: const Icon(Icons.upload_file_rounded),
+                      label: const Text('Upload QR Image'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (settings.qrContent.isNotEmpty) ...[
+                    const Center(
+                      child: Text('Generated UPI QR Code:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => _pickQrImage(settings),
-                          icon: const Icon(Icons.cached_rounded),
-                          label: const Text('Replace Image'),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _deleteQrImage(settings),
-                          icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                          label: const Text('Delete Image', style: TextStyle(color: AppColors.error)),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
                     Center(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _pickQrImage(settings),
-                        icon: const Icon(Icons.upload_file_rounded),
-                        label: const Text('Upload QR Image'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (settings.qrContent.isNotEmpty) ...[
-                      const Center(
-                        child: Text('Generated UPI QR Code:',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: GestureDetector(
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.qrPreview,
-                            arguments: {'qrContent': settings.qrContent},
+                      child: GestureDetector(
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.qrPreview,
+                          arguments: {'qrContent': settings.qrContent},
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.gray200),
                           ),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.gray200),
-                            ),
-                            child: QrImageView(
-                              data: settings.qrContent,
-                              version: QrVersions.auto,
-                              size: 150.0,
-                            ),
+                          child: QrImageView(
+                            data: settings.qrContent,
+                            version: QrVersions.auto,
+                            size: 150.0,
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ],
-                  const SizedBox(height: 12),
-                ]),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _save(settings),
-                    icon: const Icon(Icons.qr_code_rounded),
-                    label: const Text('Save QR Code'),
+                ],
+                const SizedBox(height: 12),
+              ]),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _save(settings),
+                  icon: const Icon(Icons.qr_code_rounded),
+                  label: const Text('Save QR Code'),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ── Theme (Appearance) ──────────────────────────────────
+              _sectionHeader('Appearance', Icons.palette_rounded),
+              _card([
+                ListTile(
+                  leading: const Icon(Icons.light_mode_rounded),
+                  title: const Text('Theme'),
+                  trailing: DropdownButton<String>(
+                    value: settings.themeMode,
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: 'system', child: Text('System')),
+                      DropdownMenuItem(value: 'light',  child: Text('Light')),
+                      DropdownMenuItem(value: 'dark',   child: Text('Dark')),
+                    ],
+                    onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(themeMode: v ?? 'system')),
                   ),
                 ),
+              ]),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                // ── Theme ─────────────────────────────────────────────────
-                _sectionHeader('Appearance', Icons.palette_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.light_mode_rounded),
-                    title: const Text('Theme'),
-                    trailing: DropdownButton<String>(
-                      value: settings.themeMode,
-                      underline: const SizedBox.shrink(),
-                      items: const [
-                        DropdownMenuItem(value: 'system', child: Text('System')),
-                        DropdownMenuItem(value: 'light',  child: Text('Light')),
-                        DropdownMenuItem(value: 'dark',   child: Text('Dark')),
-                      ],
-                      onChanged: (v) => ref
-                          .read(settingsProvider.notifier)
-                          .update(settings.copyWith(themeMode: v ?? 'system')),
-                    ),
-                  ),
-                ]),
-
-                const SizedBox(height: 20),
-
-                // ── Notifications ────────────────────────────────────────
-                _sectionHeader('Notifications', Icons.notifications_rounded),
-                _card([
-                  SwitchListTile(
-                    secondary: const Icon(Icons.notifications_active_rounded),
-                    title: const Text('Enable Notifications'),
-                    value: settings.notificationsEnabled,
-                    onChanged: (v) => ref
-                        .read(settingsProvider.notifier)
-                        .update(settings.copyWith(notificationsEnabled: v)),
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.warning_amber_rounded),
-                    title: const Text('Low Stock Alert'),
-                    value: settings.lowStockAlert,
-                    onChanged: settings.notificationsEnabled
-                        ? (v) => ref
-                            .read(settingsProvider.notifier)
-                            .update(settings.copyWith(lowStockAlert: v))
-                        : null,
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.payments_rounded),
-                    title: const Text('Pending Payment Alert'),
-                    value: settings.pendingAlert,
-                    onChanged: settings.notificationsEnabled
-                        ? (v) => ref
-                            .read(settingsProvider.notifier)
-                            .update(settings.copyWith(pendingAlert: v))
-                        : null,
-                  ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.backup_rounded),
-                    title: const Text('Daily Backup Reminder'),
-                    value: settings.backupReminder,
-                    onChanged: settings.notificationsEnabled
-                        ? (v) => ref
-                            .read(settingsProvider.notifier)
-                            .update(settings.copyWith(backupReminder: v))
-                        : null,
-                  ),
-                ]),
-
-
-
-                // ── Backup & Restore ──────────────────────────────────
-                _sectionHeader('Backup & Data', Icons.cloud_upload_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.backup_rounded),
-                    title: const Text('Backup & Restore'),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                    onTap: () => Navigator.of(context).pushNamed(AppRoutes.backupRestore),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.dataset_rounded, color: AppColors.primary),
-                    title: const Text('Seed Full Demo Dataset'),
-                    subtitle: const Text('Insert 30 Vegetables, 10 Fruits, 500 Customers, 10 Areas, 50 Streets, 200 VIPs'),
-                    onTap: () async {
-                      SnackbarHelper.showInfo(context, 'Seeding 500 Customers, 40 Items, 50 Streets, 200 VIPs...');
-                      await DatabaseSeeder.seedAll(clearExisting: true);
-                      if (mounted) {
-                        SnackbarHelper.showSuccess(context, 'Seeded 30 Vegetables, 10 Fruits, 500 Customers, 10 Areas, 50 Streets & 200 VIP Memberships!');
+              // ── Language ────────────────────────────────────────────
+              _sectionHeader('Language', Icons.language_rounded),
+              _card([
+                ListTile(
+                  leading: const Icon(Icons.translate_rounded),
+                  title: const Text('Language'),
+                  trailing: DropdownButton<String>(
+                    value: settings.language,
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: 'en', child: Text('English')),
+                      DropdownMenuItem(value: 'hi', child: Text('Hindi')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        ref.read(settingsProvider.notifier).update(settings.copyWith(language: v));
                       }
                     },
                   ),
-                ]),
+                ),
+              ]),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                // ── Cloud Sync (future) ──────────────────────────────
-                _sectionHeader('Cloud Sync (Coming Soon)', Icons.cloud_sync_rounded),
-                _card([
-                  _comingSoonTile('Enable Cloud Backup', Icons.cloud_upload_rounded),
-                  _comingSoonTile('Google Drive Backup', Icons.add_to_drive_rounded),
-                  _comingSoonTile('GitHub JSON Backup',  Icons.code_rounded),
-                  _comingSoonTile('Sync to Server',      Icons.sync_rounded),
-                ]),
+              // ── Notifications ────────────────────────────────────────
+              _sectionHeader('Notifications', Icons.notifications_rounded),
+              _card([
+                SwitchListTile(
+                  secondary: const Icon(Icons.notifications_active_rounded),
+                  title: const Text('Enable Notifications'),
+                  value: settings.notificationsEnabled,
+                  onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(notificationsEnabled: v)),
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.warning_amber_rounded),
+                  title: const Text('Low Stock Alert'),
+                  value: settings.lowStockAlert,
+                  onChanged: settings.notificationsEnabled
+                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(lowStockAlert: v))
+                      : null,
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.payments_rounded),
+                  title: const Text('Pending Payment Alert'),
+                  value: settings.pendingAlert,
+                  onChanged: settings.notificationsEnabled
+                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(pendingAlert: v))
+                      : null,
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.backup_rounded),
+                  title: const Text('Daily Backup Reminder'),
+                  value: settings.backupReminder,
+                  onChanged: settings.notificationsEnabled
+                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(backupReminder: v))
+                      : null,
+                ),
+              ]),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                // ── Account (future) ─────────────────────────────────
-                _sectionHeader('Account (Coming Soon)', Icons.account_circle_rounded),
-                _card([
-                  _comingSoonTile('Login / Sign Up', Icons.login_rounded),
-                  _comingSoonTile('Multi-Device Sync', Icons.devices_rounded),
-                ]),
+              // ── Backup & Restore ──────────────────────────────────
+              _sectionHeader('Backup & Data', Icons.cloud_upload_rounded),
+              _card([
+                ListTile(
+                  leading: const Icon(Icons.backup_rounded),
+                  title: const Text('Backup & Restore'),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () => Navigator.of(context).pushNamed(AppRoutes.backupRestore),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.dataset_rounded, color: AppColors.primary),
+                  title: const Text('Seed Full Demo Dataset'),
+                  subtitle: const Text('Insert 30 Vegetables, 10 Fruits, 500 Customers, 10 Areas, 50 Streets, 200 VIPs'),
+                  onTap: () async {
+                    SnackbarHelper.showInfo(context, 'Seeding 500 Customers, 40 Items, 50 Streets, 200 VIPs...');
+                    await DatabaseSeeder.seedAll(clearExisting: true);
+                    if (mounted) {
+                      SnackbarHelper.showSuccess(context, 'Seeded 30 Vegetables, 10 Fruits, 500 Customers, 10 Areas, 50 Streets & 200 VIP Memberships!');
+                    }
+                  },
+                ),
+              ]),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                // ── About & Privacy ─────────────────────────────────
-                _sectionHeader('About', Icons.info_rounded),
-                _card([
-                  ListTile(
-                    leading: const Icon(Icons.info_outline_rounded),
-                    title: const Text('About OrderKart'),
-                    subtitle: const Text('v1.0.0'),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                    onTap: () => showAboutDialog(
-                      context: context,
-                      applicationName: 'OrderKart',
-                      applicationVersion: '1.0.0',
-                      applicationLegalese:
-                          '© 2026 OrderKart. All rights reserved.',
-                      children: [
-                        const Text(
-                            'An offline-first order management app for delivery businesses.'),
-                      ],
-                    ),
+              // ── Cloud Sync (coming soon) ─────────────────────────
+              _sectionHeader('Cloud Sync (Coming Soon)', Icons.cloud_sync_rounded),
+              _card([
+                _comingSoonTile('Enable Cloud Backup', Icons.cloud_upload_rounded),
+                _comingSoonTile('Google Drive Backup', Icons.add_to_drive_rounded),
+                _comingSoonTile('GitHub JSON Backup',  Icons.code_rounded),
+                _comingSoonTile('Sync to Server',      Icons.sync_rounded),
+              ]),
+
+              const SizedBox(height: 20),
+
+              // ── Account (coming soon) ────────────────────────────
+              _sectionHeader('Account (Coming Soon)', Icons.account_circle_rounded),
+              _card([
+                _comingSoonTile('Login / Sign Up', Icons.login_rounded),
+                _comingSoonTile('Multi-Device Sync', Icons.devices_rounded),
+              ]),
+
+              const SizedBox(height: 20),
+
+              // ── Storage & Cache ──────────────────────────────────
+              _sectionHeader('Storage & Cache', Icons.storage_rounded),
+              _card([
+                ListTile(
+                  leading: const Icon(Icons.cleaning_services_rounded, color: Colors.orange),
+                  title: const Text('Clean Image Cache'),
+                  subtitle: const Text('Free up local cache from temporary pick files'),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () async {
+                    await ImageUtils.clearImagePickerCache();
+                    if (mounted) {
+                      SnackbarHelper.showSuccess(context, 'Image picker cache cleaned successfully.');
+                    }
+                  },
+                ),
+              ]),
+
+              const SizedBox(height: 20),
+
+              // ── About ──────────────────────────────────────────
+              _sectionHeader('About', Icons.info_rounded),
+              _card([
+                ListTile(
+                  leading: const Icon(Icons.info_outline_rounded),
+                  title: const Text('About OrderKart'),
+                  subtitle: const Text('v1.0.0'),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () => showAboutDialog(
+                    context: context,
+                    applicationName: 'OrderKart',
+                    applicationVersion: '1.0.0',
+                    applicationLegalese: '© 2026 OrderKart. All rights reserved.',
+                    children: [
+                      const Text('An offline-first order management app for delivery businesses.'),
+                    ],
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.privacy_tip_rounded),
-                    title: const Text('Privacy Policy'),
-                    trailing:
-                        const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                    onTap: () => showDialog(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('Privacy Policy'),
-                        content: const SingleChildScrollView(
-                          child: Text(
-                            'OrderKart stores all data locally on your device. No data is transmitted to any server unless you explicitly enable cloud sync. We do not collect any personal information.\n\nAll your business data including customers, orders, and inventory is stored in a local SQLite database on your device.\n\nFor questions, contact the developer.',
-                          ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_rounded),
+                  title: const Text('Privacy Policy'),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Privacy Policy'),
+                      content: const SingleChildScrollView(
+                        child: Text(
+                          'OrderKart stores all data locally on your device. No data is transmitted to any server unless you explicitly enable cloud sync. We do not collect any personal information.\n\nAll your business data including customers, orders, and inventory is stored in a local SQLite database on your device.\n\nFor questions, contact the developer.',
                         ),
-                        actions: [
-                          TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Close')),
-                        ],
                       ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Close'),
+                        ),
+                      ],
                     ),
                   ),
-                ]),
+                ),
+              ]),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                // ── Danger Zone ────────────────────────────────────────
-                _sectionHeader('Danger Zone', Icons.warning_rounded,
-                    color: AppColors.error),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardTheme.color,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.error.withOpacity(0.3)),
-                  ),
-                  child: ListTile(
-                    leading: const Icon(Icons.delete_forever_rounded,
-                        color: AppColors.error),
-                    title: const Text('Reset App',
-                        style: TextStyle(color: AppColors.error)),
-                    subtitle: const Text('Delete all data permanently'),
+              // ── Danger Zone ────────────────────────────────────────
+              _sectionHeader('Danger Zone', Icons.warning_rounded, color: AppColors.error),
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardTheme.color,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.delete_forever_rounded, color: AppColors.error),
+                  title: const Text('Reset App', style: TextStyle(color: AppColors.error)),
+                  subtitle: const Text('Delete all data permanently'),
+                  onTap: () async {
+                    final ok = await ConfirmDeleteDialog.show(
+                      context,
+                      title: 'Reset App',
+                      message: 'This will permanently delete ALL data (areas, streets, customers, orders, inventory, expenses). This cannot be undone!',
+                      confirmLabel: 'Yes, Reset Everything',
+                    );
+                    if (!ok || !mounted) return;
+                    await ref.read(settingsProvider.notifier).resetApp();
+                    if (mounted) {
+                      SnackbarHelper.showSuccess(context, 'App data reset successfully');
+                    }
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ── Data Export & Exit Session (Worker only) ─────────
+              if (isWorker) ...[
+                _sectionHeader(AppLocalization.translate(ref, 'data_export', 'Data Export'), Icons.cloud_upload_rounded),
+                _card([
+                  ListTile(
+                    leading: const Icon(Icons.backup_rounded, color: AppColors.primary),
+                    title: Text(AppLocalization.translate(ref, 'backup_report', 'Backup Report')),
+                    subtitle: Text(AppLocalization.translate(ref, 'backup_desc', 'Export Daily WorkerReport.orderkart')),
+                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                     onTap: () async {
-                      final ok = await ConfirmDeleteDialog.show(
-                        context,
-                        title: 'Reset App',
-                        message:
-                            'This will permanently delete ALL data (areas, streets, customers, orders, inventory, expenses). This cannot be undone!',
-                        confirmLabel: 'Yes, Reset Everything',
-                      );
-                      if (!ok || !mounted) return;
-                      await ref.read(settingsProvider.notifier).resetApp();
-                      if (mounted) {
-                        SnackbarHelper.showSuccess(
-                            context, 'App data reset successfully');
-                      }
+                      Navigator.pushNamed(context, AppRoutes.workerSelfProfile);
                     },
                   ),
-                ),
+                ]),
+                const SizedBox(height: 20),
+
+                _sectionHeader(AppLocalization.translate(ref, 'exit_session', 'Exit Session'), Icons.exit_to_app_rounded),
+                _card([
+                  ListTile(
+                    leading: const Icon(Icons.logout_rounded, color: AppColors.error),
+                    title: Text(AppLocalization.translate(ref, 'logout', 'Logout Worker Session')),
+                    subtitle: Text(AppLocalization.translate(ref, 'logout_desc', 'End worker session and return to mode selection')),
+                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                    onTap: () {
+                      WorkerSession.instance.clear();
+                      SnackbarHelper.showInfo(context, 'Worker logged out.');
+                      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.modeSelection, (r) => false);
+                    },
+                  ),
+                ]),
               ],
               const SizedBox(height: 32),
 
