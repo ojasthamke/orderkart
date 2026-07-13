@@ -206,6 +206,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ]),
                 const SizedBox(height: 20),
 
+                // ── Storage & Cache ──────────────────────────────────────
+                _sectionHeader('Storage & Cache', Icons.storage_rounded),
+                _card([
+                  ListTile(
+                    leading: const Icon(Icons.cleaning_services_rounded, color: Colors.orange),
+                    title: const Text('Clean Image Cache'),
+                    subtitle: const Text('Free up local cache from temporary pick files'),
+                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                    onTap: () async {
+                      await ImageUtils.clearImagePickerCache();
+                      if (context.mounted) {
+                        SnackbarHelper.showSuccess(context, 'Image picker cache cleaned successfully.');
+                      }
+                    },
+                  ),
+                ]),
+                const SizedBox(height: 20),
+
                 // ── Logout ──────────────────────────────────────────────
                 _sectionHeader(AppLocalization.translate(ref, 'exit_session', 'Exit Session'), Icons.exit_to_app_rounded),
                 _card([

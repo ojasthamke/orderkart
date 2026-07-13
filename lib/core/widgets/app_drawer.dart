@@ -273,15 +273,14 @@ class AppDrawer extends ConsumerWidget {
                   ),
 
                   const _SectionHeader(title: 'SECURITY & MODE'),
-                  if (!isWorker)
-                    _DrawerItem(
-                      icon: Icons.settings_rounded,
-                      title: 'Settings',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.settings);
-                      },
-                    ),
+                  _DrawerItem(
+                    icon: Icons.settings_rounded,
+                    title: 'Settings',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.settings);
+                    },
+                  ),
                   _DrawerItem(
                     icon: Icons.sync_alt_rounded,
                     title: isWorker ? 'Sync & Export' : 'Import & Export Data',
