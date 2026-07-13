@@ -44,6 +44,10 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
   // Audit Logs state
   List<Map<String, dynamic>> _auditLogs = [];
 
+  // Cashflow & Forecast state
+  double _cashCollectedToday = 0.0;
+  double _outstandingDuesLedger = 0.0;
+
   // Controllers
   final _supplierNameCon = TextEditingController();
   final _supplierPhoneCon = TextEditingController();
@@ -73,6 +77,18 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     final warehouseLogs = await db.query('item_warehouses');
     final audits = await db.query('audit_logs', orderBy: 'created_at DESC', limit: 30);
 
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final cashRes = await db.rawQuery(
+      "SELECT SUM(amount) as total FROM payments WHERE created_at LIKE ?",
+      ['$todayStr%'],
+    );
+    final cashToday = (cashRes.first['total'] as num?)?.toDouble() ?? 0.0;
+
+    final duesRes = await db.rawQuery(
+      "SELECT SUM(remaining_amount) as total FROM orders WHERE remaining_amount > 0"
+    );
+    final totalDues = (duesRes.first['total'] as num?)?.toDouble() ?? 0.0;
+
     if (mounted) {
       setState(() {
         _suppliers = sups;
@@ -80,6 +96,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
         _customFields = fields;
         _warehouseStock = warehouseLogs;
         _auditLogs = audits;
+        _cashCollectedToday = cashToday;
+        _outstandingDuesLedger = totalDues;
       });
     }
   }
@@ -105,6 +123,88 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     _supplierPhoneCon.clear();
     await _loadAllData();
     if (mounted) SnackbarHelper.showSuccess(context, 'Supplier registered successfully');
+  }
+
+  Future<void> _showSupplierAdjustmentDialog(Map<String, dynamic> supplier) async {
+    final amountCon = TextEditingController();
+    String type = 'credit'; // 'credit' (adds due), 'debit' (reduces due)
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('Adjust Balance: ${supplier['name']}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: type,
+                decoration: const InputDecoration(labelText: 'Adjustment Type'),
+                items: const [
+                  DropdownMenuItem(value: 'credit', child: Text('Add Purchase (Increases Due)')),
+                  DropdownMenuItem(value: 'debit', child: Text('Record Payment (Decreases Due)')),
+                ],
+                onChanged: (v) {
+                  if (v != null) {
+                    setDialogState(() => type = v);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountCon,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Amount (₹)', prefixText: '₹'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final amt = double.tryParse(amountCon.text.trim()) ?? 0.0;
+                if (amt <= 0) {
+                  SnackbarHelper.showError(ctx, 'Please enter a valid amount');
+                  return;
+                }
+                
+                final db = await DatabaseHelper.instance.database;
+                final currentBal = (supplier['outstanding_balance'] as num?)?.toDouble() ?? 0.0;
+                final newBal = type == 'credit' ? (currentBal + amt) : (currentBal - amt);
+
+                await db.update(
+                  'suppliers',
+                  {
+                    'outstanding_balance': newBal,
+                    'updated_at': DateTime.now().toIso8601String(),
+                  },
+                  where: 'id = ?',
+                  whereArgs: [supplier['id']],
+                );
+
+                // Add audit log
+                final logId = const Uuid().v4();
+                await db.insert('audit_logs', {
+                  'id': logId,
+                  'user_type': 'owner',
+                  'action': '${type == 'credit' ? 'Supplier Purchase credit' : 'Supplier Payment debit'} of ₹$amt recorded for ${supplier['name']}',
+                  'entity_type': 'supplier',
+                  'entity_id': supplier['id'],
+                  'created_at': DateTime.now().toIso8601String(),
+                });
+
+                Navigator.pop(ctx);
+                await _loadAllData();
+                if (mounted) {
+                  SnackbarHelper.showSuccess(context, 'Supplier balance updated');
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // --- 2. Custom Fields Config ---
@@ -150,6 +250,87 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       );
     }
     await _loadAllData();
+  }
+
+  Future<void> _showStockTransferDialog(Item item, double warehouseStock) async {
+    final transferCon = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Transfer to Storefront: ${item.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Current Godown Stock: $warehouseStock ${item.unit}'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: transferCon,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Quantity to Transfer',
+                helperText: 'Will reduce godown stock and add to storefront crates',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final qty = double.tryParse(transferCon.text.trim()) ?? 0.0;
+              if (qty <= 0) {
+                SnackbarHelper.showError(ctx, 'Please enter a valid quantity');
+                return;
+              }
+              if (qty > warehouseStock) {
+                SnackbarHelper.showError(ctx, 'Transfer quantity exceeds available godown stock');
+                return;
+              }
+
+              final db = await DatabaseHelper.instance.database;
+              
+              // 1. Subtract from warehouse stock
+              final key = '${item.id}_$_selectedWarehouse';
+              await db.update(
+                'item_warehouses',
+                {'stock': warehouseStock - qty},
+                where: 'id = ?',
+                whereArgs: [key],
+              );
+
+              // 2. Add to storefront crates (items.stock)
+              await db.rawUpdate(
+                'UPDATE items SET stock = stock + ? WHERE id = ?',
+                [qty, item.id],
+              );
+
+              // 3. Log Audit Trail
+              final logId = const Uuid().v4();
+              await db.insert('audit_logs', {
+                'id': logId,
+                'user_type': 'owner',
+                'action': 'Transfer: Sent $qty ${item.unit} of ${item.name} from $_selectedWarehouse to Storefront Crates',
+                'entity_type': 'item',
+                'entity_id': item.id,
+                'created_at': DateTime.now().toIso8601String(),
+              });
+
+              // 4. Invalidate inventory provider to update everywhere
+              ref.invalidate(inventoryProvider);
+
+              Navigator.pop(ctx);
+              await _loadAllData();
+              if (mounted) {
+                SnackbarHelper.showSuccess(context, 'Transfer completed! Storefront stock updated.');
+              }
+            },
+            child: const Text('Transfer'),
+          ),
+        ],
+      ),
+    );
   }
 
   // --- 4. Digital PDF Catalog ---
@@ -418,9 +599,20 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                         ),
                         title: Text(sup['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text('Phone: ${sup['phone'] ?? "N/A"}'),
-                        trailing: Text(
-                          'Bal: ₹${((sup['outstanding_balance'] ?? 0.0) as num).toStringAsFixed(1)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.error),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Bal: ₹${((sup['outstanding_balance'] ?? 0.0) as num).toStringAsFixed(1)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.error),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.currency_exchange_rounded, color: AppColors.primary, size: 20),
+                              tooltip: 'Record Credit / Payment',
+                              onPressed: () => _showSupplierAdjustmentDialog(sup),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -517,6 +709,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                       const SizedBox(width: 8),
                       IconButton.filledTonal(
                         icon: const Icon(Icons.edit_rounded, size: 18),
+                        tooltip: 'Adjust Godown Stock',
                         onPressed: () {
                           final adjustCon = TextEditingController();
                           showDialog(
@@ -542,6 +735,12 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                             ),
                           );
                         },
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton.filledTonal(
+                        icon: const Icon(Icons.transform_rounded, size: 18),
+                        tooltip: 'Transfer to Storefront',
+                        onPressed: () => _showStockTransferDialog(item, currentStock),
                       ),
                     ],
                   ),
@@ -643,31 +842,31 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
           const SizedBox(height: 16),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: const Padding(
-              padding: EdgeInsets.all(20),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Cash Collected Today:', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('₹42,500.00', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
+                      const Text('Cash Collected Today:', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('₹${_cashCollectedToday.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
                     ],
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Outstanding Dues Ledger:', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('₹18,200.00', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                      const Text('Outstanding Dues Ledger:', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('₹${_outstandingDuesLedger.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
                     ],
                   ),
-                  Divider(height: 24),
+                  const Divider(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Net Projected Liquidity:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('₹60,700.00', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                      const Text('Net Projected Liquidity:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('₹${(_cashCollectedToday + _outstandingDuesLedger).toStringAsFixed(2)}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ],

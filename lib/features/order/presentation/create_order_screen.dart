@@ -37,12 +37,14 @@ class CreateOrderScreen extends ConsumerStatefulWidget {
   final String customerId;
   final String customerName;
   final String? orderId; // non-null = edit mode
+  final double? initialDiscount;
 
   const CreateOrderScreen({
     super.key,
     required this.customerId,
     required this.customerName,
     this.orderId,
+    this.initialDiscount,
   });
 
   @override
@@ -114,6 +116,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     if (settings != null) {
       _deliveryCharge = settings.lastDeliveryCharge;
       _smartRound     = settings.smartRounding;
+    }
+
+    if (widget.initialDiscount != null && widget.initialDiscount! > 0) {
+      _discount = widget.initialDiscount!;
+      _discountCon.text = _discount.toStringAsFixed(2);
     }
 
     if (widget.orderId != null) {

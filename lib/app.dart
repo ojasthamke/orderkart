@@ -27,6 +27,7 @@ import 'features/expense/presentation/expense_screen.dart';
 import 'features/expense/presentation/add_edit_expense_screen.dart';
 import 'features/analytics/presentation/analytics_screen.dart';
 import 'features/analytics/presentation/profit_loss_screen.dart';
+import 'features/analytics/presentation/churn_risk_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/settings/presentation/backup_restore_screen.dart';
 import 'features/search/presentation/search_screen.dart';
@@ -140,6 +141,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
           customerId: args?['customerId'] as String? ?? '',
           customerName: args?['customerName'] as String? ?? '',
           orderId: args?['orderId'] as String?,
+          initialDiscount: (args?['initialDiscount'] as num?)?.toDouble(),
         ));
 
       case AppRoutes.orderManagement:
@@ -295,6 +297,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.catalogShowroom:
         return _slide(const CatalogShowroomScreen());
+
+      case AppRoutes.churnRisk:
+        return _slide(const ChurnRiskScreen());
 
       default:
         return _slide(const AppStartupScreen(), settings);

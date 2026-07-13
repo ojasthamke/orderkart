@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
+import 'package:sqflite/sqflite.dart';
 import 'dart:io';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
@@ -48,14 +49,48 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   bool   _loading   = false;
   bool   _isEdit    = false;
 
+  // Custom Fields state
+  List<Map<String, dynamic>> _customFields = [];
+  final Map<String, TextEditingController> _customFieldControllers = {};
+
   @override
   void initState() {
     super.initState();
     _streetId = widget.streetId;
+    _loadCustomFields();
     if (widget.customerId != null) {
       _isEdit = true;
       _loadCustomer();
     }
+  }
+
+  Future<void> _loadCustomFields() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final fields = await db.query('custom_fields', where: 'entity_type = ?', whereArgs: ['customer']);
+      
+      final Map<String, String> values = {};
+      if (widget.customerId != null) {
+        final existingValues = await db.query(
+          'custom_field_values',
+          where: 'entity_id = ?',
+          whereArgs: [widget.customerId],
+        );
+        for (final row in existingValues) {
+          values[row['field_id'] as String] = row['value'] as String;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _customFields = fields;
+          for (final f in fields) {
+            final fid = f['id'] as String;
+            _customFieldControllers[fid] = TextEditingController(text: values[fid] ?? '');
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadCustomer() async {
@@ -84,6 +119,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _nameCon.dispose(); _phone1Con.dispose(); _phone2Con.dispose();
     _waCon.dispose(); _serialNoCon.dispose(); _houseCon.dispose();
     _addressCon.dispose(); _notesCon.dispose(); _mapsCon.dispose();
+    for (final controller in _customFieldControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -273,6 +311,32 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 ),
                 maxLines: 2,
               ),
+              const SizedBox(height: 16),
+
+              // Custom Fields Section
+              if (_customFields.isNotEmpty) ...[
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Additional Custom Attributes',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ..._customFields.map((field) {
+                  final fid = field['id'] as String;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: TextFormField(
+                      controller: _customFieldControllers[fid],
+                      decoration: InputDecoration(
+                        labelText: field['field_name'] ?? '',
+                        prefixIcon: const Icon(Icons.star_outline_rounded),
+                      ),
+                    ),
+                  );
+                }),
+              ],
               const SizedBox(height: 32),
 
               SizedBox(
@@ -464,6 +528,23 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         await notifier.update(customer);
       } else {
         await notifier.add(customer);
+      }
+
+      // Save custom field values
+      for (final entry in _customFieldControllers.entries) {
+        final fieldId = entry.key;
+        final val = entry.value.text.trim();
+        if (val.isNotEmpty) {
+          await db.insert('custom_field_values', {
+            'entity_id': customerId,
+            'field_id': fieldId,
+            'value': val,
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+        } else {
+          await db.delete('custom_field_values',
+              where: 'entity_id = ? AND field_id = ?',
+              whereArgs: [customerId, fieldId]);
+        }
       }
 
       if (!mounted) return;

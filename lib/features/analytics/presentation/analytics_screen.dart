@@ -37,6 +37,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           tooltip: 'Profit & Loss Statement',
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.profitLoss),
         ),
+        IconButton(
+          icon: const Icon(Icons.trending_down_rounded),
+          tooltip: 'Churn Risk Analytics',
+          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.churnRisk),
+        ),
       ],
       body: summaryAsync.when(
         loading: () => const LoadingShimmer(),

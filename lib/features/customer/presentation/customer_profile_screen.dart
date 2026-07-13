@@ -11,6 +11,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';
+import '../../../core/database/database_helper.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -245,6 +246,8 @@ class CustomerProfileScreen extends ConsumerWidget {
                   customerId: customer.id,
                   customerName: customer.name,
                 ),
+
+                CustomerCustomFieldsCard(customerId: customer.id),
 
                 // Orders title
                 Padding(
@@ -1352,6 +1355,81 @@ class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
         ),
       ),
     );
+  }
+}
+
+class CustomerCustomFieldsCard extends StatelessWidget {
+  final String customerId;
+
+  const CustomerCustomFieldsCard({super.key, required this.customerId});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _loadData(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!;
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.dashboard_customize_rounded, color: AppColors.primary, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Custom Attributes',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...data.map((row) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          row['field_name'] ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                        ),
+                        Text(
+                          row['value'] ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadData() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      return await db.rawQuery('''
+        SELECT cf.field_name, cfv.value
+        FROM custom_field_values cfv
+        JOIN custom_fields cf ON cfv.field_id = cf.id
+        WHERE cfv.entity_id = ? AND cf.entity_type = 'customer'
+      ''', [customerId]);
+    } catch (_) {
+      return [];
+    }
   }
 }
 
