@@ -436,6 +436,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(backupReminder: v))
                       : null,
                 ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.volume_up_rounded),
+                  title: const Text('Notification Sound (Preview Tone)'),
+                  value: settings.notificationSound,
+                  onChanged: settings.notificationsEnabled
+                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(notificationSound: v))
+                      : null,
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.vibration_rounded),
+                  title: const Text('Notification Vibration (Tactile Feel)'),
+                  value: settings.notificationVibration,
+                  onChanged: settings.notificationsEnabled
+                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(notificationVibration: v))
+                      : null,
+                ),
               ]),
 
               const SizedBox(height: 20),

@@ -67,6 +67,8 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     await _dao.setValue(AppConstants.keyEnableVipPriceMarkup, settings.enableVipPriceMarkup.toString());
     await _dao.setValue(AppConstants.keyLanguage,           settings.language);
     await _dao.setValue(AppConstants.keyWorkerDiscountCap,  settings.workerDiscountCap.toString());
+    await _dao.setValue(AppConstants.keyNotifSound,         settings.notificationSound.toString());
+    await _dao.setValue(AppConstants.keyNotifVibration,     settings.notificationVibration.toString());
     state = AsyncValue.data(settings);
     _invalidateAll();
   }

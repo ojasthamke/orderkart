@@ -22,6 +22,8 @@ class AppSettings {
   final bool   enableVipPriceMarkup;
   final String language;
   final double workerDiscountCap;
+  final bool   notificationSound;
+  final bool   notificationVibration;
 
   const AppSettings({
     this.businessName      = 'My Business',
@@ -44,6 +46,8 @@ class AppSettings {
     this.enableVipPriceMarkup = true,
     this.language          = 'en',
     this.workerDiscountCap = 10.0,
+    this.notificationSound = true,
+    this.notificationVibration = true,
   });
 
   AppSettings copyWith({
@@ -67,6 +71,8 @@ class AppSettings {
     bool?   enableVipPriceMarkup,
     String? language,
     double? workerDiscountCap,
+    bool?   notificationSound,
+    bool?   notificationVibration,
   }) {
     return AppSettings(
       businessName:       businessName       ?? this.businessName,
@@ -89,6 +95,8 @@ class AppSettings {
       enableVipPriceMarkup: enableVipPriceMarkup ?? this.enableVipPriceMarkup,
       language:           language           ?? this.language,
       workerDiscountCap:   workerDiscountCap   ?? this.workerDiscountCap,
+      notificationSound:  notificationSound  ?? this.notificationSound,
+      notificationVibration: notificationVibration ?? this.notificationVibration,
     );
   }
 }

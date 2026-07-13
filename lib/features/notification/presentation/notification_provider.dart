@@ -1,15 +1,21 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../domain/app_notification.dart';
 import '../data/notification_dao.dart';
+import '../../settings/presentation/settings_provider.dart';
+import '../../../core/constants/app_routes.dart';
+import 'in_app_notification_banner.dart';
 
 final notificationListProvider = StateNotifierProvider<NotificationListNotifier, AsyncValue<List<AppNotification>>>((ref) {
-  return NotificationListNotifier();
+  return NotificationListNotifier(ref);
 });
 
 class NotificationListNotifier extends StateNotifier<AsyncValue<List<AppNotification>>> {
+  final Ref _ref;
   final NotificationDao _dao = NotificationDao();
 
-  NotificationListNotifier() : super(const AsyncValue.loading()) {
+  NotificationListNotifier(this._ref) : super(const AsyncValue.loading()) {
     _loadNotifications();
   }
 
@@ -23,39 +29,87 @@ class NotificationListNotifier extends StateNotifier<AsyncValue<List<AppNotifica
     }
   }
 
+  Future<void> triggerNotification(
+    BuildContext context, {
+    required String title,
+    required String body,
+    required String category,
+    String relatedId = '',
+  }) async {
+    final settingsVal = _ref.read(settingsProvider).valueOrNull;
+    final enabled = settingsVal?.notificationsEnabled ?? true;
+    if (!enabled) return;
+
+    final id = const Uuid().v4();
+    final notification = AppNotification(
+      id: id,
+      title: title,
+      body: body,
+      category: category,
+      relatedId: relatedId,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+
+    try {
+      await _dao.insert(notification);
+      await _loadNotifications();
+
+      // Show top overlay banner
+      InAppNotificationBanner.show(
+        context,
+        title: title,
+        body: body,
+        category: category,
+        enableSound: settingsVal?.notificationSound ?? true,
+        enableVibration: settingsVal?.notificationVibration ?? true,
+        onTap: () {
+          markAsRead(id);
+          String? route;
+          switch (category) {
+            case 'payment_due':
+              route = AppRoutes.customerProfile;
+              break;
+            case 'low_stock':
+              route = AppRoutes.inventory;
+              break;
+            case 'order_update':
+              route = AppRoutes.orderDetail;
+              break;
+          }
+          if (route != null) {
+            Navigator.of(context).pushNamed(route, arguments: relatedId);
+          }
+        },
+      );
+    } catch (_) {}
+  }
+
   Future<void> markAsRead(String id) async {
     try {
       await _dao.markAsRead(id);
       _loadNotifications();
-    } catch (e) {
-      // Handle error gracefully if needed
-    }
+    } catch (_) {}
   }
 
   Future<void> markAllAsRead() async {
     try {
       await _dao.markAllAsRead();
       _loadNotifications();
-    } catch (e) {
-      // Handle error gracefully if needed
-    }
+    } catch (_) {}
   }
 
   Future<void> deleteNotification(String id) async {
     try {
       await _dao.delete(id);
       _loadNotifications();
-    } catch (e) {
-      // Handle error gracefully if needed
-    }
+    } catch (_) {}
   }
 
   Future<void> clearAll() async {
     try {
       await _dao.deleteAll();
       _loadNotifications();
-    } catch (e) {
-      // Handle error gracefully if needed
-    }
+    } catch (_) {}
   }
 }
