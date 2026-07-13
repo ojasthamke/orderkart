@@ -27,6 +27,7 @@ import '../domain/order_item.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
 import '../data/order_dao.dart';
+import '../data/order_questions_dao.dart';
 import 'widgets/item_selector_widget.dart';
 import 'widgets/smart_round_banner.dart';
 
@@ -60,6 +61,39 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   AppOrder? _existingOrder;
   bool   _saving         = false;
 
+  List<OrderQuestion> _questions = [];
+  Map<String, String> _selectedAnswers = {};
+
+  Future<void> _loadQuestionsAndPreferences() async {
+    try {
+      final qList = await OrderQuestionDao.instance.getAllQuestionsForCustomer(widget.customerId);
+      final prefs = await OrderQuestionDao.instance.getCustomerAnswers(widget.customerId);
+      
+      Map<String, String> orderAnswers = {};
+      if (widget.orderId != null) {
+        final savedOrderAns = await OrderQuestionDao.instance.getOrderAnswers(widget.orderId!);
+        for (final row in savedOrderAns) {
+          final qId = row['question_id']?.toString() ?? '';
+          final opt = row['selected_option']?.toString() ?? '';
+          if (qId.isNotEmpty) {
+            orderAnswers[qId] = opt;
+          }
+        }
+      }
+
+      setState(() {
+        _questions = qList;
+        for (final q in qList) {
+          if (orderAnswers.containsKey(q.id)) {
+            _selectedAnswers[q.id] = orderAnswers[q.id]!;
+          } else if (prefs.containsKey(q.id)) {
+            _selectedAnswers[q.id] = prefs[q.id]!;
+          }
+        }
+      });
+    } catch (_) {}
+  }
+
   // Calculated
   double get _subtotal => _cart.fold(0, (s, i) => s + i.total);
   double get _afterDiscount => (_subtotal - _discount).clamp(0, double.infinity);
@@ -82,6 +116,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     if (widget.orderId != null) {
       Future.microtask(() => _loadExistingOrder(widget.orderId!));
     }
+    _loadQuestionsAndPreferences();
   }
 
   Future<void> _loadExistingOrder(String orderId) async {
@@ -222,6 +257,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     ),
                     maxLines: 2,
                   ),
+
+                  _buildQuestionsSection(),
                 ],
               ),
             ),
@@ -378,6 +415,23 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // ── Summary card ─────────────────────────────────────────────────────────────
   Widget _buildSummaryCard(String currency) {
+    double marketSavings = 0.0;
+    final inventoryAsync = ref.read(inventoryProvider);
+    final inventoryList = inventoryAsync.value ?? [];
+    for (final cartItem in _cart) {
+      Item? dbItem;
+      for (final item in inventoryList) {
+        if (item.id == cartItem.itemId) {
+          dbItem = item;
+          break;
+        }
+      }
+      if (dbItem != null && dbItem.marketPrice > cartItem.price) {
+        marketSavings += (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
+      }
+    }
+    final totalSavings = marketSavings + _discount;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -405,6 +459,33 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           if (_remaining > 0)
             _sumRow('Remaining',      AppFormatters.currency(_remaining,      symbol: currency),
                 color: AppColors.error, isBold: true),
+          if (totalSavings > 0) ...[
+            const Divider(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.stars_rounded, color: Colors.green, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'You are saving ${AppFormatters.currency(totalSavings, symbol: currency)} on this order!',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -737,6 +818,21 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     final adjustedSubtotal = double.parse((_subtotal + roundingDiff).toStringAsFixed(2));
 
+    double marketSavings = 0.0;
+    for (final cartItem in _cart) {
+      Item? dbItem;
+      for (final item in inventoryList) {
+        if (item.id == cartItem.itemId) {
+          dbItem = item;
+          break;
+        }
+      }
+      if (dbItem != null && dbItem.marketPrice > cartItem.price) {
+        marketSavings += (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
+      }
+    }
+    final totalSavings = marketSavings + _discount;
+
     final order = AppOrder(
       id:                 orderId,
       customerId:         widget.customerId,
@@ -748,6 +844,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       paidAmount:         _paidAmount,
       remainingAmount:    _remaining,
       notes:              _noteCon.text.trim(),
+      savings:            totalSavings,
       createdAt:          _existingOrder?.createdAt ?? now,
       updatedAt:          now,
     );
@@ -758,6 +855,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       await ref
           .read(orderManagementProvider.notifier)
           .createOrder(order, items);
+
+      final List<Map<String, dynamic>> orderAnsToSave = [];
+      for (final entry in _selectedAnswers.entries) {
+        final q = _questions.where((x) => x.id == entry.key).firstOrNull;
+        if (q != null) {
+          orderAnsToSave.add({
+            'question_id': entry.key,
+            'question_text': q.question,
+            'selected_option': entry.value,
+          });
+        }
+        await OrderQuestionDao.instance.saveCustomerAnswer(widget.customerId, entry.key, entry.value);
+      }
+      await OrderQuestionDao.instance.saveOrderAnswers(orderId, orderAnsToSave);
 
       // Add initial payment if any
       if (_paidAmount > 0) {
@@ -921,6 +1032,164 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             }
           });
         },
+      ),
+    );
+  }
+
+  void _addQuestion(bool isSpecific) {
+    AppHaptics.buttonClick();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isSpecific ? 'Add Specific Question' : 'Add Common Question', style: const TextStyle(fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: _AddSpecificQuestionForm(
+          customerId: isSpecific ? widget.customerId : '',
+          onSaved: () {
+            Navigator.pop(context);
+            _loadQuestionsAndPreferences();
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestionsSection() {
+    if (_questions.isEmpty) {
+      return Card(
+        margin: const EdgeInsets.only(top: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Order Notes Questions',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'No template questions configured yet.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _addQuestion(false),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add Common Q', style: TextStyle(fontSize: 11)),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _addQuestion(true),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add Specific Q', style: TextStyle(fontSize: 11)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(top: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 1,
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Order Notes Questions',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => _addQuestion(false),
+                      icon: const Icon(Icons.add, size: 14),
+                      label: const Text('Common', style: TextStyle(fontSize: 11)),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _addQuestion(true),
+                      icon: const Icon(Icons.add, size: 14),
+                      label: const Text('Specific', style: TextStyle(fontSize: 11)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(),
+            ..._questions.map((q) {
+              final selectedValue = _selectedAnswers[q.id];
+              final isSpecific = q.customerId != null && q.customerId!.isNotEmpty;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            q.question,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                        ),
+                        if (isSpecific)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Specific',
+                              style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: q.options.map((opt) {
+                        final isSel = selectedValue == opt;
+                        return ChoiceChip(
+                          label: Text(opt, style: const TextStyle(fontSize: 12)),
+                          selected: isSel,
+                          selectedColor: AppColors.primary.withOpacity(0.15),
+                          labelStyle: TextStyle(
+                            color: isSel ? AppColors.primary : AppColors.textSecondary,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedAnswers[q.id] = opt;
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -1113,6 +1382,150 @@ class _QtyPickerState extends State<_QtyPicker> {
             widget.onChanged(_qty);
           }
         },
+      ),
+    );
+  }
+}
+
+class _AddSpecificQuestionForm extends StatefulWidget {
+  final String customerId;
+  final VoidCallback onSaved;
+
+  const _AddSpecificQuestionForm({required this.customerId, required this.onSaved});
+
+  @override
+  State<_AddSpecificQuestionForm> createState() => _AddSpecificQuestionFormState();
+}
+
+class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _questionCon = TextEditingController();
+  final List<TextEditingController> _optionCons = [
+    TextEditingController(),
+    TextEditingController(),
+  ];
+
+  @override
+  void dispose() {
+    _questionCon.dispose();
+    for (final c in _optionCons) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addOption() {
+    AppHaptics.buttonClick();
+    setState(() {
+      _optionCons.add(TextEditingController());
+    });
+  }
+
+  void _removeOption(int idx) {
+    AppHaptics.buttonClick();
+    setState(() {
+      _optionCons[idx].dispose();
+      _optionCons.removeAt(idx);
+    });
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    final question = _questionCon.text.trim();
+    final options = _optionCons.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
+
+    if (options.isEmpty) {
+      SnackbarHelper.showError(context, 'Please add at least 1 option');
+      return;
+    }
+
+    try {
+      await OrderQuestionDao.instance.addQuestion(
+        question,
+        options,
+        customerId: widget.customerId.trim().isEmpty ? null : widget.customerId,
+      );
+      widget.onSaved();
+    } catch (e) {
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Failed to save question: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _questionCon,
+              decoration: const InputDecoration(
+                labelText: 'Question Text',
+                hintText: 'e.g., how should be the tomato?',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter question text' : null,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Options:', style: TextStyle(fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
+                  onPressed: _addOption,
+                ),
+              ],
+            ),
+            ...List.generate(_optionCons.length, (idx) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _optionCons[idx],
+                        decoration: InputDecoration(
+                          labelText: 'Option ${idx + 1}',
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter option text' : null,
+                      ),
+                    ),
+                    if (_optionCons.length > 1) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                        onPressed: () => _removeOption(idx),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  onPressed: _submit,
+                  child: const Text('Save', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            )
+          ],
+        ),
       ),
     );
   }

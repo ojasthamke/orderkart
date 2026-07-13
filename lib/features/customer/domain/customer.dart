@@ -259,10 +259,12 @@ class Customer {
     return exp.difference(DateTime.now()).inDays;
   }
 
-  /// Tag Badge (VIP, Regular, New, Inactive)
+  /// Tag Badge (VIP, Expired, Loyal, Regular, New, Inactive)
   String get tag {
-    if (isVipActive) return 'VIP';
-    if (totalOrders >= 8 || totalPaid >= 5000) return 'VIP';
+    if (isVip) {
+      return isVipActive ? 'VIP' : 'Expired';
+    }
+    if (totalOrders >= 8 || totalPaid >= 5000) return 'Loyal';
     if (totalOrders >= 3) return 'Regular';
     final now = DateTime.now();
     if (now.difference(customerSince).inDays <= 30) return 'New';

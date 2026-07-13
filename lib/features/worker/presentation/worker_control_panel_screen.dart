@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:sqflite/sqflite.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/services/worker_package_service.dart';
@@ -14,9 +15,8 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/export_filename_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 
-import '../data/worker_dao.dart';
 import '../domain/worker.dart';
-import 'dialogs/worker_assignment_dialog.dart';
+import '../data/worker_dao.dart';
 import 'dialogs/worker_package_summary_dialog.dart';
 import 'dialogs/add_edit_worker_dialog.dart';
 import 'worker_provider.dart';
@@ -36,18 +36,12 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   late Worker _currentWorker;
   bool _loading = true;
 
-  // Cached assigned entity IDs
-  List<String> _assignedAreaIds = [];
-  List<String> _assignedStreetIds = [];
-  List<String> _assignedCustomerIds = [];
-  List<String> _assignedCategoryIds = [];
-  List<String> _assignedItemIds = [];
-  List<String> _assignedRouteIds = [];
+
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _currentWorker = widget.worker;
     _loadData();
   }
@@ -62,278 +56,41 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     setState(() => _loading = true);
     final freshWorker = await _dao.getWorkerById(widget.worker.id) ?? widget.worker;
 
-    final areaIds     = await _dao.getAssignedEntityIds(freshWorker.id, 'area');
-    final streetIds   = await _dao.getAssignedEntityIds(freshWorker.id, 'street');
-    final customerIds = await _dao.getAssignedEntityIds(freshWorker.id, 'customer');
-    final categoryIds = await _dao.getAssignedEntityIds(freshWorker.id, 'category');
-    final itemIds     = await _dao.getAssignedEntityIds(freshWorker.id, 'item');
-    final routeIds    = await _dao.getAssignedEntityIds(freshWorker.id, 'route');
-
     if (mounted) {
       setState(() {
         _currentWorker = freshWorker;
-        _assignedAreaIds = areaIds;
-        _assignedStreetIds = streetIds;
-        _assignedCustomerIds = customerIds;
-        _assignedCategoryIds = categoryIds;
-        _assignedItemIds = itemIds;
-        _assignedRouteIds = routeIds;
         _loading = false;
       });
     }
   }
 
-  Future<void> _saveAssignments(String entityType, List<String> newIds) async {
-    AppHaptics.buttonClick();
-    await _dao.setWorkerAssignments(
-      workerId: _currentWorker.id,
-      entityType: entityType,
-      entityIds: newIds,
-    );
-    ref.read(workerListProvider.notifier).load();
-    await _loadData();
-    if (mounted) {
-      SnackbarHelper.showSuccess(context, 'Assignments updated successfully.');
-    }
-  }
 
-  // ── 1. ASSIGN AREAS (Cascading strictly to Streets & Customers in Assigned Areas) ──
-  Future<void> _openAssignAreas() async {
-    final db = await DatabaseHelper.instance.database;
-    final areas = await db.query('areas', orderBy: 'name ASC');
-
-    final items = areas.map((a) {
-      return AssignmentItem(
-        id: a['id'] as String,
-        title: a['name'] as String,
-        subtitle: a['description'] as String? ?? 'Area',
-      );
-    }).toList();
-
-    if (!mounted) return;
-    final selected = await WorkerAssignmentDialog.show(
-      context,
-      title: 'Assign Areas',
-      items: items,
-      initialSelectedIds: _assignedAreaIds,
-    );
-
-    if (selected != null) {
-      // Strict Scoping: Streets & Customers MUST belong ONLY to assigned areas
-      List<String> memberStreetIds = [];
-      List<String> memberCustomerIds = [];
-
-      if (selected.isNotEmpty) {
-        final inClause = selected.map((id) => "'$id'").join(',');
-        final memberStreets = await db.query('streets', where: 'area_id IN ($inClause)');
-        memberStreetIds = memberStreets.map((s) => s['id'] as String).toList();
-
-        if (memberStreetIds.isNotEmpty) {
-          final streetInClause = memberStreetIds.map((id) => "'$id'").join(',');
-          final memberCustomers = await db.query('customers', where: 'street_id IN ($streetInClause)');
-          memberCustomerIds = memberCustomers.map((c) => c['id'] as String).toList();
-        }
-      }
-
-      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'area', entityIds: selected);
-      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'street', entityIds: memberStreetIds);
-      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'customer', entityIds: memberCustomerIds);
-      await _loadData();
-    }
-  }
-
-  // ── 2. ASSIGN STREETS (Filtered strictly by assigned areas) ──────────────
-  Future<void> _openAssignStreets() async {
-    if (_assignedAreaIds.isEmpty) {
-      SnackbarHelper.showInfo(context, 'Please assign at least 1 Area first to select streets.');
-      return;
-    }
-
-    final db = await DatabaseHelper.instance.database;
-    final inClause = _assignedAreaIds.map((id) => "'$id'").join(',');
-    final streets = await db.query('streets', where: 'area_id IN ($inClause)', orderBy: 'name ASC');
-
-    final items = streets.map((s) {
-      return AssignmentItem(
-        id: s['id'] as String,
-        title: s['name'] as String,
-        subtitle: 'Street in Area ${s['area_id']}',
-      );
-    }).toList();
-
-    if (!mounted) return;
-    final selected = await WorkerAssignmentDialog.show(
-      context,
-      title: 'Assign Streets',
-      items: items,
-      initialSelectedIds: _assignedStreetIds,
-    );
-
-    if (selected != null) {
-      // Filter customers strictly to selected streets in assigned areas
-      List<String> memberCustomerIds = [];
-      if (selected.isNotEmpty) {
-        final streetInClause = selected.map((id) => "'$id'").join(',');
-        final memberCustomers = await db.query('customers', where: 'street_id IN ($streetInClause)');
-        memberCustomerIds = memberCustomers.map((c) => c['id'] as String).toList();
-      }
-
-      await _saveAssignments('street', selected);
-      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'customer', entityIds: memberCustomerIds);
-      await _loadData();
-    }
-  }
-
-  // ── 3. ASSIGN CUSTOMERS (Filtered strictly by assigned streets/areas) ─────
-  Future<void> _openAssignCustomers() async {
-    if (_assignedStreetIds.isEmpty) {
-      SnackbarHelper.showInfo(context, 'Please assign Areas & Streets first to select customers.');
-      return;
-    }
-
-    final db = await DatabaseHelper.instance.database;
-    final inClause = _assignedStreetIds.map((id) => "'$id'").join(',');
-    final customers = await db.query('customers', where: 'street_id IN ($inClause)', orderBy: 'name ASC');
-
-    final items = customers.map((c) {
-      return AssignmentItem(
-        id: c['id'] as String,
-        title: c['name'] as String,
-        subtitle: 'Phone: ${c['phone1']} • Address: ${c['address']}',
-      );
-    }).toList();
-
-    if (!mounted) return;
-    final selected = await WorkerAssignmentDialog.show(
-      context,
-      title: 'Assign Customers',
-      items: items,
-      initialSelectedIds: _assignedCustomerIds,
-    );
-
-    if (selected != null) {
-      await _saveAssignments('customer', selected);
-    }
-  }
-
-  // ── 4. ASSIGN CATEGORIES (Cascading to Items) ─────────────────────────────
-  Future<void> _openAssignCategories() async {
-    final db = await DatabaseHelper.instance.database;
-    final dbItems = await db.query('items');
-    final categories = dbItems
-        .map((e) => e['category']?.toString() ?? 'General')
-        .where((c) => c.isNotEmpty)
-        .toSet()
-        .toList();
-    categories.sort();
-
-    final items = categories.map((cat) {
-      final count = dbItems.where((i) => i['category'] == cat).length;
-      return AssignmentItem(
-        id: cat,
-        title: cat,
-        subtitle: '$count Inventory Items in this Category',
-      );
-    }).toList();
-
-    if (!mounted) return;
-    final selected = await WorkerAssignmentDialog.show(
-      context,
-      title: 'Assign Categories',
-      items: items,
-      initialSelectedIds: _assignedCategoryIds,
-    );
-
-    if (selected != null) {
-      // Cascading logic: Auto-select all items belonging to selected categories
-      final Set<String> newItemIds = Set.from(_assignedItemIds);
-      for (final cat in selected) {
-        final catItems = dbItems.where((i) => i['category'] == cat);
-        for (final item in catItems) {
-          newItemIds.add(item['id'] as String);
-        }
-      }
-
-      await _saveAssignments('category', selected);
-      await _dao.setWorkerAssignments(workerId: _currentWorker.id, entityType: 'item', entityIds: newItemIds.toList());
-      await _loadData();
-    }
-  }
-
-  // ── 5. ASSIGN ITEMS ───────────────────────────────────────────────────────
-  Future<void> _openAssignItems() async {
-    final db = await DatabaseHelper.instance.database;
-    final dbItems = await db.query('items', orderBy: 'name ASC');
-
-    final items = dbItems.map((i) {
-      return AssignmentItem(
-        id: i['id'] as String,
-        title: i['name'] as String,
-        subtitle: 'Price: ₹${i['selling_price']} • Stock: ${i['stock_quantity']}',
-        category: i['category']?.toString() ?? 'General',
-      );
-    }).toList();
-
-    if (!mounted) return;
-    final selected = await WorkerAssignmentDialog.show(
-      context,
-      title: 'Assign Inventory Items',
-      items: items,
-      initialSelectedIds: _assignedItemIds,
-    );
-
-    if (selected != null) {
-      await _saveAssignments('item', selected);
-    }
-  }
-
-  // ── 6. ASSIGN PRICE LIST ──────────────────────────────────────────────────
-  Future<void> _openAssignPriceList() async {
-    AppHaptics.buttonClick();
-    SnackbarHelper.showInfo(context, 'Worker assigned to Standard Active Price List.');
-  }
-
-  // ── 7. ASSIGN ROUTES / VISITS ─────────────────────────────────────────────
-  Future<void> _openAssignRoutes() async {
-    final db = await DatabaseHelper.instance.database;
-    final visits = await db.query('visits', orderBy: 'date DESC');
-
-    final items = visits.map((v) {
-      return AssignmentItem(
-        id: v['id'] as String,
-        title: 'Route Visit on ${v['date']}',
-        subtitle: 'Status: ${v['status']} • Notes: ${v['notes']}',
-      );
-    }).toList();
-
-    if (!mounted) return;
-    final selected = await WorkerAssignmentDialog.show(
-      context,
-      title: 'Assign Routes & Visits',
-      items: items,
-      initialSelectedIds: _assignedRouteIds,
-    );
-
-    if (selected != null) {
-      await _saveAssignments('route', selected);
-    }
-  }
 
   // ── PRE-EXPORT VALIDATION & PACKAGE SUMMARY MODAL ─────────────────────────
   Future<void> _triggerPackageSummary() async {
     AppHaptics.buttonClick();
 
-    final double sizeEstimateMb = 0.5 + (_assignedCustomerIds.length * 0.01) + (_assignedItemIds.length * 0.005);
+    final db = await DatabaseHelper.instance.database;
+    final int areasCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM areas')) ?? 0;
+    final int streetsCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM streets')) ?? 0;
+    final int customersCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM customers')) ?? 0;
+    final int categoriesCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(DISTINCT category) FROM items')) ?? 0;
+    final int itemsCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM items')) ?? 0;
+    final int routesCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM visits')) ?? 0;
+
+    final double sizeEstimateMb = 0.5 + (customersCount * 0.01) + (itemsCount * 0.005);
+
+    if (!mounted) return;
 
     WorkerPackageSummaryDialog.show(
       context,
       worker: _currentWorker,
-      areasCount: _assignedAreaIds.length,
-      streetsCount: _assignedStreetIds.length,
-      customersCount: _assignedCustomerIds.length,
-      categoriesCount: _assignedCategoryIds.length,
-      itemsCount: _assignedItemIds.length,
-      routesCount: _assignedRouteIds.length,
+      areasCount: areasCount,
+      streetsCount: streetsCount,
+      customersCount: customersCount,
+      categoriesCount: categoriesCount,
+      itemsCount: itemsCount,
+      routesCount: routesCount,
       estimatedSizeMb: sizeEstimateMb,
       onConfirmExport: _executePackageExport,
     );
@@ -462,7 +219,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
         indicatorColor: AppColors.primary,
         tabs: const [
           Tab(text: 'Overview', icon: Icon(Icons.person_rounded, size: 20)),
-          Tab(text: 'Assignments', icon: Icon(Icons.playlist_add_check_circle_rounded, size: 20)),
           Tab(text: 'Stats', icon: Icon(Icons.analytics_rounded, size: 20)),
         ],
       ),
@@ -470,7 +226,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
         controller: _tabController,
         children: [
           _buildOverviewTab(),
-          _buildAssignmentsTab(),
           _buildStatsTab(),
         ],
       ),
@@ -593,13 +348,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
             color: Colors.teal,
             onTap: _exportWorkerContactsToPhone,
           ),
-          const Divider(height: 1),
-          _actionTile(
-            title: 'Configure Assignments',
-            icon: Icons.checklist_rounded,
-            color: Colors.indigo,
-            onTap: () => _tabController.animateTo(1),
-          ),
+
           const Divider(height: 1),
           _actionTile(
             title: _currentWorker.status == 'active' ? 'Suspend Worker Account' : 'Activate Worker Account',
@@ -614,142 +363,358 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   }
 
   // ── TAB 2: COMPLETE WORKER ASSIGNMENT SYSTEM (8 Cards) ────────────────────
-  Widget _buildAssignmentsTab() {
-    final bool isOutdated = _currentWorker.isPackageOutdated;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Top Package Status Alert
-        _buildPackageStatusBanner(),
-        const SizedBox(height: 16),
 
-        _sectionTitle('Worker Assignment Modules'),
-        const Text(
-          'Configure assigned data scope for this worker. Changes mark the Worker Package as Outdated until regenerated.',
-          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 12),
+  // ── TAB 3: STATS & SYNC PROVENANCE TAB ────────────────────────────────────
+  Future<Map<String, dynamic>> _fetchWorkerStats() async {
+    final db = await DatabaseHelper.instance.database;
 
-        // 1. Assign Areas
-        _assignmentCard(
-          title: '1. Assign Areas',
-          subtitle: 'Multi-select geographic areas (Auto-selects streets & customers)',
-          countLabel: '${_assignedAreaIds.length} Areas Assigned',
-          icon: Icons.map_rounded,
-          color: Colors.blue,
-          onTap: _openAssignAreas,
-        ),
-        const SizedBox(height: 12),
+    final List<Map<String, dynamic>> ordersRows = await db.query(
+      'orders',
+      where: 'assigned_worker_id = ?',
+      whereArgs: [_currentWorker.id],
+      orderBy: 'created_at DESC',
+    );
 
-        // 2. Assign Streets
-        _assignmentCard(
-          title: '2. Assign Streets',
-          subtitle: 'Multi-select streets (Filtered by assigned areas)',
-          countLabel: '${_assignedStreetIds.length} Streets Assigned',
-          icon: Icons.add_road_rounded,
-          color: Colors.teal,
-          onTap: _openAssignStreets,
-        ),
-        const SizedBox(height: 12),
+    double totalSales = 0.0;
+    double totalCommission = 0.0;
+    final List<Map<String, dynamic>> processedOrders = [];
 
-        // 3. Assign Customers
-        _assignmentCard(
-          title: '3. Assign Customers',
-          subtitle: 'Multi-select customers (Filtered by assigned streets)',
-          countLabel: '${_assignedCustomerIds.length} Customers Assigned',
-          icon: Icons.people_alt_rounded,
-          color: Colors.indigo,
-          onTap: _openAssignCustomers,
-        ),
-        const SizedBox(height: 12),
+    for (final row in ordersRows) {
+      final grandTotal = (row['grand_total'] as num?)?.toDouble() ?? 0.0;
+      final commRate = (row['commission_rate'] as num?)?.toDouble() ?? 0.0;
+      final commType = row['commission_type']?.toString() ?? 'pct_order';
+      final orderId = row['id']?.toString() ?? '';
+      final createdAtStr = row['created_at']?.toString() ?? '';
 
-        // 4. Assign Categories
-        _assignmentCard(
-          title: '4. Assign Categories (Auto-Selects Items)',
-          subtitle: 'Assign entire product categories (Vegetables, Fruits, Grocery, etc.)',
-          countLabel: '${_assignedCategoryIds.length} Categories Assigned',
-          icon: Icons.category_rounded,
-          color: Colors.deepPurple,
-          onTap: _openAssignCategories,
-        ),
-        const SizedBox(height: 12),
+      double commAmount = 0.0;
+      if (commType == 'fixed_order') {
+        commAmount = commRate;
+      } else {
+        commAmount = grandTotal * (commRate / 100.0);
+      }
 
-        // 5. Assign Items
-        _assignmentCard(
-          title: '5. Assign Items',
-          subtitle: 'Select specific inventory items the worker can access/sell',
-          countLabel: '${_assignedItemIds.length} Items Assigned',
-          icon: Icons.inventory_2_rounded,
-          color: Colors.amber.shade900,
-          onTap: _openAssignItems,
-        ),
-        const SizedBox(height: 12),
+      totalSales += grandTotal;
+      totalCommission += commAmount;
 
-        // 6. Assign Price List
-        _assignmentCard(
-          title: '6. Assign Price List',
-          subtitle: 'Assign custom item price rules for this worker',
-          countLabel: 'Standard Price List',
-          icon: Icons.sell_rounded,
-          color: Colors.green,
-          onTap: _openAssignPriceList,
-        ),
-        const SizedBox(height: 12),
+      processedOrders.add({
+        'id': orderId,
+        'grand_total': grandTotal,
+        'commission': commAmount,
+        'created_at': createdAtStr,
+      });
+    }
 
-        // 7. Assign Routes
-        _assignmentCard(
-          title: '7. Assign Routes & Visits',
-          subtitle: 'Assign scheduled route visits for field delivery',
-          countLabel: '${_assignedRouteIds.length} Routes Assigned',
-          icon: Icons.route_rounded,
-          color: Colors.purple,
-          onTap: _openAssignRoutes,
-        ),
-        const SizedBox(height: 24),
+    final List<Map<String, dynamic>> workersRows = await db.query('workers');
+    final List<Map<String, dynamic>> workerComparisons = [];
 
-        // --- GENERATE WORKER PACKAGE CALL TO ACTION ---
-        ElevatedButton.icon(
-          onPressed: _triggerPackageSummary,
-          icon: Icon(isOutdated ? Icons.published_with_changes_rounded : Icons.cloud_upload_rounded),
-          label: Text(
-            isOutdated ? 'Regenerate Worker Package' : 'Generate Worker Package',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isOutdated ? Colors.deepOrange : AppColors.primary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 4,
-          ),
-        ),
-        const SizedBox(height: 24),
-      ],
+    for (final wRow in workersRows) {
+      final wId = wRow['id']?.toString() ?? '';
+      final wName = wRow['name']?.toString() ?? '';
+
+      final List<Map<String, dynamic>> wOrders = await db.query(
+        'orders',
+        columns: ['grand_total', 'commission_rate', 'commission_type'],
+        where: 'assigned_worker_id = ?',
+        whereArgs: [wId],
+      );
+
+      double wSales = 0.0;
+      double wComm = 0.0;
+      for (final o in wOrders) {
+        final total = (o['grand_total'] as num?)?.toDouble() ?? 0.0;
+        final rate = (o['commission_rate'] as num?)?.toDouble() ?? 0.0;
+        final type = o['commission_type']?.toString() ?? 'pct_order';
+
+        if (type == 'fixed_order') {
+          wComm += rate;
+        } else {
+          wComm += total * (rate / 100.0);
+        }
+        wSales += total;
+      }
+
+      workerComparisons.add({
+        'name': wName,
+        'id': wId,
+        'total_sales': wSales,
+        'total_commission': wComm,
+        'orders_count': wOrders.length,
+      });
+    }
+
+    workerComparisons.sort((a, b) => (b['total_sales'] as double).compareTo(a['total_sales'] as double));
+
+    return {
+      'orders': processedOrders,
+      'total_sales': totalSales,
+      'total_commission': totalCommission,
+      'comparisons': workerComparisons,
+    };
+  }
+
+  // ── TAB 2: STATS & COMMISSION DASHBOARD ────────────────────────────────────
+  Widget _buildStatsTab() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _fetchWorkerStats(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error loading stats: ${snapshot.error}'));
+        }
+
+        final data = snapshot.data ?? {};
+        final ordersList = data['orders'] as List<Map<String, dynamic>>? ?? [];
+        final double totalSales = data['total_sales'] as double? ?? 0.0;
+        final double totalCommission = data['total_commission'] as double? ?? 0.0;
+        final comparisons = data['comparisons'] as List<Map<String, dynamic>>? ?? [];
+
+        final double avgOrder = ordersList.isNotEmpty ? totalSales / ordersList.length : 0.0;
+        final double maxSales = comparisons.isNotEmpty ? comparisons.first['total_sales'] as double : 1.0;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _sectionTitle('Performance Summary'),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.gray200),
+                boxShadow: AppColors.cardShadow,
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _kpiItem('Total Orders', '${ordersList.length}', Colors.purple),
+                      _kpiItem('Total Sales', AppFormatters.currency(totalSales), AppColors.success),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _kpiItem('Commission Earned', AppFormatters.currency(totalCommission), Colors.orange),
+                      _kpiItem('Avg Order Value', AppFormatters.currency(avgOrder), AppColors.primary),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            _sectionTitle('Worker Comparisons & Leaderboard'),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.gray200),
+                boxShadow: AppColors.cardShadow,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (int i = 0; i < comparisons.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 12),
+                    _workerComparisonRow(
+                      rank: i + 1,
+                      comparison: comparisons[i],
+                      maxSales: maxSales,
+                      isCurrent: comparisons[i]['id'] == _currentWorker.id,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            _sectionTitle('Order & Commission Breakdown'),
+            if (ordersList.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.gray200),
+                ),
+                child: const Center(
+                  child: Text(
+                    'No orders processed by this worker yet.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.gray200),
+                  boxShadow: AppColors.cardShadow,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: ordersList.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final o = ordersList[index];
+                    final dateStr = o['created_at'] != null 
+                        ? AppFormatters.dateTimeFromString(o['created_at'])
+                        : 'Unknown Date';
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      title: Text(
+                        'Order #${o['id']}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      subtitle: Text(
+                        dateStr,
+                        style: const TextStyle(color: AppColors.textHint, fontSize: 11),
+                      ),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            AppFormatters.currency(o['grand_total']),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Comm: ${AppFormatters.currency(o['commission'])}',
+                            style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w700, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 24),
+          ],
+        );
+      },
     );
   }
 
-  // ── TAB 3: STATS & SYNC PROVENANCE TAB ────────────────────────────────────
-  Widget _buildStatsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _sectionTitle('Sync & Device Provenance'),
-        _card([
-          _infoRow('Last Synchronized', _currentWorker.joiningDate.isEmpty ? 'Never Synced' : AppFormatters.dateFromString(_currentWorker.joiningDate)),
-          _infoRow('Device Hostname', Platform.localHostname),
-          _infoRow('Platform', Platform.operatingSystem.toUpperCase()),
-          _infoRow('Database Schema Version', 'V4'),
-        ]),
-        const SizedBox(height: 20),
+  Widget _kpiItem(String title, String value, Color color) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textHint),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color),
+          ),
+        ],
+      ),
+    );
+  }
 
-        _sectionTitle('Earning Stats'),
-        _card([
-          _infoRow('Total Collection Recovered', AppFormatters.currency(_currentWorker.totalCollection)),
-          _infoRow('Average Commission Score', '96% (Executive)'),
-        ]),
-        const SizedBox(height: 24),
-      ],
+  Widget _workerComparisonRow({
+    required int rank,
+    required Map<String, dynamic> comparison,
+    required double maxSales,
+    required bool isCurrent,
+  }) {
+    final double sales = comparison['total_sales'] as double;
+    final double commission = comparison['total_commission'] as double;
+    final int orders = comparison['orders_count'] as int;
+    final String name = comparison['name'] as String;
+
+    final double ratio = maxSales > 0 ? (sales / maxSales).clamp(0.0, 1.0) : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isCurrent ? const Color(0xFFFFD700).withOpacity(0.08) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCurrent ? const Color(0xFFFFD700).withOpacity(0.4) : Colors.transparent,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: isCurrent ? const Color(0xFFFFD700) : AppColors.gray200,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$rank',
+                  style: TextStyle(
+                    fontSize: 11, 
+                    fontWeight: FontWeight.bold, 
+                    color: isCurrent ? const Color(0xFF0F172A) : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isCurrent ? '$name (Current)' : name,
+                  style: TextStyle(
+                    fontWeight: isCurrent ? FontWeight.w800 : FontWeight.bold,
+                    color: isCurrent ? const Color(0xFFB45309) : AppColors.textPrimary,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Text(
+                AppFormatters.currency(sales),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: ratio,
+              backgroundColor: AppColors.gray100,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                isCurrent ? const Color(0xFFFFD700) : AppColors.primary.withOpacity(0.7),
+              ),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$orders Orders Handled',
+                style: const TextStyle(color: AppColors.textHint, fontSize: 11),
+              ),
+              Text(
+                'Comm: ${AppFormatters.currency(commission)}',
+                style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -828,81 +793,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     );
   }
 
-  Widget _assignmentCard({
-    required String title,
-    required String subtitle,
-    required String countLabel,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.gray200),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: color, size: 22),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          countLabel,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: color,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.gray400),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Widget _overviewMetric(String label, String value) {
     return Expanded(
@@ -939,13 +830,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return ListTile(
-      dense: true,
-      title: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-      trailing: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-    );
-  }
+
 
   Widget _card(List<Widget> children) {
     return Container(

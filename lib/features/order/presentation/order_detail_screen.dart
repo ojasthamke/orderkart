@@ -17,6 +17,7 @@ import '../../../core/widgets/customer_avatar.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../data/order_questions_dao.dart';
 import '../domain/order.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
@@ -751,6 +752,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 })
             .toList();
 
+    final qAnswers = await OrderQuestionDao.instance.getOrderAnswers(order.id);
+
     final text = BillTextGenerator.generate(
       businessName:    settings?.businessName ?? 'My Business',
       customerName:    order.customerName ?? 'Walk-in Customer',
@@ -768,6 +771,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       ownerPhone:      settings?.phone ?? '',
       marketSavings:   marketSavings,
       currency:        currency,
+      notes:           order.notes,
+      questionAnswers: qAnswers,
     );
 
     String encodedText = Uri.encodeComponent(text);

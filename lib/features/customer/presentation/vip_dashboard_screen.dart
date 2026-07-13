@@ -367,7 +367,25 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
 
             const SizedBox(height: 12),
             const Divider(height: 1),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Started: ${customer.vipStartDate.isNotEmpty ? AppFormatters.dateFromString(customer.vipStartDate) : "N/A"}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+                Text(
+                  'Expires: ${customer.vipExpiryDate.isNotEmpty ? AppFormatters.dateFromString(customer.vipExpiryDate) : "N/A"}',
+                  style: TextStyle(
+                    fontSize: 11, 
+                    color: isActive ? AppColors.textSecondary : Colors.red,
+                    fontWeight: isActive ? FontWeight.normal : FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
 
             // Benefits Tags & Expiry info
             Row(
@@ -489,6 +507,8 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
   int _durationDays = 365;
   String _customerSearch = '';
   final _customerSearchCon = TextEditingController();
+  DateTime _startDate = DateTime.now();
+  DateTime _expiryDate = DateTime.now().add(const Duration(days: 365));
 
   @override
   void initState() {
@@ -501,6 +521,13 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
       _markupPct = widget.existingCustomer!.vipMarkupPct;
       _freeDelivery = widget.existingCustomer!.vipFreeDelivery;
       _priorityDelivery = widget.existingCustomer!.vipPriorityDelivery;
+      if (widget.existingCustomer!.vipStartDate.isNotEmpty) {
+        _startDate = DateTime.tryParse(widget.existingCustomer!.vipStartDate) ?? DateTime.now();
+      }
+      if (widget.existingCustomer!.vipExpiryDate.isNotEmpty) {
+        _expiryDate = DateTime.tryParse(widget.existingCustomer!.vipExpiryDate) ?? DateTime.now().add(const Duration(days: 365));
+        _durationDays = _expiryDate.difference(_startDate).inDays;
+      }
     }
   }
 
@@ -508,6 +535,36 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
   void dispose() {
     _customerSearchCon.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2050),
+    );
+    if (picked != null) {
+      setState(() {
+        _startDate = picked;
+        _expiryDate = picked.add(Duration(days: _durationDays));
+      });
+    }
+  }
+
+  Future<void> _selectExpiryDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _expiryDate.isAfter(_startDate) ? _expiryDate : _startDate.add(const Duration(days: 1)),
+      firstDate: _startDate.add(const Duration(days: 1)),
+      lastDate: DateTime(2050),
+    );
+    if (picked != null) {
+      setState(() {
+        _expiryDate = picked;
+        _durationDays = _expiryDate.difference(_startDate).inDays;
+      });
+    }
   }
 
   @override
@@ -692,9 +749,9 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    value: _durationDays,
+                    value: [30, 90, 180, 365].contains(_durationDays) ? _durationDays : null,
                     decoration: const InputDecoration(
-                      labelText: 'Duration',
+                      labelText: 'Preset Duration',
                       border: OutlineInputBorder(),
                     ),
                     items: const [
@@ -703,7 +760,54 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
                       DropdownMenuItem(value: 180, child: Text('6 Months')),
                       DropdownMenuItem(value: 365, child: Text('1 Year')),
                     ],
-                    onChanged: (v) => setState(() => _durationDays = v ?? 365),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() {
+                          _durationDays = v;
+                          _expiryDate = _startDate.add(Duration(days: v));
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Date selection system (Start Date / Expiry Date)
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: _selectStartDate,
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Start Date',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today_rounded, size: 18),
+                      ),
+                      child: Text(
+                        AppFormatters.date(_startDate),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: _selectExpiryDate,
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Expiry Date',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.event_busy_rounded, size: 18),
+                      ),
+                      child: Text(
+                        AppFormatters.date(_expiryDate),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -798,14 +902,11 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
       return;
     }
 
-    final now = DateTime.now();
-    final exp = now.add(Duration(days: _durationDays));
-
     final updated = _selectedCustomer!.copyWith(
       isVip: true,
       vipPlan: _plan,
-      vipStartDate: now.toIso8601String(),
-      vipExpiryDate: exp.toIso8601String(),
+      vipStartDate: _startDate.toIso8601String(),
+      vipExpiryDate: _expiryDate.toIso8601String(),
       vipSubscriptionFee: _fee,
       vipDiscountPct: _discountPct,
       vipMarkupPct: _markupPct,

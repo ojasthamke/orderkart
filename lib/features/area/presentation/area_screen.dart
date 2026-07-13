@@ -124,10 +124,12 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (rawAreas) {
                 var areas = rawAreas;
-                if (_filterMode == 'owner') {
-                  areas = rawAreas.where((a) => a.createdBy.toLowerCase() == 'owner' || (a.createdBy.isEmpty && a.assignedWorkerId.isEmpty)).toList();
-                } else if (_filterMode != 'all') {
-                  areas = rawAreas.where((a) => a.assignedWorkerId == _filterMode || a.createdBy == _filterMode || a.workerName.toLowerCase() == _filterMode.toLowerCase()).toList();
+                if (!isWorker) {
+                  if (_filterMode == 'owner') {
+                    areas = rawAreas.where((a) => a.createdBy.toLowerCase() == 'owner' || (a.createdBy.isEmpty && a.assignedWorkerId.isEmpty)).toList();
+                  } else if (_filterMode != 'all') {
+                    areas = rawAreas.where((a) => a.assignedWorkerId == _filterMode || a.createdBy == _filterMode || a.workerName.toLowerCase() == _filterMode.toLowerCase()).toList();
+                  }
                 }
 
                 if (areas.isEmpty) {

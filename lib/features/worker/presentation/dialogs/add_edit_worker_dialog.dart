@@ -40,6 +40,7 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
   late TextEditingController _bankDetailsCon;
   late TextEditingController _joiningSalaryCon;
   late TextEditingController _remarksCon;
+  late TextEditingController _pinCon;
 
   CommissionType _commType = CommissionType.pctOrder;
   String _status = 'active';
@@ -63,6 +64,7 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
     _bankDetailsCon = TextEditingController(text: w?.bankDetails ?? '');
     _joiningSalaryCon = TextEditingController(text: (w?.joiningSalary ?? 0.0).toString());
     _remarksCon = TextEditingController(text: w?.remarks ?? '');
+    _pinCon = TextEditingController(text: w?.pinHash ?? '');
 
     if (w != null) {
       _commType = w.commissionType;
@@ -101,7 +103,7 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
       address: _addressCon.text.trim(),
       employeeId: _empIdCon.text.trim(),
       status: _status,
-      pinHash: widget.worker?.pinHash ?? '',
+      pinHash: _pinCon.text.trim(),
       commissionType: _commType,
       commissionValue: double.tryParse(_commValCon.text.trim()) ?? 5.0,
       salary: double.tryParse(_salaryCon.text.trim()) ?? 0.0,
@@ -303,6 +305,25 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _pinCon,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Worker Security Code (PIN/Passcode)',
+                    prefixIcon: Icon(Icons.lock_outline_rounded),
+                    helperText: 'Asked on worker login and every 10 days.',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Please enter a worker security passcode';
+                    }
+                    return null;
+                  },
+                ),
+
                 const SizedBox(height: 16),
 
                 Row(

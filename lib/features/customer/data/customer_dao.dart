@@ -24,6 +24,16 @@ class CustomerDao {
       {'key': 'street_customers_order:$streetId', 'value': val},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    await db.transaction((txn) async {
+      for (int i = 0; i < orderedIds.length; i++) {
+        await txn.update(
+          'customers',
+          {'serial_no': i + 1},
+          where: 'id = ?',
+          whereArgs: [orderedIds[i]],
+        );
+      }
+    });
   }
 
   Future<List<Customer>> getCustomersByStreet(String streetId, {String? searchQuery}) async {

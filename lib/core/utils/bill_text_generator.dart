@@ -25,6 +25,8 @@ class BillTextGenerator {
     required String ownerPhone,
     double marketSavings = 0.0, // savings vs market price
     String currency = AppConstants.defaultCurrency,
+    String notes = '',
+    List<Map<String, dynamic>> questionAnswers = const [],
   }) {
     final buf = StringBuffer();
     final sep = '─' * 30;
@@ -39,6 +41,17 @@ class BillTextGenerator {
     }
     if (ownerPhone.trim().isNotEmpty) {
       buf.writeln('Contact: ${ownerPhone.trim()}');
+    }
+    if (notes.trim().isNotEmpty) {
+      buf.writeln('Notes: ${notes.trim()}');
+    }
+    if (questionAnswers.isNotEmpty) {
+      for (int i = 0; i < questionAnswers.length; i++) {
+        final ans = questionAnswers[i];
+        final qText = ans['question_text'] as String? ?? '';
+        final opt = ans['selected_option'] as String? ?? '';
+        buf.writeln('🟢 Q${i + 1}: $opt ($qText)');
+      }
     }
     buf.writeln(sep);
     buf.writeln('ITEMS');

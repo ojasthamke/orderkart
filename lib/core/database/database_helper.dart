@@ -50,6 +50,7 @@ class DatabaseHelper {
     await _createIndexes(db);
     await _createV3Tables(db);
     await _createV4Tables(db);
+    await _createV5Tables(db);
     await _ensureVipColumns(db);
     await _ensurePriceHistoryTables(db);
     await _ensureAreaAndStreetColumns(db);
@@ -75,6 +76,8 @@ class DatabaseHelper {
         await _ensureCallLogsTable(db);
         await _createV4Tables(db);
         await _ensureV4Columns(db);
+        await _ensureSavingsColumn(db);
+        await _createV5Tables(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
       },
@@ -99,6 +102,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       await _createV4Tables(db);
+    }
+    if (oldVersion < 5) {
+      await _createV5Tables(db);
     }
   }
 
@@ -243,6 +249,7 @@ class DatabaseHelper {
         remaining_amount     REAL NOT NULL DEFAULT 0,
         delivery_status      TEXT NOT NULL DEFAULT 'pending',
         notes                TEXT DEFAULT '',
+        savings              REAL DEFAULT 0,
         created_at           TEXT NOT NULL,
         updated_at           TEXT NOT NULL,
         FOREIGN KEY(customer_id) REFERENCES customers(id) ON DELETE CASCADE
@@ -517,7 +524,11 @@ class DatabaseHelper {
       case 'orders':
       case 'order_items':
       case 'payments':
+      case 'order_questions':
+      case 'order_question_answers':
         return selectedModules.contains('orders') || selectedModules.contains('entire_db');
+      case 'customer_question_answers':
+        return selectedModules.contains('customers') || selectedModules.contains('entire_db');
       case 'expenses':
         return selectedModules.contains('expenses') || selectedModules.contains('entire_db');
       case 'notes':
@@ -1664,6 +1675,52 @@ class DatabaseHelper {
     } catch (e) {
       print('Auto-cleanup database error: $e');
     }
+  }
+
+  Future<void> _ensureSavingsColumn(Database db) async {
+    try {
+      final List<Map<String, dynamic>> columns = await db.rawQuery('PRAGMA table_info(orders)');
+      final hasSavings = columns.any((col) => col['name'] == 'savings');
+      if (!hasSavings) {
+        await db.execute('ALTER TABLE orders ADD COLUMN savings REAL DEFAULT 0');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _createV5Tables(Database db) async {
+    // Dynamic Questions
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS order_questions (
+        id          TEXT PRIMARY KEY,
+        question    TEXT NOT NULL,
+        options     TEXT NOT NULL,
+        customer_id TEXT,
+        is_archived INTEGER DEFAULT 0,
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL
+      )
+    ''');
+
+    // Customer preferences/answers
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS customer_question_answers (
+        customer_id     TEXT NOT NULL,
+        question_id     TEXT NOT NULL,
+        selected_option TEXT NOT NULL,
+        PRIMARY KEY (customer_id, question_id)
+      )
+    ''');
+
+    // Order specific answers
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS order_question_answers (
+        order_id        TEXT NOT NULL,
+        question_id     TEXT NOT NULL,
+        question_text   TEXT NOT NULL,
+        selected_option TEXT NOT NULL,
+        PRIMARY KEY (order_id, question_id)
+      )
+    ''');
   }
 }
 

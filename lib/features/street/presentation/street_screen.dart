@@ -104,10 +104,12 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (rawStreets) {
                 var streets = rawStreets;
-                if (_filterMode == 'owner') {
-                  streets = rawStreets.where((s) => s.createdBy.toLowerCase() == 'owner' || (s.createdBy.isEmpty && s.assignedWorkerId.isEmpty)).toList();
-                } else if (_filterMode != 'all') {
-                  streets = rawStreets.where((s) => s.assignedWorkerId == _filterMode || s.createdBy == _filterMode || s.workerName.toLowerCase() == _filterMode.toLowerCase()).toList();
+                if (!isWorker) {
+                  if (_filterMode == 'owner') {
+                    streets = rawStreets.where((s) => s.createdBy.toLowerCase() == 'owner' || (s.createdBy.isEmpty && s.assignedWorkerId.isEmpty)).toList();
+                  } else if (_filterMode != 'all') {
+                    streets = rawStreets.where((s) => s.assignedWorkerId == _filterMode || s.createdBy == _filterMode || s.workerName.toLowerCase() == _filterMode.toLowerCase()).toList();
+                  }
                 }
 
                 if (streets.isEmpty) {

@@ -476,10 +476,10 @@ class _ConfirmSyncDialogState extends State<ConfirmSyncDialog> {
               modules.addAll(['areas', 'streets', 'visits']);
             }
             if (_selections['customers'] == true) {
-              modules.addAll(['customers', 'vip_membership']);
+              modules.addAll(['customers', 'vip_membership', 'customer_question_answers']);
             }
             if (_selections['orders_payments'] == true) {
-              modules.addAll(['orders', 'order_items', 'payments']);
+              modules.addAll(['orders', 'order_items', 'payments', 'order_questions', 'order_question_answers']);
             }
             if (_selections['products'] == true) {
               modules.addAll(['items', 'item_price_history']);

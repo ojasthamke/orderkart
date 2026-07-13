@@ -22,6 +22,7 @@ import '../../order/domain/order.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../../../core/utils/contact_exporter.dart';
+import '../../order/data/order_questions_dao.dart';
 
 class CustomerProfileScreen extends ConsumerWidget {
   final String customerId;
@@ -239,6 +240,11 @@ class CustomerProfileScreen extends ConsumerWidget {
                 // Customer Savings Tracker Card & WhatsApp Share
                 _buildSavingsTrackerCard(context, ref, customer),
 
+                CustomerPreferencesCard(
+                  customerId: customer.id,
+                  customerName: customer.name,
+                ),
+
                 // Orders title
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -360,6 +366,35 @@ class CustomerProfileScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
+                    ] else if (customer.isVip) ...[
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red.withOpacity(0.3), width: 0.8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.error_outline_rounded, color: Colors.red, size: 14),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Expired VIP (${customer.vipPlan})',
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
                     ],
                     Text(
                       'Phone: ${customer.phone1}',
@@ -386,6 +421,57 @@ class CustomerProfileScreen extends ConsumerWidget {
                             .textTheme
                             .bodySmall
                             ?.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                    if (customer.isVip) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: customer.isVipActive 
+                              ? Colors.amber.withOpacity(0.06)
+                              : Colors.red.withOpacity(0.04),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: customer.isVipActive 
+                                ? Colors.amber.withOpacity(0.2)
+                                : Colors.red.withOpacity(0.15),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              customer.isVipActive ? 'ACTIVE VIP SUBSCRIPTION' : 'EXPIRED VIP SUBSCRIPTION',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                color: customer.isVipActive ? Colors.amber[800] : Colors.red[800],
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Started: ${customer.vipStartDate.isNotEmpty ? AppFormatters.dateFromString(customer.vipStartDate) : "N/A"}',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                                Text(
+                                  'Expires: ${customer.vipExpiryDate.isNotEmpty ? AppFormatters.dateFromString(customer.vipExpiryDate) : "N/A"}',
+                                  style: TextStyle(
+                                    fontSize: 12, 
+                                    color: customer.isVipActive ? AppColors.textSecondary : Colors.red,
+                                    fontWeight: customer.isVipActive ? FontWeight.normal : FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                     const SizedBox(height: 8),
@@ -883,6 +969,23 @@ class _CustomerOrderTile extends StatelessWidget {
               AppFormatters.dateTime(order.createdAt),
               style: const TextStyle(fontSize: 11, color: AppColors.textHint),
             ),
+            if (order.notes.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.notes_rounded, size: 12, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      order.notes,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
         trailing: Column(
@@ -908,3 +1011,338 @@ class _CustomerOrderTile extends StatelessWidget {
     );
   }
 }
+
+class CustomerPreferencesCard extends StatefulWidget {
+  final String customerId;
+  final String customerName;
+
+  const CustomerPreferencesCard({
+    super.key,
+    required this.customerId,
+    required this.customerName,
+  });
+
+  @override
+  State<CustomerPreferencesCard> createState() => _CustomerPreferencesCardState();
+}
+
+class _CustomerPreferencesCardState extends State<CustomerPreferencesCard> {
+  List<OrderQuestion> _questions = [];
+  Map<String, String> _answers = {};
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final qList = await OrderQuestionDao.instance.getAllQuestionsForCustomer(widget.customerId);
+      final ansMap = await OrderQuestionDao.instance.getCustomerAnswers(widget.customerId);
+      setState(() {
+        _questions = qList;
+        _answers = ansMap;
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  void _showAddSpecificQuestionDialog() {
+    AppHaptics.buttonClick();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Specific Question', style: TextStyle(fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: _AddSpecificQuestionForm(
+          customerId: widget.customerId,
+          onSaved: () {
+            Navigator.pop(context);
+            _load();
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        ),
+      );
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.assignment_turned_in_rounded, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text(
+                      'Order Notes Preferences',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  onPressed: _showAddSpecificQuestionDialog,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add Specific Q', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+            const Divider(),
+            if (_questions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'No order questions configured yet.',
+                  style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: AppColors.textSecondary),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _questions.length,
+                itemBuilder: (context, idx) {
+                  final q = _questions[idx];
+                  final selected = _answers[q.id];
+                  final isSpecific = q.customerId != null && q.customerId!.isNotEmpty;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      q.question,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                    ),
+                                  ),
+                                  if (isSpecific)
+                                    Container(
+                                      margin: const EdgeInsets.only(left: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.shade100,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Specific',
+                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                selected != null ? 'Answer: $selected' : 'Answer: Not set (uses common/default)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: selected != null ? AppColors.success : AppColors.textSecondary,
+                                  fontWeight: selected != null ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        DropdownButton<String>(
+                          value: q.options.contains(selected) ? selected : null,
+                          hint: const Text('Select', style: TextStyle(fontSize: 12)),
+                          underline: const SizedBox(),
+                          icon: const Icon(Icons.arrow_drop_down_rounded),
+                          items: q.options.map((opt) {
+                            return DropdownMenuItem<String>(
+                              value: opt,
+                              child: Text(opt, style: const TextStyle(fontSize: 12)),
+                            );
+                          }).toList(),
+                          onChanged: (val) async {
+                            if (val != null) {
+                              AppHaptics.buttonClick();
+                              await OrderQuestionDao.instance.saveCustomerAnswer(widget.customerId, q.id, val);
+                              _load();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddSpecificQuestionForm extends StatefulWidget {
+  final String customerId;
+  final VoidCallback onSaved;
+
+  const _AddSpecificQuestionForm({required this.customerId, required this.onSaved});
+
+  @override
+  State<_AddSpecificQuestionForm> createState() => _AddSpecificQuestionFormState();
+}
+
+class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _questionCon = TextEditingController();
+  final List<TextEditingController> _optionCons = [
+    TextEditingController(),
+    TextEditingController(),
+  ];
+
+  @override
+  void dispose() {
+    _questionCon.dispose();
+    for (final c in _optionCons) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addOption() {
+    AppHaptics.buttonClick();
+    setState(() {
+      _optionCons.add(TextEditingController());
+    });
+  }
+
+  void _removeOption(int idx) {
+    AppHaptics.buttonClick();
+    setState(() {
+      _optionCons[idx].dispose();
+      _optionCons.removeAt(idx);
+    });
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    final question = _questionCon.text.trim();
+    final options = _optionCons.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
+
+    if (options.isEmpty) {
+      SnackbarHelper.showError(context, 'Please add at least 1 option');
+      return;
+    }
+
+    try {
+      await OrderQuestionDao.instance.addQuestion(question, options, customerId: widget.customerId);
+      widget.onSaved();
+    } catch (e) {
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Failed to save specific question: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _questionCon,
+              decoration: const InputDecoration(
+                labelText: 'Question Text',
+                hintText: 'e.g., how should be the tomato?',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter question text' : null,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Options:', style: TextStyle(fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
+                  onPressed: _addOption,
+                ),
+              ],
+            ),
+            ...List.generate(_optionCons.length, (idx) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _optionCons[idx],
+                        decoration: InputDecoration(
+                          labelText: 'Option ${idx + 1}',
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter option text' : null,
+                      ),
+                    ),
+                    if (_optionCons.length > 1) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                        onPressed: () => _removeOption(idx),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  onPressed: _submit,
+                  child: const Text('Save', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+

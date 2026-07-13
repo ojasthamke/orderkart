@@ -256,6 +256,27 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
       final workerName = validation.manifest['generated_by_worker_name'] as String? ?? 'Worker';
       if (workerId != null) {
         await WorkerSession.instance.setWorker(workerId, workerName: workerName);
+        
+        // Force verification of passcode on initial login/provisioning
+        if (mounted) {
+          final unlocked = await Navigator.of(context).pushNamed(
+            AppRoutes.workerPasscodeLock,
+            arguments: {
+              'workerId': workerId,
+              'workerName': workerName,
+              'forceLogoutOnCancel': true,
+            },
+          ) as bool? ?? false;
+
+          if (!unlocked) {
+            await WorkerSession.instance.clear();
+            await AppModeService.setAppMode(AppMode.owner);
+            await AppModeService.setAppInitialized(false);
+            ref.invalidate(appModeProvider);
+            setState(() => _loading = false);
+            return;
+          }
+        }
       }
 
       await AppModeService.setAppMode(AppMode.worker);

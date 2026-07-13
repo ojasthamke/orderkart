@@ -55,4 +55,6 @@ class AppRoutes {
   static const String pinLock         = '/pin-lock';
   static const String welcome         = '/welcome';
   static const String callLogs        = '/call-logs';
+  static const String workerPasscodeLock = '/worker-passcode-lock';
+  static const String orderQuestionsConfig = '/order-questions-config';
 }

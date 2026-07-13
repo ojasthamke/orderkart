@@ -13,6 +13,7 @@ class AppOrder {
   final double remainingAmount;
   final String deliveryStatus;  // pending / delivered / cancelled
   final String notes;
+  final double savings;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int? orderNumber;       // Sequential rowid from SQLite
@@ -47,6 +48,7 @@ class AppOrder {
     required this.remainingAmount,
     this.deliveryStatus     = 'pending',
     this.notes              = '',
+    this.savings            = 0.0,
     required this.createdAt,
     required this.updatedAt,
     this.orderNumber,
@@ -75,6 +77,7 @@ class AppOrder {
     double? remainingAmount,
     String? deliveryStatus,
     String? notes,
+    double? savings,
     DateTime? createdAt,
     DateTime? updatedAt,
     int? orderNumber,
@@ -102,6 +105,7 @@ class AppOrder {
       remainingAmount:     remainingAmount     ?? this.remainingAmount,
       deliveryStatus:      deliveryStatus      ?? this.deliveryStatus,
       notes:               notes               ?? this.notes,
+      savings:             savings             ?? this.savings,
       createdAt:           createdAt           ?? this.createdAt,
       updatedAt:           updatedAt           ?? this.updatedAt,
       orderNumber:         orderNumber         ?? this.orderNumber,
@@ -131,6 +135,7 @@ class AppOrder {
         'remaining_amount':     remainingAmount,
         'delivery_status':      deliveryStatus,
         'notes':                notes,
+        'savings':              savings,
         'created_at':           createdAt.toIso8601String(),
         'updated_at':           updatedAt.toIso8601String(),
         'assigned_worker_id':   assignedWorkerId,
@@ -153,6 +158,7 @@ class AppOrder {
         remainingAmount:     (map['remaining_amount']    as num).toDouble(),
         deliveryStatus:      map['delivery_status']      as String? ?? 'pending',
         notes:               map['notes']                as String? ?? '',
+        savings:             (map['savings']             as num?)?.toDouble() ?? 0.0,
         createdAt:           DateTime.parse(map['created_at'] as String),
         updatedAt:           DateTime.parse(map['updated_at'] as String),
         orderNumber:         map['order_number']         as int?,

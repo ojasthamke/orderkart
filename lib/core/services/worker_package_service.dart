@@ -90,6 +90,10 @@ class WorkerPackageService {
     final allSettings = await mainDb.query('settings');
     final settingsRows = allSettings.where((row) => !row['key'].toString().startsWith('owner_secret')).toList();
 
+    final List<Map<String, dynamic>> orderQuestionsRows = await mainDb.query('order_questions');
+    final List<Map<String, dynamic>> customerQuestionAnswersRows = await mainDb.query('customer_question_answers');
+    final List<Map<String, dynamic>> orderQuestionAnswersRows = await mainDb.query('order_question_answers');
+
     // Serialize and Encrypt JSON files helper
     Future<void> writeEncryptedJson(String filename, dynamic data) async {
       final jsonStr = jsonEncode(data);
@@ -108,6 +112,9 @@ class WorkerPackageService {
     await writeEncryptedJson('price_list.json', priceListRows);
     await writeEncryptedJson('business_profile.json', businessProfileRow);
     await writeEncryptedJson('settings.json', settingsRows);
+    await writeEncryptedJson('order_questions.json', orderQuestionsRows);
+    await writeEncryptedJson('customer_question_answers.json', customerQuestionAnswersRows);
+    await writeEncryptedJson('order_question_answers.json', orderQuestionAnswersRows);
 
     // Create database.db for direct SQLite importers
     final dbFile = File('${packageDir.path}/database.db');
@@ -127,6 +134,9 @@ class WorkerPackageService {
       for (final r in priceListRows) { await scopedDb.insert('item_price_history', r, conflictAlgorithm: ConflictAlgorithm.replace); }
       for (final r in businessProfileRow) { await scopedDb.insert('business_profile', r, conflictAlgorithm: ConflictAlgorithm.replace); }
       for (final r in settingsRows) { await scopedDb.insert('settings', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in orderQuestionsRows) { await scopedDb.insert('order_questions', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in customerQuestionAnswersRows) { await scopedDb.insert('customer_question_answers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in orderQuestionAnswersRows) { await scopedDb.insert('order_question_answers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
     } finally {
       await scopedDb.close();
     }
@@ -763,6 +773,10 @@ class WorkerPackageService {
     final allSettings = await mainDb.query('settings');
     final settingsRows = allSettings.where((row) => !row['key'].toString().startsWith('owner_secret')).toList();
 
+    final List<Map<String, dynamic>> orderQuestionsRows = await mainDb.query('order_questions');
+    final List<Map<String, dynamic>> customerQuestionAnswersRows = await mainDb.query('customer_question_answers');
+    final List<Map<String, dynamic>> orderQuestionAnswersRows = await mainDb.query('order_question_answers');
+
     return {
       'workers': workerRow,
       'worker_permissions': permissionsRow,
@@ -774,6 +788,9 @@ class WorkerPackageService {
       'item_price_history': priceListRows,
       'business_profile': businessProfileRow,
       'settings': settingsRows,
+      'order_questions': orderQuestionsRows,
+      'customer_question_answers': customerQuestionAnswersRows,
+      'order_question_answers': orderQuestionAnswersRows,
     };
   }
 }

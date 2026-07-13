@@ -367,6 +367,14 @@ class _CustomerCard extends StatelessWidget {
         color = Colors.purple;
         bg = Colors.purple.withOpacity(0.12);
         break;
+      case 'Expired':
+        color = Colors.red;
+        bg = Colors.red.withOpacity(0.12);
+        break;
+      case 'Loyal':
+        color = Colors.blue;
+        bg = Colors.blue.withOpacity(0.12);
+        break;
       case 'New':
         color = Colors.green;
         bg = Colors.green.withOpacity(0.12);

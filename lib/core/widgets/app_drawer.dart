@@ -168,7 +168,7 @@ class AppDrawer extends ConsumerWidget {
                     ),
                   ],
 
-                  if (!isWorker)
+                  if (!isWorker) ...[
                     _DrawerItem(
                       icon: Icons.workspace_premium_rounded,
                       title: 'VIP Membership Club',
@@ -177,6 +177,15 @@ class AppDrawer extends ConsumerWidget {
                         Navigator.pushNamed(context, AppRoutes.vipDashboard);
                       },
                     ),
+                    _DrawerItem(
+                      icon: Icons.question_answer_rounded,
+                      title: 'Order Notes Questions',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.orderQuestionsConfig);
+                      },
+                    ),
+                  ],
                   
                   _DrawerItem(
                     icon: Icons.inventory_rounded,

@@ -54,6 +54,8 @@ import 'features/settings/presentation/business_profile_screen.dart';
 import 'features/analytics/presentation/worker_analytics_screen.dart';
 import 'features/worker/presentation/worker_sync_activity_screen.dart';
 import 'features/customer/presentation/call_logs_screen.dart';
+import 'features/auth/presentation/worker_passcode_lock_screen.dart';
+import 'features/order/presentation/order_questions_config_screen.dart';
 
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
@@ -265,6 +267,17 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
       case AppRoutes.callLogs:
         return _slide(const CallLogsScreen());
 
+      case AppRoutes.workerPasscodeLock:
+        final args = settings.arguments as Map<String, dynamic>;
+        return _slide(WorkerPasscodeLockScreen(
+          workerId: args['workerId'] as String,
+          workerName: args['workerName'] as String,
+          forceLogoutOnCancel: args['forceLogoutOnCancel'] as bool? ?? false,
+        ));
+
+      case AppRoutes.orderQuestionsConfig:
+        return _slide(const OrderQuestionsConfigScreen());
+
       default:
         return _slide(const AppStartupScreen(), settings);
     }
@@ -326,16 +339,35 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
 
         // 10-day lock check
         final prefs = await SharedPreferences.getInstance();
-        final lastUnlock = prefs.getInt('last_10day_unlock_time');
         final now = DateTime.now().millisecondsSinceEpoch;
         bool is10DayLocked = false;
+        bool isWorker10DayLocked = false;
+        String workerId = '';
+        String workerName = '';
 
-        if (lastUnlock == null) {
-          await prefs.setInt('last_10day_unlock_time', now);
-        } else {
-          const tenDaysMs = 10 * 24 * 60 * 60 * 1000;
-          if (now - lastUnlock >= tenDaysMs) {
-            is10DayLocked = true;
+        if (mode == AppMode.owner) {
+          final lastUnlock = prefs.getInt('last_10day_unlock_time');
+          if (lastUnlock == null) {
+            await prefs.setInt('last_10day_unlock_time', now);
+          } else {
+            const tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+            if (now - lastUnlock >= tenDaysMs) {
+              is10DayLocked = true;
+            }
+          }
+        } else if (mode == AppMode.worker) {
+          workerId = WorkerSession.instance.currentWorkerId ?? '';
+          workerName = WorkerSession.instance.currentWorkerName ?? 'Worker';
+          if (workerId.isNotEmpty) {
+            final lastWorkerUnlock = prefs.getInt('last_worker_verification_time_$workerId');
+            if (lastWorkerUnlock == null) {
+              isWorker10DayLocked = true;
+            } else {
+              const tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+              if (now - lastWorkerUnlock >= tenDaysMs) {
+                isWorker10DayLocked = true;
+              }
+            }
           }
         }
 
@@ -343,6 +375,9 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
           'initialized': initialized,
           'mode': mode,
           'is10DayLocked': is10DayLocked,
+          'isWorker10DayLocked': isWorker10DayLocked,
+          'workerId': workerId,
+          'workerName': workerName,
         };
       }(),
       builder: (context, snapshot) {
@@ -359,7 +394,24 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
           'initialized': false,
           'mode': AppMode.owner,
           'is10DayLocked': false,
+          'isWorker10DayLocked': false,
+          'workerId': '',
+          'workerName': '',
         };
+
+        final bool isWorker10DayLocked = data['isWorker10DayLocked'] as bool? ?? false;
+        if (isWorker10DayLocked && !_unlockedSession) {
+          return WorkerPasscodeLockScreen(
+            workerId: data['workerId'] as String? ?? '',
+            workerName: data['workerName'] as String? ?? 'Worker',
+            forceLogoutOnCancel: true,
+            onUnlocked: () {
+              setState(() {
+                _unlockedSession = true;
+              });
+            },
+          );
+        }
 
         final bool is10DayLocked = data['is10DayLocked'] as bool;
         if (is10DayLocked && !_unlockedSession) {

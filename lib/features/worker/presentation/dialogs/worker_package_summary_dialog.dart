@@ -149,24 +149,24 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
               if (hasAreaError)
                 _validationAlert(
                   isError: true,
-                  title: 'No Areas Assigned',
-                  message: 'You must assign at least 1 Area before generating a worker provisioning package.',
+                  title: 'No Areas Found',
+                  message: 'You must add at least 1 Area before generating a worker provisioning package.',
                 ),
               if (!hasAreaError && hasCustomerWarning)
                 _validationAlert(
                   isError: false,
-                  title: 'No Customers Assigned',
+                  title: 'No Customers Found',
                   message: 'Worker will be provisioned with 0 customer records.',
                 ),
               if (hasItemWarning)
                 _validationAlert(
                   isError: false,
-                  title: 'No Inventory Items Assigned',
+                  title: 'No Inventory Items Found',
                   message: 'Worker will not be able to add inventory line items to orders.',
                 ),
 
               const Text(
-                'Assigned Scope & Payload Details',
+                'Provisioned Scope & Payload Details',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primary),
               ),
               const SizedBox(height: 8),
@@ -180,17 +180,17 @@ class WorkerPackageSummaryDialog extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    _metricRow(Icons.map_rounded, 'Assigned Areas', '$areasCount Areas'),
+                    _metricRow(Icons.map_rounded, 'Database Areas', '$areasCount Areas'),
                     const Divider(height: 1),
-                    _metricRow(Icons.add_road_rounded, 'Assigned Streets', '$streetsCount Streets'),
+                    _metricRow(Icons.add_road_rounded, 'Database Streets', '$streetsCount Streets'),
                     const Divider(height: 1),
-                    _metricRow(Icons.people_alt_rounded, 'Assigned Customers', '$customersCount Customers'),
+                    _metricRow(Icons.people_alt_rounded, 'Database Customers', '$customersCount Customers'),
                     const Divider(height: 1),
-                    _metricRow(Icons.category_rounded, 'Assigned Categories', '$categoriesCount Categories'),
+                    _metricRow(Icons.category_rounded, 'Product Categories', '$categoriesCount Categories'),
                     const Divider(height: 1),
-                    _metricRow(Icons.inventory_2_rounded, 'Assigned Inventory Items', '$itemsCount Items'),
+                    _metricRow(Icons.inventory_2_rounded, 'Inventory Items', '$itemsCount Items'),
                     const Divider(height: 1),
-                    _metricRow(Icons.route_rounded, 'Assigned Route Visits', '$routesCount Visits'),
+                    _metricRow(Icons.route_rounded, 'Route Visits', '$routesCount Visits'),
                     const Divider(height: 1),
                     _metricRow(Icons.sd_storage_rounded, 'Estimated Package Size', '~${estimatedSizeMb.toStringAsFixed(1)} MB'),
                   ],
