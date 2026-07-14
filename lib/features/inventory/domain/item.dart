@@ -22,6 +22,7 @@ class Item {
   final String dosageInfo;
   final String bestBefore;
   final String packDate;
+  final double weightPerPiece;
 
   bool get isLowStock => stock <= minStock && minStock > 0;
   double get profitMargin => sellingPrice > 0 ? ((sellingPrice - costPrice) / sellingPrice) * 100 : 0;
@@ -47,6 +48,7 @@ class Item {
     this.dosageInfo   = '',
     this.bestBefore   = '',
     this.packDate     = '',
+    this.weightPerPiece = 0.25,
   });
 
   Item copyWith({
@@ -68,6 +70,7 @@ class Item {
     String? dosageInfo,
     String? bestBefore,
     String? packDate,
+    double? weightPerPiece,
   }) {
     return Item(
       id:           id           ?? this.id,
@@ -88,6 +91,7 @@ class Item {
       dosageInfo:   dosageInfo   ?? this.dosageInfo,
       bestBefore:   bestBefore   ?? this.bestBefore,
       packDate:     packDate     ?? this.packDate,
+      weightPerPiece: weightPerPiece ?? this.weightPerPiece,
     );
   }
 
@@ -110,6 +114,7 @@ class Item {
         'dosage_info':   dosageInfo,
         'best_before':   bestBefore,
         'pack_date':     packDate,
+        'weight_per_piece': weightPerPiece,
       };
 
   factory Item.fromMap(Map<String, dynamic> map) => Item(
@@ -131,6 +136,7 @@ class Item {
         dosageInfo:   map['dosage_info']   as String? ?? '',
         bestBefore:   map['best_before']   as String? ?? '',
         packDate:     map['pack_date']     as String? ?? '',
+        weightPerPiece: (map['weight_per_piece'] as num?)?.toDouble() ?? 0.25,
       );
 
   @override

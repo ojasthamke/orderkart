@@ -35,6 +35,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   final _dosageCon     = TextEditingController();
   final _bestBeforeCon = TextEditingController();
   final _packCon       = TextEditingController();
+  final _weightPerPieceCon = TextEditingController(text: '0.25');
   bool  _rxRequired    = false;
 
   String _category = AppConstants.catVegetables;
@@ -77,6 +78,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _bestBeforeCon.text = item.bestBefore;
         _packCon.text     = item.packDate;
         _rxRequired       = item.prescriptionRequired;
+        _weightPerPieceCon.text = item.weightPerPiece.toString();
       });
     }
   }
@@ -87,6 +89,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     _stockCon.dispose(); _minStockCon.dispose(); _barcodeCon.dispose();
     _expiryCon.dispose(); _batchCon.dispose(); _dosageCon.dispose();
     _bestBeforeCon.dispose(); _packCon.dispose();
+    _weightPerPieceCon.dispose();
     super.dispose();
   }
 
@@ -150,6 +153,25 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 onChanged: (v) => setState(() => _unit = v ?? _unit),
               ),
               const SizedBox(height: 16),
+
+              if (_unit == AppConstants.unitKg || _unit == AppConstants.unitPiece) ...[
+                TextFormField(
+                  controller: _weightPerPieceCon,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Weight per Piece (in kg)',
+                    prefixIcon: Icon(Icons.fitness_center_rounded),
+                    helperText: 'Used to switch between kg and piece during checkout',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Enter conversion weight';
+                    final val = double.tryParse(v);
+                    if (val == null || val <= 0) return 'Enter a valid positive number';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
 
               Row(
                 children: [
@@ -304,6 +326,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         dosageInfo:   _category == AppConstants.catMedicines ? _dosageCon.text.trim() : '',
         bestBefore:   _category == AppConstants.catGroceries ? _bestBeforeCon.text : '',
         packDate:     _category == AppConstants.catGroceries ? _packCon.text : '',
+        weightPerPiece: double.tryParse(_weightPerPieceCon.text) ?? 0.25,
       );
 
       if (_isEdit) {

@@ -114,6 +114,9 @@ class DatabaseHelper {
     if (oldVersion < 7) {
       await _createV7Tables(db);
     }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE items ADD COLUMN weight_per_piece REAL DEFAULT 0.25');
+    }
   }
 
   Future<void> _createV3Tables(Database db) async {
@@ -238,6 +241,7 @@ class DatabaseHelper {
         min_stock     REAL DEFAULT 0,
         unit          TEXT NOT NULL DEFAULT 'kg',
         barcode       TEXT DEFAULT '',
+        weight_per_piece REAL DEFAULT 0.25,
         created_at    TEXT NOT NULL,
         updated_at    TEXT NOT NULL
       )

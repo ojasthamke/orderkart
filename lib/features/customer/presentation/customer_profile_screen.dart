@@ -25,6 +25,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../../../core/utils/contact_exporter.dart';
 import '../../order/data/order_questions_dao.dart';
+import 'vip_dashboard_screen.dart';
 
 class CustomerProfileScreen extends ConsumerWidget {
   final String customerId;
@@ -98,7 +99,12 @@ class CustomerProfileScreen extends ConsumerWidget {
                         .then((_) => ref.invalidate(customerDetailProvider(customerId)));
                     break;
                   case 'vip':
-                    Navigator.of(context).pushNamed(AppRoutes.vipDashboard);
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => VipEditModal(existingCustomer: customer),
+                    );
                     break;
                   case 'delete':
                     _confirmDelete(context, ref, customer);
@@ -447,14 +453,39 @@ class CustomerProfileScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              customer.isVipActive ? 'ACTIVE VIP SUBSCRIPTION' : 'EXPIRED VIP SUBSCRIPTION',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                color: customer.isVipActive ? Colors.amber[800] : Colors.red[800],
-                                letterSpacing: 0.5,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  customer.isVipActive ? 'ACTIVE VIP SUBSCRIPTION' : 'EXPIRED VIP SUBSCRIPTION',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                    color: customer.isVipActive ? Colors.amber[800] : Colors.red[800],
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  onPressed: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (_) => VipEditModal(existingCustomer: customer),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.edit_rounded, size: 12, color: AppColors.primary),
+                                  label: const Text(
+                                    'Edit Membership',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 6),
                             Row(

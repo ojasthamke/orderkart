@@ -76,163 +76,175 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
 
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(allCustomersProvider),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+            child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── VIP Executive Header Card ──────────────────────────
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFD700).withOpacity(0.2),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // ── VIP Executive Header Card ──────────────────────────
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFFD700).withOpacity(0.2),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                          border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3)),
                         ),
-                      ],
-                      border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700), size: 28),
-                                SizedBox(width: 10),
-                                Text(
-                                  'VIP CLUB DASHBOARD',
-                                  style: TextStyle(
-                                    color: Color(0xFFFFD700),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.2,
+                                const Row(
+                                  children: [
+                                    Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700), size: 28),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'VIP CLUB DASHBOARD',
+                                      style: TextStyle(
+                                        color: Color(0xFFFFD700),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: () => _showAddEditVipDialog(context),
+                                  icon: const Icon(Icons.add_rounded, size: 16),
+                                  label: const Text('Add VIP'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFFD700),
+                                    foregroundColor: const Color(0xFF0F172A),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
                                   ),
                                 ),
                               ],
                             ),
-                            ElevatedButton.icon(
-                              onPressed: () => _showAddEditVipDialog(context),
-                              icon: const Icon(Icons.add_rounded, size: 16),
-                              label: const Text('Add VIP'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFFD700),
-                                foregroundColor: const Color(0xFF0F172A),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                            const SizedBox(height: 20),
+
+                            // KPI Grid Inside Header
+                            Row(
+                              children: [
+                                _kpiItem('ACTIVE MEMBERS', '${activeVip.length}', Colors.greenAccent),
+                                _kpiItem('EXPIRING SOON', '${expiringVip.length}', Colors.amberAccent),
+                                _kpiItem('MEMBERSHIP INCOME', AppFormatters.currency(totalSubscriptionIncome), Colors.lightBlueAccent),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ── Search & Filter Chips ─────────────────────────────
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        decoration: InputDecoration(
+                          hintText: 'Search VIP members by name, phone, plan...',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close_rounded, size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppColors.gray200),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _filterChip('all', 'All (${vipList.length})'),
+                            _filterChip('active', 'Active (${activeVip.length})'),
+                            _filterChip('expiring', 'Expiring Soon (${expiringVip.length})'),
+                            _filterChip('expired', 'Expired (${expiredVip.length})'),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+                    ]),
+                  ),
+                ),
+                if (filteredList.isEmpty)
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.workspace_premium_rounded, size: 64, color: AppColors.gray400),
+                              const SizedBox(height: 12),
+                              Text(
+                                vipList.isEmpty ? 'No VIP Members Yet' : 'No matching VIP members found',
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Upgrade loyal customers to VIP to grant free delivery & custom discounts.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () => _showAddEditVipDialog(context),
+                                icon: const Icon(Icons.stars_rounded),
+                                label: const Text('Add First VIP Customer'),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 20),
-
-                        // KPI Grid Inside Header
-                        Row(
-                          children: [
-                            _kpiItem('ACTIVE MEMBERS', '${activeVip.length}', Colors.greenAccent),
-                            _kpiItem('EXPIRING SOON', '${expiringVip.length}', Colors.amberAccent),
-                            _kpiItem('MEMBERSHIP INCOME', AppFormatters.currency(totalSubscriptionIncome), Colors.lightBlueAccent),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Search & Filter Chips ─────────────────────────────
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    decoration: InputDecoration(
-                      hintText: 'Search VIP members by name, phone, plan...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.gray200),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (ctx, i) {
+                          final customer = filteredList[i];
+                          return _buildVipCustomerCard(context, customer);
+                        },
+                        childCount: filteredList.length,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _filterChip('all', 'All (${vipList.length})'),
-                        _filterChip('active', 'Active (${activeVip.length})'),
-                        _filterChip('expiring', 'Expiring Soon (${expiringVip.length})'),
-                        _filterChip('expired', 'Expired (${expiredVip.length})'),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── VIP Customers List ────────────────────────────────
-                  if (filteredList.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          children: [
-                            const Icon(Icons.workspace_premium_rounded, size: 64, color: AppColors.gray400),
-                            const SizedBox(height: 12),
-                            Text(
-                              vipList.isEmpty ? 'No VIP Members Yet' : 'No matching VIP members found',
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Upgrade loyal customers to VIP to grant free delivery & custom discounts.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () => _showAddEditVipDialog(context),
-                              icon: const Icon(Icons.stars_rounded),
-                              label: const Text('Add First VIP Customer'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: filteredList.length,
-                      itemBuilder: (ctx, i) {
-                        final customer = filteredList[i];
-                        return _buildVipCustomerCard(context, customer);
-                      },
-                    ),
-                ],
-              ),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 24),
+                ),
+              ],
             ),
           );
         },
@@ -483,20 +495,20 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _VipEditModal(existingCustomer: existing),
+      builder: (_) => VipEditModal(existingCustomer: existing),
     );
   }
 }
 
-class _VipEditModal extends ConsumerStatefulWidget {
+class VipEditModal extends ConsumerStatefulWidget {
   final Customer? existingCustomer;
-  const _VipEditModal({this.existingCustomer});
+  const VipEditModal({super.key, this.existingCustomer});
 
   @override
-  ConsumerState<_VipEditModal> createState() => _VipEditModalState();
+  ConsumerState<VipEditModal> createState() => VipEditModalState();
 }
 
-class _VipEditModalState extends ConsumerState<_VipEditModal> {
+class VipEditModalState extends ConsumerState<VipEditModal> {
   Customer? _selectedCustomer;
   String _plan = 'Gold VIP';
   double _fee = 499.0;
@@ -515,10 +527,10 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
     super.initState();
     if (widget.existingCustomer != null) {
       _selectedCustomer = widget.existingCustomer;
-      _plan = widget.existingCustomer!.vipPlan;
-      _fee = widget.existingCustomer!.vipSubscriptionFee;
-      _discountPct = widget.existingCustomer!.vipDiscountPct;
-      _markupPct = widget.existingCustomer!.vipMarkupPct;
+      _plan = widget.existingCustomer!.vipPlan.isNotEmpty ? widget.existingCustomer!.vipPlan : 'Gold VIP';
+      _fee = widget.existingCustomer!.vipSubscriptionFee > 0 ? widget.existingCustomer!.vipSubscriptionFee : 499.0;
+      _discountPct = widget.existingCustomer!.vipDiscountPct > 0 ? widget.existingCustomer!.vipDiscountPct : 10.0;
+      _markupPct = widget.existingCustomer!.vipMarkupPct > 0 ? widget.existingCustomer!.vipMarkupPct : 5.0;
       _freeDelivery = widget.existingCustomer!.vipFreeDelivery;
       _priorityDelivery = widget.existingCustomer!.vipPriorityDelivery;
       if (widget.existingCustomer!.vipStartDate.isNotEmpty) {
@@ -917,6 +929,7 @@ class _VipEditModalState extends ConsumerState<_VipEditModal> {
     final repo = ref.read(customerRepositoryProvider);
     await repo.updateCustomer(updated);
     ref.invalidate(allCustomersProvider);
+    ref.invalidate(customerDetailProvider(updated.id));
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(

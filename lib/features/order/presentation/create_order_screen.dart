@@ -390,19 +390,68 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         ),
       );
     }
+    final inventoryList = ref.read(inventoryProvider).value ?? [];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Items', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
-        ..._cart.asMap().entries.map((e) => _CartItemTile(
-              cartItem: e.value,
-              currency: currency,
-              onQtyChanged: (qty) {
-                setState(() => _cart[e.key] = e.value.copyWith(quantity: qty));
-              },
-              onRemove: () => setState(() => _cart.removeAt(e.key)),
-            )),
+        ..._cart.asMap().entries.map((e) {
+          final cartItem = e.value;
+          final dbItem = inventoryList.firstWhere(
+            (i) => i.id == cartItem.itemId,
+            orElse: () => Item(
+              id: cartItem.itemId,
+              name: cartItem.name,
+              category: '',
+              unit: cartItem.unit,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          );
+
+          final bool canToggleUnit = dbItem.unit == 'kg' || dbItem.unit == 'piece';
+
+          return _CartItemTile(
+            cartItem: cartItem,
+            currency: currency,
+            canToggleUnit: canToggleUnit,
+            onQtyChanged: (qty) {
+              setState(() => _cart[e.key] = cartItem.copyWith(quantity: qty));
+            },
+            onRemove: () => setState(() => _cart.removeAt(e.key)),
+            onUnitChanged: (newUnit) {
+              if (newUnit == cartItem.unit) return;
+
+              final conversion = dbItem.weightPerPiece;
+              double newQty = cartItem.quantity;
+              double newPrice = cartItem.price;
+
+              if (newUnit == 'piece' && dbItem.unit == 'kg') {
+                newQty = cartItem.quantity / conversion;
+                newPrice = dbItem.sellingPrice * conversion;
+              } else if (newUnit == 'kg' && dbItem.unit == 'kg') {
+                newQty = cartItem.quantity * conversion;
+                newPrice = dbItem.sellingPrice;
+              } else if (newUnit == 'kg' && dbItem.unit == 'piece') {
+                newQty = cartItem.quantity * conversion;
+                newPrice = dbItem.sellingPrice / conversion;
+              } else if (newUnit == 'piece' && dbItem.unit == 'piece') {
+                newQty = cartItem.quantity / conversion;
+                newPrice = dbItem.sellingPrice;
+              }
+
+              setState(() {
+                _cart[e.key] = cartItem.copyWith(
+                  quantity: double.parse(newQty.toStringAsFixed(2)),
+                  unit: newUnit,
+                  price: double.parse(newPrice.toStringAsFixed(2)),
+                );
+              });
+            },
+          );
+        }),
       ],
     );
   }
@@ -1355,11 +1404,11 @@ class _CartItem {
     required this.quantity,
   });
 
-  _CartItem copyWith({double? quantity}) => _CartItem(
+  _CartItem copyWith({double? quantity, String? unit, double? price}) => _CartItem(
         itemId:   itemId,
         name:     name,
-        unit:     unit,
-        price:    price,
+        unit:     unit ?? this.unit,
+        price:    price ?? this.price,
         quantity: quantity ?? this.quantity,
       );
 }
@@ -1370,12 +1419,16 @@ class _CartItemTile extends StatelessWidget {
   final String currency;
   final ValueChanged<double> onQtyChanged;
   final VoidCallback onRemove;
+  final bool canToggleUnit;
+  final ValueChanged<String>? onUnitChanged;
 
   const _CartItemTile({
     required this.cartItem,
     required this.currency,
     required this.onQtyChanged,
     required this.onRemove,
+    this.canToggleUnit = false,
+    this.onUnitChanged,
   });
 
   @override
@@ -1398,11 +1451,53 @@ class _CartItemTile extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         )),
-                Text(
-                  '$currency${cartItem.price.toStringAsFixed(2)} / ${cartItem.unit}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$currency${cartItem.price.toStringAsFixed(2)} ',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                    if (canToggleUnit)
+                      DropdownButton<String>(
+                        value: cartItem.unit,
+                        underline: const SizedBox(),
+                        isDense: true,
+                        icon: const Icon(Icons.arrow_drop_down_rounded, size: 16, color: AppColors.primary),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'kg',
+                            child: Padding(
+                              padding: EdgeInsets.only(right: 4),
+                              child: Text('kg'),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'piece',
+                            child: Padding(
+                              padding: EdgeInsets.only(right: 4),
+                              child: Text('piece'),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) onUnitChanged?.call(v);
+                        },
+                      )
+                    else
+                      Text(
+                        '/ ${cartItem.unit}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
                       ),
+                  ],
                 ),
               ],
             ),
