@@ -323,9 +323,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                   // ── Dashboard Quick Cards (Material 3) ─────────────────
                   SizedBox(
-                    height: 100,
+                    height: 112,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       children: [
                         _buildDashboardCard(
                           context,
@@ -783,7 +784,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 140,
+        width: 150,
         margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -799,14 +800,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Icon(icon, color: color, size: 24),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    providerValue,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                const SizedBox(width: 6),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      providerValue,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
