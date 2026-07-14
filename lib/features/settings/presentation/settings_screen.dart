@@ -359,18 +359,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 20),
 
               // ── Theme (Appearance) ──────────────────────────────────
-              _sectionHeader('Appearance', Icons.palette_rounded),
+              _sectionHeader(AppLocalization.translate(ref, 'appearance', 'Appearance'), Icons.palette_rounded),
               _card([
                 ListTile(
                   leading: const Icon(Icons.light_mode_rounded),
-                  title: const Text('Theme'),
+                  title: Text(AppLocalization.translate(ref, 'theme', 'Theme')),
                   trailing: DropdownButton<String>(
                     value: settings.themeMode,
                     underline: const SizedBox.shrink(),
-                    items: const [
-                      DropdownMenuItem(value: 'system', child: Text('System')),
-                      DropdownMenuItem(value: 'light',  child: Text('Light')),
-                      DropdownMenuItem(value: 'dark',   child: Text('Dark')),
+                    items: [
+                      DropdownMenuItem(value: 'system', child: Text(AppLocalization.translate(ref, 'system', 'System'))),
+                      DropdownMenuItem(value: 'light',  child: Text(AppLocalization.translate(ref, 'light', 'Light'))),
+                      DropdownMenuItem(value: 'dark',   child: Text(AppLocalization.translate(ref, 'dark', 'Dark'))),
                     ],
                     onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(themeMode: v ?? 'system')),
                   ),
@@ -380,17 +380,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 20),
 
               // ── Language ────────────────────────────────────────────
-              _sectionHeader('Language', Icons.language_rounded),
+              _sectionHeader(AppLocalization.translate(ref, 'language', 'Language'), Icons.language_rounded),
               _card([
                 ListTile(
                   leading: const Icon(Icons.translate_rounded),
-                  title: const Text('Language'),
+                  title: Text(AppLocalization.translate(ref, 'language', 'Language')),
                   trailing: DropdownButton<String>(
                     value: settings.language,
                     underline: const SizedBox.shrink(),
-                    items: const [
-                      DropdownMenuItem(value: 'en', child: Text('English')),
-                      DropdownMenuItem(value: 'hi', child: Text('Hindi')),
+                    items: [
+                      DropdownMenuItem(value: 'en', child: Text(AppLocalization.translate(ref, 'english', 'English'))),
+                      DropdownMenuItem(value: 'hi', child: Text(AppLocalization.translate(ref, 'hindi', 'Hindi'))),
+                      DropdownMenuItem(value: 'mr', child: Text(AppLocalization.translate(ref, 'marathi', 'Marathi'))),
                     ],
                     onChanged: (v) {
                       if (v != null) {
@@ -404,17 +405,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 20),
 
               // ── Notifications ────────────────────────────────────────
-              _sectionHeader('Notifications', Icons.notifications_rounded),
+              _sectionHeader(AppLocalization.translate(ref, 'notifications', 'Notifications'), Icons.notifications_rounded),
               _card([
                 SwitchListTile(
                   secondary: const Icon(Icons.notifications_active_rounded),
-                  title: const Text('Enable Notifications'),
+                  title: Text(AppLocalization.translate(ref, 'enable_notifications', 'Enable Notifications')),
                   value: settings.notificationsEnabled,
                   onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(notificationsEnabled: v)),
                 ),
                 SwitchListTile(
                   secondary: const Icon(Icons.warning_amber_rounded),
-                  title: const Text('Low Stock Alert'),
+                  title: Text(AppLocalization.translate(ref, 'low_stock_alert', 'Low Stock Alert')),
                   value: settings.lowStockAlert,
                   onChanged: settings.notificationsEnabled
                       ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(lowStockAlert: v))
@@ -422,7 +423,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 SwitchListTile(
                   secondary: const Icon(Icons.payments_rounded),
-                  title: const Text('Pending Payment Alert'),
+                  title: Text(AppLocalization.translate(ref, 'pending_alert', 'Pending Payment Alert')),
                   value: settings.pendingAlert,
                   onChanged: settings.notificationsEnabled
                       ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(pendingAlert: v))
@@ -430,7 +431,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 SwitchListTile(
                   secondary: const Icon(Icons.backup_rounded),
-                  title: const Text('Daily Backup Reminder'),
+                  title: Text(AppLocalization.translate(ref, 'backup_reminder', 'Daily Backup Reminder')),
                   value: settings.backupReminder,
                   onChanged: settings.notificationsEnabled
                       ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(backupReminder: v))
@@ -439,7 +440,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.volume_up_rounded),
-                  title: const Text('Notification Sound (Preview Tone)'),
+                  title: Text(AppLocalization.translate(ref, 'notification_sound', 'Notification Sound (Preview Tone)')),
                   value: settings.notificationSound,
                   onChanged: settings.notificationsEnabled
                       ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(notificationSound: v))
@@ -448,7 +449,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.vibration_rounded),
-                  title: const Text('Notification Vibration (Tactile Feel)'),
+                  title: Text(AppLocalization.translate(ref, 'notification_vibration', 'Notification Vibration (Tactile Feel)')),
                   value: settings.notificationVibration,
                   onChanged: settings.notificationsEnabled
                       ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(notificationVibration: v))

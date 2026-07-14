@@ -411,7 +411,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
           );
 
-          final bool canToggleUnit = dbItem.unit == 'kg' || dbItem.unit == 'piece';
+          const bool canToggleUnit = true; // Allow switching unit for all items in checkout!
 
           return _CartItemTile(
             cartItem: cartItem,
@@ -428,7 +428,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               double newQty = cartItem.quantity;
               double newPrice = cartItem.price;
 
-              if (newUnit == 'piece' && dbItem.unit == 'kg') {
+              if (newUnit == 'piece' && cartItem.unit == 'dozen') {
+                newQty = cartItem.quantity * 12;
+                newPrice = cartItem.price / 12;
+              } else if (newUnit == 'dozen' && cartItem.unit == 'piece') {
+                newQty = cartItem.quantity / 12;
+                newPrice = cartItem.price * 12;
+              } else if (newUnit == 'piece' && dbItem.unit == 'kg') {
                 newQty = cartItem.quantity / conversion;
                 newPrice = dbItem.sellingPrice * conversion;
               } else if (newUnit == 'kg' && dbItem.unit == 'kg') {
@@ -1470,22 +1476,16 @@ class _CartItemTile extends StatelessWidget {
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
                             ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'kg',
-                            child: Padding(
-                              padding: EdgeInsets.only(right: 4),
-                              child: Text('kg'),
-                            ),
+                        items: {
+                          cartItem.unit,
+                          ...AppConstants.itemUnits,
+                        }.map((u) => DropdownMenuItem(
+                          value: u,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Text(u),
                           ),
-                          DropdownMenuItem(
-                            value: 'piece',
-                            child: Padding(
-                              padding: EdgeInsets.only(right: 4),
-                              child: Text('piece'),
-                            ),
-                          ),
-                        ],
+                        )).toList(),
                         onChanged: (v) {
                           if (v != null) onUnitChanged?.call(v);
                         },
