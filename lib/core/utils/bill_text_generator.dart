@@ -72,7 +72,9 @@ class BillTextGenerator {
     if (discount > 0) {
       buf.writeln('Discount:        - $currency${discount.toStringAsFixed(2)}');
     }
-    // Delivery charge line mention is removed as requested
+    if (deliveryCharge > 0) {
+      buf.writeln('Delivery Fee:    + $currency${deliveryCharge.toStringAsFixed(2)}');
+    }
     buf.writeln('*Grand Total:      $currency${grandTotal.toStringAsFixed(2)}*');
     buf.writeln(sep);
     buf.writeln('Paid:              $currency${paidAmount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(paymentMethod)})');
