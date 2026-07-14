@@ -55,6 +55,11 @@ class DatabaseHelper {
     await _ensurePriceHistoryTables(db);
     await _ensureAreaAndStreetColumns(db);
     await _ensureV4Columns(db);
+    await _createV6Tables(db);
+    await _createV7Tables(db);
+    try {
+      await db.execute('ALTER TABLE items ADD COLUMN weight_per_piece REAL DEFAULT 0.25');
+    } catch (_) {}
   }
 
   Future<Database> _initDatabase() async {
