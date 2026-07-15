@@ -185,7 +185,7 @@ void main() {
     expect(areasCount, equals(2));
 
     final streetsCount = Sqflite.firstIntValue(await dbV10.rawQuery('SELECT COUNT(*) FROM streets')) ?? 0;
-    expect(streetsCount, equals(2));
+    expect(streetsCount, equals(4));
 
     // Verify locations table exists and has correct counts
     final locCount = Sqflite.firstIntValue(await dbV10.rawQuery('SELECT COUNT(*) FROM locations')) ?? 0;
@@ -277,6 +277,61 @@ void main() {
 
     // Verify customer inserted successfully without FK constraint failure
     final custCheck = await db.query('customers', where: 'id = ?', whereArgs: ['cust-999']);
+    expect(custCheck.length, equals(1));
+
+    // Clean up
+    await DatabaseHelper.instance.close();
+    if (dbFile.existsSync()) {
+      dbFile.deleteSync();
+    }
+  });
+
+  test('Direct customer registration under root Area syncs to streets table to satisfy FK constraint', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final dbPath = p.join(await getDatabasesPath(), 'root_sync_test.db');
+    final dbFile = File(dbPath);
+    if (dbFile.existsSync()) {
+      dbFile.deleteSync();
+    }
+
+    DatabaseHelper.dbNameOverride = 'root_sync_test.db';
+    final db = await DatabaseHelper.instance.database;
+
+    final dao = LocationDao();
+
+    // 1. Insert a root Area location
+    const rootId = 'root-area-789';
+    final rootLoc = Location(
+      id: rootId,
+      parentLocationId: null,
+      name: 'Rajapeth',
+      locationKind: LocationKind.area,
+      sequenceKey: '001000',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await dao.insertLocation(rootLoc);
+
+    // 2. Verify that the root Area exists as a fallback inside the legacy 'streets' table
+    final streetRows = await db.query('streets', where: 'id = ?', whereArgs: [rootId]);
+    expect(streetRows.length, equals(1));
+    expect(streetRows.first['area_id'], equals(rootId));
+    expect(streetRows.first['name'], equals('Rajapeth'));
+
+    // 3. Try inserting a customer directly under this root Area
+    await db.insert('customers', {
+      'id': 'cust-888',
+      'street_id': rootId,
+      'location_id': rootId,
+      'name': 'Test Direct Customer',
+      'phone1': '9000000000',
+      'customer_since': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+
+    // Verify customer inserted successfully without FK constraint failure
+    final custCheck = await db.query('customers', where: 'id = ?', whereArgs: ['cust-888']);
     expect(custCheck.length, equals(1));
 
     // Clean up

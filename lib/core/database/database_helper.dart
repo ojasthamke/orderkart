@@ -1981,6 +1981,22 @@ class DatabaseHelper {
           'created_at': createdAt,
           'updated_at': updatedAt,
         });
+
+        // Synchronize root area into legacy streets table so that direct customer registration passes FK checks
+        await txn.insert('streets', {
+          'id': id,
+          'area_id': id,
+          'name': name,
+          'description': desc,
+          'photo_path': photo,
+          'maps_location': maps,
+          'created_by': createdBy,
+          'assigned_worker_id': workerId,
+          'worker_name': workerName,
+          'device_name': deviceName,
+          'created_at': createdAt,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+
         areaSeq += 1000;
       }
 

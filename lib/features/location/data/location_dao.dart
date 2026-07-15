@@ -130,6 +130,21 @@ class LocationDao {
           'created_at': location.createdAt.toIso8601String(),
           'updated_at': location.updatedAt.toIso8601String(),
         }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+        // Also insert fallback street record for the root area to support direct customer assignment
+        await db.insert('streets', {
+          'id': location.id,
+          'area_id': location.id,
+          'name': location.name,
+          'description': location.description,
+          'photo_path': location.photoPath,
+          'maps_location': location.mapsLocation,
+          'created_by': location.createdBy,
+          'assigned_worker_id': location.assignedWorkerId,
+          'worker_name': location.workerName,
+          'device_name': location.deviceName,
+          'created_at': location.createdAt.toIso8601String(),
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       } else {
         // Find root area ID by walking up the parent chain
         String rootAreaId = location.parentLocationId!;
@@ -217,6 +232,14 @@ class LocationDao {
           'photo_path': location.photoPath,
           'maps_location': location.mapsLocation,
           'updated_at': location.updatedAt.toIso8601String(),
+        }, where: 'id = ?', whereArgs: [location.id]);
+
+        // Also update fallback street record in legacy streets table
+        await db.update('streets', {
+          'name': location.name,
+          'description': location.description,
+          'photo_path': location.photoPath,
+          'maps_location': location.mapsLocation,
         }, where: 'id = ?', whereArgs: [location.id]);
       } else {
         // Find root area ID by walking up the parent chain
