@@ -72,7 +72,7 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
       orderBy: 'created_at DESC',
     );
     final orders = orderRows.map((o) {
-      final wid = o['assigned_worker_id']?.toString() ?? '';
+      final wid = o['assigned_worker_id']?.toString() ?? o['created_by']?.toString() ?? '';
       final wName = (o['worker_name']?.toString() ?? '').isNotEmpty
           ? o['worker_name']!.toString()
           : (workerNameMap[wid] ?? 'Worker');

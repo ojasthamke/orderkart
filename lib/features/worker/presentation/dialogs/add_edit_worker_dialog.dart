@@ -88,6 +88,7 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
     _bankDetailsCon.dispose();
     _joiningSalaryCon.dispose();
     _remarksCon.dispose();
+    _pinCon.dispose();
     super.dispose();
   }
 
@@ -115,6 +116,7 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
       joiningSalary: double.tryParse(_joiningSalaryCon.text.trim()) ?? 0.0,
       leaveStatus: _leaveStatus,
       remarks: _remarksCon.text.trim(),
+      joiningDate: widget.worker?.joiningDate ?? now.toIso8601String(),
       createdAt: widget.worker?.createdAt ?? now,
       updatedAt: now,
     );

@@ -35,6 +35,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   late TabController _tabController;
   late Worker _currentWorker;
   bool _loading = true;
+  String _lastSyncTime = '';
 
 
 
@@ -56,9 +57,22 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     setState(() => _loading = true);
     final freshWorker = await _dao.getWorkerById(widget.worker.id) ?? widget.worker;
 
+    // Fetch last sync from sync_history for this worker
+    final db = await DatabaseHelper.instance.database;
+    final syncRows = await db.query(
+      'sync_history',
+      columns: ['sync_date'],
+      where: 'worker_id = ?',
+      whereArgs: [widget.worker.id],
+      orderBy: 'sync_date DESC',
+      limit: 1,
+    );
+    final String lastSync = syncRows.isNotEmpty ? (syncRows.first['sync_date'] as String) : '';
+
     if (mounted) {
       setState(() {
         _currentWorker = freshWorker;
+        _lastSyncTime = lastSync;
         _loading = false;
       });
     }
@@ -318,7 +332,7 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
               Row(
                 children: [
                   _overviewMetric('Commission', '${_currentWorker.commissionValue}% (${_currentWorker.commissionType.name})'),
-                  _overviewMetric('Last Sync', _currentWorker.joiningDate.isEmpty ? 'Never' : AppFormatters.relativeDate(DateTime.tryParse(_currentWorker.joiningDate) ?? DateTime.now())),
+                  _overviewMetric('Last Sync', _lastSyncTime.isEmpty ? 'Never' : AppFormatters.relativeDate(DateTime.tryParse(_lastSyncTime) ?? DateTime.now())),
                   _overviewMetric('Last Generated', _currentWorker.lastPackageGenerated.isEmpty ? 'Never' : AppFormatters.shortDate(DateTime.tryParse(_currentWorker.lastPackageGenerated) ?? DateTime.now())),
                 ],
               ),
