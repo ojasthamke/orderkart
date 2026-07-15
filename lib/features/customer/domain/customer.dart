@@ -26,6 +26,7 @@ class Customer {
   final String   createdBy;
   final String   workerName;
   final String   deviceName;
+  final String   dietaryPreference; // 'veg', 'non_veg', or ''
 
   // VIP Membership Fields
   final bool   isVip;
@@ -65,6 +66,7 @@ class Customer {
     this.createdBy        = 'owner',
     this.workerName       = '',
     this.deviceName       = '',
+    this.dietaryPreference = '',
     // VIP Defaults
     this.isVip               = false,
     this.vipPlan             = 'Gold VIP',
@@ -104,6 +106,7 @@ class Customer {
     String?   createdBy,
     String?   workerName,
     String?   deviceName,
+    String?   dietaryPreference,
     bool?   isVip,
     String? vipPlan,
     String? vipStartDate,
@@ -141,6 +144,7 @@ class Customer {
       createdBy:          createdBy          ?? this.createdBy,
       workerName:         workerName         ?? this.workerName,
       deviceName:         deviceName         ?? this.deviceName,
+      dietaryPreference:  dietaryPreference  ?? this.dietaryPreference,
       isVip:               isVip               ?? this.isVip,
       vipPlan:             vipPlan             ?? this.vipPlan,
       vipStartDate:        vipStartDate        ?? this.vipStartDate,
@@ -180,6 +184,7 @@ class Customer {
         'created_by':          createdBy,
         'worker_name':         workerName,
         'device_name':         deviceName,
+        'dietary_preference':  dietaryPreference,
         'is_vip':               isVip ? 1 : 0,
         'vip_plan':             vipPlan,
         'vip_start_date':       vipStartDate,
@@ -218,6 +223,7 @@ class Customer {
         createdBy:           map['created_by']          as String? ?? 'owner',
         workerName:          map['worker_name']         as String? ?? '',
         deviceName:          map['device_name']         as String? ?? '',
+        dietaryPreference:   map['dietary_preference']  as String? ?? '',
         isVip:               (map['is_vip'] as int? ?? 0) == 1,
         vipPlan:             map['vip_plan']            as String? ?? 'Gold VIP',
         vipStartDate:        map['vip_start_date']       as String? ?? '',

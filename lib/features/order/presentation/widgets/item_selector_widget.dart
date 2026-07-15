@@ -145,6 +145,15 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                     return matchCat && matchSearch;
                   }).toList();
 
+                  // Push out-of-stock items to the bottom of the list
+                  filtered.sort((a, b) {
+                    final aOut = a.stock <= 0;
+                    final bOut = b.stock <= 0;
+                    if (aOut && !bOut) return 1;
+                    if (!aOut && bOut) return -1;
+                    return 0;
+                  });
+
                   if (filtered.isEmpty) {
                     return const Center(
                         child: Text('No items found',

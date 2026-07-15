@@ -48,6 +48,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   String _photoPath = '';
   bool   _loading   = false;
   bool   _isEdit    = false;
+  String _dietaryPreference = '';
 
   // Custom Fields state
   List<Map<String, dynamic>> _customFields = [];
@@ -110,6 +111,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         _notesCon.text    = customer.notes;
         _mapsCon.text     = customer.mapsLocation;
         _photoPath        = customer.photoPath;
+        _dietaryPreference = customer.dietaryPreference;
       });
     }
   }
@@ -313,6 +315,64 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Dietary Preference (Optional Veg / Non-Veg)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Dietary Preference (Optional)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _dietaryPreference = _dietaryPreference == 'veg' ? '' : 'veg';
+                        });
+                      },
+                      icon: Icon(
+                        _dietaryPreference == 'veg' ? Icons.check_circle_rounded : Icons.circle_outlined,
+                        color: _dietaryPreference == 'veg' ? Colors.green : Colors.grey,
+                      ),
+                      label: const Text('Veg'),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: _dietaryPreference == 'veg' ? Colors.green : Colors.grey.shade300,
+                          width: _dietaryPreference == 'veg' ? 2 : 1,
+                        ),
+                        foregroundColor: _dietaryPreference == 'veg' ? Colors.green.shade700 : Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _dietaryPreference = _dietaryPreference == 'non_veg' ? '' : 'non_veg';
+                        });
+                      },
+                      icon: Icon(
+                        _dietaryPreference == 'non_veg' ? Icons.check_circle_rounded : Icons.circle_outlined,
+                        color: _dietaryPreference == 'non_veg' ? Colors.red : Colors.grey,
+                      ),
+                      label: const Text('Non-Veg'),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: _dietaryPreference == 'non_veg' ? Colors.red : Colors.grey.shade300,
+                          width: _dietaryPreference == 'non_veg' ? 2 : 1,
+                        ),
+                        foregroundColor: _dietaryPreference == 'non_veg' ? Colors.red.shade700 : Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
               // Custom Fields Section
               if (_customFields.isNotEmpty) ...[
                 const Align(
@@ -494,6 +554,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         }
       }
 
+      final existing = _isEdit
+          ? await ref.read(customerRepositoryProvider).getCustomerById(customerId)
+          : null;
+
       final customer = Customer(
         id:                 customerId,
         streetId:           _streetId!,
@@ -507,8 +571,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         notes:              _notesCon.text.trim(),
         mapsLocation:       _mapsCon.text.trim(),
         photoPath:          finalPhotoPath,
-        customerSince:      now,
-        createdAt:          now,
+        dietaryPreference:  _dietaryPreference,
+        customerSince:      existing?.customerSince ?? now,
+        createdAt:          existing?.createdAt ?? now,
         updatedAt:          now,
       );
 

@@ -29,6 +29,7 @@ class ItemDao {
     if (sortBy == 'stock_asc') orderBy = 'stock ASC';
     if (sortBy == 'price_desc') orderBy = 'selling_price DESC';
     if (sortBy == 'category') orderBy = 'category ASC, name ASC';
+    if (sortBy == 'shuffle') orderBy = 'RANDOM()';
 
     final maps = await db.query('items',
         where: where, whereArgs: args.isEmpty ? null : args, orderBy: orderBy);

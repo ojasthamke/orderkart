@@ -60,6 +60,9 @@ class DatabaseHelper {
     try {
       await db.execute('ALTER TABLE items ADD COLUMN weight_per_piece REAL DEFAULT 0.25');
     } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE customers ADD COLUMN dietary_preference TEXT DEFAULT ''");
+    } catch (_) {}
   }
 
   Future<Database> _initDatabase() async {
@@ -121,6 +124,11 @@ class DatabaseHelper {
     }
     if (oldVersion < 8) {
       await db.execute('ALTER TABLE items ADD COLUMN weight_per_piece REAL DEFAULT 0.25');
+    }
+    if (oldVersion < 9) {
+      try {
+        await db.execute("ALTER TABLE customers ADD COLUMN dietary_preference TEXT DEFAULT ''");
+      } catch (_) {}
     }
   }
 
@@ -230,6 +238,7 @@ class DatabaseHelper {
         last_order_date     TEXT DEFAULT '',
         created_at          TEXT NOT NULL,
         updated_at          TEXT NOT NULL,
+        dietary_preference  TEXT DEFAULT '',
         FOREIGN KEY(street_id) REFERENCES streets(id) ON DELETE CASCADE
       )
     ''');

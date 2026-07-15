@@ -133,6 +133,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           tooltip: 'Import Stock & Price List (Worker)',
           onPressed: _importOwnerPriceList,
         ),
+        IconButton(
+          icon: const Icon(Icons.shuffle_rounded),
+          tooltip: 'Shuffle Items',
+          onPressed: () {
+            AppHaptics.buttonClick();
+            ref.read(inventoryProvider.notifier).sort('shuffle');
+            SnackbarHelper.showSuccess(context, 'Inventory items shuffled!');
+          },
+        ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.sort_rounded),
           onSelected: (v) => ref.read(inventoryProvider.notifier).sort(v),
@@ -141,6 +150,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
             const PopupMenuItem(value: 'stock_asc',  child: Text('Sort by Stock (Low first)')),
             const PopupMenuItem(value: 'price_desc', child: Text('Sort by Price')),
             const PopupMenuItem(value: 'category',   child: Text('Sort by Category')),
+            const PopupMenuItem(value: 'shuffle',    child: Text('Shuffle / Randomize')),
           ],
         ),
       ],

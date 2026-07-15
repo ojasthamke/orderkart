@@ -360,13 +360,24 @@ class CustomerProfileScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      customer.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w900),
-                      softWrap: true,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            customer.name,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                            softWrap: true,
+                          ),
+                        ),
+                        if (customer.dietaryPreference.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          _DietaryPreferenceIcon(preference: customer.dietaryPreference),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 6),
                     if (customer.isVipActive) ...[
@@ -1461,6 +1472,43 @@ class CustomerCustomFieldsCard extends StatelessWidget {
     } catch (_) {
       return [];
     }
+  }
+}
+
+class _DietaryPreferenceIcon extends StatelessWidget {
+  final String preference;
+  static const double size = 18;
+
+  const _DietaryPreferenceIcon({
+    required this.preference,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (preference != 'veg' && preference != 'non_veg') {
+      return const SizedBox.shrink();
+    }
+    final isVeg = preference == 'veg';
+    final color = isVeg ? Colors.green.shade700 : Colors.red.shade800;
+
+    return Tooltip(
+      message: isVeg ? 'Veg Customer' : 'Non-Veg Customer',
+      child: Container(
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(size * 0.22),
+        decoration: BoxDecoration(
+          border: Border.all(color: color, width: 2),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+    );
   }
 }
 

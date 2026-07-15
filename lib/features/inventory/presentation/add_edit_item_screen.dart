@@ -215,6 +215,83 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Smart Pricing Suggestions
+              AnimatedBuilder(
+                animation: Listenable.merge([_costCon, _sellCon]),
+                builder: (context, _) {
+                  final cost = double.tryParse(_costCon.text.trim()) ?? 0.0;
+                  final sell = double.tryParse(_sellCon.text.trim()) ?? 0.0;
+                  
+                  if (cost <= 0 && sell <= 0) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final markupPrice = cost > 0 ? cost * 1.65 : 0.0;
+                  final marginPrice = cost > 0 ? cost / 0.35 : 0.0;
+                  final doubleMrpPrice = cost > 0 ? cost * 2.0 : sell * 2.0;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySurface.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primaryLight.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.primary),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Smart Pricing Suggestions',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (cost > 0) ...[
+                              ActionChip(
+                                avatar: const Icon(Icons.trending_up_rounded, size: 14),
+                                label: Text('65% Markup (₹${markupPrice.toStringAsFixed(2)})'),
+                                onPressed: () {
+                                  _sellCon.text = markupPrice.toStringAsFixed(2);
+                                },
+                              ),
+                              ActionChip(
+                                avatar: const Icon(Icons.percent_rounded, size: 14),
+                                label: Text('65% Margin (₹${marginPrice.toStringAsFixed(2)})'),
+                                onPressed: () {
+                                  _sellCon.text = marginPrice.toStringAsFixed(2);
+                                },
+                              ),
+                            ],
+                            if (doubleMrpPrice > 0)
+                              ActionChip(
+                                avatar: const Icon(Icons.double_arrow_rounded, size: 14),
+                                label: Text('Double MRP (₹${doubleMrpPrice.toStringAsFixed(2)})'),
+                                onPressed: () {
+                                  _marketCon.text = doubleMrpPrice.toStringAsFixed(2);
+                                },
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
               Row(
                 children: [
                   Expanded(
