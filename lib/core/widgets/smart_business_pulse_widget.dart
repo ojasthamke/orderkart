@@ -2,24 +2,34 @@ import 'package:flutter/material.dart';
 
 class SmartBusinessPulseWidget extends StatelessWidget {
   final double todaySales;
-  final double salesGrowthPct;
   final double pendingDues;
   final double totalRevenue;
   final int inStockCount;
   final int lowStockCount;
   final int outOfStockCount;
+  final int customerCount;
+  final int vipCount;
+  final int deliveredCount;
+  final int pendingCount;
+  final double todayExpenses;
+  final int todayOrdersCount;
   final VoidCallback? onCreateOrder;
   final VoidCallback? onViewInventory;
 
   const SmartBusinessPulseWidget({
     super.key,
     required this.todaySales,
-    required this.salesGrowthPct,
     required this.pendingDues,
     required this.totalRevenue,
     required this.inStockCount,
     required this.lowStockCount,
     required this.outOfStockCount,
+    required this.customerCount,
+    required this.vipCount,
+    required this.deliveredCount,
+    required this.pendingCount,
+    required this.todayExpenses,
+    required this.todayOrdersCount,
     this.onCreateOrder,
     this.onViewInventory,
   });
@@ -34,7 +44,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
         ? ((totalRevenue - pendingDues) / totalRevenue).clamp(0.0, 1.0)
         : 1.0;
 
-    final isGrowthPositive = salesGrowthPct >= 0;
+    final totalOrdersCount = deliveredCount + pendingCount;
 
     return Container(
       width: double.infinity,
@@ -63,64 +73,27 @@ class SmartBusinessPulseWidget extends StatelessWidget {
         children: [
           // ── Header Row ──────────────────────────────────────────
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF38BDF8).withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.insights_rounded,
-                      color: Color(0xFF38BDF8),
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'BUSINESS PULSE',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ],
-              ),
-              // Growth Chip
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: (isGrowthPositive ? const Color(0xFF22C55E) : const Color(0xFFEF4444))
-                      .withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isGrowthPositive ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-                    width: 1,
-                  ),
+                  color: const Color(0xFF38BDF8).withOpacity(0.15),
+                  shape: BoxShape.circle,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isGrowthPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-                      color: isGrowthPositive ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${isGrowthPositive ? '+' : ''}${salesGrowthPct.toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        color: isGrowthPositive ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+                child: const Icon(
+                  Icons.analytics_rounded,
+                  color: Color(0xFF38BDF8),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'FEATURE STATISTICS',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
                 ),
               ),
             ],
@@ -234,6 +207,63 @@ class SmartBusinessPulseWidget extends StatelessWidget {
           const Divider(color: Colors.white10, height: 1),
           const SizedBox(height: 16),
 
+          // ── Segment 3: Deep Feature Statistics Grid ─────────────
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricTile(
+                  title: 'Success Rate',
+                  value: totalOrdersCount > 0
+                      ? '${(deliveredCount / totalOrdersCount * 100).toStringAsFixed(1)}%'
+                      : '0.0%',
+                  subtitle: '$deliveredCount Completed',
+                  icon: Icons.check_circle_outline_rounded,
+                  iconColor: const Color(0xFF22C55E),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricTile(
+                  title: 'VIP Members',
+                  value: '$vipCount / $customerCount',
+                  subtitle: 'Loyalty Count',
+                  icon: Icons.star_outline_rounded,
+                  iconColor: const Color(0xFFFFD700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricTile(
+                  title: 'Avg Order Value',
+                  value: todayOrdersCount > 0
+                      ? '₹${(todaySales / todayOrdersCount).toStringAsFixed(1)}'
+                      : '₹0.0',
+                  subtitle: '$todayOrdersCount Orders Today',
+                  icon: Icons.shopping_bag_outlined,
+                  iconColor: const Color(0xFF38BDF8),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricTile(
+                  title: 'Today\'s Expenses',
+                  value: '₹${todayExpenses.toStringAsFixed(1)}',
+                  subtitle: 'Total Outflow',
+                  icon: Icons.payments_outlined,
+                  iconColor: const Color(0xFFEF4444),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+          const Divider(color: Colors.white10, height: 1),
+          const SizedBox(height: 16),
+
           // ── Quick Action Bar ────────────────────────────────────
           Row(
             children: [
@@ -245,7 +275,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF38BDF8),
                     foregroundColor: const Color(0xFF0F172A),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
@@ -257,11 +287,65 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                 label: const Text('Inventory', style: TextStyle(color: Colors.white70, fontSize: 12)),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white24),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricTile({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Icon(icon, color: iconColor, size: 16),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: Colors.white38,
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

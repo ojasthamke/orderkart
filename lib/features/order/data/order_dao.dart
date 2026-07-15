@@ -372,6 +372,17 @@ class OrderDao {
     final itemCount = await db.rawQuery(
         'SELECT COUNT(*) AS v FROM items');
 
+    final vipCount = await db.rawQuery(
+        isWorker
+            ? "SELECT COUNT(*) AS v FROM customers WHERE is_vip = 1 AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM customers WHERE is_vip = 1");
+
+    final todayExpenses = await db.rawQuery(
+        isWorker
+            ? 'SELECT COALESCE(SUM(amount),0) AS v FROM expenses WHERE DATE(created_at) = DATE(?) AND (created_by = ? OR assigned_worker_id = ?)'
+            : 'SELECT COALESCE(SUM(amount),0) AS v FROM expenses WHERE DATE(created_at) = DATE(?)',
+        isWorker ? [today, workerId, workerId] : [today]);
+
     // Top selling items
     final topItems = await db.rawQuery(
         isWorker
@@ -445,6 +456,8 @@ class OrderDao {
       'cancelled_count':  cancelledOrders.first['v'] ?? 0,
       'all_time_sales':   (allTimeSales.first['v'] as num?)?.toDouble() ?? 0,
       'delivery_fees':    (allTimeDelivery.first['v'] as num?)?.toDouble() ?? 0,
+      'vip_count':        vipCount.first['v'] ?? 0,
+      'today_expenses':   (todayExpenses.first['v'] as num?)?.toDouble() ?? 0.0,
     };
   }
 

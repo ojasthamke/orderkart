@@ -295,7 +295,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ── Smart Business Pulse Executive Card ─────────────
+                  // ── Feature Statistics Executive Card ─────────────
                   () {
                     final stockData = ref.watch(stockSummaryProvider).maybeWhen(
                           data: (s) => s,
@@ -308,12 +308,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                     return SmartBusinessPulseWidget(
                       todaySales: (summary['today_sales'] as num?)?.toDouble() ?? 0.0,
-                      salesGrowthPct: 12.5,
                       pendingDues: pendingPayments,
                       totalRevenue: (summary['all_time_sales'] as num?)?.toDouble() ?? 0.0,
                       inStockCount: inStock,
                       lowStockCount: lowStockCount,
                       outOfStockCount: outOfStockCount,
+                      customerCount: (summary['customer_count'] as int?) ?? 0,
+                      vipCount: (summary['vip_count'] as int?) ?? 0,
+                      deliveredCount: (summary['delivered_count'] as int?) ?? 0,
+                      pendingCount: (summary['pending_count'] as int?) ?? 0,
+                      todayExpenses: (summary['today_expenses'] as num?)?.toDouble() ?? 0.0,
+                      todayOrdersCount: (summary['today_orders_count'] as int?) ?? 0,
                       onCreateOrder: () => Navigator.of(context).pushNamed(AppRoutes.customers),
                       onViewInventory: () => Navigator.of(context).pushNamed(AppRoutes.inventory),
                     );
