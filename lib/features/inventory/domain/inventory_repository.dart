@@ -11,4 +11,5 @@ abstract class InventoryRepository {
   Future<void> adjustStock(String itemId, double change, String reason, {String? orderId});
   Future<List<StockHistory>> getStockHistory(String itemId);
   Future<void> updateItemSequences(List<String> itemIds);
+  Future<List<StockHistory>> getSpillageHistory();
 }

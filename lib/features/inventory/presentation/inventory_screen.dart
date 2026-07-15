@@ -43,7 +43,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -163,6 +163,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           Tab(icon: Icon(Icons.inventory_2_rounded), text: 'Stock Items'),
           Tab(icon: Icon(Icons.price_change_rounded), text: 'Market Savings'),
           Tab(icon: Icon(Icons.history_rounded), text: 'Price History'),
+          Tab(icon: Icon(Icons.delete_sweep_rounded), text: 'Spillage History'),
         ],
       ),
       floatingActionButton: isWorker
@@ -185,6 +186,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
           // ── TAB 3: Daily Price History Tracker (Date-to-Date) ─────────────
           _buildPriceHistoryTab(context),
+
+          // ── TAB 4: Spillage History Tracker ────────────────────────────────
+          _buildSpillageHistoryTab(context),
         ],
       ),
     );
@@ -905,6 +909,84 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         SnackbarHelper.showSuccess(context, 'Item deleted');
       }
     });
+  }
+
+  Widget _buildSpillageHistoryTab(BuildContext context) {
+    final spillageAsync = ref.watch(spillageHistoryProvider);
+
+    return spillageAsync.when(
+      loading: () => const LoadingShimmer(),
+      error: (e, _) => Center(child: Text('Error: $e')),
+      data: (logs) {
+        if (logs.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.delete_sweep_outlined,
+            title: 'No Spillage Logged',
+            subtitle: 'Wastage logs will appear here after recording',
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.refresh(spillageHistoryProvider),
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: logs.length,
+            itemBuilder: (context, index) {
+              final log = logs[index];
+              final formattedDate = AppFormatters.dateTime(log.createdAt);
+              final amt = log.changeAmount.abs();
+
+              String cleanReason = log.reason;
+              if (cleanReason.startsWith('Wastage: ')) {
+                cleanReason = cleanReason.replaceFirst('Wastage: ', '');
+              }
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.amber.withOpacity(0.2)),
+                ),
+                elevation: 0,
+                color: Colors.amber.shade50.withOpacity(0.1),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.amber.withOpacity(0.2),
+                    child: Icon(Icons.delete_outline_rounded, color: Colors.amber.shade800),
+                  ),
+                  title: Text(
+                    log.itemName,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        cleanReason,
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        formattedDate,
+                        style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  trailing: Text(
+                    '-${AppFormatters.quantity(amt)}',
+                    style: TextStyle(
+                      color: Colors.amber.shade900,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 }
 

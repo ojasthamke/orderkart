@@ -216,4 +216,14 @@ class ItemDao {
       }
     });
   }
+
+  Future<List<StockHistory>> getSpillageHistory() async {
+    final db = await _db;
+    final maps = await db.query(
+      'stock_history',
+      where: "reason LIKE 'Wastage%'",
+      orderBy: 'created_at DESC',
+    );
+    return maps.map(StockHistory.fromMap).toList();
+  }
 }

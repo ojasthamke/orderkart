@@ -53,4 +53,8 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<void> updateItemSequences(List<String> itemIds) =>
       _dao.updateItemSequences(itemIds);
+
+  @override
+  Future<List<StockHistory>> getSpillageHistory() =>
+      _dao.getSpillageHistory();
 }

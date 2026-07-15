@@ -41,6 +41,7 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     _ref.invalidate(outOfStockProvider);
     _ref.invalidate(stockSummaryProvider);
     _ref.invalidate(stockHistoryProvider);
+    _ref.invalidate(spillageHistoryProvider);
     _ref.invalidate(analyticsSummaryProvider);
     _ref.invalidate(searchProvider);
   }
@@ -134,4 +135,8 @@ final stockSummaryProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 final stockHistoryProvider =
     FutureProvider.family<List<StockHistory>, String>((ref, itemId) {
   return ref.read(inventoryRepositoryProvider).getStockHistory(itemId);
+});
+
+final spillageHistoryProvider = FutureProvider<List<StockHistory>>((ref) {
+  return ref.read(inventoryRepositoryProvider).getSpillageHistory();
 });
