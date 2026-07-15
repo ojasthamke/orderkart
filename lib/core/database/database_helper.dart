@@ -82,6 +82,7 @@ class DatabaseHelper {
         await _ensurePriceHistoryTables(db);
         await _ensureAreaAndStreetColumns(db);
         await _ensureCallLogsTable(db);
+        await _ensureItemPhotoColumn(db);
         await _createV4Tables(db);
         await _ensureV4Columns(db);
         await _ensureSavingsColumn(db);
@@ -256,6 +257,7 @@ class DatabaseHelper {
         unit          TEXT NOT NULL DEFAULT 'kg',
         barcode       TEXT DEFAULT '',
         weight_per_piece REAL DEFAULT 0.25,
+        photo_path    TEXT DEFAULT '',
         created_at    TEXT NOT NULL,
         updated_at    TEXT NOT NULL
       )
@@ -464,6 +466,14 @@ class DatabaseHelper {
       } catch (_) {
         // Column already exists, ignore
       }
+    }
+  }
+
+  Future<void> _ensureItemPhotoColumn(Database db) async {
+    try {
+      await db.execute("ALTER TABLE items ADD COLUMN photo_path TEXT DEFAULT ''");
+    } catch (_) {
+      // Column already exists, ignore
     }
   }
 

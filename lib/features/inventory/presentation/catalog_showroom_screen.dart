@@ -154,7 +154,14 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
               children: [
                 CircleAvatar(
                   backgroundColor: _getCategoryColor(item.category).withOpacity(0.1),
-                  child: Icon(_getCategoryIcon(item.category), color: _getCategoryColor(item.category)),
+                  backgroundImage: item.photoPath.isNotEmpty
+                      ? (item.photoPath.startsWith('http')
+                          ? NetworkImage(item.photoPath) as ImageProvider
+                          : FileImage(File(item.photoPath)))
+                      : null,
+                  child: item.photoPath.isEmpty
+                      ? Icon(_getCategoryIcon(item.category), color: _getCategoryColor(item.category))
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -393,14 +400,24 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                 decoration: BoxDecoration(
                                   color: catColor.withOpacity(0.08),
                                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                  image: item.photoPath.isNotEmpty
+                                      ? DecorationImage(
+                                          image: item.photoPath.startsWith('http')
+                                              ? NetworkImage(item.photoPath) as ImageProvider
+                                              : FileImage(File(item.photoPath)),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
-                                child: Center(
-                                  child: Icon(
-                                    _getCategoryIcon(item.category),
-                                    size: 44,
-                                    color: catColor.withOpacity(0.85),
-                                  ),
-                                ),
+                                child: item.photoPath.isEmpty
+                                    ? Center(
+                                        child: Icon(
+                                          _getCategoryIcon(item.category),
+                                          size: 44,
+                                          color: catColor.withOpacity(0.85),
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ),
 

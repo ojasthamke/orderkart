@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/image_utils.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -37,6 +40,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   final _packCon       = TextEditingController();
   final _weightPerPieceCon = TextEditingController(text: '0.25');
   bool  _rxRequired    = false;
+  String _photoPath = '';
+  DateTime _createdAt = DateTime.now();
 
   String _category = AppConstants.catVegetables;
   String _unit     = AppConstants.unitKg;
@@ -79,6 +84,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _packCon.text     = item.packDate;
         _rxRequired       = item.prescriptionRequired;
         _weightPerPieceCon.text = item.weightPerPiece.toString();
+        _photoPath        = item.photoPath;
+        _createdAt        = item.createdAt;
       });
     }
   }
@@ -104,6 +111,47 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Photo picker
+              Center(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        width: 110,
+                        height: 110,
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySurface,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.primaryLight, width: 2),
+                          image: _photoPath.isNotEmpty
+                              ? DecorationImage(
+                                  image: _photoPath.startsWith('http')
+                                      ? NetworkImage(_photoPath) as ImageProvider
+                                      : FileImage(File(_photoPath)),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: _photoPath.isEmpty
+                            ? const Icon(Icons.camera_alt_rounded,
+                                size: 36, color: AppColors.primary)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _photoPath.isEmpty ? 'Add Photo' : 'Change Photo',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
               TextFormField(
                 controller: _nameCon,
                 decoration: const InputDecoration(
@@ -378,14 +426,58 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Take a Photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source != null) {
+      final img = await ImageUtils.pickAndCompress(source: source);
+      if (img != null) {
+        setState(() => _photoPath = img.path);
+      }
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
 
     try {
       final now  = DateTime.now();
+      final itemId = widget.itemId ?? const Uuid().v4();
+
+      String finalPhotoPath = _photoPath;
+      if (_photoPath.isNotEmpty && !_photoPath.startsWith('http')) {
+        final savedPath = await ImageUtils.saveImagePermanently(
+          sourcePath: _photoPath,
+          subFolder: 'item_photos',
+          fileName: itemId,
+        );
+        if (savedPath != null) {
+          finalPhotoPath = savedPath;
+        }
+      }
+
       final item = Item(
-        id:           widget.itemId ?? const Uuid().v4(),
+        id:           itemId,
         name:         _nameCon.text.trim(),
         category:     _category,
         costPrice:    double.tryParse(_costCon.text) ?? 0,
@@ -395,7 +487,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         minStock:     double.tryParse(_minStockCon.text) ?? 0,
         unit:         _unit,
         barcode:      _barcodeCon.text.trim(),
-        createdAt:    now,
+        photoPath:    finalPhotoPath,
+        createdAt:    _isEdit ? _createdAt : now,
         updatedAt:    now,
         expiryDate:   _category == AppConstants.catMedicines ? _expiryCon.text : '',
         batchNumber:  _category == AppConstants.catMedicines ? _batchCon.text.trim() : '',

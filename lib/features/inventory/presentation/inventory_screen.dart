@@ -927,6 +927,25 @@ class _ItemTile extends StatelessWidget {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.primarySurface,
+            borderRadius: BorderRadius.circular(8),
+            image: item.photoPath.isNotEmpty
+                ? DecorationImage(
+                    image: item.photoPath.startsWith('http')
+                        ? NetworkImage(item.photoPath) as ImageProvider
+                        : FileImage(File(item.photoPath)),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: item.photoPath.isEmpty
+              ? const Icon(Icons.image_outlined, color: AppColors.primary)
+              : null,
+        ),
         title: Row(
           children: [
             Expanded(
