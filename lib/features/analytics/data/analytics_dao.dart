@@ -35,10 +35,11 @@ class AnalyticsDao {
         COALESCE(SUM(o.grand_total), 0) AS total_sales,
         COALESCE(SUM(o.paid_amount), 0) AS total_collection,
         COALESCE(SUM(o.remaining_amount), 0) AS total_outstanding
-      FROM areas a
-      LEFT JOIN streets s ON s.area_id = a.id
-      LEFT JOIN customers c ON c.street_id = s.id
+      FROM locations a
+      LEFT JOIN locations s ON s.parent_location_id = a.id AND s.location_kind = 'road' AND s.is_archived = 0
+      LEFT JOIN customers c ON c.location_id = s.id
       LEFT JOIN orders o ON o.customer_id = c.id AND o.delivery_status != 'cancelled'
+      WHERE a.location_kind = 'area' AND a.is_archived = 0
       GROUP BY a.id
       ORDER BY total_sales DESC
     ''');
@@ -56,10 +57,11 @@ class AnalyticsDao {
         COALESCE(SUM(o.grand_total), 0) AS total_sales,
         COALESCE(SUM(o.paid_amount), 0) AS total_collection,
         COALESCE(SUM(o.remaining_amount), 0) AS total_outstanding
-      FROM streets s
-      JOIN areas a ON s.area_id = a.id
-      LEFT JOIN customers c ON c.street_id = s.id
+      FROM locations s
+      JOIN locations a ON s.parent_location_id = a.id AND a.location_kind = 'area' AND a.is_archived = 0
+      LEFT JOIN customers c ON c.location_id = s.id
       LEFT JOIN orders o ON o.customer_id = c.id AND o.delivery_status != 'cancelled'
+      WHERE s.location_kind = 'road' AND s.is_archived = 0
       GROUP BY s.id
       ORDER BY total_sales DESC
     ''');

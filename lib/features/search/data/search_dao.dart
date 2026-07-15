@@ -20,12 +20,12 @@ class SearchDao {
 
     // 1. Search Customers (including phone2, whatsapp, street name, area name)
     final customers = await db.rawQuery('''
-      SELECT c.*, s.name AS street_name, a.name AS area_name
+      SELECT c.*, street.name AS street_name, area.name AS area_name
       FROM customers c
-      LEFT JOIN streets s ON c.street_id = s.id
-      LEFT JOIN areas a ON s.area_id = a.id
+      LEFT JOIN locations street ON c.location_id = street.id AND street.location_kind = 'road'
+      LEFT JOIN locations area ON street.parent_location_id = area.id AND area.location_kind = 'area'
       WHERE c.name LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ? OR c.whatsapp LIKE ?
-         OR c.house_number LIKE ? OR c.address LIKE ? OR s.name LIKE ? OR a.name LIKE ?
+         OR c.house_number LIKE ? OR c.address LIKE ? OR street.name LIKE ? OR area.name LIKE ?
       LIMIT 15
     ''', [q, q, q, q, q, q, q, q]);
 
@@ -52,15 +52,15 @@ class SearchDao {
       results.add(SearchResult(
         id:       item['id'] as String,
         title:    item['name'] as String,
-        subtitle: 'Item • Category: ${item['category']} • Rate: ₹${item['selling_price']}',
+        subtitle: 'Item • Category: ${item['category']} • Rate: ${item['selling_price']}',
         type:     SearchResultType.item,
       ));
     }
 
-    // 3. Search Areas
+    // 3. Search Locations (Areas)
     final areas = await db.query(
-      'areas',
-      where: 'name LIKE ? OR description LIKE ?',
+      'locations',
+      where: "location_kind = 'area' AND is_archived = 0 AND (name LIKE ? OR description LIKE ?)",
       whereArgs: [q, q],
       limit: 5,
     );
@@ -73,10 +73,10 @@ class SearchDao {
       ));
     }
 
-    // 4. Search Streets
+    // 4. Search Locations (Streets/Roads)
     final streets = await db.query(
-      'streets',
-      where: 'name LIKE ? OR description LIKE ?',
+      'locations',
+      where: "location_kind = 'road' AND is_archived = 0 AND (name LIKE ? OR description LIKE ?)",
       whereArgs: [q, q],
       limit: 5,
     );
@@ -102,7 +102,7 @@ class SearchDao {
       results.add(SearchResult(
         id:       orderId,
         title:    'Order $orderId',
-        subtitle: 'Order • Customer: ${o['customer_name']} • Total: ₹${o['grand_total']} (${o['delivery_status']})',
+        subtitle: 'Order • Customer: ${o['customer_name']} • Total: ${o['grand_total']} (${o['delivery_status']})',
         type:     SearchResultType.order,
       ));
     }

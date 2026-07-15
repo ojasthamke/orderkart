@@ -4,9 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/utils/validators.dart';
 import '../domain/app_visit.dart';
 import 'visit_provider.dart';
+import '../../area/presentation/area_provider.dart';
+import '../../street/presentation/street_provider.dart';
 
 class AddEditVisitScreen extends ConsumerStatefulWidget {
   final AppVisit? visit;
@@ -126,40 +127,79 @@ class _AddEditVisitScreenState extends ConsumerState<AddEditVisitScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Area ID and Street ID should ideally be dropdowns loaded from AreaDao/StreetDao.
-              // We'll use simple text fields for now to get the feature running, but they should 
-              // be replaced with DropdownButtonFormField.
-              TextFormField(
-                initialValue: _areaId,
-                decoration: InputDecoration(
-                  labelText: 'Area Name',
-                  hintText: 'Enter area to visit',
-                  filled: true,
-                  fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                onChanged: (val) => _areaId = val,
-                validator: (val) => AppValidators.required(val, field: 'Area'),
+              // Area Dropdown
+              ref.watch(areaProvider).when(
+                loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                error: (e, _) => Text('Error loading areas: $e', style: const TextStyle(color: AppColors.error)),
+                data: (areas) {
+                  return DropdownButtonFormField<String>(
+                    value: _areaId.isEmpty ? null : _areaId,
+                    decoration: InputDecoration(
+                      labelText: 'Select Area *',
+                      filled: true,
+                      fillColor: Theme.of(context).inputDecorationTheme.fillColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: areas.map((area) {
+                      return DropdownMenuItem<String>(
+                        value: area.id,
+                        child: Text(area.name),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        _areaId = val ?? '';
+                        _streetId = ''; // Reset street on area change
+                      });
+                    },
+                    validator: (val) => val == null || val.isEmpty ? 'Please select an Area' : null,
+                  );
+                },
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                initialValue: _streetId,
-                decoration: InputDecoration(
-                  labelText: 'Street Name (Optional)',
-                  hintText: 'Specific street',
-                  filled: true,
-                  fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
+
+              // Street Dropdown (dependent on selected Area)
+              if (_areaId.isNotEmpty) ...[
+                ref.watch(streetProviderFamily(_areaId)).when(
+                  loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  error: (e, _) => Text('Error loading streets: $e', style: const TextStyle(color: AppColors.error)),
+                  data: (streets) {
+                    return DropdownButtonFormField<String>(
+                      value: _streetId.isEmpty ? null : _streetId,
+                      decoration: InputDecoration(
+                        labelText: 'Select Street (Optional)',
+                        filled: true,
+                        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: '',
+                          child: Text('None (Entire Area)'),
+                        ),
+                        ...streets.map((street) {
+                          return DropdownMenuItem<String>(
+                            value: street.id,
+                            child: Text(street.name),
+                          );
+                        }),
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          _streetId = val ?? '';
+                        });
+                      },
+                    );
+                  },
                 ),
-                onChanged: (val) => _streetId = val,
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
               TextFormField(
                 controller: _notesController,
                 decoration: InputDecoration(

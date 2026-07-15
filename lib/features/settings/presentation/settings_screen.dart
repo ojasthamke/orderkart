@@ -30,12 +30,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _waCon      = TextEditingController();
   final _staffWaCon = TextEditingController();
   final _qrCon      = TextEditingController();
+  final _deliveryChargeCon = TextEditingController();
+  final _workerDiscountCapCon = TextEditingController();
   bool _initialized = false;
 
   @override
   void dispose() {
     _bizNameCon.dispose(); _ownerCon.dispose(); _phoneCon.dispose();
     _waCon.dispose(); _staffWaCon.dispose(); _qrCon.dispose();
+    _deliveryChargeCon.dispose();
+    _workerDiscountCapCon.dispose();
     super.dispose();
   }
 
@@ -47,6 +51,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _waCon.text      = s.whatsApp;
     _staffWaCon.text = s.staffWhatsApp;
     _qrCon.text      = s.qrContent;
+    _deliveryChargeCon.text = s.deliveryCharge.toStringAsFixed(0);
+    _workerDiscountCapCon.text = s.workerDiscountCap.toStringAsFixed(0);
     _initialized     = true;
   }
 
@@ -163,7 +169,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: TextField(
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       textAlign: TextAlign.right,
-                      controller: TextEditingController(text: settings.deliveryCharge.toStringAsFixed(0)),
+                      controller: _deliveryChargeCon,
                       onChanged: (v) {
                         final d = double.tryParse(v);
                         if (d != null) {
@@ -221,7 +227,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: TextField(
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       textAlign: TextAlign.right,
-                      controller: TextEditingController(text: settings.workerDiscountCap.toStringAsFixed(0)),
+                      controller: _workerDiscountCapCon,
                       onChanged: (v) {
                         final val = double.tryParse(v);
                         if (val != null) {

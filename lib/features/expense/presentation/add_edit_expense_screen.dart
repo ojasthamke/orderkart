@@ -11,6 +11,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/expense.dart';
 import 'expense_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 
 class AddEditExpenseScreen extends ConsumerStatefulWidget {
   final String? expenseId;
@@ -67,6 +68,9 @@ class _AddEditExpenseScreenState
 
   @override
   Widget build(BuildContext context) {
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final currency = settingsVal?.currency ?? '₹';
+
     return AppScaffold(
       title: _isEdit ? 'Edit Expense' : 'Add Expense',
       body: SingleChildScrollView(
@@ -90,10 +94,10 @@ class _AddEditExpenseScreenState
               TextFormField(
                 controller: _amountCon,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Amount *',
-                  prefixText: '₹ ',
-                  prefixIcon: Icon(Icons.currency_rupee_rounded),
+                  prefixText: '$currency ',
+                  prefixIcon: const Icon(Icons.monetization_on_rounded),
                 ),
                 validator: (v) => AppValidators.positiveNumber(v, field: 'Amount'),
               ),

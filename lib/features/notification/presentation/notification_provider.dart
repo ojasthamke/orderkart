@@ -66,19 +66,22 @@ class NotificationListNotifier extends StateNotifier<AsyncValue<List<AppNotifica
         onTap: () {
           markAsRead(id);
           String? route;
+          Object? routeArgs;
           switch (category) {
             case 'payment_due':
               route = AppRoutes.customerProfile;
+              routeArgs = {'customerId': relatedId};
               break;
             case 'low_stock':
               route = AppRoutes.inventory;
               break;
             case 'order_update':
               route = AppRoutes.orderDetail;
+              routeArgs = {'orderId': relatedId};
               break;
           }
           if (route != null) {
-            Navigator.of(context).pushNamed(route, arguments: relatedId);
+            Navigator.of(context).pushNamed(route, arguments: routeArgs);
           }
         },
       );

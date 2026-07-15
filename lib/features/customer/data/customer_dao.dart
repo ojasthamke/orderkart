@@ -104,11 +104,11 @@ class CustomerDao {
 
     final maps = await db.rawQuery('''
       SELECT c.* FROM customers c
-      LEFT JOIN streets s ON c.street_id = s.id
-      LEFT JOIN areas a ON s.area_id = a.id
+      LEFT JOIN locations street ON c.location_id = street.id AND street.location_kind = 'road'
+      LEFT JOIN locations area ON street.parent_location_id = area.id AND area.location_kind = 'area'
       WHERE c.name LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ?
             OR c.house_number LIKE ? OR c.address LIKE ?
-            OR s.name LIKE ? OR a.name LIKE ?
+            OR street.name LIKE ? OR area.name LIKE ?
       LIMIT 50
     ''', [q, q, q, q, q, q, q]);
     return maps.map(Customer.fromMap).toList();

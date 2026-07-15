@@ -104,12 +104,16 @@ class VisitDao {
       }
     }
 
-    final List<Map<String, dynamic>> maps = await database.query(
-      tableName,
-      where: where,
-      whereArgs: args,
-      orderBy: 'priority DESC, created_at ASC',
-    );
+    final List<Map<String, dynamic>> maps = await database.rawQuery('''
+      SELECT v.*, 
+             a.name AS area_name, 
+             s.name AS street_name
+      FROM visits v
+      LEFT JOIN locations a ON v.area_id = a.id
+      LEFT JOIN locations s ON v.street_id = s.id
+      WHERE v.$where
+      ORDER BY v.priority DESC, v.created_at ASC
+    ''', args);
 
     return List.generate(maps.length, (i) {
       return AppVisit.fromMap(maps[i]);
@@ -157,12 +161,16 @@ class VisitDao {
       }
     }
 
-    final List<Map<String, dynamic>> maps = await database.query(
-      tableName,
-      where: where,
-      whereArgs: args,
-      orderBy: 'date DESC',
-    );
+    final List<Map<String, dynamic>> maps = await database.rawQuery('''
+      SELECT v.*, 
+             a.name AS area_name, 
+             s.name AS street_name
+      FROM visits v
+      LEFT JOIN locations a ON v.area_id = a.id
+      LEFT JOIN locations s ON v.street_id = s.id
+      ${where != null ? 'WHERE v.$where' : ''}
+      ORDER BY v.date DESC
+    ''', args);
 
     return List.generate(maps.length, (i) {
       return AppVisit.fromMap(maps[i]);

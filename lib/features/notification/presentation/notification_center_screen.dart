@@ -380,20 +380,23 @@ class _NotificationCard extends ConsumerWidget {
                     ref.read(notificationListProvider.notifier).markAsRead(notification.id);
                     
                     String? route;
+                    Object? routeArgs;
                     switch (notification.category) {
                       case 'payment_due':
                         route = AppRoutes.customerProfile;
+                        routeArgs = {'customerId': notification.relatedId};
                         break;
                       case 'low_stock':
                         route = AppRoutes.inventory;
                         break;
                       case 'order_update':
                         route = AppRoutes.orderDetail;
+                        routeArgs = {'orderId': notification.relatedId};
                         break;
                     }
                     
                     if (route != null) {
-                      Navigator.of(context).pushNamed(route, arguments: notification.relatedId);
+                      Navigator.of(context).pushNamed(route, arguments: routeArgs);
                     }
                   },
                 ),

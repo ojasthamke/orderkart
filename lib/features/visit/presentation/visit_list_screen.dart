@@ -83,7 +83,7 @@ class VisitListScreen extends ConsumerWidget {
                     ),
                   ),
                   title: Text(
-                    visit.areaId, // Needs to be joined with actual area name later
+                    visit.areaName.isNotEmpty ? visit.areaName : 'Unknown Area',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       decoration: isCompleted ? TextDecoration.lineThrough : null,
@@ -92,7 +92,7 @@ class VisitListScreen extends ConsumerWidget {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (visit.streetId.isNotEmpty) Text(visit.streetId),
+                      if (visit.streetName.isNotEmpty) Text(visit.streetName),
                       if (visit.notes.isNotEmpty)
                         Text(
                           visit.notes,

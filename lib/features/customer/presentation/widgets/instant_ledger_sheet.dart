@@ -5,6 +5,7 @@ import '../../domain/customer.dart';
 import '../../../order/domain/order.dart';
 import '../../../order/domain/order_item.dart';
 import '../../../order/presentation/order_provider.dart';
+import '../../../settings/presentation/settings_provider.dart';
 
 class InstantLedgerSheet extends ConsumerStatefulWidget {
   final Customer customer;
@@ -76,6 +77,7 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ordersAsync = ref.watch(customerOrdersProvider(widget.customer.id));
+    final currency = ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
 
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
@@ -164,7 +166,7 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   Text(
-                    '₹${widget.customer.outstandingBalance.toStringAsFixed(2)}',
+                    '$currency${widget.customer.outstandingBalance.toStringAsFixed(2)}',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -240,7 +242,7 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                                           crossAxisAlignment: CrossAxisAlignment.end,
                                           children: [
                                             Text(
-                                              '₹${order.grandTotal.toStringAsFixed(1)}',
+                                              '$currency${order.grandTotal.toStringAsFixed(1)}',
                                               style: const TextStyle(fontWeight: FontWeight.bold),
                                             ),
                                             const SizedBox(height: 4),
@@ -255,7 +257,7 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                                               ),
                                               child: Text(
                                                 isPending
-                                                    ? 'Due: ₹${order.remainingAmount.toStringAsFixed(1)}'
+                                                    ? 'Due: $currency${order.remainingAmount.toStringAsFixed(1)}'
                                                     : 'Paid',
                                                 style: TextStyle(
                                                   fontSize: 9,
@@ -306,7 +308,7 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                                               ),
                                               subtitle: Text('Qty: ${item.quantity} ${item.itemUnit}'),
                                               trailing: Text(
-                                                '₹${item.unitPrice.toStringAsFixed(1)}',
+                                                '$currency${item.unitPrice.toStringAsFixed(1)}',
                                                 style: const TextStyle(fontWeight: FontWeight.bold),
                                               ),
                                             ),

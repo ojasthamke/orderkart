@@ -7,6 +7,8 @@ class AppVisit {
   final int priority;
   final String status;
   final DateTime createdAt;
+  final String areaName;
+  final String streetName;
 
   AppVisit({
     required this.id,
@@ -17,6 +19,8 @@ class AppVisit {
     this.priority = 0,
     required this.status,
     required this.createdAt,
+    this.areaName = '',
+    this.streetName = '',
   });
 
   AppVisit copyWith({
@@ -28,6 +32,8 @@ class AppVisit {
     int? priority,
     String? status,
     DateTime? createdAt,
+    String? areaName,
+    String? streetName,
   }) {
     return AppVisit(
       id: id ?? this.id,
@@ -38,6 +44,8 @@ class AppVisit {
       priority: priority ?? this.priority,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
+      areaName: areaName ?? this.areaName,
+      streetName: streetName ?? this.streetName,
     );
   }
 
@@ -64,6 +72,8 @@ class AppVisit {
       priority: map['priority'] as int? ?? 0,
       status: map['status'] as String,
       createdAt: DateTime.parse(map['created_at'] as String),
+      areaName: map['area_name'] as String? ?? '',
+      streetName: map['street_name'] as String? ?? '',
     );
   }
 }

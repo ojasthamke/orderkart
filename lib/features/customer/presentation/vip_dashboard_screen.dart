@@ -496,10 +496,10 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
       vipSubscriptionFee: 0.0,
       vipNotes: '',
       vipAutoRenewal: false,
-      vipFreeDelivery: true,
-      vipDiscountPct: 10.0,
-      vipMarkupPct: 5.0,
-      vipPriorityDelivery: true,
+      vipFreeDelivery: false,
+      vipDiscountPct: 0.0,
+      vipMarkupPct: 0.0,
+      vipPriorityDelivery: false,
     );
     final repo = ref.read(customerRepositoryProvider);
     await repo.updateCustomer(updated);

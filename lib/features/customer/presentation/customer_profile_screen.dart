@@ -961,6 +961,8 @@ class CustomerProfileScreen extends ConsumerWidget {
 
         ref.invalidate(customerDetailProvider(customer.id));
         ref.invalidate(customerOrdersProvider(customer.id));
+        ref.invalidate(pendingCustomersProvider);
+        ref.invalidate(allCustomersProvider);
         if (context.mounted) {
           final summary = listApplied.join(', ');
           SnackbarHelper.showSuccess(context, 'Payment applied: $summary');

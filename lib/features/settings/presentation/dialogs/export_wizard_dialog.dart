@@ -70,7 +70,7 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
   Future<void> _loadFilters() async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final areas = await db.query('areas', orderBy: 'name ASC');
+      final areas = await db.query('locations', where: 'location_kind = ? AND is_archived = 0', whereArgs: ['area'], orderBy: 'name ASC');
       final workers = await db.query('workers', orderBy: 'name ASC');
       setState(() {
         _areas = areas;
@@ -128,7 +128,7 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
         if (_selectedAreaId != null) {
           areas = 1;
         } else {
-          areas = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM areas WHERE is_archived = 0')) ?? 0;
+          areas = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM locations WHERE location_kind = 'area' AND is_archived = 0")) ?? 0;
         }
       }
 
