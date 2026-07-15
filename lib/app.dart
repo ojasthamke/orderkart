@@ -10,7 +10,6 @@ import 'core/theme/app_theme.dart';
 import 'features/settings/presentation/settings_provider.dart';
 import 'features/dashboard/presentation/main_screen.dart';
 import 'features/area/presentation/area_screen.dart';
-import 'features/street/presentation/street_screen.dart';
 import 'features/location/presentation/location_detail_screen.dart';
 import 'features/customer/presentation/customer_list_screen.dart';
 import 'features/customer/presentation/vip_dashboard_screen.dart';

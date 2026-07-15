@@ -75,7 +75,7 @@ class LocationDao {
   /// Get a single location by ID.
   Future<Location?> getLocationById(String id) async {
     final db = await _db;
-    final sql = '''
+    const sql = '''
       SELECT l.*,
         (SELECT COUNT(*) FROM locations c WHERE c.parent_location_id = l.id AND c.is_archived = 0) AS child_count,
         (SELECT COUNT(*) FROM customers cust WHERE cust.location_id = l.id) AS customer_count,

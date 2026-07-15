@@ -103,7 +103,7 @@ void main() {
     );
 
     // 2. Insert mock data
-    final uuid = const Uuid();
+    const uuid = Uuid();
     final areaId1 = uuid.v4();
     final areaId2 = uuid.v4();
     final streetId1 = uuid.v4();

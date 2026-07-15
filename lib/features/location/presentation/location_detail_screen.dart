@@ -17,11 +17,9 @@ import '../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
 import '../../../core/utils/image_utils.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/security/app_mode_service.dart';
 import '../../customer/domain/customer.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../customer/presentation/widgets/instant_ledger_sheet.dart';
-import '../../worker/presentation/worker_provider.dart';
 import '../domain/location.dart';
 import '../domain/location_kind.dart';
 import 'location_provider.dart';
@@ -41,7 +39,6 @@ class LocationDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> with SingleTickerProviderStateMixin {
-  String _filterMode = 'all'; // 'all', 'owner', or workerId
   late TabController _tabController;
 
   @override
@@ -61,10 +58,6 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
     final breadcrumbsAsync = ref.watch(breadcrumbsProvider(widget.locationId));
     final childLocationsAsync = ref.watch(locationListProvider(widget.locationId));
     final customersAsync = ref.watch(customerListProvider(widget.locationId));
-    
-    final workersAsync = ref.watch(activeWorkersListProvider);
-    final modeAsync = ref.watch(appModeProvider);
-    final isWorker = modeAsync.valueOrNull == AppMode.worker;
 
     return AppScaffold(
       title: widget.locationName,
