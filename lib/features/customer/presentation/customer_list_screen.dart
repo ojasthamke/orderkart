@@ -102,7 +102,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                     child: _CustomerCard(
                       customer: customers[i],
                       streetId: effectiveStreetId,
-                      ref: ref,
                     ),
                   ),
                 );
@@ -115,19 +114,17 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
   }
 }
 
-class _CustomerCard extends StatelessWidget {
+class _CustomerCard extends ConsumerWidget {
   final Customer customer;
   final String streetId;
-  final WidgetRef ref;
 
   const _CustomerCard({
     required this.customer,
     required this.streetId,
-    required this.ref,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(

@@ -104,7 +104,7 @@ class CustomerProfileScreen extends ConsumerWidget {
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                       builder: (_) => VipEditModal(existingCustomer: customer),
-                    );
+                    ).then((_) => ref.invalidate(customerDetailProvider(customerId)));
                     break;
                   case 'delete':
                     _confirmDelete(context, ref, customer);
@@ -488,7 +488,7 @@ class CustomerProfileScreen extends ConsumerWidget {
                                       isScrollControlled: true,
                                       backgroundColor: Colors.transparent,
                                       builder: (_) => VipEditModal(existingCustomer: customer),
-                                    );
+                                    ).then((_) => ref.invalidate(customerDetailProvider(customerId)));
                                   },
                                   icon: const Icon(Icons.edit_rounded, size: 12, color: AppColors.primary),
                                   label: const Text(
@@ -905,6 +905,7 @@ class CustomerProfileScreen extends ConsumerWidget {
 
 
   Future<void> _showPayDialog(BuildContext context, WidgetRef ref, Customer customer) async {
+    final currencySymbol = ref.read(settingsProvider).valueOrNull?.currency ?? AppConstants.defaultCurrency;
     final result = await Navigator.pushNamed(
       context,
       AppRoutes.paymentDetails,
@@ -912,7 +913,7 @@ class CustomerProfileScreen extends ConsumerWidget {
         'customerId': customer.id,
         'remainingAmount': customer.outstandingBalance,
         'grandTotal': customer.outstandingBalance,
-        'currency': '₹',
+        'currency': currencySymbol,
       },
     );
 
@@ -921,23 +922,48 @@ class CustomerProfileScreen extends ConsumerWidget {
       final method = result['method'] as String;
       final notes = result['notes'] as String;
 
-      final orders = ref.read(customerOrdersProvider(customer.id)).value;
-      final pending = orders?.where((o) => o.remainingAmount > 0).toList();
-      if (pending != null && pending.isNotEmpty) {
-        final oldest = pending.last;
-        await ref.read(orderManagementProvider.notifier).addPayment(Payment(
-              id:         const Uuid().v4(),
-              orderId:    oldest.id,
-              customerId: customer.id,
-              amount:     amount,
-              method:     method,
-              notes:      notes,
-              createdAt:  DateTime.now(),
-            ));
+      final orders = await ref.read(orderRepositoryProvider).getAllOrders(customerId: customer.id);
+      final pending = orders.where((o) => o.remainingAmount > 0).toList();
+      if (pending.isNotEmpty) {
+        final sortedPending = pending.reversed.toList();
+        double remainingPayment = amount;
+        final listApplied = <String>[];
+
+        for (final order in sortedPending) {
+          if (remainingPayment <= 0) break;
+          final payForThisOrder = remainingPayment > order.remainingAmount ? order.remainingAmount : remainingPayment;
+          await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+                id:         const Uuid().v4(),
+                orderId:    order.id,
+                customerId: customer.id,
+                amount:     payForThisOrder,
+                method:     method,
+                notes:      notes,
+                createdAt:  DateTime.now(),
+              ));
+          remainingPayment -= payForThisOrder;
+          listApplied.add('$currencySymbol$payForThisOrder to Order ${order.orderNoLabel}');
+        }
+
+        if (remainingPayment > 0) {
+          final newest = pending.first;
+          await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+                id:         const Uuid().v4(),
+                orderId:    newest.id,
+                customerId: customer.id,
+                amount:     remainingPayment,
+                method:     method,
+                notes:      '$notes (Excess Payment)',
+                createdAt:  DateTime.now(),
+              ));
+          listApplied.add('$currencySymbol$remainingPayment (Excess) to Order ${newest.orderNoLabel}');
+        }
+
         ref.invalidate(customerDetailProvider(customer.id));
         ref.invalidate(customerOrdersProvider(customer.id));
         if (context.mounted) {
-          SnackbarHelper.showSuccess(context, 'Payment of ₹$amount applied to Order ${oldest.orderNoLabel}');
+          final summary = listApplied.join(', ');
+          SnackbarHelper.showSuccess(context, 'Payment applied: $summary');
         }
       } else {
         if (context.mounted) {
@@ -1141,7 +1167,6 @@ class _CustomerPreferencesCardState extends State<CustomerPreferencesCard> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
-      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -1400,15 +1425,50 @@ class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
   }
 }
 
-class CustomerCustomFieldsCard extends StatelessWidget {
+class CustomerCustomFieldsCard extends StatefulWidget {
   final String customerId;
 
   const CustomerCustomFieldsCard({super.key, required this.customerId});
 
   @override
+  State<CustomerCustomFieldsCard> createState() => _CustomerCustomFieldsCardState();
+}
+
+class _CustomerCustomFieldsCardState extends State<CustomerCustomFieldsCard> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadData();
+  }
+
+  @override
+  void didUpdateWidget(CustomerCustomFieldsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.customerId != widget.customerId) {
+      _future = _loadData();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadData() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      return await db.rawQuery('''
+        SELECT cf.field_name, cfv.value
+        FROM custom_field_values cfv
+        JOIN custom_fields cf ON cfv.field_id = cf.id
+        WHERE cfv.entity_id = ? AND cf.entity_type = 'customer'
+      ''', [widget.customerId]);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _loadData(),
+      future: _future,
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
@@ -1458,20 +1518,6 @@ class CustomerCustomFieldsCard extends StatelessWidget {
         );
       },
     );
-  }
-
-  Future<List<Map<String, dynamic>>> _loadData() async {
-    try {
-      final db = await DatabaseHelper.instance.database;
-      return await db.rawQuery('''
-        SELECT cf.field_name, cfv.value
-        FROM custom_field_values cfv
-        JOIN custom_fields cf ON cfv.field_id = cf.id
-        WHERE cfv.entity_id = ? AND cf.entity_type = 'customer'
-      ''', [customerId]);
-    } catch (_) {
-      return [];
-    }
   }
 }
 

@@ -22,16 +22,24 @@ class AppFormatters {
 
   /// Format date: 01 Jan 2024
   static String date(DateTime dt) => _dateFmt.format(dt);
-  static String dateFromString(String iso) =>
-      iso.isEmpty ? '—' : _dateFmt.format(DateTime.parse(iso));
+  static String dateFromString(String iso) {
+    if (iso.isEmpty) return '—';
+    final parsed = DateTime.tryParse(iso);
+    if (parsed == null) return '—';
+    return _dateFmt.format(parsed);
+  }
 
   /// Format time: 02:30 PM
   static String time(DateTime dt) => _timeFmt.format(dt);
 
   /// Format date + time: 01 Jan 2024, 02:30 PM
   static String dateTime(DateTime dt) => _dateTimeFmt.format(dt);
-  static String dateTimeFromString(String iso) =>
-      iso.isEmpty ? '—' : _dateTimeFmt.format(DateTime.parse(iso));
+  static String dateTimeFromString(String iso) {
+    if (iso.isEmpty) return '—';
+    final parsed = DateTime.tryParse(iso);
+    if (parsed == null) return '—';
+    return _dateTimeFmt.format(parsed);
+  }
 
   /// Month label: January 2024
   static String month(DateTime dt) => _monthFmt.format(dt);

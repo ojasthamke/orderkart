@@ -23,14 +23,25 @@ class InstantLedgerSheet extends ConsumerStatefulWidget {
   ConsumerState<InstantLedgerSheet> createState() => _InstantLedgerSheetState();
 }
 
-class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> {
+class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   List<OrderItem> _boughtItems = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -169,23 +180,23 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> {
 
             // Order History and Items Tabs
             Expanded(
-              child: DefaultTabController(
-                length: 2,
-                child: Column(
-                  children: [
-                    const TabBar(
-                      labelColor: AppColors.primary,
-                      unselectedLabelColor: AppColors.textSecondary,
-                      indicatorColor: AppColors.primary,
-                      tabs: [
-                        Tab(text: 'Past 5 Orders'),
-                        Tab(text: 'Items Purchased'),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: TabBarView(
-                        children: [
+              child: Column(
+                children: [
+                  TabBar(
+                    controller: _tabController,
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    indicatorColor: AppColors.primary,
+                    tabs: const [
+                      Tab(text: 'Past 5 Orders'),
+                      Tab(text: 'Items Purchased'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
                           // Tab 1: Past 5 Orders
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -204,7 +215,7 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> {
                                   );
                                 }
                                 return ListView.builder(
-                                  controller: controller,
+                                  controller: _tabController.index == 0 ? controller : null,
                                   itemCount: past5.length,
                                   itemBuilder: (context, index) {
                                     final order = past5[index];
@@ -277,7 +288,7 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> {
                                         child: Text('No purchased items found.'),
                                       )
                                     : ListView.builder(
-                                        controller: controller,
+                                        controller: _tabController.index == 1 ? controller : null,
                                         itemCount: _boughtItems.length,
                                         itemBuilder: (context, index) {
                                           final item = _boughtItems[index];
@@ -309,10 +320,9 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> {
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
   }
 }

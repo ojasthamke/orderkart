@@ -276,7 +276,7 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
                               backgroundColor: AppColors.gray100,
                               foregroundColor: AppColors.textPrimary,
                               child: Text(
-                                customer.name.substring(0, 1).toUpperCase(),
+                                customer.name.isNotEmpty ? customer.name.substring(0, 1).toUpperCase() : '?',
                                 style: const TextStyle(fontWeight: FontWeight.w800),
                               ),
                             ),

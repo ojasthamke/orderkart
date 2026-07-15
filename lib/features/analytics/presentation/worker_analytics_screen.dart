@@ -49,24 +49,22 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       FROM payments p
       JOIN orders o ON p.order_id = o.id
       LEFT JOIN customers c ON o.customer_id = c.id
-      WHERE (p.assigned_worker_id = ? OR p.created_by = ? OR p.worker_id = ? OR 
-             o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
+      WHERE (o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
              c.assigned_worker_id = ? OR o.id IN (
                SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
              )) AND LOWER(p.method) = 'cash'
-    ''', [wid, wid, wid, wid, wid, wid, wid, wid]);
+    ''', [wid, wid, wid, wid, wid, wid]);
 
     final onlineRes = await db.rawQuery('''
       SELECT COALESCE(SUM(p.amount), 0) as sum 
       FROM payments p
       JOIN orders o ON p.order_id = o.id
       LEFT JOIN customers c ON o.customer_id = c.id
-      WHERE (p.assigned_worker_id = ? OR p.created_by = ? OR p.worker_id = ? OR 
-             o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
+      WHERE (o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
              c.assigned_worker_id = ? OR o.id IN (
                SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
              )) AND LOWER(p.method) != 'cash'
-    ''', [wid, wid, wid, wid, wid, wid, wid, wid]);
+    ''', [wid, wid, wid, wid, wid, wid]);
 
     final cashColl = (cashRes.first['sum'] as num?)?.toDouble() ?? 0.0;
     final onlineColl = (onlineRes.first['sum'] as num?)?.toDouble() ?? 0.0;
@@ -195,16 +193,16 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
     SELECT COALESCE(SUM(p.amount), 0) as sum 
     FROM payments p
     JOIN orders o ON p.order_id = o.id
-    WHERE (p.assigned_worker_id = ? OR p.created_by = ? OR o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) = 'cash'
-  ''', [workerId, workerId, workerId, workerId]);
+    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) = 'cash'
+  ''', [workerId, workerId]);
   final cashColl = (cashRes.first['sum'] as num?)?.toDouble() ?? 0.0;
 
   final onlineRes = await db.rawQuery('''
     SELECT COALESCE(SUM(p.amount), 0) as sum 
     FROM payments p
     JOIN orders o ON p.order_id = o.id
-    WHERE (p.assigned_worker_id = ? OR p.created_by = ? OR o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) != 'cash'
-  ''', [workerId, workerId, workerId, workerId]);
+    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) != 'cash'
+  ''', [workerId, workerId]);
   final onlineColl = (onlineRes.first['sum'] as num?)?.toDouble() ?? 0.0;
   final totalColl = cashColl + onlineColl;
 

@@ -341,13 +341,13 @@ class OrderDao {
 
     final cashReceived = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method = 'cash' AND (created_by = ? OR assigned_worker_id = ?)"
+            ? "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method = 'cash' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
             : "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method = 'cash'",
         isWorker ? [workerId, workerId] : null);
 
     final onlineReceived = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method != 'cash' AND (created_by = ? OR assigned_worker_id = ?)"
+            ? "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method != 'cash' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
             : "SELECT COALESCE(SUM(amount),0) AS v FROM payments WHERE method != 'cash'",
         isWorker ? [workerId, workerId] : null);
 

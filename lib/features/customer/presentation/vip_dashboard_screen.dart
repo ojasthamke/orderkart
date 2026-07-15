@@ -458,7 +458,16 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
         ? (DateTime.tryParse(customer.vipExpiryDate) ?? now)
         : now;
     final baseDate = currentExpiry.isAfter(now) ? currentExpiry : now;
-    final newExpiry = baseDate.add(const Duration(days: 30)).toIso8601String();
+
+    final start = DateTime.tryParse(customer.vipStartDate);
+    final expiry = DateTime.tryParse(customer.vipExpiryDate);
+    int planDays = 30;
+    if (start != null && expiry != null) {
+      final diff = expiry.difference(start).inDays;
+      if (diff > 0) planDays = diff;
+    }
+
+    final newExpiry = baseDate.add(Duration(days: planDays)).toIso8601String();
 
     final updated = customer.copyWith(
       isVip: true,
@@ -469,19 +478,33 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
     final repo = ref.read(customerRepositoryProvider);
     await repo.updateCustomer(updated);
     ref.invalidate(allCustomersProvider);
+    ref.invalidate(customerDetailProvider(customer.id));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Renewed VIP Membership for ${customer.name} by 30 days!')),
+        SnackBar(content: Text('Renewed VIP Membership for ${customer.name} by $planDays days!')),
       );
     }
   }
 
   // ── Cancel VIP Membership ──────────────────────────────────────────────
   Future<void> _cancelMembership(Customer customer) async {
-    final updated = customer.copyWith(isVip: false);
+    final updated = customer.copyWith(
+      isVip: false,
+      vipPlan: '',
+      vipStartDate: '',
+      vipExpiryDate: '',
+      vipSubscriptionFee: 0.0,
+      vipNotes: '',
+      vipAutoRenewal: false,
+      vipFreeDelivery: true,
+      vipDiscountPct: 10.0,
+      vipMarkupPct: 5.0,
+      vipPriorityDelivery: true,
+    );
     final repo = ref.read(customerRepositoryProvider);
     await repo.updateCustomer(updated);
     ref.invalidate(allCustomersProvider);
+    ref.invalidate(customerDetailProvider(customer.id));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Cancelled VIP Membership for ${customer.name}')),
@@ -517,6 +540,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
   bool _freeDelivery = true;
   bool _priorityDelivery = true;
   int _durationDays = 365;
+  bool _autoRenewal = false;
+  final _notesCon = TextEditingController();
   String _customerSearch = '';
   final _customerSearchCon = TextEditingController();
   DateTime _startDate = DateTime.now();
@@ -528,11 +553,13 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
     if (widget.existingCustomer != null) {
       _selectedCustomer = widget.existingCustomer;
       _plan = widget.existingCustomer!.vipPlan.isNotEmpty ? widget.existingCustomer!.vipPlan : 'Gold VIP';
-      _fee = widget.existingCustomer!.vipSubscriptionFee > 0 ? widget.existingCustomer!.vipSubscriptionFee : 499.0;
-      _discountPct = widget.existingCustomer!.vipDiscountPct > 0 ? widget.existingCustomer!.vipDiscountPct : 10.0;
-      _markupPct = widget.existingCustomer!.vipMarkupPct > 0 ? widget.existingCustomer!.vipMarkupPct : 5.0;
+      _fee = widget.existingCustomer!.vipSubscriptionFee;
+      _discountPct = widget.existingCustomer!.vipDiscountPct;
+      _markupPct = widget.existingCustomer!.vipMarkupPct;
       _freeDelivery = widget.existingCustomer!.vipFreeDelivery;
       _priorityDelivery = widget.existingCustomer!.vipPriorityDelivery;
+      _autoRenewal = widget.existingCustomer!.vipAutoRenewal;
+      _notesCon.text = widget.existingCustomer!.vipNotes;
       if (widget.existingCustomer!.vipStartDate.isNotEmpty) {
         _startDate = DateTime.tryParse(widget.existingCustomer!.vipStartDate) ?? DateTime.now();
       }
@@ -546,6 +573,7 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
   @override
   void dispose() {
     _customerSearchCon.dispose();
+    _notesCon.dispose();
     super.dispose();
   }
 
@@ -839,9 +867,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                   selected: selected,
                   onSelected: (_) => setState(() {
                     _discountPct = d;
-                    // Auto set custom markup (e.g. 5% markup for 10% discount, 10% markup for 20% discount)
-                    if (d == 10.0) _markupPct = 5.0;
-                    if (d == 20.0) _markupPct = 10.0;
+                    // Auto set custom markup based on formula (markup = discount / 2)
+                    _markupPct = d / 2;
                   }),
                 );
               }).toList(),
@@ -888,6 +915,23 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
               value: _priorityDelivery,
               onChanged: (v) => setState(() => _priorityDelivery = v),
             ),
+            SwitchListTile(
+              title: const Text('Auto-Renew Membership'),
+              subtitle: const Text('Automatically renew subscription at expiry'),
+              value: _autoRenewal,
+              onChanged: (v) => setState(() => _autoRenewal = v),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _notesCon,
+              decoration: const InputDecoration(
+                labelText: 'VIP Membership Notes',
+                hintText: 'Enter preferences, terms, or special conditions...',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.note_alt_rounded),
+              ),
+              maxLines: 2,
+            ),
 
             const SizedBox(height: 20),
 
@@ -924,6 +968,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
       vipMarkupPct: _markupPct,
       vipFreeDelivery: _freeDelivery,
       vipPriorityDelivery: _priorityDelivery,
+      vipNotes: _notesCon.text.trim(),
+      vipAutoRenewal: _autoRenewal,
     );
 
     final repo = ref.read(customerRepositoryProvider);

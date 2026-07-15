@@ -558,28 +558,42 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           ? await ref.read(customerRepositoryProvider).getCustomerById(customerId)
           : null;
 
-      final customer = Customer(
-        id:                 customerId,
-        streetId:           _streetId!,
-        name:               _nameCon.text.trim(),
-        phone1:             _phone1Con.text.trim(),
-        phone2:             _phone2Con.text.trim(),
-        whatsapp:           _waCon.text.trim(),
-        houseNumber:        _houseCon.text.trim(),
-        serialNo:           int.tryParse(_serialNoCon.text.trim()) ?? 0,
-        address:            _addressCon.text.trim(),
-        notes:              _notesCon.text.trim(),
-        mapsLocation:       _mapsCon.text.trim(),
-        photoPath:          finalPhotoPath,
-        dietaryPreference:  _dietaryPreference,
-        customerSince:      existing?.customerSince ?? now,
-        createdAt:          existing?.createdAt ?? now,
-        updatedAt:          now,
-      );
+      final customer = existing != null
+          ? existing.copyWith(
+              name:               _nameCon.text.trim(),
+              phone1:             _phone1Con.text.trim(),
+              phone2:             _phone2Con.text.trim(),
+              whatsapp:           _waCon.text.trim(),
+              houseNumber:        _houseCon.text.trim(),
+              serialNo:           int.tryParse(_serialNoCon.text.trim()) ?? 0,
+              address:            _addressCon.text.trim(),
+              notes:              _notesCon.text.trim(),
+              mapsLocation:       _mapsCon.text.trim(),
+              photoPath:          finalPhotoPath,
+              dietaryPreference:  _dietaryPreference,
+              updatedAt:          now,
+            )
+          : Customer(
+              id:                 customerId,
+              streetId:           _streetId!,
+              name:               _nameCon.text.trim(),
+              phone1:             _phone1Con.text.trim(),
+              phone2:             _phone2Con.text.trim(),
+              whatsapp:           _waCon.text.trim(),
+              houseNumber:        _houseCon.text.trim(),
+              serialNo:           int.tryParse(_serialNoCon.text.trim()) ?? 0,
+              address:            _addressCon.text.trim(),
+              notes:              _notesCon.text.trim(),
+              mapsLocation:       _mapsCon.text.trim(),
+              photoPath:          finalPhotoPath,
+              dietaryPreference:  _dietaryPreference,
+              customerSince:      now,
+              createdAt:          now,
+              updatedAt:          now,
+            );
 
       final notifier = ref.read(customerListProvider(_streetId!).notifier);
       if (_isEdit) {
-        final existing = await ref.read(customerRepositoryProvider).getCustomerById(customerId);
         if (existing != null && existing.photoPath.isNotEmpty && existing.photoPath != finalPhotoPath) {
           final oldFile = File(existing.photoPath);
           if (oldFile.existsSync()) {

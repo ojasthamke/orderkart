@@ -495,7 +495,12 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
         await db.insert('items', oldData, conflictAlgorithm: ConflictAlgorithm.replace);
         ref.invalidate(inventoryProvider);
       } else if (entityType == 'customer' || entityType == 'customers') {
-        await db.insert('customers', oldData, conflictAlgorithm: ConflictAlgorithm.replace);
+        final mapWithLocation = {
+          ...oldData,
+          if (!oldData.containsKey('location_id') && oldData.containsKey('street_id'))
+            'location_id': oldData['street_id'],
+        };
+        await db.insert('customers', mapWithLocation, conflictAlgorithm: ConflictAlgorithm.replace);
       } else if (entityType == 'order' || entityType == 'orders') {
         await db.insert('orders', oldData, conflictAlgorithm: ConflictAlgorithm.replace);
       } else {

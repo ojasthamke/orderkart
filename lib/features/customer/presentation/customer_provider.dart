@@ -38,7 +38,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
   }
 
   void _invalidateAll() {
-    _ref.invalidate(customerListProvider);
+    _ref.invalidate(customerListProvider(streetId));
     _ref.invalidate(customerDetailProvider);
     _ref.invalidate(streetProviderFamily);
     _ref.invalidate(areaProvider);

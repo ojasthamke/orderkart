@@ -74,14 +74,8 @@ class CustomerDao {
 
   Future<List<Customer>> getAllCustomers() async {
     final db = await _db;
-    String? where;
-    List<dynamic>? args;
-
-
     final maps = await db.query(
       'customers',
-      where: where,
-      whereArgs: args,
       orderBy: 'serial_no ASC',
     );
     final customers = maps.map(Customer.fromMap).toList();
@@ -133,15 +127,13 @@ class CustomerDao {
     return maps.map(Customer.fromMap).toList();
   }
 
-  /// Fetch all customers who have overpaid / advance balance (paid_amount > total_spent)
   Future<List<Customer>> getCustomersWithOverpayment() async {
     final db = await _db;
 
-
     final maps = await db.rawQuery('''
       SELECT * FROM customers
-      WHERE paid_amount > total_spent
-      ORDER BY (paid_amount - total_spent) DESC
+      WHERE outstanding_balance < 0
+      ORDER BY outstanding_balance ASC
     ''');
     return maps.map(Customer.fromMap).toList();
   }
@@ -180,6 +172,7 @@ class CustomerDao {
     await db.insert('customers', {
       ...map,
       'id':         id,
+      'location_id': customer.streetId,
       'created_by': createdBy,
       'assigned_worker_id': assignedWorkerId,
       'worker_name': workerName,
@@ -193,7 +186,11 @@ class CustomerDao {
     final db = await _db;
     await db.update(
       'customers',
-      {...customer.toMap(), 'updated_at': DateTime.now().toIso8601String()},
+      {
+        ...customer.toMap(),
+        'location_id': customer.streetId,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
       where: 'id = ?',
       whereArgs: [customer.id],
     );
