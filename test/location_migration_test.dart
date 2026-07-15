@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:orderkart/core/database/database_helper.dart';
+import 'package:orderkart/features/location/domain/location.dart';
+import 'package:orderkart/features/location/domain/location_kind.dart';
+import 'package:orderkart/features/location/data/location_dao.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
@@ -207,6 +210,74 @@ void main() {
     // Verify visit location_id backfill
     final visit1 = (await dbV10.query('visits', where: 'id = ?', whereArgs: [visitId1])).first;
     expect(visit1['location_id'], equals(streetId1));
+
+    // Clean up
+    await DatabaseHelper.instance.close();
+    if (dbFile.existsSync()) {
+      dbFile.deleteSync();
+    }
+  });
+
+  test('Nested location kinds sync to legacy streets table to satisfy FK constraint', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final dbPath = p.join(await getDatabasesPath(), 'nested_sync_test.db');
+    final dbFile = File(dbPath);
+    if (dbFile.existsSync()) {
+      dbFile.deleteSync();
+    }
+
+    DatabaseHelper.dbNameOverride = 'nested_sync_test.db';
+    final db = await DatabaseHelper.instance.database;
+
+    final dao = LocationDao();
+
+    // 1. Insert a root Area location
+    const rootId = 'root-area-123';
+    final rootLoc = Location(
+      id: rootId,
+      parentLocationId: null,
+      name: 'Civil Lines',
+      locationKind: LocationKind.area,
+      sequenceKey: '001000',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await dao.insertLocation(rootLoc);
+
+    // 2. Insert a nested Galli location (should trigger sync to legacy streets table under root area)
+    const galliId = 'galli-456';
+    final galliLoc = Location(
+      id: galliId,
+      parentLocationId: rootId,
+      name: 'Hanuman Galli',
+      locationKind: LocationKind.galli,
+      sequenceKey: '002000',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await dao.insertLocation(galliLoc);
+
+    // 3. Verify that the Galli exists in the legacy 'streets' table
+    final streetRows = await db.query('streets', where: 'id = ?', whereArgs: [galliId]);
+    expect(streetRows.length, equals(1));
+    expect(streetRows.first['area_id'], equals(rootId));
+    expect(streetRows.first['name'], equals('Hanuman Galli'));
+
+    // 4. Try inserting a customer with this galliId as street_id (which checks FK)
+    await db.insert('customers', {
+      'id': 'cust-999',
+      'street_id': galliId,
+      'location_id': galliId,
+      'name': 'Test Customer',
+      'phone1': '1234567890',
+      'customer_since': DateTime.now().toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+
+    // Verify customer inserted successfully without FK constraint failure
+    final custCheck = await db.query('customers', where: 'id = ?', whereArgs: ['cust-999']);
+    expect(custCheck.length, equals(1));
 
     // Clean up
     await DatabaseHelper.instance.close();

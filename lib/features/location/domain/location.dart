@@ -11,6 +11,7 @@ class Location {
   final String materializedPath;
   final String photoPath;
   final String mapsLocation;
+  final int color;
   final String createdBy;
   final String assignedWorkerId;
   final String workerName;
@@ -36,6 +37,7 @@ class Location {
     this.materializedPath = '',
     this.photoPath = '',
     this.mapsLocation = '',
+    this.color = 0xFF1565C0,
     this.createdBy = 'owner',
     this.assignedWorkerId = '',
     this.workerName = '',
@@ -60,6 +62,7 @@ class Location {
     String? materializedPath,
     String? photoPath,
     String? mapsLocation,
+    int? color,
     String? createdBy,
     String? assignedWorkerId,
     String? workerName,
@@ -83,6 +86,7 @@ class Location {
       materializedPath: materializedPath ?? this.materializedPath,
       photoPath: photoPath ?? this.photoPath,
       mapsLocation: mapsLocation ?? this.mapsLocation,
+      color: color ?? this.color,
       createdBy: createdBy ?? this.createdBy,
       assignedWorkerId: assignedWorkerId ?? this.assignedWorkerId,
       workerName: workerName ?? this.workerName,
@@ -108,6 +112,7 @@ class Location {
         'materialized_path': materializedPath,
         'photo_path': photoPath,
         'maps_location': mapsLocation,
+        'color': color,
         'created_by': createdBy,
         'assigned_worker_id': assignedWorkerId,
         'worker_name': workerName,
@@ -128,6 +133,7 @@ class Location {
         materializedPath: map['materialized_path'] as String? ?? '',
         photoPath: map['photo_path'] as String? ?? '',
         mapsLocation: map['maps_location'] as String? ?? '',
+        color: map['color'] as int? ?? 0xFF1565C0,
         createdBy: map['created_by'] as String? ?? 'owner',
         assignedWorkerId: (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
         workerName: map['worker_name'] as String? ?? '',

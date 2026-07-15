@@ -2,7 +2,6 @@ import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/sequence_key_helper.dart';
 import '../domain/location.dart';
-import '../domain/location_kind.dart';
 
 class LocationDao {
   Future<Database> get _db async => DatabaseHelper.instance.database;
@@ -113,15 +112,17 @@ class LocationDao {
     await db.insert('locations', toInsert.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
     
     // For compatibility with legacy database backup/export triggers
-    // we also insert into legacy tables if it's the corresponding type
+    // and foreign key constraints on customer/visits tables,
+    // we also synchronize into legacy areas/streets tables.
     try {
-      if (location.parentLocationId == null && location.locationKind == LocationKind.area) {
+      if (location.parentLocationId == null) {
         await db.insert('areas', {
           'id': location.id,
           'name': location.name,
           'description': location.description,
           'photo_path': location.photoPath,
           'maps_location': location.mapsLocation,
+          'color': location.color,
           'created_by': location.createdBy,
           'assigned_worker_id': location.assignedWorkerId,
           'worker_name': location.workerName,
@@ -129,10 +130,25 @@ class LocationDao {
           'created_at': location.createdAt.toIso8601String(),
           'updated_at': location.updatedAt.toIso8601String(),
         }, conflictAlgorithm: ConflictAlgorithm.replace);
-      } else if (location.parentLocationId != null && location.locationKind == LocationKind.road) {
+      } else {
+        // Find root area ID by walking up the parent chain
+        String rootAreaId = location.parentLocationId!;
+        String? currentParentId = rootAreaId;
+        int maxDepth = 20;
+        while (currentParentId != null && maxDepth-- > 0) {
+          final parentRows = await db.query('locations', columns: ['id', 'parent_location_id'], where: 'id = ?', whereArgs: [currentParentId], limit: 1);
+          if (parentRows.isEmpty) break;
+          final nextParent = parentRows.first['parent_location_id'] as String?;
+          if (nextParent == null) {
+            rootAreaId = parentRows.first['id'] as String;
+            break;
+          }
+          currentParentId = nextParent;
+        }
+
         await db.insert('streets', {
           'id': location.id,
-          'area_id': location.parentLocationId,
+          'area_id': rootAreaId,
           'name': location.name,
           'description': location.description,
           'photo_path': location.photoPath,
@@ -194,7 +210,7 @@ class LocationDao {
 
     // Keep legacy tables synchronized
     try {
-      if (location.parentLocationId == null && location.locationKind == LocationKind.area) {
+      if (location.parentLocationId == null) {
         await db.update('areas', {
           'name': location.name,
           'description': location.description,
@@ -202,8 +218,24 @@ class LocationDao {
           'maps_location': location.mapsLocation,
           'updated_at': location.updatedAt.toIso8601String(),
         }, where: 'id = ?', whereArgs: [location.id]);
-      } else if (location.parentLocationId != null && location.locationKind == LocationKind.road) {
+      } else {
+        // Find root area ID by walking up the parent chain
+        String rootAreaId = location.parentLocationId!;
+        String? currentParentId = rootAreaId;
+        int maxDepth = 20;
+        while (currentParentId != null && maxDepth-- > 0) {
+          final parentRows = await db.query('locations', columns: ['id', 'parent_location_id'], where: 'id = ?', whereArgs: [currentParentId], limit: 1);
+          if (parentRows.isEmpty) break;
+          final nextParent = parentRows.first['parent_location_id'] as String?;
+          if (nextParent == null) {
+            rootAreaId = parentRows.first['id'] as String;
+            break;
+          }
+          currentParentId = nextParent;
+        }
+
         await db.update('streets', {
+          'area_id': rootAreaId,
           'name': location.name,
           'description': location.description,
           'photo_path': location.photoPath,
