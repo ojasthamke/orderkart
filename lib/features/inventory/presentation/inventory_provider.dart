@@ -84,6 +84,12 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     await load();
     _invalidateAll();
   }
+
+  Future<void> reorderItems(List<String> itemIds) async {
+    await _repo.updateItemSequences(itemIds);
+    await load();
+    _invalidateAll();
+  }
 }
 
 final inventoryProvider =

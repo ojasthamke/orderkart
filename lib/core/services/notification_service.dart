@@ -28,6 +28,9 @@ class NotificationService {
       initializationSettings,
       onDidReceiveNotificationResponse: _onSelectNotification,
     );
+
+    // Schedule 5-hour periodic reminder
+    await schedulePeriodicReminder();
   }
 
   void _onSelectNotification(NotificationResponse response) {
@@ -97,5 +100,29 @@ class NotificationService {
 
   Future<void> cancelAll() async {
     await flutterLocalNotificationsPlugin.cancelAll();
+  }
+
+  Future<void> schedulePeriodicReminder() async {
+    const int periodicId = 8888;
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'orderkart_periodic_channel',
+      'OrderKart Periodic Updates',
+      channelDescription: 'Periodic reminders every 5 hours',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    );
+    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+
+    await flutterLocalNotificationsPlugin.periodicallyShowWithDuration(
+      periodicId,
+      'OrderKart Delivery Reminder',
+      'Time to check your pending deliveries, stock levels, and client dues!',
+      const Duration(hours: 5),
+      platformDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: 'periodic_reminder',
+    );
   }
 }

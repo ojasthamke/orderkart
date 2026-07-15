@@ -64,6 +64,9 @@ class DatabaseHelper {
     try {
       await db.execute("ALTER TABLE customers ADD COLUMN dietary_preference TEXT DEFAULT ''");
     } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
+    } catch (_) {}
   }
 
   Future<Database> _initDatabase() async {
@@ -90,6 +93,9 @@ class DatabaseHelper {
         await _createV5Tables(db);
         await _createV6Tables(db);
         await _createV7Tables(db);
+        try {
+          await db.execute('ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
+        } catch (_) {}
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
       },
@@ -265,6 +271,7 @@ class DatabaseHelper {
         barcode       TEXT DEFAULT '',
         weight_per_piece REAL DEFAULT 0.25,
         photo_path    TEXT DEFAULT '',
+        sequence_no   INTEGER DEFAULT 0,
         created_at    TEXT NOT NULL,
         updated_at    TEXT NOT NULL
       )

@@ -250,10 +250,21 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               }
               return RefreshIndicator(
                 onRefresh: () async => ref.refresh(inventoryProvider),
-                child: ListView.builder(
+                child: ReorderableListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: items.length,
+                  onReorder: (oldIndex, newIndex) async {
+                    if (newIndex > oldIndex) {
+                      newIndex -= 1;
+                    }
+                    final list = List<Item>.from(items);
+                    final dragged = list.removeAt(oldIndex);
+                    list.insert(newIndex, dragged);
+                    final ids = list.map((item) => item.id).toList();
+                    await ref.read(inventoryProvider.notifier).reorderItems(ids);
+                  },
                   itemBuilder: (_, i) => _ItemTile(
+                    key: ValueKey(items[i].id),
                     item: items[i],
                     isWorker: isWorker,
                     onEdit: () => _handleEditItem(items[i]),
@@ -905,6 +916,7 @@ class _ItemTile extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _ItemTile({
+    super.key,
     required this.item,
     required this.isWorker,
     required this.onEdit,

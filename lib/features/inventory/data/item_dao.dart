@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
 import '../domain/item.dart';
 import '../domain/stock_history.dart';
+import '../../../core/services/notification_service.dart';
 
 class ItemDao {
   final _uuid = const Uuid();
@@ -25,15 +26,36 @@ class ItemDao {
       args.add('%${searchQuery.trim()}%');
     }
     final where = conditions.isEmpty ? null : conditions.join(' AND ');
-    String orderBy = 'name ASC';
-    if (sortBy == 'stock_asc') orderBy = 'stock ASC';
-    if (sortBy == 'price_desc') orderBy = 'selling_price DESC';
-    if (sortBy == 'category') orderBy = 'category ASC, name ASC';
-    if (sortBy == 'shuffle') orderBy = 'RANDOM()';
 
     final maps = await db.query('items',
-        where: where, whereArgs: args.isEmpty ? null : args, orderBy: orderBy);
-    return maps.map(Item.fromMap).toList();
+        where: where, whereArgs: args.isEmpty ? null : args);
+    final items = maps.map(Item.fromMap).toList();
+
+    if (sortBy == null || sortBy.isEmpty || sortBy == 'category') {
+      items.sort((a, b) {
+        final aNo = a.sequenceNo;
+        final bNo = b.sequenceNo;
+        if (aNo == 0 && bNo == 0) {
+          if (sortBy == 'category') {
+            final catComp = a.category.compareTo(b.category);
+            if (catComp != 0) return catComp;
+          }
+          return a.name.compareTo(b.name);
+        }
+        if (aNo == 0) return 1;
+        if (bNo == 0) return -1;
+        return aNo.compareTo(bNo);
+      });
+    } else {
+      if (sortBy == 'stock_asc') {
+        items.sort((a, b) => a.stock.compareTo(b.stock));
+      } else if (sortBy == 'price_desc') {
+        items.sort((a, b) => b.sellingPrice.compareTo(a.sellingPrice));
+      } else if (sortBy == 'shuffle') {
+        items.shuffle();
+      }
+    }
+    return items;
   }
 
   Future<Item?> getItemById(String id, {DatabaseExecutor? executor}) async {
@@ -63,6 +85,7 @@ class ItemDao {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
 
     await _recordDailyPriceSnapshot(itemWithId);
+    await _checkAndTriggerLowStock(id, db);
     return id;
   }
 
@@ -76,6 +99,7 @@ class ItemDao {
     );
 
     await _recordDailyPriceSnapshot(item);
+    await _checkAndTriggerLowStock(item.id, db);
   }
 
   Future<void> _recordDailyPriceSnapshot(Item item) async {
@@ -132,6 +156,7 @@ class ItemDao {
     await db.rawUpdate(
         'UPDATE items SET stock = stock + ?, updated_at = ? WHERE id = ?',
         [change, DateTime.now().toIso8601String(), itemId]);
+    await _checkAndTriggerLowStock(itemId, db);
   }
 
   // Stock History
@@ -151,5 +176,44 @@ class ItemDao {
         orderBy: 'created_at DESC',
         limit: 50);
     return maps.map(StockHistory.fromMap).toList();
+  }
+  Future<void> _checkAndTriggerLowStock(String itemId, DatabaseExecutor db) async {
+    try {
+      final itemRes = await db.query(
+        'items',
+        columns: ['name', 'stock', 'min_stock', 'unit'],
+        where: 'id = ?',
+        whereArgs: [itemId],
+      );
+      if (itemRes.isNotEmpty) {
+        final item = itemRes.first;
+        final name = item['name'] as String? ?? '';
+        final stock = (item['stock'] as num?)?.toDouble() ?? 0.0;
+        final minStock = (item['min_stock'] as num?)?.toDouble() ?? 0.0;
+        final unit = item['unit'] as String? ?? 'pcs';
+        if (minStock > 0 && stock <= minStock) {
+          await NotificationService.instance.showNotification(
+            id: itemId.hashCode,
+            title: '⚠️ Low Stock Alert: $name',
+            body: 'Inventory for "$name" is down to $stock $unit. Reorder immediately to avoid stockouts.',
+            payload: 'low_stock',
+          );
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> updateItemSequences(List<String> itemIds) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      for (int i = 0; i < itemIds.length; i++) {
+        await txn.update(
+          'items',
+          {'sequence_no': i + 1, 'updated_at': DateTime.now().toIso8601String()},
+          where: 'id = ?',
+          whereArgs: [itemIds[i]],
+        );
+      }
+    });
   }
 }

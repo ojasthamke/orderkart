@@ -10,7 +10,6 @@ import '../../../core/services/worker_session.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
-import '../../../core/database/database_seeder.dart';
 import '../domain/app_settings.dart';
 import 'settings_provider.dart';
 import '../../../core/utils/image_utils.dart';
@@ -364,52 +363,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               const SizedBox(height: 20),
 
-              // ── Theme (Appearance) ──────────────────────────────────
-              _sectionHeader(AppLocalization.translate(ref, 'appearance', 'Appearance'), Icons.palette_rounded),
-              _card([
-                ListTile(
-                  leading: const Icon(Icons.light_mode_rounded),
-                  title: Text(AppLocalization.translate(ref, 'theme', 'Theme')),
-                  trailing: DropdownButton<String>(
-                    value: settings.themeMode,
-                    underline: const SizedBox.shrink(),
-                    items: [
-                      DropdownMenuItem(value: 'system', child: Text(AppLocalization.translate(ref, 'system', 'System'))),
-                      DropdownMenuItem(value: 'light',  child: Text(AppLocalization.translate(ref, 'light', 'Light'))),
-                      DropdownMenuItem(value: 'dark',   child: Text(AppLocalization.translate(ref, 'dark', 'Dark'))),
-                    ],
-                    onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(themeMode: v ?? 'system')),
-                  ),
-                ),
-              ]),
-
-              const SizedBox(height: 20),
-
-              // ── Language ────────────────────────────────────────────
-              _sectionHeader(AppLocalization.translate(ref, 'language', 'Language'), Icons.language_rounded),
-              _card([
-                ListTile(
-                  leading: const Icon(Icons.translate_rounded),
-                  title: Text(AppLocalization.translate(ref, 'language', 'Language')),
-                  trailing: DropdownButton<String>(
-                    value: settings.language,
-                    underline: const SizedBox.shrink(),
-                    items: [
-                      DropdownMenuItem(value: 'en', child: Text(AppLocalization.translate(ref, 'english', 'English'))),
-                      DropdownMenuItem(value: 'hi', child: Text(AppLocalization.translate(ref, 'hindi', 'Hindi'))),
-                      DropdownMenuItem(value: 'mr', child: Text(AppLocalization.translate(ref, 'marathi', 'Marathi'))),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) {
-                        ref.read(settingsProvider.notifier).update(settings.copyWith(language: v));
-                      }
-                    },
-                  ),
-                ),
-              ]),
-
-              const SizedBox(height: 20),
-
               // ── Notifications ────────────────────────────────────────
               _sectionHeader(AppLocalization.translate(ref, 'notifications', 'Notifications'), Icons.notifications_rounded),
               _card([
@@ -474,19 +427,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   onTap: () => Navigator.of(context).pushNamed(AppRoutes.backupRestore),
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.dataset_rounded, color: AppColors.primary),
-                  title: const Text('Seed Full Demo Dataset'),
-                  subtitle: const Text('Insert 30 Vegetables, 10 Fruits, 500 Customers, 10 Areas, 50 Streets, 200 VIPs'),
-                  onTap: () async {
-                    SnackbarHelper.showInfo(context, 'Seeding 500 Customers, 40 Items, 50 Streets, 200 VIPs...');
-                    await DatabaseSeeder.seedAll(clearExisting: true);
-                    if (mounted) {
-                      SnackbarHelper.showSuccess(context, 'Seeded 30 Vegetables, 10 Fruits, 500 Customers, 10 Areas, 50 Streets & 200 VIP Memberships!');
-                    }
-                  },
-                ),
               ]),
 
               const SizedBox(height: 20),
@@ -528,49 +468,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ]),
 
-              const SizedBox(height: 20),
 
-              // ── About ──────────────────────────────────────────
-              _sectionHeader('About', Icons.info_rounded),
-              _card([
-                ListTile(
-                  leading: const Icon(Icons.info_outline_rounded),
-                  title: const Text('About OrderKart'),
-                  subtitle: const Text('v1.0.0'),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                  onTap: () => showAboutDialog(
-                    context: context,
-                    applicationName: 'OrderKart',
-                    applicationVersion: '1.0.0',
-                    applicationLegalese: '© 2026 OrderKart. All rights reserved.',
-                    children: [
-                      const Text('An offline-first order management app for delivery businesses.'),
-                    ],
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.privacy_tip_rounded),
-                  title: const Text('Privacy Policy'),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                  onTap: () => showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('Privacy Policy'),
-                      content: const SingleChildScrollView(
-                        child: Text(
-                          'OrderKart stores all data locally on your device. No data is transmitted to any server unless you explicitly enable cloud sync. We do not collect any personal information.\n\nAll your business data including customers, orders, and inventory is stored in a local SQLite database on your device.\n\nFor questions, contact the developer.',
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('Close'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ]),
 
               const SizedBox(height: 20),
 
