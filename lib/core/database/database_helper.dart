@@ -1693,8 +1693,77 @@ class DatabaseHelper {
           'action_taken': 'Logged'
         });
       }
+
+      // 3. Self-heal legacy table associations for locations
+      await _selfHealLocations(db);
     } catch (e) {
       print('Database health check failed: $e');
+    }
+  }
+
+  Future<void> _selfHealLocations(Database db) async {
+    try {
+      // 1. Fetch root locations
+      final rootLocations = await db.query('locations', where: 'parent_location_id IS NULL');
+      for (final loc in rootLocations) {
+        final id = loc['id'] as String;
+        // Ensure in areas
+        await db.insert('areas', {
+          'id': id,
+          'name': loc['name'],
+          'description': loc['description'],
+          'photo_path': loc['photo_path'],
+          'maps_location': loc['maps_location'],
+          'color': loc['color'],
+          'created_by': loc['created_by'],
+          'assigned_worker_id': loc['assigned_worker_id'],
+          'worker_name': loc['worker_name'],
+          'device_name': loc['device_name'],
+          'created_at': loc['created_at'],
+          'updated_at': loc['updated_at'],
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+        // Ensure in streets fallback record
+        await db.insert('streets', {
+          'id': id,
+          'area_id': id,
+          'name': loc['name'],
+          'description': loc['description'],
+          'photo_path': loc['photo_path'],
+          'maps_location': loc['maps_location'],
+          'created_by': loc['created_by'],
+          'assigned_worker_id': loc['assigned_worker_id'],
+          'worker_name': loc['worker_name'],
+          'device_name': loc['device_name'],
+          'created_at': loc['created_at'],
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+
+      // 2. Fetch nested child locations
+      final childLocations = await db.query('locations', where: 'parent_location_id IS NOT NULL');
+      for (final loc in childLocations) {
+        final id = loc['id'] as String;
+        final mPath = loc['materialized_path'] as String? ?? '';
+        final segments = mPath.split('/').where((s) => s.isNotEmpty).toList();
+        if (segments.isNotEmpty) {
+          final rootAreaId = segments.first;
+          await db.insert('streets', {
+            'id': id,
+            'area_id': rootAreaId,
+            'name': loc['name'],
+            'description': loc['description'],
+            'photo_path': loc['photo_path'],
+            'maps_location': loc['maps_location'],
+            'created_by': loc['created_by'],
+            'assigned_worker_id': loc['assigned_worker_id'],
+            'worker_name': loc['worker_name'],
+            'device_name': loc['device_name'],
+            'created_at': loc['created_at'],
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+      }
+    } catch (_) {
+      // Avoid crashing if locations table is not created yet
     }
   }
 

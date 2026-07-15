@@ -340,4 +340,70 @@ void main() {
       dbFile.deleteSync();
     }
   });
+
+  test('Database startup self-healing repairs missing legacy street entries for existing locations', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final dbPath = p.join(await getDatabasesPath(), 'self_heal_test.db');
+    final dbFile = File(dbPath);
+    if (dbFile.existsSync()) {
+      dbFile.deleteSync();
+    }
+
+    DatabaseHelper.dbNameOverride = 'self_heal_test.db';
+    final db = await DatabaseHelper.instance.database;
+
+    // 1. Manually insert a location into 'locations' table but do NOT put it in 'streets' or 'areas'
+    // (simulating a database that was migrated on an old version of the app)
+    const rootId = 'broken-root-area-000';
+    final nowStr = DateTime.now().toIso8601String();
+    await db.insert('locations', {
+      'id': rootId,
+      'parent_location_id': null,
+      'name': 'Broken Area',
+      'description': 'Description',
+      'location_kind': 'area',
+      'sequence_key': '000100',
+      'depth': 0,
+      'materialized_path': '/$rootId/',
+      'photo_path': '',
+      'maps_location': '',
+      'color': 0xFF1565C0,
+      'created_by': 'owner',
+      'assigned_worker_id': '',
+      'worker_name': '',
+      'device_name': '',
+      'is_archived': 0,
+      'created_at': nowStr,
+      'updated_at': nowStr,
+    });
+
+    // Verify it is NOT in legacy tables
+    final beforeArea = await db.query('areas', where: 'id = ?', whereArgs: [rootId]);
+    expect(beforeArea.length, equals(0));
+
+    final beforeStreet = await db.query('streets', where: 'id = ?', whereArgs: [rootId]);
+    expect(beforeStreet.length, equals(0));
+
+    // 2. Trigger the startup self-healing by closing and opening the database again
+    await DatabaseHelper.instance.close();
+
+    // Re-open (this calls _runStartupHealthCheck -> _selfHealLocations under the hood)
+    final healedDb = await DatabaseHelper.instance.database;
+
+    // 3. Verify that the root Area was repaired and synced to both legacy tables
+    final afterArea = await healedDb.query('areas', where: 'id = ?', whereArgs: [rootId]);
+    expect(afterArea.length, equals(1));
+    expect(afterArea.first['name'], equals('Broken Area'));
+
+    final afterStreet = await healedDb.query('streets', where: 'id = ?', whereArgs: [rootId]);
+    expect(afterStreet.length, equals(1));
+    expect(afterStreet.first['area_id'], equals(rootId));
+    expect(afterStreet.first['name'], equals('Broken Area'));
+
+    // Clean up
+    await DatabaseHelper.instance.close();
+    if (dbFile.existsSync()) {
+      dbFile.deleteSync();
+    }
+  });
 }
