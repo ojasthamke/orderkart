@@ -1,7 +1,3 @@
-/// AreaDao — SQLite operations for Areas table
-/// Includes statistics aggregation via JOINs
-library;
-
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
@@ -13,24 +9,22 @@ class AreaDao {
 
   Future<Database> get _db => DatabaseHelper.instance.database;
 
-  /// Fetch all areas with optional search and sorting.
-  /// Includes aggregated street_count, customer_count, order_count via subqueries.
+  /// Fetch all areas with optional search and sorting from the new locations table.
   Future<List<Area>> getAllAreas({String? searchQuery, String? sortBy}) async {
     final db = await _db;
 
-    String orderClause = 'a.name ASC';
-    if (sortBy == 'date')          orderClause = 'a.created_at DESC';
+    String orderClause = 'l.name ASC';
+    if (sortBy == 'date')          orderClause = 'l.created_at DESC';
     if (sortBy == 'street_count')  orderClause = 'street_count DESC';
     if (sortBy == 'customer_count')orderClause = 'customer_count DESC';
 
-    List<String> whereClauses = ['a.is_archived = 0'];
+    List<String> whereClauses = ["l.location_kind = 'area'", "l.is_archived = 0"];
     List<dynamic> args = [];
 
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      whereClauses.add('a.name LIKE ?');
+      whereClauses.add('l.name LIKE ?');
       args.add('%${searchQuery.trim()}%');
     }
-
 
     final whereClauseSection = whereClauses.isNotEmpty
         ? 'WHERE ${whereClauses.join(' AND ')}'
@@ -38,20 +32,20 @@ class AreaDao {
 
     final maps = await db.rawQuery('''
       SELECT
-        a.*,
-        (SELECT COUNT(*) FROM streets s WHERE s.area_id = a.id) AS street_count,
+        l.*,
+        (SELECT COUNT(*) FROM locations s WHERE s.parent_location_id = l.id AND s.is_archived = 0) AS street_count,
         (SELECT COUNT(*) FROM customers c
-          JOIN streets st ON c.street_id = st.id
-          WHERE st.area_id = a.id) AS customer_count,
+          JOIN locations st ON c.location_id = st.id
+          WHERE st.parent_location_id = l.id) AS customer_count,
         (SELECT COUNT(*) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
-          JOIN streets st ON cust.street_id = st.id
-          WHERE st.area_id = a.id) AS order_count,
-        (SELECT COALESCE(SUM(o.grand_total), 0) FROM orders o
+          JOIN locations st ON cust.location_id = st.id
+          WHERE st.parent_location_id = l.id) AS order_count,
+        (SELECT COALESCE(SUM(o.grand_total), 0.0) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
-          JOIN streets st ON cust.street_id = st.id
-          WHERE st.area_id = a.id) AS total_revenue
-      FROM areas a
+          JOIN locations st ON cust.location_id = st.id
+          WHERE st.parent_location_id = l.id) AS total_revenue
+      FROM locations l
       $whereClauseSection
       ORDER BY $orderClause
     ''', args);
@@ -61,7 +55,24 @@ class AreaDao {
 
   Future<Area?> getAreaById(String id) async {
     final db = await _db;
-    final maps = await db.query('areas', where: 'id = ?', whereArgs: [id]);
+    final maps = await db.rawQuery('''
+      SELECT
+        l.*,
+        (SELECT COUNT(*) FROM locations s WHERE s.parent_location_id = l.id AND s.is_archived = 0) AS street_count,
+        (SELECT COUNT(*) FROM customers c
+          JOIN locations st ON c.location_id = st.id
+          WHERE st.parent_location_id = l.id) AS customer_count,
+        (SELECT COUNT(*) FROM orders o
+          JOIN customers cust ON o.customer_id = cust.id
+          JOIN locations st ON cust.location_id = st.id
+          WHERE st.parent_location_id = l.id) AS order_count,
+          (SELECT COALESCE(SUM(o.grand_total), 0.0) FROM orders o
+          JOIN customers cust ON o.customer_id = cust.id
+          JOIN locations st ON cust.location_id = st.id
+          WHERE st.parent_location_id = l.id) AS total_revenue
+      FROM locations l
+      WHERE l.id = ?
+    ''', [id]);
     if (maps.isEmpty) return null;
     return Area.fromMap(maps.first);
   }
@@ -96,32 +107,88 @@ class AreaDao {
       }
     }
 
-    final map = area.toMap();
-    await db.insert('areas', {
-      ...map,
-      'id':         id,
+    // Get next sequence key for root locations
+    final seqMaps = await db.query('locations', columns: ['sequence_key'], where: 'parent_location_id IS NULL', orderBy: 'sequence_key DESC', limit: 1);
+    final lastSeq = seqMaps.isNotEmpty ? seqMaps.first['sequence_key'] as String? : null;
+    final nextSeq = (lastSeq != null && int.tryParse(lastSeq) != null) 
+        ? (int.parse(lastSeq) + 1000).toString().padLeft(6, '0') 
+        : '001000';
+
+    // Insert into new locations table
+    await db.insert('locations', {
+      'id': id,
+      'parent_location_id': null,
+      'name': area.name,
+      'description': area.description,
+      'location_kind': 'area',
+      'sequence_key': nextSeq,
+      'depth': 0,
+      'materialized_path': '/$id/',
+      'photo_path': area.photoPath,
+      'maps_location': area.mapsLocation,
+      'color': area.color,
       'created_by': createdBy,
       'assigned_worker_id': assignedWorkerId,
       'worker_name': workerName,
+      'device_name': area.deviceName,
+      'is_archived': 0,
       'created_at': now,
       'updated_at': now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+    // Keep legacy table updated
+    try {
+      final map = area.toMap();
+      await db.insert('areas', {
+        ...map,
+        'id':         id,
+        'created_by': createdBy,
+        'assigned_worker_id': assignedWorkerId,
+        'worker_name': workerName,
+        'created_at': now,
+        'updated_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (_) {}
+
     return id;
   }
 
   Future<void> updateArea(Area area) async {
     final db = await _db;
+    final now = DateTime.now().toIso8601String();
+
     await db.update(
-      'areas',
-      {...area.toMap(), 'updated_at': DateTime.now().toIso8601String()},
+      'locations',
+      {
+        'name': area.name,
+        'description': area.description,
+        'photo_path': area.photoPath,
+        'maps_location': area.mapsLocation,
+        'color': area.color,
+        'updated_at': now,
+      },
       where: 'id = ?',
       whereArgs: [area.id],
     );
+
+    // Keep legacy table updated
+    try {
+      await db.update(
+        'areas',
+        {...area.toMap(), 'updated_at': now},
+        where: 'id = ?',
+        whereArgs: [area.id],
+      );
+    } catch (_) {}
   }
 
   Future<void> deleteArea(String id) async {
     final db = await _db;
-    // CASCADE on streets → customers → orders ensures clean deletion
-    await db.delete('areas', where: 'id = ?', whereArgs: [id]);
+    await db.delete('locations', where: 'id = ?', whereArgs: [id]);
+    
+    // Also delete from legacy table
+    try {
+      await db.delete('areas', where: 'id = ?', whereArgs: [id]);
+    } catch (_) {}
   }
 }

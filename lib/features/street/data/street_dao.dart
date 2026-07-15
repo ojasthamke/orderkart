@@ -10,27 +10,32 @@ class StreetDao {
 
   Future<List<Street>> getStreetsByArea(String areaId, {String? searchQuery}) async {
     final db = await _db;
-    String where = 's.area_id = ?';
+    String where = 's.parent_location_id = ? AND s.location_kind = \'road\' AND s.is_archived = 0';
     List<dynamic> args = [areaId];
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
       where += ' AND s.name LIKE ?';
       args.add('%${searchQuery.trim()}%');
     }
 
-
     final maps = await db.rawQuery('''
       SELECT s.*,
-        (SELECT COUNT(*) FROM customers c WHERE c.street_id = s.id) AS customer_count
-      FROM streets s
+        s.parent_location_id AS area_id,
+        (SELECT COUNT(*) FROM customers c WHERE c.location_id = s.id) AS customer_count
+      FROM locations s
       WHERE $where
-      ORDER BY s.name ASC
+      ORDER BY s.sequence_key ASC
     ''', args);
     return maps.map(Street.fromMap).toList();
   }
 
   Future<Street?> getStreetById(String id) async {
     final db = await _db;
-    final maps = await db.query('streets', where: 'id = ?', whereArgs: [id]);
+    final maps = await db.rawQuery('''
+      SELECT *, parent_location_id AS area_id,
+        (SELECT COUNT(*) FROM customers c WHERE c.location_id = id) AS customer_count
+      FROM locations
+      WHERE id = ?
+    ''', [id]);
     if (maps.isEmpty) return null;
     return Street.fromMap(maps.first);
   }
@@ -65,26 +70,81 @@ class StreetDao {
       }
     }
 
-    final map = street.toMap();
-    await db.insert('streets', {
-      ...map,
-      'id':         id,
+    // Resolve sequence key under parent location (area_id)
+    final seqMaps = await db.query('locations', columns: ['sequence_key'], where: 'parent_location_id = ?', whereArgs: [street.areaId], orderBy: 'sequence_key DESC', limit: 1);
+    final lastSeq = seqMaps.isNotEmpty ? seqMaps.first['sequence_key'] as String? : null;
+    final nextSeq = (lastSeq != null && int.tryParse(lastSeq) != null)
+        ? (int.parse(lastSeq) + 1000).toString().padLeft(6, '0')
+        : '001000';
+
+    // Insert into locations table
+    await db.insert('locations', {
+      'id': id,
+      'parent_location_id': street.areaId,
+      'name': street.name,
+      'description': street.description,
+      'location_kind': 'road',
+      'sequence_key': nextSeq,
+      'depth': 1,
+      'materialized_path': '/${street.areaId}/$id/',
+      'photo_path': street.photoPath,
+      'maps_location': street.mapsLocation,
       'created_by': createdBy,
       'assigned_worker_id': assignedWorkerId,
       'worker_name': workerName,
+      'device_name': street.deviceName,
+      'is_archived': 0,
       'created_at': now,
+      'updated_at': now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+    // Keep legacy table updated
+    try {
+      final map = street.toMap();
+      await db.insert('streets', {
+        ...map,
+        'id':         id,
+        'created_by': createdBy,
+        'assigned_worker_id': assignedWorkerId,
+        'worker_name': workerName,
+        'created_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (_) {}
+
     return id;
   }
 
   Future<void> updateStreet(Street street) async {
     final db = await _db;
-    await db.update('streets', street.toMap(),
-        where: 'id = ?', whereArgs: [street.id]);
+    final now = DateTime.now().toIso8601String();
+
+    await db.update(
+      'locations',
+      {
+        'name': street.name,
+        'description': street.description,
+        'photo_path': street.photoPath,
+        'maps_location': street.mapsLocation,
+        'updated_at': now,
+      },
+      where: 'id = ?',
+      whereArgs: [street.id],
+    );
+
+    // Keep legacy table updated
+    try {
+      await db.update('streets', street.toMap(),
+          where: 'id = ?', whereArgs: [street.id]);
+    } catch (_) {}
   }
 
   Future<void> deleteStreet(String id) async {
     final db = await _db;
-    await db.delete('streets', where: 'id = ?', whereArgs: [id]);
+    await db.delete('locations', where: 'id = ?', whereArgs: [id]);
+    
+    // Keep legacy table updated
+    try {
+      await db.delete('streets', where: 'id = ?', whereArgs: [id]);
+    } catch (_) {}
   }
 }

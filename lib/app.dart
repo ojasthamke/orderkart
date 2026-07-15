@@ -11,6 +11,7 @@ import 'features/settings/presentation/settings_provider.dart';
 import 'features/dashboard/presentation/main_screen.dart';
 import 'features/area/presentation/area_screen.dart';
 import 'features/street/presentation/street_screen.dart';
+import 'features/location/presentation/location_detail_screen.dart';
 import 'features/customer/presentation/customer_list_screen.dart';
 import 'features/customer/presentation/vip_dashboard_screen.dart';
 import 'features/customer/presentation/customer_profile_screen.dart';
@@ -110,9 +111,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.streets:
         final args = settings.arguments as Map<String, dynamic>;
-        return _slide(StreetScreen(
-          areaId: args['areaId'] as String,
-          areaName: args['areaName'] as String,
+        return _slide(LocationDetailScreen(
+          locationId: args['areaId'] as String,
+          locationName: args['areaName'] as String,
         ));
 
       case AppRoutes.customers:

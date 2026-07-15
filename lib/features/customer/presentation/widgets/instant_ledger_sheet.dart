@@ -10,8 +10,8 @@ class InstantLedgerSheet extends ConsumerStatefulWidget {
   final Customer customer;
   const InstantLedgerSheet({super.key, required this.customer});
 
-  static void show(BuildContext context, Customer customer) {
-    showModalBottomSheet(
+  static Future<void> show(BuildContext context, Customer customer) {
+    return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

@@ -131,24 +131,44 @@ final allCustomersProvider = FutureProvider<List<Customer>>((ref) async {
   return CustomerDao().getAllCustomers();
 });
 
-// Location info provider (Street and Area name)
-final customerLocationProvider = FutureProvider.family<Map<String, String>, String>((ref, streetId) async {
-  if (streetId.isEmpty) return {'street': '', 'area': ''};
+// Location info provider (Street and Area name / Breadcrumbs path)
+final customerLocationProvider = FutureProvider.family<Map<String, String>, String>((ref, locationId) async {
+  if (locationId.isEmpty) return {'street': '', 'area': ''};
   try {
     final db = await DatabaseHelper.instance.database;
-    final streetRows = await db.query('streets', where: 'id = ?', whereArgs: [streetId], limit: 1);
-    if (streetRows.isEmpty) return {'street': '', 'area': ''};
-    final streetName = streetRows.first['name']?.toString() ?? '';
-    final areaId = streetRows.first['area_id']?.toString() ?? '';
+    // Query location breadcrumbs recursively
+    final list = <Map<String, dynamic>>[];
+    String? currentId = locationId;
 
-    String areaName = '';
-    if (areaId.isNotEmpty) {
-      final areaRows = await db.query('areas', where: 'id = ?', whereArgs: [areaId], limit: 1);
-      if (areaRows.isNotEmpty) {
-        areaName = areaRows.first['name']?.toString() ?? '';
-      }
+    while (currentId != null) {
+      final rows = await db.query('locations', columns: ['id', 'parent_location_id', 'name'], where: 'id = ?', whereArgs: [currentId], limit: 1);
+      if (rows.isEmpty) break;
+      list.insert(0, rows.first);
+      currentId = rows.first['parent_location_id'] as String?;
     }
-    return {'street': streetName, 'area': areaName};
+
+    if (list.isEmpty) {
+      // Fallback to legacy tables
+      final streetRows = await db.query('streets', where: 'id = ?', whereArgs: [locationId], limit: 1);
+      if (streetRows.isEmpty) return {'street': '', 'area': ''};
+      final streetName = streetRows.first['name']?.toString() ?? '';
+      final areaId = streetRows.first['area_id']?.toString() ?? '';
+      String areaName = '';
+      if (areaId.isNotEmpty) {
+        final areaRows = await db.query('areas', where: 'id = ?', whereArgs: [areaId], limit: 1);
+        if (areaRows.isNotEmpty) {
+          areaName = areaRows.first['name']?.toString() ?? '';
+        }
+      }
+      return {'street': streetName, 'area': areaName};
+    }
+
+    final leafName = list.last['name']?.toString() ?? '';
+    if (list.length == 1) {
+      return {'street': leafName, 'area': ''};
+    }
+    final parentPath = list.take(list.length - 1).map((l) => l['name']?.toString() ?? '').join(' > ');
+    return {'street': leafName, 'area': parentPath};
   } catch (_) {
     return {'street': '', 'area': ''};
   }

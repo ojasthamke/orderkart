@@ -47,6 +47,7 @@ class DatabaseHelper {
   /// Sets up full schema on any target database (e.g. temporary in-memory database)
   Future<void> createSchema(Database db) async {
     await _createTables(db);
+    await _createLocationsTable(db);
     await _createIndexes(db);
     await _createV3Tables(db);
     await _createV4Tables(db);
@@ -98,6 +99,7 @@ class DatabaseHelper {
   /// Creates all tables and indexes on first run
   Future<void> _onCreate(Database db, int version) async {
     await _createTables(db);
+    await _createLocationsTable(db);
     await _createIndexes(db);
     await _seedDefaultSettings(db);
   }
@@ -130,6 +132,9 @@ class DatabaseHelper {
       try {
         await db.execute("ALTER TABLE customers ADD COLUMN dietary_preference TEXT DEFAULT ''");
       } catch (_) {}
+    }
+    if (oldVersion < 10) {
+      await _migrateToLocations(db);
     }
   }
 
@@ -172,6 +177,7 @@ class DatabaseHelper {
         date         TEXT NOT NULL,
         area_id      TEXT NOT NULL,
         street_id    TEXT DEFAULT '',
+        location_id  TEXT DEFAULT '',
         notes        TEXT DEFAULT '',
         priority     INTEGER DEFAULT 0,
         status       TEXT NOT NULL DEFAULT 'pending',
@@ -221,6 +227,7 @@ class DatabaseHelper {
       CREATE TABLE IF NOT EXISTS customers (
         id                  TEXT PRIMARY KEY,
         street_id           TEXT NOT NULL,
+        location_id         TEXT DEFAULT '',
         name                TEXT NOT NULL,
         phone1              TEXT NOT NULL,
         phone2              TEXT DEFAULT '',
@@ -1897,6 +1904,223 @@ class DatabaseHelper {
     try {
       await db.execute("ALTER TABLE expenses ADD COLUMN receipt_photo_path TEXT DEFAULT ''");
     } catch (_) {}
+  }
+
+  Future<void> _createLocationsTable(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS locations (
+        id                 TEXT PRIMARY KEY,
+        parent_location_id TEXT,
+        name               TEXT NOT NULL,
+        description        TEXT DEFAULT '',
+        location_kind      TEXT NOT NULL,
+        sequence_key       TEXT NOT NULL,
+        depth              INTEGER DEFAULT 0,
+        materialized_path  TEXT DEFAULT '',
+        photo_path         TEXT DEFAULT '',
+        maps_location      TEXT DEFAULT '',
+        color              INTEGER DEFAULT 0xFF1565C0,
+        created_by         TEXT DEFAULT 'owner',
+        assigned_worker_id TEXT DEFAULT '',
+        worker_name        TEXT DEFAULT '',
+        device_name        TEXT DEFAULT '',
+        is_archived        INTEGER DEFAULT 0,
+        created_at         TEXT NOT NULL,
+        updated_at         TEXT NOT NULL,
+        FOREIGN KEY(parent_location_id) REFERENCES locations(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_location_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_seq ON locations(parent_location_id, sequence_key)');
+  }
+
+  Future<void> _migrateToLocations(Database db) async {
+    await _createLocationsTable(db);
+
+    // Run migration in a transaction to make it fully safe
+    await db.transaction((txn) async {
+      // 1. Fetch old Areas
+      final List<Map<String, dynamic>> oldAreas = await txn.query('areas');
+      
+      // 2. Fetch old Streets
+      final List<Map<String, dynamic>> oldStreets = await txn.query('streets');
+      
+      // 3. Migrate Areas as root locations (kind: area, parent: null)
+      int areaSeq = 1000;
+      for (final a in oldAreas) {
+        final id = a['id'] as String;
+        final name = a['name'] as String;
+        final desc = a['description'] as String? ?? '';
+        final photo = a['photo_path'] as String? ?? '';
+        final maps = a['maps_location'] as String? ?? '';
+        final color = a['color'] as int? ?? 0xFF1565C0;
+        final createdBy = a['created_by'] as String? ?? 'owner';
+        final workerId = (a['assigned_worker_id'] ?? a['worker_id']) as String? ?? '';
+        final workerName = a['worker_name'] as String? ?? '';
+        final deviceName = a['device_name'] as String? ?? '';
+        final createdAt = a['created_at'] as String;
+        final updatedAt = a['updated_at'] as String;
+
+        await txn.insert('locations', {
+          'id': id,
+          'parent_location_id': null,
+          'name': name,
+          'description': desc,
+          'location_kind': 'area',
+          'sequence_key': areaSeq.toString().padLeft(6, '0'),
+          'depth': 0,
+          'materialized_path': '/$id/',
+          'photo_path': photo,
+          'maps_location': maps,
+          'color': color,
+          'created_by': createdBy,
+          'assigned_worker_id': workerId,
+          'worker_name': workerName,
+          'device_name': deviceName,
+          'is_archived': 0,
+          'created_at': createdAt,
+          'updated_at': updatedAt,
+        });
+        areaSeq += 1000;
+      }
+
+      // 4. Migrate Streets as child locations under areas (kind: road, parent: area_id)
+      final Map<String, int> parentSeqMap = {};
+      for (final s in oldStreets) {
+        final id = s['id'] as String;
+        final areaId = s['area_id'] as String;
+        final name = s['name'] as String;
+        final desc = s['description'] as String? ?? '';
+        final photo = s['photo_path'] as String? ?? '';
+        final maps = s['maps_location'] as String? ?? '';
+        final createdBy = s['created_by'] as String? ?? 'owner';
+        final workerId = (s['assigned_worker_id'] ?? s['worker_id']) as String? ?? '';
+        final workerName = s['worker_name'] as String? ?? '';
+        final deviceName = s['device_name'] as String? ?? '';
+        final createdAt = s['created_at'] as String;
+
+        final seq = (parentSeqMap[areaId] ?? 0) + 1000;
+        parentSeqMap[areaId] = seq;
+
+        await txn.insert('locations', {
+          'id': id,
+          'parent_location_id': areaId,
+          'name': name,
+          'description': desc,
+          'location_kind': 'road',
+          'sequence_key': seq.toString().padLeft(6, '0'),
+          'depth': 1,
+          'materialized_path': '/$areaId/$id/',
+          'photo_path': photo,
+          'maps_location': maps,
+          'created_by': createdBy,
+          'assigned_worker_id': workerId,
+          'worker_name': workerName,
+          'device_name': deviceName,
+          'is_archived': 0,
+          'created_at': createdAt,
+          'updated_at': createdAt,
+        });
+      }
+
+      // 5. Add location_id column to customers and visits tables (if they don't have it)
+      final customerCols = await _getTableColumns(txn, 'customers');
+      if (!customerCols.contains('location_id')) {
+        await txn.execute("ALTER TABLE customers ADD COLUMN location_id TEXT DEFAULT ''");
+      }
+      
+      final visitCols = await _getTableColumns(txn, 'visits');
+      if (!visitCols.contains('location_id')) {
+        await txn.execute("ALTER TABLE visits ADD COLUMN location_id TEXT DEFAULT ''");
+      }
+
+      // Backfill from street_id/area_id
+      await txn.execute("UPDATE customers SET location_id = street_id WHERE street_id IS NOT NULL AND street_id != ''");
+      await txn.execute("UPDATE visits SET location_id = street_id WHERE street_id IS NOT NULL AND street_id != ''");
+      await txn.execute("UPDATE visits SET location_id = area_id WHERE (street_id IS NULL OR street_id = '') AND area_id IS NOT NULL AND area_id != ''");
+
+      // 6. Strict Migration Validation
+      // ✓ Total Areas == Root Locations
+      final rootLocCountRes = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE parent_location_id IS NULL");
+      final rootLocCount = Sqflite.firstIntValue(rootLocCountRes) ?? 0;
+      if (rootLocCount != oldAreas.length) {
+        throw Exception("Migration Validation Failed: Root locations count ($rootLocCount) does not match legacy areas count (${oldAreas.length})");
+      }
+
+      // ✓ Total Streets == Child Locations
+      final childLocCountRes = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE parent_location_id IS NOT NULL");
+      final childLocCount = Sqflite.firstIntValue(childLocCountRes) ?? 0;
+      if (childLocCount != oldStreets.length) {
+        throw Exception("Migration Validation Failed: Child locations count ($childLocCount) does not match legacy streets count (${oldStreets.length})");
+      }
+
+      // ✓ Every Customer has a valid location_id
+      final customersRes = await txn.rawQuery("SELECT id, location_id FROM customers WHERE location_id IS NOT NULL AND location_id != ''");
+      for (final cust in customersRes) {
+        final locId = cust['location_id'] as String;
+        final locCheck = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE id = ?", [locId]);
+        final exists = (Sqflite.firstIntValue(locCheck) ?? 0) > 0;
+        if (!exists) {
+          throw Exception("Migration Validation Failed: Customer ${cust['id']} has invalid location_id '$locId'");
+        }
+      }
+
+      // ✓ Every Visit has a valid location_id
+      final visitsRes = await txn.rawQuery("SELECT id, location_id FROM visits WHERE location_id IS NOT NULL AND location_id != ''");
+      for (final vis in visitsRes) {
+        final locId = vis['location_id'] as String;
+        final locCheck = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE id = ?", [locId]);
+        final exists = (Sqflite.firstIntValue(locCheck) ?? 0) > 0;
+        if (!exists) {
+          throw Exception("Migration Validation Failed: Visit ${vis['id']} has invalid location_id '$locId'");
+        }
+      }
+
+      // ✓ No orphan locations exist
+      final orphansRes = await txn.rawQuery("SELECT id, parent_location_id FROM locations WHERE parent_location_id IS NOT NULL");
+      for (final loc in orphansRes) {
+        final parentId = loc['parent_location_id'] as String;
+        final parentCheck = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE id = ?", [parentId]);
+        final exists = (Sqflite.firstIntValue(parentCheck) ?? 0) > 0;
+        if (!exists) {
+          throw Exception("Migration Validation Failed: Location ${loc['id']} has non-existent parent_location_id '$parentId'");
+        }
+      }
+
+      // ✓ No duplicate IDs exist in locations
+      final duplicatesCheck = await txn.rawQuery("SELECT id, COUNT(id) as count FROM locations GROUP BY id HAVING count > 1");
+      if (duplicatesCheck.isNotEmpty) {
+        throw Exception("Migration Validation Failed: Duplicate IDs detected in locations table: ${duplicatesCheck.map((r) => r['id']).join(', ')}");
+      }
+
+      // ✓ Materialized paths are valid
+      final pathsRes = await txn.rawQuery("SELECT id, parent_location_id, materialized_path FROM locations");
+      for (final loc in pathsRes) {
+        final path = loc['materialized_path'] as String;
+        final id = loc['id'] as String;
+        final parentId = loc['parent_location_id'] as String?;
+        if (parentId == null) {
+          if (path != '/$id/') {
+            throw Exception("Migration Validation Failed: Root location $id has invalid path '$path'");
+          }
+        } else {
+          if (!path.endsWith('/$parentId/$id/')) {
+            throw Exception("Migration Validation Failed: Child location $id has invalid path '$path' relative to parent '$parentId'");
+          }
+        }
+      }
+
+      // ✓ Sequence keys are unique among siblings
+      final duplicateSeqRes = await txn.rawQuery(
+        "SELECT parent_location_id, sequence_key, COUNT(*) as count "
+        "FROM locations "
+        "GROUP BY parent_location_id, sequence_key "
+        "HAVING count > 1"
+      );
+      if (duplicateSeqRes.isNotEmpty) {
+        throw Exception("Migration Validation Failed: Duplicate sequence keys detected among siblings: ${duplicateSeqRes.first}");
+      }
+    });
   }
 }
 
