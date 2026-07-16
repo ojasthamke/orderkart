@@ -18,6 +18,7 @@ import '../../../core/widgets/vip_glow_avatar.dart';
 import '../../../core/utils/image_utils.dart';
 import '../../../core/utils/formatters.dart';
 import '../../customer/domain/customer.dart';
+import '../../settings/presentation/settings_provider.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../customer/presentation/widgets/instant_ledger_sheet.dart';
 import '../domain/location.dart';
@@ -58,6 +59,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
     final breadcrumbsAsync = ref.watch(breadcrumbsProvider(widget.locationId));
     final childLocationsAsync = ref.watch(locationListProvider(widget.locationId));
     final customersAsync = ref.watch(customerListProvider(widget.locationId));
+    final settingsAsync = ref.watch(settingsProvider);
+    final currency = settingsAsync.valueOrNull?.currency ?? '₹';
 
     return AppScaffold(
       title: widget.locationName,
@@ -146,8 +149,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
           TabBar(
             controller: _tabController,
             tabs: const [
-              Tab(text: 'Sub-Roads / Sectors'),
               Tab(text: 'Customers Here'),
+              Tab(text: 'Sub-Roads / Sectors'),
             ],
             labelColor: AppColors.primary,
             indicatorColor: AppColors.primary,
@@ -158,7 +161,67 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
             child: TabBarView(
               controller: _tabController,
               children: [
-                // Tab 1: Sub-Locations List
+                // Tab 1: Customers List registered directly at this Location
+                Column(
+                  children: [
+                    CustomSearchBar(
+                      hint: 'Search customers...',
+                      onChanged: (q) => ref.read(customerListProvider(widget.locationId).notifier).search(q),
+                    ),
+                    Expanded(
+                      child: customersAsync.when(
+                        loading: () => const LoadingShimmer(),
+                        error: (e, _) => Center(child: Text('Error: $e')),
+                        data: (rawCustomers) {
+                          if (rawCustomers.isEmpty) {
+                            return EmptyStateWidget(
+                              icon: Icons.people_outline_rounded,
+                              title: 'No Customers Here',
+                              subtitle: 'No customers are registered at this specific road/location.',
+                              actionLabel: 'Add Customer',
+                              onAction: () {
+                                Navigator.of(context).pushNamed(
+                                  AppRoutes.addEditCustomer,
+                                  arguments: {'streetId': widget.locationId},
+                                ).then((_) => ref.refresh(customerListProvider(widget.locationId)));
+                              },
+                            );
+                          }
+
+                          return ReorderableListView.builder(
+                            padding: const EdgeInsets.only(bottom: 96),
+                            itemCount: rawCustomers.length,
+                            onReorder: (oldIndex, newIndex) {
+                              if (newIndex > oldIndex) {
+                                newIndex -= 1;
+                              }
+                              ref.read(customerListProvider(widget.locationId).notifier).reorder(oldIndex, newIndex);
+                            },
+                            itemBuilder: (ctx, i) {
+                              final cust = rawCustomers[i];
+                              return KeyedSubtree(
+                                key: ValueKey(cust.id),
+                                child: _CustomerTile(
+                                  customer: cust,
+                                  index: i,
+                                  currency: currency,
+                                  onTap: () {
+                                    Navigator.of(context).pushNamed(
+                                      AppRoutes.customerProfile,
+                                      arguments: {'customerId': cust.id},
+                                    ).then((_) => ref.refresh(customerListProvider(widget.locationId)));
+                                  },
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Tab 2: Sub-Locations List
                 Column(
                   children: [
                     CustomSearchBar(
@@ -203,66 +266,6 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                                 },
                                 onEdit: () => _showAddEditLocationDialog(context, loc),
                                 onDelete: () => _confirmDeleteLocation(context, loc),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Tab 2: Customers List registered directly at this Location
-                Column(
-                  children: [
-                    CustomSearchBar(
-                      hint: 'Search customers...',
-                      onChanged: (q) => ref.read(customerListProvider(widget.locationId).notifier).search(q),
-                    ),
-                    Expanded(
-                      child: customersAsync.when(
-                        loading: () => const LoadingShimmer(),
-                        error: (e, _) => Center(child: Text('Error: $e')),
-                        data: (rawCustomers) {
-                          if (rawCustomers.isEmpty) {
-                            return EmptyStateWidget(
-                              icon: Icons.people_outline_rounded,
-                              title: 'No Customers Here',
-                              subtitle: 'No customers are registered at this specific road/location.',
-                              actionLabel: 'Add Customer',
-                              onAction: () {
-                                Navigator.of(context).pushNamed(
-                                  AppRoutes.addEditCustomer,
-                                  arguments: {'streetId': widget.locationId},
-                                ).then((_) => ref.refresh(customerListProvider(widget.locationId)));
-                              },
-                            );
-                          }
-
-                          return ReorderableListView.builder(
-                            padding: const EdgeInsets.only(bottom: 96),
-                            itemCount: rawCustomers.length,
-                            onReorder: (oldIndex, newIndex) {
-                              if (newIndex > oldIndex) {
-                                newIndex -= 1;
-                              }
-                              ref.read(customerListProvider(widget.locationId).notifier).reorder(oldIndex, newIndex);
-                            },
-                            itemBuilder: (ctx, i) {
-                              final cust = rawCustomers[i];
-                              return KeyedSubtree(
-                                key: ValueKey(cust.id),
-                                child: _CustomerTile(
-                                  customer: cust,
-                                  index: i,
-                                  currency: '₹',
-                                  onTap: () {
-                                    Navigator.of(context).pushNamed(
-                                      AppRoutes.customerProfile,
-                                      arguments: {'customerId': cust.id},
-                                    ).then((_) => ref.refresh(customerListProvider(widget.locationId)));
-                                  },
-                                ),
                               );
                             },
                           );

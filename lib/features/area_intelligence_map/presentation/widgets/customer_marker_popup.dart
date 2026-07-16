@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../customer/domain/customer.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../settings/presentation/settings_provider.dart';
 
-class CustomerMarkerPopup extends StatelessWidget {
+class CustomerMarkerPopup extends ConsumerWidget {
   final Customer customer;
   final VoidCallback onClose;
 
@@ -15,7 +17,9 @@ class CustomerMarkerPopup extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settingsAsync = ref.watch(settingsProvider);
+    final currency = settingsAsync.valueOrNull?.currency ?? '₹';
     return Card(
       elevation: 12,
       shape: RoundedRectangleBorder(
@@ -67,8 +71,8 @@ class CustomerMarkerPopup extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   customer.outstandingBalance >= 0
-                      ? 'Outstanding: ₹${customer.outstandingBalance.toStringAsFixed(2)}'
-                      : 'Advance: ₹${customer.outstandingBalance.abs().toStringAsFixed(2)}',
+                      ? 'Outstanding: $currency${customer.outstandingBalance.toStringAsFixed(2)}'
+                      : 'Advance: $currency${customer.outstandingBalance.abs().toStringAsFixed(2)}',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

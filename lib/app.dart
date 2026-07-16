@@ -305,10 +305,10 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const ChurnRiskScreen());
 
       case AppRoutes.areaIntelligenceMap:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = (settings.arguments as Map<String, dynamic>?) ?? {};
         return _slide(AreaIntelligenceMapScreen(
-          areaId: args['areaId'] as String,
-          areaName: args['areaName'] as String,
+          areaId: (args['areaId'] ?? '') as String,
+          areaName: (args['areaName'] ?? 'Area Map') as String,
         ));
 
       case AppRoutes.mapPinPicker:

@@ -15,6 +15,13 @@ void main() {
   group('Hotspot Sync Service Tests', () {
     setUpAll(() async {
       DatabaseHelper.dbNameOverride = 'orderkart_test_hotspot.db';
+      
+      // Clear any existing cached test database
+      await DatabaseHelper.instance.close();
+      final dbPath = await databaseFactory.getDatabasesPath();
+      final path = '$dbPath/orderkart_test_hotspot.db';
+      await databaseFactory.deleteDatabase(path);
+
       final db = await DatabaseHelper.instance.database;
       
       // Clean and seed a simple area

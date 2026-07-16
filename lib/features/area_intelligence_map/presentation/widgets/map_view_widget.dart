@@ -333,9 +333,11 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
       ));
     }
 
-    // Center on area centroid initially if camera is uninitialized
+    // Center on user GPS, area centroid, or fallback
     final LatLng initialCenter;
-    if (widget.mapData.areaLocation.latitude != 0.0 && widget.mapData.areaLocation.longitude != 0.0) {
+    if (gpsPoint != null) {
+      initialCenter = gpsPoint;
+    } else if (widget.mapData.areaLocation.latitude != 0.0 && widget.mapData.areaLocation.longitude != 0.0) {
       initialCenter = LatLng(widget.mapData.areaLocation.latitude, widget.mapData.areaLocation.longitude);
     } else if (widget.mapData.customerMarkers.isNotEmpty) {
       initialCenter = widget.mapData.customerMarkers.first.position;

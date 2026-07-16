@@ -100,6 +100,15 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
     final vis = ref.watch(mapLayerVisibilityProvider(widget.areaId));
     final gpsAsync = ref.watch(currentLocationProvider);
 
+    // Automatically center map camera on user's current location when first resolved
+    ref.listen<AsyncValue<LatLng>>(currentLocationProvider, (previous, next) {
+      if (previous == null || !previous.hasValue) {
+        next.whenData((pos) {
+          _mapController.move(pos, 17.0);
+        });
+      }
+    });
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(

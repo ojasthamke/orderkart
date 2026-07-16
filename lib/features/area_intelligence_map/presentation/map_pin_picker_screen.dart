@@ -18,19 +18,21 @@ class MapPinPickerScreen extends StatefulWidget {
 
 class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
   final MapController _mapController = MapController();
-  late LatLng _currentPosition;
+  late final ValueNotifier<LatLng> _currentPositionNotifier;
   late final TileProvider _tileProvider;
 
   @override
   void initState() {
     super.initState();
-    _currentPosition = widget.initialPosition ?? const LatLng(19.076, 72.877); // default Mumbai
+    final initialPos = widget.initialPosition ?? const LatLng(19.076, 72.877); // default Mumbai
+    _currentPositionNotifier = ValueNotifier<LatLng>(initialPos);
     _tileProvider = _initTileProvider();
   }
 
   @override
   void dispose() {
     _mapController.dispose();
+    _currentPositionNotifier.dispose();
     super.dispose();
   }
 
@@ -65,14 +67,12 @@ class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _currentPosition,
+              initialCenter: _currentPositionNotifier.value,
               initialZoom: 16.0,
               minZoom: 11.0,
               maxZoom: 19.0,
               onPositionChanged: (pos, hasGesture) {
-                setState(() {
-                  _currentPosition = pos.center;
-                });
+                _currentPositionNotifier.value = pos.center;
               },
             ),
             children: [
@@ -120,35 +120,45 @@ class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Coords: ${_currentPosition.latitude.toStringAsFixed(6)}, ${_currentPosition.longitude.toStringAsFixed(6)}',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                    ValueListenableBuilder<LatLng>(
+                      valueListenable: _currentPositionNotifier,
+                      builder: (context, pos, child) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Coords: ${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blueAccent,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(context, pos);
+                                },
+                                child: Text(
+                                  'Confirm Location',
+                                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context, _currentPosition);
-                        },
-                        child: Text(
-                          'Confirm Location',
-                          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    )
                   ],
                 ),
               ),

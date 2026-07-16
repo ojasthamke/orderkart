@@ -67,6 +67,7 @@ class DatabaseHelper {
     try {
       await db.execute('ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
     } catch (_) {}
+    await _ensureGeoMapTables(db);
   }
 
   Future<Database> _initDatabase() async {
@@ -384,6 +385,8 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_serial ON customers(serial_no)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_outstanding ON customers(outstanding_balance)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_path ON locations(materialized_path)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_location ON customers(location_id)');
   }
 
   /// Seeds default settings on fresh install
@@ -2065,13 +2068,15 @@ class DatabaseHelper {
     ''');
 
     await db.execute('CREATE INDEX IF NOT EXISTS idx_geo_bp_boundary ON geo_boundary_points(boundary_id, sequence)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_path ON locations(materialized_path)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_location ON customers(location_id)');
 
     // 3. Extract coordinates from existing maps_location Google Maps URLs
     await _migrateCoordinatesFromUrls(db);
   }
 
   Future<void> _migrateCoordinatesFromUrls(Database db) async {
-    final regExp = RegExp(r'(?:q=|@|^|/|params=)(-?\\d+\\.\\d+)\\s*,\\s*(-?\\d+\\.\\d+)');
+    final regExp = RegExp(r'(?:q=|@|^|/|params=)(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)');
 
     // Migrate customers
     try {

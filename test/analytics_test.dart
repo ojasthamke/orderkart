@@ -26,6 +26,7 @@ void main() {
         'updated_at': DateTime.now().toIso8601String(),
       });
 
+      // Seed legacy areas and streets
       await db.insert('areas', {
         'id': 'area-1',
         'name': 'North Area',
@@ -40,9 +41,34 @@ void main() {
         'created_at': DateTime.now().toIso8601String(),
       });
 
+      // Seed unified locations table
+      await db.insert('locations', {
+        'id': 'area-1',
+        'name': 'North Area',
+        'location_kind': 'area',
+        'sequence_key': 'a',
+        'depth': 0,
+        'materialized_path': '/area-1/',
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      await db.insert('locations', {
+        'id': 'street-1',
+        'parent_location_id': 'area-1',
+        'name': 'Green Street',
+        'location_kind': 'road',
+        'sequence_key': 'b',
+        'depth': 1,
+        'materialized_path': '/area-1/street-1/',
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
       await db.insert('customers', {
         'id': 'cust-1',
         'street_id': 'street-1',
+        'location_id': 'street-1',
         'name': 'Customer Bob',
         'phone1': '1234567890',
         'customer_since': DateTime.now().toIso8601String(),

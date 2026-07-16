@@ -13,6 +13,12 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     DatabaseHelper.dbNameOverride = 'orderkart_seeded.db';
 
+    // Clear any existing cached test database
+    await DatabaseHelper.instance.close();
+    final dbPath = await databaseFactory.getDatabasesPath();
+    final path = '$dbPath/orderkart_seeded.db';
+    await databaseFactory.deleteDatabase(path);
+
     final db = await DatabaseHelper.instance.database;
 
     final results = await DatabaseSeeder.seedAll(clearExisting: true);
