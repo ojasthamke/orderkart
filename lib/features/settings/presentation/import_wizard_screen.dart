@@ -232,6 +232,7 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
     final targetDb = await DatabaseHelper.instance.database;
     final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
 
+    final currency = ref.read(settingsProvider).valueOrNull?.currency ?? '₹';
     final List<MergeConflict> list = [];
 
     // 1. Check Items
@@ -250,8 +251,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
               id: id,
               name: name,
               field: 'Price',
-              localValue: '₹${localPrice.toStringAsFixed(0)}',
-              incomingValue: '₹${incomingPrice.toStringAsFixed(0)}',
+              localValue: '$currency${localPrice.toStringAsFixed(0)}',
+              incomingValue: '$currency${incomingPrice.toStringAsFixed(0)}',
             ));
           }
         }
@@ -274,8 +275,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
               id: id,
               name: name,
               field: 'Outstanding Balance',
-              localValue: '₹${localBal.toStringAsFixed(0)}',
-              incomingValue: '₹${incomingBal.toStringAsFixed(0)}',
+              localValue: '$currency${localBal.toStringAsFixed(0)}',
+              incomingValue: '$currency${incomingBal.toStringAsFixed(0)}',
             ));
           }
         }

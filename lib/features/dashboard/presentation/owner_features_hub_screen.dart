@@ -16,6 +16,7 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 
 class OwnerFeaturesHubScreen extends ConsumerStatefulWidget {
   final int initialTab;
@@ -28,6 +29,8 @@ class OwnerFeaturesHubScreen extends ConsumerStatefulWidget {
 class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
+  String get currency => ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
 
   // Suppliers state
   List<Map<String, dynamic>> _suppliers = [];
@@ -128,6 +131,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
   Future<void> _showSupplierAdjustmentDialog(Map<String, dynamic> supplier) async {
     final amountCon = TextEditingController();
     String type = 'credit'; // 'credit' (adds due), 'debit' (reduces due)
+    final currency = ref.read(settingsProvider).valueOrNull?.currency ?? '₹';
 
     showDialog(
       context: context,
@@ -154,7 +158,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               TextField(
                 controller: amountCon,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Amount (₹)', prefixText: '₹'),
+                decoration: InputDecoration(labelText: 'Amount ($currency)', prefixText: currency),
               ),
             ],
           ),
@@ -187,7 +191,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                 await db.insert('audit_logs', {
                   'id': logId,
                   'user_type': 'owner',
-                  'action': '${type == 'credit' ? 'Supplier Purchase credit' : 'Supplier Payment debit'} of ₹$amt recorded for ${supplier['name']}',
+                  'action': '${type == 'credit' ? 'Supplier Purchase credit' : 'Supplier Payment debit'} of $currency$amt recorded for ${supplier['name']}',
                   'entity_type': 'supplier',
                   'entity_id': supplier['id'],
                   'created_at': DateTime.now().toIso8601String(),
@@ -624,7 +628,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Bal: ₹${((sup['outstanding_balance'] ?? 0.0) as num).toStringAsFixed(1)}',
+                              'Bal: $currency${((sup['outstanding_balance'] ?? 0.0) as num).toStringAsFixed(1)}',
                               style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.error),
                             ),
                             const SizedBox(width: 8),
@@ -669,7 +673,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                     ),
                     subtitle: Text(
-                      'Old Cost: ₹${log['old_cost'] ?? "0"} ➔ New Cost: ₹${log['new_cost'] ?? "0"}\nChanged Date: ${log['change_date'] ?? ""}',
+                      'Old Cost: $currency${log['old_cost'] ?? "0"} ➔ New Cost: $currency${log['new_cost'] ?? "0"}\nChanged Date: ${log['change_date'] ?? ""}',
                       style: const TextStyle(fontSize: 10),
                     ),
                   ),
@@ -871,7 +875,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Cash Collected Today:', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('₹${_cashCollectedToday.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
+                      Text('$currency${_cashCollectedToday.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -879,7 +883,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Outstanding Dues Ledger:', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('₹${_outstandingDuesLedger.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                      Text('$currency${_outstandingDuesLedger.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const Divider(height: 24),
@@ -887,7 +891,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Net Projected Liquidity:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('₹${(_cashCollectedToday + _outstandingDuesLedger).toStringAsFixed(2)}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                      Text('$currency${(_cashCollectedToday + _outstandingDuesLedger).toStringAsFixed(2)}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ],
