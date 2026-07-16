@@ -15,6 +15,7 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       colorSchemeSeed: AppColors.primary,
+      splashFactory: InkRipple.splashFactory,
     );
 
     return base.copyWith(
@@ -85,23 +86,35 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColors.primary.withOpacity(0.9),
           foregroundColor: AppColors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.white.withOpacity(0.15), width: 1.0),
           ),
           textStyle: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return Colors.white.withOpacity(0.15);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return Colors.white.withOpacity(0.08);
+            }
+            return null;
+          }),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.primary),
+          backgroundColor: AppColors.primary.withOpacity(0.06),
+          side: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 1.0),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -110,6 +123,16 @@ class AppTheme {
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return AppColors.primary.withOpacity(0.12);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return AppColors.primary.withOpacity(0.06);
+            }
+            return null;
+          }),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -119,6 +142,13 @@ class AppTheme {
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return AppColors.primary.withOpacity(0.08);
+            }
+            return null;
+          }),
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
