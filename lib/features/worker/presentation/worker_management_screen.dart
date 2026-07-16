@@ -7,6 +7,7 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/custom_search_bar.dart';
@@ -86,24 +87,12 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
       body: Column(
         children: [
           // --- TOP BEAUTIFUL ADD WORKER ACTION BANNER ---
-          Container(
+          GlassContainer(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF2563EB).withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
+            borderRadius: BorderRadius.circular(20),
+            color: const Color(0xFF1E3A8A).withOpacity(0.85),
+            borderColor: const Color(0xFF2563EB).withOpacity(0.4),
             child: Row(
               children: [
                 Container(
@@ -266,16 +255,9 @@ class _WorkerCard extends ConsumerWidget {
         ? (worker.totalCollection / worker.monthlyTarget) * 100.0
         : 0.0;
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isSuspended ? AppColors.gray300 : AppColors.gray200,
-        ),
-        boxShadow: AppColors.cardShadow,
-      ),
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         children: [
           ListTile(

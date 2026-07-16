@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
+import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/utils/formatters.dart';
 import 'visit_provider.dart';
 
@@ -13,16 +15,14 @@ class VisitListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final visitState = ref.watch(visitListProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Route Planner'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            onPressed: () => Navigator.of(context).pushNamed(AppRoutes.addEditVisit),
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Route Planner',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.add_rounded),
+          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.addEditVisit),
+        ),
+      ],
       body: visitState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(child: Text('Error: $err')),
@@ -56,18 +56,10 @@ class VisitListScreen extends ConsumerWidget {
               final visit = visits[index];
               final isCompleted = visit.status == 'completed';
 
-              return Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                      color: isCompleted
-                          ? AppColors.success.withOpacity(0.3)
-                          : AppColors.borderColor(context)),
-                ),
-                color: isCompleted
-                    ? AppColors.success.withOpacity(0.05)
-                    : Theme.of(context).cardTheme.color,
+              return GlassContainer(
+                borderRadius: BorderRadius.circular(16),
+                borderColor: isCompleted ? AppColors.success.withOpacity(0.4) : null,
+                color: isCompleted ? AppColors.success.withOpacity(0.08) : null,
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   onTap: () {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../order/presentation/order_provider.dart';
 
@@ -41,26 +42,16 @@ class ProfitLossScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Big Net Profit / Loss Header Card ─────────────────────
-                Container(
+                GlassContainer(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isProfitable
-                          ? [const Color(0xFF064E3B), const Color(0xFF047857)]
-                          : [const Color(0xFF7F1D1D), const Color(0xFFB91C1C)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isProfitable ? Colors.green : Colors.red).withOpacity(0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  color: isProfitable 
+                      ? const Color(0xFF064E3B).withOpacity(0.85) 
+                      : const Color(0xFF7F1D1D).withOpacity(0.85),
+                  borderColor: isProfitable 
+                      ? const Color(0xFF047857).withOpacity(0.4) 
+                      : const Color(0xFFB91C1C).withOpacity(0.4),
                   child: Column(
                     children: [
                       Row(
@@ -125,14 +116,9 @@ class ProfitLossScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
 
-                Container(
+                GlassContainer(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.gray200),
-                    boxShadow: AppColors.cardShadow,
-                  ),
+                  borderRadius: BorderRadius.circular(20),
                   child: Column(
                     children: [
                       // 1. Gross Revenue
@@ -257,13 +243,9 @@ class ProfitLossScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
 
-                Container(
+                GlassContainer(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.gray200),
-                  ),
+                  borderRadius: BorderRadius.circular(20),
                   child: Column(
                     children: [
                       _ratioBar(

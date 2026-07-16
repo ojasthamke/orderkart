@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
@@ -108,17 +109,12 @@ class _MonthlySummaryCard extends StatelessWidget {
     final count = thisMonth['count'] as int? ?? 0;
     final month = thisMonth['month'] as String? ?? '';
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.error, AppColors.error.withOpacity(0.7)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
+      borderRadius: BorderRadius.circular(16),
+      color: AppColors.error.withOpacity(0.8),
+      borderColor: AppColors.error.withOpacity(0.4),
       child: Row(
         children: [
           const Icon(Icons.trending_down_rounded, color: Colors.white, size: 32),
@@ -160,14 +156,9 @@ class _ExpenseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gray200),
-        boxShadow: AppColors.cardShadow,
-      ),
+      borderRadius: BorderRadius.circular(14),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: GestureDetector(

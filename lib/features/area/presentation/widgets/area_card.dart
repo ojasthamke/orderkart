@@ -7,6 +7,7 @@ import '../../domain/area.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/full_screen_image_viewer.dart';
+import '../../../../core/widgets/glass_container.dart';
 import '../../../../core/constants/app_routes.dart';
 
 class AreaCard extends StatelessWidget {
@@ -29,14 +30,8 @@ class AreaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Color(area.color);
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
-        boxShadow: AppColors.cardShadow,
-      ),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
