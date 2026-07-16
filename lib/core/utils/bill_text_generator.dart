@@ -30,20 +30,23 @@ class BillTextGenerator {
   }) {
     final buf = StringBuffer();
     final sep = '─' * 30;
+    final doubleSep = '═' * 30;
 
-    buf.writeln('*$businessName*');
-    buf.writeln(sep);
-    buf.writeln('Order $orderNoLabel');
-    buf.writeln('Date: ${AppFormatters.dateTime(orderDate)}');
-    buf.writeln('Customer: $customerName');
-    if (customerAddress.isNotEmpty) {
-      buf.writeln('Address: $customerAddress');
-    }
+    buf.writeln(doubleSep);
+    buf.writeln('🏪 *${businessName.toUpperCase()}*');
     if (ownerPhone.trim().isNotEmpty) {
-      buf.writeln('Contact: ${ownerPhone.trim()}');
+      buf.writeln('📞 Contact Owner: ${ownerPhone.trim()}');
+    }
+    buf.writeln(doubleSep);
+    buf.writeln('🧾 *INVOICE DETAILS*');
+    buf.writeln('Order No:  $orderNoLabel');
+    buf.writeln('Date:      ${AppFormatters.dateTime(orderDate)}');
+    buf.writeln('Customer:  $customerName');
+    if (customerAddress.isNotEmpty) {
+      buf.writeln('Address:   $customerAddress');
     }
     if (notes.trim().isNotEmpty) {
-      buf.writeln('Notes: ${notes.trim()}');
+      buf.writeln('Notes:     ${notes.trim()}');
     }
     if (questionAnswers.isNotEmpty) {
       for (int i = 0; i < questionAnswers.length; i++) {
@@ -54,7 +57,8 @@ class BillTextGenerator {
       }
     }
     buf.writeln(sep);
-    buf.writeln('ITEMS');
+    buf.writeln('🛒 *ITEMS*');
+    buf.writeln(sep);
 
     for (final item in items) {
       final name  = item['item_name']  as String;
@@ -68,24 +72,26 @@ class BillTextGenerator {
     }
 
     buf.writeln(sep);
-    buf.writeln('Subtotal:          $currency${subtotal.toStringAsFixed(2)}');
+    buf.writeln('💳 *PAYMENT SUMMARY*');
+    buf.writeln(sep);
+    buf.writeln('Subtotal:      $currency${subtotal.toStringAsFixed(2)}');
     if (discount > 0) {
-      buf.writeln('Discount:        - $currency${discount.toStringAsFixed(2)}');
+      buf.writeln('Discount:    - $currency${discount.toStringAsFixed(2)}');
     }
     if (deliveryCharge > 0) {
-      buf.writeln('Delivery Fee:    + $currency${deliveryCharge.toStringAsFixed(2)}');
+      buf.writeln('Delivery Fee: + $currency${deliveryCharge.toStringAsFixed(2)}');
     }
-    buf.writeln('*Grand Total:      $currency${grandTotal.toStringAsFixed(2)}*');
+    buf.writeln('*Grand Total:  $currency${grandTotal.toStringAsFixed(2)}*');
     buf.writeln(sep);
-    buf.writeln('Paid:              $currency${paidAmount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(paymentMethod)})');
+    buf.writeln('Paid:          $currency${paidAmount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(paymentMethod)})');
     if (remainingAmount > 0) {
-      buf.writeln('⚠️ Remaining:    $currency${remainingAmount.toStringAsFixed(2)}');
+      buf.writeln('⚠️ Remaining:  $currency${remainingAmount.toStringAsFixed(2)}');
     } else {
       buf.writeln('Fully Paid ✅');
     }
-    buf.writeln(sep);
+    buf.writeln(doubleSep);
 
-    // ── Daily Savings Banner — always shown ──────────────────────────
+    // ── Daily Savings Banner ──────────────────────────────────────────
     final totalSavings = discount + marketSavings;
     if (totalSavings > 0) {
       buf.writeln('🎉 *CONGRATULATIONS!*');
@@ -97,16 +103,16 @@ class BillTextGenerator {
       } else {
         buf.writeln('You saved *$currency${discount.toStringAsFixed(2)}* on this order by shopping with us! 🥳✨');
       }
-      buf.writeln(sep);
+      buf.writeln(doubleSep);
     } else {
       buf.writeln('💚 Thank you for shopping with *$businessName*!');
-      buf.writeln(sep);
+      buf.writeln(doubleSep);
     }
 
     final hasRx = items.any((it) => it['prescription_required'] == true);
     if (hasRx) {
       buf.writeln('⚠️ *Prescription Note (Rx)*: Hand over subject to verification of a valid physical doctor note.');
-      buf.writeln(sep);
+      buf.writeln(doubleSep);
     }
 
     return buf.toString();

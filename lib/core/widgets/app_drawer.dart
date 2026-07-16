@@ -78,6 +78,8 @@ class AppDrawer extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 children: [
                   const _SectionHeader(title: 'NAVIGATION'),
+                  
+                  // 1. Dashboard
                   _DrawerItem(
                     icon: Icons.dashboard_rounded,
                     title: 'Dashboard',
@@ -90,18 +92,30 @@ class AppDrawer extends ConsumerWidget {
                       }
                     },
                   ),
-                  
-                  // ONLY SHOW WORKER MANAGEMENT & PERMISSION MANAGER IF IN OWNER MODE!
-                  if (!isWorker) ...[
+
+                  // 2. Orders & Sales
+                  _DrawerItem(
+                    icon: Icons.shopping_cart_rounded,
+                    title: isWorker ? 'My Orders & Sales' : 'Orders & Sales',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.orderManagement);
+                    },
+                  ),
+
+                  // 3. Order Notes Questions
+                  if (!isWorker)
                     _DrawerItem(
-                      icon: Icons.badge_rounded,
-                      title: 'Worker Management',
-                      iconColor: AppColors.primary,
+                      icon: Icons.question_answer_rounded,
+                      title: 'Order Notes Questions',
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.workers);
+                        Navigator.pushNamed(context, AppRoutes.orderQuestionsConfig);
                       },
                     ),
+
+                  // 4. Worker Sync Activity & Imports
+                  if (!isWorker)
                     _DrawerItem(
                       icon: Icons.history_edu_rounded,
                       title: 'Worker Sync Activity & Imports',
@@ -111,17 +125,8 @@ class AppDrawer extends ConsumerWidget {
                         Navigator.pushNamed(context, AppRoutes.workerSyncActivity);
                       },
                     ),
-                  ],
 
-                  _DrawerItem(
-                    icon: Icons.map_rounded,
-                    title: 'Areas & Routes (Area → Street)',
-                    iconColor: Colors.orange,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.areas);
-                    },
-                  ),
+                  // 5. Customers
                   _DrawerItem(
                     icon: Icons.people_alt_rounded,
                     title: isWorker ? 'My Customers' : 'Customers',
@@ -130,45 +135,9 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.customers);
                     },
                   ),
-                  _DrawerItem(
-                    icon: Icons.phone_callback_rounded,
-                    title: 'Call Logs & Directory',
-                    iconColor: Colors.blue,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.callLogs);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.shopping_cart_rounded,
-                    title: isWorker ? 'My Orders & Sales' : 'Orders & Sales',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.orderManagement);
-                    },
-                  ),
-                  
-                  if (isWorker) ...[
-                    _DrawerItem(
-                      icon: Icons.person_rounded,
-                      title: 'My Worker Profile',
-                      iconColor: AppColors.primary,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.workerSelfProfile);
-                      },
-                    ),
-                    _DrawerItem(
-                      icon: Icons.note_alt_rounded,
-                      title: 'Field Visit Notes',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.notes);
-                      },
-                    ),
-                  ],
 
-                  if (!isWorker) ...[
+                  // 6. VIP Membership Club
+                  if (!isWorker)
                     _DrawerItem(
                       icon: Icons.workspace_premium_rounded,
                       title: 'VIP Membership Club',
@@ -177,16 +146,8 @@ class AppDrawer extends ConsumerWidget {
                         Navigator.pushNamed(context, AppRoutes.vipDashboard);
                       },
                     ),
-                    _DrawerItem(
-                      icon: Icons.question_answer_rounded,
-                      title: 'Order Notes Questions',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.orderQuestionsConfig);
-                      },
-                    ),
-                  ],
-                  
+
+                  // 7. Inventory Catalog
                   _DrawerItem(
                     icon: Icons.inventory_rounded,
                     title: 'Inventory Catalog',
@@ -196,49 +157,12 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
 
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
-                    child: Divider(height: 1),
-                  ),
-                  const _SectionHeader(title: 'SYNC & DATA'),
-                  
-                  if (!isWorker)
-                    _DrawerItem(
-                      icon: Icons.auto_mode_rounded,
-                      title: 'Import Wizard (Merge)',
-                      iconColor: const Color(0xFF0284C7),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.importWizard);
-                      },
-                    ),
-                  _DrawerItem(
-                    icon: Icons.history_toggle_off_rounded,
-                    title: 'Sync Log History',
-                    iconColor: const Color(0xFF8B5CF6),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.syncHistory);
-                    },
-                  ),
-                  
-                  if (!isWorker)
-                    _DrawerItem(
-                      icon: Icons.storefront_rounded,
-                      title: 'Business Profile',
-                      iconColor: const Color(0xFF10B981),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.businessProfile);
-                      },
-                    ),
-
+                  // Divider & Insights Section
                   if (!isWorker) ...[
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                       child: Divider(height: 1),
                     ),
-
                     const _SectionHeader(title: 'INSIGHTS & ALERTS'),
                     _DrawerItem(
                       icon: Icons.analytics_rounded,
@@ -265,14 +189,23 @@ class AppDrawer extends ConsumerWidget {
                         Navigator.pushNamed(context, AppRoutes.activityTimeline);
                       },
                     ),
+                    _DrawerItem(
+                      icon: Icons.phone_callback_rounded,
+                      title: 'Call Logs & Directory',
+                      iconColor: Colors.blue,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.callLogs);
+                      },
+                    ),
                   ],
 
+                  // Divider & Settings Section
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                     child: Divider(height: 1),
                   ),
-
-                  const _SectionHeader(title: 'SECURITY & MODE'),
+                  const _SectionHeader(title: 'SETTINGS & SECURITY'),
                   _DrawerItem(
                     icon: Icons.settings_rounded,
                     title: 'Settings',
@@ -281,6 +214,14 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.settings);
                     },
                   ),
+
+                  // Divider & Sync and Data Section
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+                    child: Divider(height: 1),
+                  ),
+                  const _SectionHeader(title: 'SYNC & DATA'),
+                  
                   _DrawerItem(
                     icon: Icons.sync_alt_rounded,
                     title: isWorker ? 'Sync & Export' : 'Import & Export Data',
@@ -289,6 +230,74 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.backupRestore);
                     },
                   ),
+                  _DrawerItem(
+                    icon: Icons.history_toggle_off_rounded,
+                    title: 'Sync Log History',
+                    iconColor: const Color(0xFF8B5CF6),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.syncHistory);
+                    },
+                  ),
+                  
+                  if (!isWorker) ...[
+                    _DrawerItem(
+                      icon: Icons.auto_mode_rounded,
+                      title: 'Import Wizard (Merge)',
+                      iconColor: const Color(0xFF0284C7),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.importWizard);
+                      },
+                    ),
+                    _DrawerItem(
+                      icon: Icons.storefront_rounded,
+                      title: 'Business Profile',
+                      iconColor: const Color(0xFF10B981),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.businessProfile);
+                      },
+                    ),
+                    _DrawerItem(
+                      icon: Icons.badge_rounded,
+                      title: 'Worker Management',
+                      iconColor: AppColors.primary,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.workers);
+                      },
+                    ),
+                    _DrawerItem(
+                      icon: Icons.map_rounded,
+                      title: 'Areas & Routes (Area → Street)',
+                      iconColor: Colors.orange,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.areas);
+                      },
+                    ),
+                  ],
+
+                  if (isWorker) ...[
+                    _DrawerItem(
+                      icon: Icons.person_rounded,
+                      title: 'My Worker Profile',
+                      iconColor: AppColors.primary,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.workerSelfProfile);
+                      },
+                    ),
+                    _DrawerItem(
+                      icon: Icons.note_alt_rounded,
+                      title: 'Field Visit Notes',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.notes);
+                      },
+                    ),
+                  ],
 
                 ],
               ),
