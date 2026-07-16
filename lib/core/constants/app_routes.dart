@@ -62,4 +62,6 @@ class AppRoutes {
   static const String ownerFeaturesHub = '/owner-features-hub';
   static const String catalogShowroom = '/catalog-showroom';
   static const String churnRisk = '/churn-risk';
+  static const String areaIntelligenceMap = '/area-intelligence-map';
+  static const String mapPinPicker = '/map-pin-picker';
 }

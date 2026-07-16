@@ -61,6 +61,9 @@ import 'features/inventory/presentation/groceries_hub_screen.dart';
 import 'features/inventory/presentation/medicines_hub_screen.dart';
 import 'features/dashboard/presentation/owner_features_hub_screen.dart';
 import 'features/inventory/presentation/catalog_showroom_screen.dart';
+import 'features/area_intelligence_map/presentation/area_intelligence_map_screen.dart';
+import 'features/area_intelligence_map/presentation/map_pin_picker_screen.dart';
+import 'package:latlong2/latlong.dart';
 
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
@@ -300,6 +303,19 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.churnRisk:
         return _slide(const ChurnRiskScreen());
+
+      case AppRoutes.areaIntelligenceMap:
+        final args = settings.arguments as Map<String, dynamic>;
+        return _slide(AreaIntelligenceMapScreen(
+          areaId: args['areaId'] as String,
+          areaName: args['areaName'] as String,
+        ));
+
+      case AppRoutes.mapPinPicker:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return _slide(MapPinPickerScreen(
+          initialPosition: args?['initialPosition'] as LatLng?,
+        ));
 
       default:
         return _slide(const AppStartupScreen(), settings);

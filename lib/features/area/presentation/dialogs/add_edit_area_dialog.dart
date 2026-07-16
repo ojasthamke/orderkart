@@ -5,6 +5,8 @@ import '../../domain/area.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/utils/image_utils.dart';
+import '../../../../core/constants/app_routes.dart';
+import 'package:latlong2/latlong.dart';
 
 class AddEditAreaDialog extends StatefulWidget {
   final Area? area;
@@ -146,13 +148,48 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
                 maxLines: 3,
               ),
               const SizedBox(height: 14),
-              TextFormField(
-                controller: _locationCon,
-                decoration: const InputDecoration(
-                  labelText: 'Google Maps Location / Link',
-                  hintText: 'e.g. https://maps.app.goo.gl/... or area name',
-                  prefixIcon: Icon(Icons.location_on_rounded),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _locationCon,
+                      decoration: const InputDecoration(
+                        labelText: 'Google Maps Location / Link',
+                        hintText: 'e.g. https://maps.app.goo.gl/... or lat,lng',
+                        prefixIcon: Icon(Icons.location_on_rounded),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    icon: const Icon(Icons.map_rounded),
+                    tooltip: 'Pick on Map',
+                    onPressed: () async {
+                      LatLng? currentPos;
+                      final text = _locationCon.text.trim();
+                      if (text.isNotEmpty) {
+                        final parts = text.split(',');
+                        if (parts.length == 2) {
+                          final lat = double.tryParse(parts[0]);
+                          final lng = double.tryParse(parts[1]);
+                          if (lat != null && lng != null) {
+                            currentPos = LatLng(lat, lng);
+                          }
+                        }
+                      }
+                      final LatLng? picked = await Navigator.pushNamed(
+                        context,
+                        AppRoutes.mapPinPicker,
+                        arguments: {'initialPosition': currentPos},
+                      ) as LatLng?;
+                      if (picked != null && mounted) {
+                        setState(() {
+                          _locationCon.text = '${picked.latitude},${picked.longitude}';
+                        });
+                      }
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Text('Colour', style: Theme.of(context).textTheme.labelMedium),

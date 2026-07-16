@@ -27,6 +27,8 @@ class Customer {
   final String   workerName;
   final String   deviceName;
   final String   dietaryPreference; // 'veg', 'non_veg', or ''
+  final double   latitude;
+  final double   longitude;
 
   // VIP Membership Fields
   final bool   isVip;
@@ -67,6 +69,8 @@ class Customer {
     this.workerName       = '',
     this.deviceName       = '',
     this.dietaryPreference = '',
+    this.latitude         = 0.0,
+    this.longitude        = 0.0,
     // VIP Defaults
     this.isVip               = false,
     this.vipPlan             = 'Gold VIP',
@@ -107,6 +111,8 @@ class Customer {
     String?   workerName,
     String?   deviceName,
     String?   dietaryPreference,
+    double?   latitude,
+    double?   longitude,
     bool?   isVip,
     String? vipPlan,
     String? vipStartDate,
@@ -145,6 +151,8 @@ class Customer {
       workerName:         workerName         ?? this.workerName,
       deviceName:         deviceName         ?? this.deviceName,
       dietaryPreference:  dietaryPreference  ?? this.dietaryPreference,
+      latitude:           latitude           ?? this.latitude,
+      longitude:          longitude          ?? this.longitude,
       isVip:               isVip               ?? this.isVip,
       vipPlan:             vipPlan             ?? this.vipPlan,
       vipStartDate:        vipStartDate        ?? this.vipStartDate,
@@ -185,6 +193,8 @@ class Customer {
         'worker_name':         workerName,
         'device_name':         deviceName,
         'dietary_preference':  dietaryPreference,
+        'latitude':            latitude,
+        'longitude':           longitude,
         'is_vip':               isVip ? 1 : 0,
         'vip_plan':             vipPlan,
         'vip_start_date':       vipStartDate,
@@ -224,6 +234,8 @@ class Customer {
         workerName:          map['worker_name']         as String? ?? '',
         deviceName:          map['device_name']         as String? ?? '',
         dietaryPreference:   map['dietary_preference']  as String? ?? '',
+        latitude:            (map['latitude'] as num?)?.toDouble() ?? 0.0,
+        longitude:           (map['longitude'] as num?)?.toDouble() ?? 0.0,
         isVip:               (map['is_vip'] as int? ?? 0) == 1,
         vipPlan:             map['vip_plan']            as String? ?? 'Gold VIP',
         vipStartDate:        map['vip_start_date']       as String? ?? '',

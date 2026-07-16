@@ -16,6 +16,7 @@ import '../domain/customer.dart';
 import '../../../core/constants/app_routes.dart';
 import 'customer_provider.dart';
 import '../../../core/utils/image_utils.dart';
+import 'package:latlong2/latlong.dart';
 
 class AddEditCustomerScreen extends ConsumerStatefulWidget {
   final String? streetId;
@@ -300,6 +301,35 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                     tooltip: 'Set Coordinates',
                     onPressed: _showCoordinatesDialog,
                   ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    icon: const Icon(Icons.map_rounded),
+                    tooltip: 'Pick on Map',
+                    onPressed: () async {
+                      LatLng? currentPos;
+                      final text = _mapsCon.text.trim();
+                      if (text.isNotEmpty) {
+                        final parts = text.split(',');
+                        if (parts.length == 2) {
+                          final lat = double.tryParse(parts[0]);
+                          final lng = double.tryParse(parts[1]);
+                          if (lat != null && lng != null) {
+                            currentPos = LatLng(lat, lng);
+                          }
+                        }
+                      }
+                      final LatLng? picked = await Navigator.pushNamed(
+                        context,
+                        AppRoutes.mapPinPicker,
+                        arguments: {'initialPosition': currentPos},
+                      ) as LatLng?;
+                      if (picked != null && mounted) {
+                        setState(() {
+                          _mapsCon.text = '${picked.latitude},${picked.longitude}';
+                        });
+                      }
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -554,6 +584,18 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         }
       }
 
+      double latitude = 0.0;
+      double longitude = 0.0;
+      final text = _mapsCon.text.trim();
+      if (text.isNotEmpty) {
+        final regExp = RegExp(r'(?:q=|@|^|/|params=)(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)');
+        final match = regExp.firstMatch(text);
+        if (match != null) {
+          latitude = double.tryParse(match.group(1) ?? '') ?? 0.0;
+          longitude = double.tryParse(match.group(2) ?? '') ?? 0.0;
+        }
+      }
+
       final existing = _isEdit
           ? await ref.read(customerRepositoryProvider).getCustomerById(customerId)
           : null;
@@ -571,6 +613,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               mapsLocation:       _mapsCon.text.trim(),
               photoPath:          finalPhotoPath,
               dietaryPreference:  _dietaryPreference,
+              latitude:           latitude,
+              longitude:          longitude,
               updatedAt:          now,
             )
           : Customer(
@@ -587,6 +631,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               mapsLocation:       _mapsCon.text.trim(),
               photoPath:          finalPhotoPath,
               dietaryPreference:  _dietaryPreference,
+              latitude:           latitude,
+              longitude:          longitude,
               customerSince:      now,
               createdAt:          now,
               updatedAt:          now,

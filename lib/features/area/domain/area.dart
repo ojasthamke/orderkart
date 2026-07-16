@@ -21,6 +21,8 @@ class Area {
   final String assignedWorkerId;
   final String workerName;
   final String deviceName;
+  final double latitude;
+  final double longitude;
 
   const Area({
     required this.id,
@@ -33,6 +35,8 @@ class Area {
     this.assignedWorkerId = '',
     this.workerName = '',
     this.deviceName = '',
+    this.latitude = 0.0,
+    this.longitude = 0.0,
     required this.createdAt,
     required this.updatedAt,
     this.streetCount = 0,
@@ -52,6 +56,8 @@ class Area {
     String? assignedWorkerId,
     String? workerName,
     String? deviceName,
+    double? latitude,
+    double? longitude,
     DateTime? createdAt,
     DateTime? updatedAt,
     int? streetCount,
@@ -70,6 +76,8 @@ class Area {
       assignedWorkerId: assignedWorkerId ?? this.assignedWorkerId,
       workerName: workerName ?? this.workerName,
       deviceName: deviceName ?? this.deviceName,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       streetCount: streetCount ?? this.streetCount,
@@ -90,6 +98,8 @@ class Area {
         'assigned_worker_id': assignedWorkerId,
         'worker_name':        workerName,
         'device_name':        deviceName,
+        'latitude':           latitude,
+        'longitude':          longitude,
         'created_at':         createdAt.toIso8601String(),
         'updated_at':         updatedAt.toIso8601String(),
       };
@@ -105,6 +115,8 @@ class Area {
         assignedWorkerId: (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
         workerName:       map['worker_name'] as String? ?? '',
         deviceName:       map['device_name'] as String? ?? '',
+        latitude:         (map['latitude'] as num?)?.toDouble() ?? 0.0,
+        longitude:        (map['longitude'] as num?)?.toDouble() ?? 0.0,
         createdAt:        DateTime.parse(map['created_at'] as String),
         updatedAt:        DateTime.parse(map['updated_at'] as String),
         streetCount:      map['street_count']   as int?    ?? 0,

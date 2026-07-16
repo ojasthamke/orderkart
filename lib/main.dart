@@ -11,6 +11,7 @@ import 'app.dart';
 import 'core/database/database_helper.dart';
 import 'core/constants/app_constants.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 
 import 'core/services/notification_service.dart';
 import 'core/services/background_service.dart';
@@ -42,6 +43,13 @@ Future<void> main() async {
 
     // Clear any temporary image picker cache on startup
     await ImageUtils.clearImagePickerCache();
+
+    // Initialize map tile caching
+    try {
+      await FMTCObjectBoxBackend().initialise();
+      final store = FMTCStore('osmMapStore');
+      await store.manage.create();
+    } catch (_) {}
 
     // Initialize SQLite database
     await DatabaseHelper.instance.database;

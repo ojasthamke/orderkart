@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../domain/area.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/full_screen_image_viewer.dart';
+import '../../../../core/constants/app_routes.dart';
 
 class AreaCard extends StatelessWidget {
   final Area area;
@@ -132,10 +133,29 @@ class AreaCard extends StatelessWidget {
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert_rounded, color: AppColors.gray500),
                   onSelected: (v) {
+                    if (v == 'map') {
+                      Navigator.of(context).pushNamed(
+                        AppRoutes.areaIntelligenceMap,
+                        arguments: {
+                          'areaId':   area.id,
+                          'areaName': area.name,
+                        },
+                      );
+                    }
                     if (v == 'edit')   onEdit();
                     if (v == 'delete') onDelete();
                   },
                   itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'map',
+                      child: Row(
+                        children: [
+                          Icon(Icons.map_rounded, size: 16, color: Colors.blueAccent),
+                          SizedBox(width: 8),
+                          Text('Map View'),
+                        ],
+                      ),
+                    ),
                     const PopupMenuItem(value: 'edit',   child: Text('Edit')),
                     const PopupMenuItem(
                       value: 'delete',

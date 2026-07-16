@@ -96,18 +96,19 @@ class DatabaseHelper {
         try {
           await db.execute('ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
         } catch (_) {}
+        await _ensureGeoMapTables(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
       },
     );
   }
 
-  /// Creates all tables and indexes on first run
   Future<void> _onCreate(Database db, int version) async {
     await _createTables(db);
     await _createLocationsTable(db);
     await _createIndexes(db);
     await _seedDefaultSettings(db);
+    await _ensureGeoMapTables(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -2008,6 +2009,150 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_location_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_seq ON locations(parent_location_id, sequence_key)');
+  }
+
+  Future<void> _ensureGeoMapTables(Database db) async {
+    // 1. Add coordinates and icon_name columns if not existing
+    try {
+      await db.execute('ALTER TABLE locations ADD COLUMN latitude REAL DEFAULT 0.0');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE locations ADD COLUMN longitude REAL DEFAULT 0.0');
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE locations ADD COLUMN icon_name TEXT DEFAULT ''");
+    } catch (_) {}
+
+    try {
+      await db.execute('ALTER TABLE customers ADD COLUMN latitude REAL DEFAULT 0.0');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE customers ADD COLUMN longitude REAL DEFAULT 0.0');
+    } catch (_) {}
+
+    try {
+      await db.execute('ALTER TABLE areas ADD COLUMN latitude REAL DEFAULT 0.0');
+    } catch (_) {}
+    try {
+      await db.execute('ALTER TABLE areas ADD COLUMN longitude REAL DEFAULT 0.0');
+    } catch (_) {}
+
+    // 2. Create geo_boundaries and geo_boundary_points tables
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS geo_boundaries (
+        id TEXT PRIMARY KEY,
+        location_id TEXT NOT NULL,
+        geometry_type TEXT NOT NULL, -- 'polygon' or 'polyline'
+        stroke_color INTEGER DEFAULT 4279524800, -- 0xFF1565C0
+        fill_color INTEGER DEFAULT 638985664, -- 0x261565C0
+        stroke_width REAL DEFAULT 2.0,
+        label TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(location_id) REFERENCES locations(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS geo_boundary_points (
+        id TEXT PRIMARY KEY,
+        boundary_id TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        sequence INTEGER NOT NULL,
+        FOREIGN KEY(boundary_id) REFERENCES geo_boundaries(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_geo_bp_boundary ON geo_boundary_points(boundary_id, sequence)');
+
+    // 3. Extract coordinates from existing maps_location Google Maps URLs
+    await _migrateCoordinatesFromUrls(db);
+  }
+
+  Future<void> _migrateCoordinatesFromUrls(Database db) async {
+    final regExp = RegExp(r'(?:q=|@|^|/|params=)(-?\\d+\\.\\d+)\\s*,\\s*(-?\\d+\\.\\d+)');
+
+    // Migrate customers
+    try {
+      final customers = await db.query('customers', columns: ['id', 'maps_location', 'latitude', 'longitude']);
+      for (final c in customers) {
+        final id = c['id'] as String;
+        final mapsLocation = c['maps_location'] as String? ?? '';
+        final currentLat = c['latitude'] as double? ?? 0.0;
+        final currentLng = c['longitude'] as double? ?? 0.0;
+
+        if (currentLat == 0.0 && currentLng == 0.0 && mapsLocation.isNotEmpty) {
+          final match = regExp.firstMatch(mapsLocation);
+          if (match != null) {
+            final lat = double.tryParse(match.group(1) ?? '') ?? 0.0;
+            final lng = double.tryParse(match.group(2) ?? '') ?? 0.0;
+            if (lat != 0.0 && lng != 0.0) {
+              await db.update(
+                'customers',
+                {'latitude': lat, 'longitude': lng},
+                where: 'id = ?',
+                whereArgs: [id],
+              );
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Migrate locations
+    try {
+      final locations = await db.query('locations', columns: ['id', 'maps_location', 'latitude', 'longitude']);
+      for (final l in locations) {
+        final id = l['id'] as String;
+        final mapsLocation = l['maps_location'] as String? ?? '';
+        final currentLat = l['latitude'] as double? ?? 0.0;
+        final currentLng = l['longitude'] as double? ?? 0.0;
+
+        if (currentLat == 0.0 && currentLng == 0.0 && mapsLocation.isNotEmpty) {
+          final match = regExp.firstMatch(mapsLocation);
+          if (match != null) {
+            final lat = double.tryParse(match.group(1) ?? '') ?? 0.0;
+            final lng = double.tryParse(match.group(2) ?? '') ?? 0.0;
+            if (lat != 0.0 && lng != 0.0) {
+              await db.update(
+                'locations',
+                {'latitude': lat, 'longitude': lng},
+                where: 'id = ?',
+                whereArgs: [id],
+              );
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Migrate areas (legacy)
+    try {
+      final areas = await db.query('areas', columns: ['id', 'maps_location', 'latitude', 'longitude']);
+      for (final a in areas) {
+        final id = a['id'] as String;
+        final mapsLocation = a['maps_location'] as String? ?? '';
+        final currentLat = a['latitude'] as double? ?? 0.0;
+        final currentLng = a['longitude'] as double? ?? 0.0;
+
+        if (currentLat == 0.0 && currentLng == 0.0 && mapsLocation.isNotEmpty) {
+          final match = regExp.firstMatch(mapsLocation);
+          if (match != null) {
+            final lat = double.tryParse(match.group(1) ?? '') ?? 0.0;
+            final lng = double.tryParse(match.group(2) ?? '') ?? 0.0;
+            if (lat != 0.0 && lng != 0.0) {
+              await db.update(
+                'areas',
+                {'latitude': lat, 'longitude': lng},
+                where: 'id = ?',
+                whereArgs: [id],
+              );
+            }
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _migrateToLocations(Database db) async {

@@ -63,6 +63,26 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
       title: widget.locationName,
       drawer: const AppDrawer(),
       actions: [
+        breadcrumbsAsync.maybeWhen(
+          data: (crumbs) {
+            if (crumbs.isEmpty) return const SizedBox.shrink();
+            final rootArea = crumbs.first;
+            return IconButton(
+              icon: const Icon(Icons.map_rounded, color: AppColors.primary),
+              tooltip: 'Map View',
+              onPressed: () {
+                Navigator.of(context).pushNamed(
+                  AppRoutes.areaIntelligenceMap,
+                  arguments: {
+                    'areaId': rootArea.id,
+                    'areaName': rootArea.name,
+                  },
+                );
+              },
+            );
+          },
+          orElse: () => const SizedBox.shrink(),
+        ),
         IconButton(
           icon: const Icon(Icons.search_rounded),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),

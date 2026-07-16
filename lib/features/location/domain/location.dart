@@ -17,6 +17,9 @@ class Location {
   final String workerName;
   final String deviceName;
   final bool isArchived;
+  final double latitude;
+  final double longitude;
+  final String iconName;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -43,6 +46,9 @@ class Location {
     this.workerName = '',
     this.deviceName = '',
     this.isArchived = false,
+    this.latitude = 0.0,
+    this.longitude = 0.0,
+    this.iconName = '',
     required this.createdAt,
     required this.updatedAt,
     this.childCount = 0,
@@ -68,6 +74,9 @@ class Location {
     String? workerName,
     String? deviceName,
     bool? isArchived,
+    double? latitude,
+    double? longitude,
+    String? iconName,
     DateTime? createdAt,
     DateTime? updatedAt,
     int? childCount,
@@ -92,6 +101,9 @@ class Location {
       workerName: workerName ?? this.workerName,
       deviceName: deviceName ?? this.deviceName,
       isArchived: isArchived ?? this.isArchived,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      iconName: iconName ?? this.iconName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       childCount: childCount ?? this.childCount,
@@ -118,6 +130,9 @@ class Location {
         'worker_name': workerName,
         'device_name': deviceName,
         'is_archived': isArchived ? 1 : 0,
+        'latitude': latitude,
+        'longitude': longitude,
+        'icon_name': iconName,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -139,6 +154,9 @@ class Location {
         workerName: map['worker_name'] as String? ?? '',
         deviceName: map['device_name'] as String? ?? '',
         isArchived: (map['is_archived'] as int? ?? 0) == 1,
+        latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
+        longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
+        iconName: map['icon_name'] as String? ?? '',
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
         childCount: map['child_count'] as int? ?? 0,
