@@ -173,6 +173,27 @@ final currentLocationProvider = StreamProvider<LatLng>((ref) {
       });
 
       LatLng? prevPoint;
+
+      // Fetch initial position immediately upon opening the map
+      try {
+        final initialPos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 4),
+        );
+        final initialPoint = LatLng(initialPos.latitude, initialPos.longitude);
+        prevPoint = initialPoint;
+        controller.add(initialPoint);
+      } catch (_) {
+        try {
+          final lastKnown = await Geolocator.getLastKnownPosition();
+          if (lastKnown != null) {
+            final initialPoint = LatLng(lastKnown.latitude, lastKnown.longitude);
+            prevPoint = initialPoint;
+            controller.add(initialPoint);
+          }
+        } catch (_) {}
+      }
+
       positionSubscription = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
