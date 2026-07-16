@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import 'voice_search_dialog.dart';
 
+import 'glass_container.dart';
+
 class CustomSearchBar extends StatefulWidget {
   final String hint;
   final ValueChanged<String> onChanged;
@@ -34,27 +36,20 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
     _controller.clear();
     widget.onChanged('');
     widget.onClear?.call();
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gray200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      borderRadius: BorderRadius.circular(14),
       child: TextField(
         controller: _controller,
-        onChanged: widget.onChanged,
+        onChanged: (val) {
+          setState(() {});
+          widget.onChanged(val);
+        },
         style: Theme.of(context)
             .textTheme
             .bodyMedium

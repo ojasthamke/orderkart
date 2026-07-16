@@ -6,6 +6,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
 
@@ -84,25 +85,12 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
                       // ── VIP Executive Header Card ──────────────────────────
-                      Container(
+                      GlassContainer(
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFFD700).withOpacity(0.2),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                          border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3)),
-                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        color: const Color(0xFF0F172A).withOpacity(0.75),
+                        borderColor: const Color(0xFFFFD700).withOpacity(0.4),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -154,26 +142,27 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                       const SizedBox(height: 20),
 
                       // ── Search & Filter Chips ─────────────────────────────
-                      TextField(
-                        controller: _searchController,
-                        onChanged: (v) => setState(() => _searchQuery = v),
-                        decoration: InputDecoration(
-                          hintText: 'Search VIP members by name, phone, plan...',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.close_rounded, size: 18),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() => _searchQuery = '');
-                                  },
-                                )
-                              : null,
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: AppColors.gray200),
+                      GlassContainer(
+                        borderRadius: BorderRadius.circular(16),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                          decoration: InputDecoration(
+                            hintText: 'Search VIP members by name, phone, plan...',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.close_rounded, size: 18),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _searchQuery = '');
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           ),
                         ),
                       ),
@@ -289,25 +278,12 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
     final isExpiring = customer.isVipExpiringSoon;
     final isActive = customer.isVipActive;
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isActive ? const Color(0xFFFFD700) : AppColors.gray300,
-          width: isActive ? 1.5 : 1.0,
-        ),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: const Color(0xFFFFD700).withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ]
-            : AppColors.cardShadow,
-      ),
+      borderRadius: BorderRadius.circular(20),
+      borderColor: isActive
+          ? const Color(0xFFFFD700).withOpacity(0.7)
+          : (Theme.of(context).brightness == Brightness.dark ? Colors.white24 : Colors.black12),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

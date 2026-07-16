@@ -7,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/empty_state_widget.dart';
+import '../../../core/widgets/glass_container.dart';
 
 class WorkerSyncActivityScreen extends ConsumerStatefulWidget {
   const WorkerSyncActivityScreen({super.key});
@@ -153,42 +154,50 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
           : Column(
               children: [
                 // Filter Header
-                Container(
+                Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  color: Colors.white,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.filter_list_rounded, color: AppColors.primary, size: 20),
-                      const SizedBox(width: 8),
-                      const Text('Filter Worker:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.gray100,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.gray300),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _selectedWorkerId,
-                              isExpanded: true,
-                              items: [
-                                const DropdownMenuItem(value: 'all', child: Text('All Workers')),
-                                ..._workers.map((w) => DropdownMenuItem(
-                                      value: w['id']?.toString() ?? '',
-                                      child: Text(w['name']?.toString() ?? 'Worker'),
-                                    )),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) setState(() => _selectedWorkerId = val);
-                              },
+                  child: GlassContainer(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.filter_list_rounded, color: AppColors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        const Text('Filter Worker:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white10
+                                  : Colors.black.withOpacity(0.04),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white12
+                                    : Colors.black12,
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _selectedWorkerId,
+                                isExpanded: true,
+                                items: [
+                                  const DropdownMenuItem(value: 'all', child: Text('All Workers')),
+                                  ..._workers.map((w) => DropdownMenuItem(
+                                        value: w['id']?.toString() ?? '',
+                                        child: Text(w['name']?.toString() ?? 'Worker'),
+                                      )),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) setState(() => _selectedWorkerId = val);
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
 
@@ -238,10 +247,8 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
 
         final recCount = imp['record_count'] as int? ?? 0;
 
-        return Card(
+        return GlassContainer(
           margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ExpansionTile(
             leading: const CircleAvatar(
               backgroundColor: AppColors.primarySurface,
@@ -327,13 +334,8 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         final wName = c['worker_name']?.toString() ?? 'Worker';
         final createdAt = DateTime.tryParse(c['created_at']?.toString() ?? '') ?? DateTime.now();
 
-        return Container(
+        return GlassContainer(
           margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.gray200),
-          ),
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: AppColors.primarySurface,
@@ -367,13 +369,8 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         final wName = o['worker_name']?.toString() ?? 'Worker';
         final createdAt = DateTime.tryParse(o['created_at']?.toString() ?? '') ?? DateTime.now();
 
-        return Container(
+        return GlassContainer(
           margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.gray200),
-          ),
           child: ListTile(
             leading: const CircleAvatar(
               backgroundColor: AppColors.successSurface,
@@ -406,13 +403,8 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         final wName = a['worker_name']?.toString() ?? 'Worker';
         final createdAt = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime.now();
 
-        return Container(
+        return GlassContainer(
           margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.gray200),
-          ),
           child: ListTile(
             leading: const CircleAvatar(
               backgroundColor: AppColors.primarySurface,

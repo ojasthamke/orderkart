@@ -10,6 +10,7 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/widgets/loading_shimmer.dart';
@@ -325,26 +326,11 @@ class CustomerProfileScreen extends ConsumerWidget {
 
   Widget _buildProfileHeader(
       BuildContext context, WidgetRef ref, Customer customer) {
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: customer.isVipActive ? const Color(0xFFFFD700) : AppColors.gray200,
-          width: customer.isVipActive ? 1.5 : 1.0,
-        ),
-        boxShadow: customer.isVipActive
-            ? [
-                BoxShadow(
-                  color: const Color(0xFFFFD700).withOpacity(0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                )
-              ]
-            : AppColors.cardShadow,
-      ),
+      borderRadius: BorderRadius.circular(16),
+      borderColor: customer.isVipActive ? const Color(0xFFFFD700).withOpacity(0.7) : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -605,10 +591,14 @@ class CustomerProfileScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF141414)
-                    : AppColors.gray50,
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.black.withOpacity(0.02),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.gray200),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white10
+                      : Colors.black12,
+                ),
               ),
               child: SelectableText(
                 customer.notes,
@@ -674,18 +664,12 @@ class CustomerProfileScreen extends ConsumerWidget {
         final totalSavings   = savings['total']   ?? 0.0;
         final monthlySavings = savings['monthly'] ?? 0.0;
 
-        return Container(
+        return GlassContainer(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF047857), Color(0xFF10B981)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: AppColors.cardShadow,
-          ),
+          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFF047857).withOpacity(0.85),
+          borderColor: const Color(0xFF10B981).withOpacity(0.4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1010,13 +994,9 @@ class _CustomerOrderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gray200),
-      ),
+      borderRadius: BorderRadius.circular(14),
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -1155,9 +1135,9 @@ class _CustomerPreferencesCardState extends State<CustomerPreferencesCard> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Card(
+      return GlassContainer(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        borderRadius: BorderRadius.circular(16),
         child: const Padding(
           padding: EdgeInsets.all(16.0),
           child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
@@ -1165,10 +1145,9 @@ class _CustomerPreferencesCardState extends State<CustomerPreferencesCard> {
       );
     }
 
-    return Card(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -1477,9 +1456,9 @@ class _CustomerCustomFieldsCardState extends State<CustomerCustomFieldsCard> {
         }
 
         final data = snapshot.data!;
-        return Card(
+        return GlassContainer(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(

@@ -58,54 +58,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         data: (summary) {
           final double pendingPayments = summary['pending_payments'] ?? 0;
 
-          return Stack(
-            children: [
-              // ── Apple-style soft atmospheric ambient background glow ──
-              Positioned(
-                top: -120,
-                left: -120,
-                child: Container(
-                  width: 350,
-                  height: 350,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primary.withOpacity(0.18),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 360,
-                right: -180,
-                child: Container(
-                  width: 400,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.purple.withOpacity(0.12),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -80,
-                left: 80,
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.amber.withOpacity(0.08),
-                  ),
-                ),
-              ),
-              // Softening filter
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                  child: const SizedBox.shrink(),
-                ),
-              ),
-
-              RefreshIndicator(
+          return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(analyticsSummaryProvider);
               ref.invalidate(inventoryProvider);
@@ -557,57 +510,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
 
-                   const SizedBox(height: 24),
-                  
-                  const Text(
-                    'Advanced Operations Control',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.6,
-                    children: [
-                      _buildAdvancedActionCard(
-                        context,
-                        title: 'Sales Forecast & Cash',
-                        subtitle: 'AI demand & collections',
-                        icon: Icons.trending_up_rounded,
-                        color: Colors.purple,
-                        onTap: () => Navigator.of(context).pushNamed(AppRoutes.ownerFeaturesHub, arguments: {'initialTab': 3}),
-                      ),
-                      _buildAdvancedActionCard(
-                        context,
-                        title: 'Audit Logs & Rollback',
-                        subtitle: 'Trace user actions',
-                        icon: Icons.history_toggle_off_rounded,
-                        color: Colors.amber.shade900,
-                        onTap: () => Navigator.of(context).pushNamed(AppRoutes.ownerFeaturesHub, arguments: {'initialTab': 5}),
-                      ),
-                      _buildAdvancedActionCard(
-                        context,
-                        title: 'Digital PDF Catalog',
-                        subtitle: 'Export & share price list',
-                        icon: Icons.picture_as_pdf_rounded,
-                        color: Colors.redAccent,
-                        onTap: () => Navigator.of(context).pushNamed(AppRoutes.ownerFeaturesHub, arguments: {'initialTab': 4}),
-                      ),
-                      _buildAdvancedActionCard(
-                        context,
-                        title: 'Supplier Cost Ledger',
-                        subtitle: 'Track cost revisions',
-                        icon: Icons.business_center_rounded,
-                        color: Colors.indigo,
-                        onTap: () => Navigator.of(context).pushNamed(AppRoutes.ownerFeaturesHub, arguments: {'initialTab': 0}),
-                      ),
-                    ],
-                  ),
-
                   const SizedBox(height: 24),
 
                   // ── Orders History & Filter Header ───────────────────
@@ -752,69 +654,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 32),
                 ],
               ),
             ),
-          ),
-        ],
-      );
-    },
-  ),
-);
-}
-
-  Widget _buildAdvancedActionCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return _buildGlassContainer(
-      context: context,
-      padding: EdgeInsets.zero,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: color.withOpacity(0.12),
-                  child: Icon(icon, color: color, size: 18),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
+
 
   Widget _buildDashboardCard(BuildContext context, {required String title, required IconData icon, required Color color, required String providerValue, required VoidCallback onTap}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

@@ -12,6 +12,7 @@ import '../../../core/services/package_validator.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
@@ -222,8 +223,19 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : AppColors.gray100,
+                    color: selected
+                        ? AppColors.primary
+                        : (Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white10
+                            : Colors.black.withOpacity(0.04)),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.primary
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white12
+                              : Colors.black12),
+                    ),
                   ),
                   child: Center(
                     child: Text(
@@ -311,24 +323,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Savings Summary Executive Card
-              Container(
+              GlassContainer(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF059669), Color(0xFF10B981)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF10B981).withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
+                borderRadius: BorderRadius.circular(20),
+                color: const Color(0xFF059669).withOpacity(0.85),
+                borderColor: const Color(0xFF10B981).withOpacity(0.4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -381,15 +381,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   final savings = item.customerSavings;
                   final hasSavings = savings > 0;
 
-                  return Container(
+                  return GlassContainer(
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: hasSavings ? Colors.green.withOpacity(0.3) : AppColors.gray200),
-                      boxShadow: AppColors.cardShadow,
-                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    borderColor: hasSavings ? Colors.green.withOpacity(0.5) : null,
                     child: Row(
                       children: [
                         Expanded(
@@ -482,14 +478,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Date Range & Single Date Selector Header Card
-          Container(
+          GlassContainer(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.gray200),
-              boxShadow: AppColors.cardShadow,
-            ),
+            borderRadius: BorderRadius.circular(16),
             child: Column(
               children: [
                 Row(
@@ -604,18 +595,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // On-Page Price History Summary Report Panel
-                  Container(
+                  GlassContainer(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.primary.withOpacity(0.9), AppColors.primary],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: AppColors.cardShadow,
-                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    color: AppColors.primary.withOpacity(0.85),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -676,14 +660,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       final sellPrice = (row['selling_price'] as num?)?.toDouble() ?? 0.0;
                       final mktPrice = (row['market_price'] as num?)?.toDouble() ?? 0.0;
 
-                      return Container(
+                      return GlassContainer(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.gray200),
-                        ),
+                        borderRadius: BorderRadius.circular(14),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -940,14 +920,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 cleanReason = cleanReason.replaceFirst('Wastage: ', '');
               }
 
-              return Card(
+              return GlassContainer(
                 margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.amber.withOpacity(0.2)),
-                ),
-                elevation: 0,
-                color: Colors.amber.shade50.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                borderColor: Colors.amber.withOpacity(0.4),
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.amber.withOpacity(0.2),
@@ -1008,17 +984,10 @@ class _ItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: item.isLowStock ? AppColors.error : AppColors.gray200,
-          width: item.isLowStock ? 1.5 : 1,
-        ),
-        boxShadow: AppColors.cardShadow,
-      ),
+      borderRadius: BorderRadius.circular(14),
+      borderColor: item.isLowStock ? AppColors.error : null,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Container(

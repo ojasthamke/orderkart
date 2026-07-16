@@ -10,6 +10,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -367,14 +368,8 @@ class _OrderCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final customerAsync = ref.watch(customerDetailProvider(order.customerId));
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
-        boxShadow: AppColors.cardShadow,
-      ),
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
@@ -488,10 +483,14 @@ class _OrderCard extends ConsumerWidget {
                           margin: const EdgeInsets.only(top: 4, bottom: 4),
                           decoration: BoxDecoration(
                             color: Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF1E1E1E)
-                                : AppColors.gray50,
+                                ? Colors.white.withOpacity(0.05)
+                                : Colors.black.withOpacity(0.02),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.gray200),
+                            border: Border.all(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white10
+                                  : Colors.black12,
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

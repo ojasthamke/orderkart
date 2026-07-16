@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../data/order_questions_dao.dart';
 
 class OrderQuestionsConfigScreen extends StatefulWidget {
@@ -89,17 +91,8 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        title: const Text(
-          'Order Notes Questions',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
-      ),
+    return AppScaffold(
+      title: 'Order Notes Questions',
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -159,14 +152,8 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
   }
 
   Widget _buildQuestionCard(OrderQuestion q) {
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
-        boxShadow: AppColors.cardShadow,
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
