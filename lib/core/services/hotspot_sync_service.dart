@@ -654,6 +654,8 @@ class HotspotSyncService {
         Directory('${AppConstants.appDocsDir}/street_photos'),
         Directory('${AppConstants.appDocsDir}/note_photos'),
         Directory('${AppConstants.appDocsDir}/attachments'),
+        Directory('${AppConstants.appDocsDir}/item_photos'),
+        Directory('${AppConstants.appDocsDir}/expense_receipts'),
       ];
       final lastSyncDate = lastSyncTime.isNotEmpty ? DateTime.tryParse(lastSyncTime) : null;
       final Set<String> processedFilenames = {};
