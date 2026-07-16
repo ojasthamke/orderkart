@@ -15,6 +15,7 @@ class BoundaryEditorWidget extends ConsumerStatefulWidget {
   final String initialGeometryType;
   final VoidCallback onCancel;
   final VoidCallback onSaveSuccess;
+  final ValueChanged<List<LatLng>>? onPointsChanged;
 
   const BoundaryEditorWidget({
     super.key,
@@ -25,6 +26,7 @@ class BoundaryEditorWidget extends ConsumerStatefulWidget {
     required this.initialGeometryType,
     required this.onCancel,
     required this.onSaveSuccess,
+    this.onPointsChanged,
   });
 
   @override
@@ -60,6 +62,7 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
     setState(() {
       _points.add(point);
     });
+    widget.onPointsChanged?.call(_points);
   }
 
   void undoLastPoint() {
@@ -67,6 +70,7 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
       setState(() {
         _points.removeLast();
       });
+      widget.onPointsChanged?.call(_points);
     }
   }
 
@@ -74,6 +78,7 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
     setState(() {
       _points.clear();
     });
+    widget.onPointsChanged?.call(_points);
   }
 
   Future<void> _autoSuggest() async {
@@ -98,6 +103,7 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
           _points = points;
           _geometryType = 'polyline'; // default to line if few pins
         });
+        widget.onPointsChanged?.call(points);
         return;
       }
 
@@ -106,6 +112,7 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
         _points = hull;
         _geometryType = 'polygon';
       });
+      widget.onPointsChanged?.call(hull);
     });
   }
 

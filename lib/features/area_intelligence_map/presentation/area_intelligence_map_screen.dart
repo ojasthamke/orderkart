@@ -170,9 +170,6 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                 onMapTap: (tapPos) {
                   if (_isEditMode) {
                     _editorKey.currentState?.addPoint(tapPos);
-                    setState(() {
-                      _editPoints.add(tapPos);
-                    });
                   } else {
                     setState(() {
                       _selectedCustomer = null;
@@ -307,6 +304,12 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                 initialPoints: _editPoints,
                 initialGeometryType: _editGeometryType,
                 onCancel: _exitEditing,
+                onPointsChanged: (pts) {
+                  setState(() {
+                    _editPoints.clear();
+                    _editPoints.addAll(pts);
+                  });
+                },
                 onSaveSuccess: () {
                   _exitEditing();
                   ScaffoldMessenger.of(context).showSnackBar(
