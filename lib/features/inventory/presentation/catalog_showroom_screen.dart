@@ -154,12 +154,12 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
               children: [
                 CircleAvatar(
                   backgroundColor: _getCategoryColor(item.category).withOpacity(0.1),
-                  backgroundImage: item.photoPath.isNotEmpty
+                  backgroundImage: (item.photoPath.isNotEmpty && (item.photoPath.startsWith('http') || AppConstants.resolveFile(item.photoPath).existsSync()))
                       ? (item.photoPath.startsWith('http')
                           ? NetworkImage(item.photoPath) as ImageProvider
-                          : FileImage(File(item.photoPath)))
+                          : FileImage(AppConstants.resolveFile(item.photoPath)))
                       : null,
-                  child: item.photoPath.isEmpty
+                  child: (item.photoPath.isEmpty || (!item.photoPath.startsWith('http') && !AppConstants.resolveFile(item.photoPath).existsSync()))
                       ? Icon(_getCategoryIcon(item.category), color: _getCategoryColor(item.category))
                       : null,
                 ),
@@ -400,16 +400,16 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                 decoration: BoxDecoration(
                                   color: catColor.withOpacity(0.08),
                                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                  image: item.photoPath.isNotEmpty
+                                  image: (item.photoPath.isNotEmpty && (item.photoPath.startsWith('http') || AppConstants.resolveFile(item.photoPath).existsSync()))
                                       ? DecorationImage(
                                           image: item.photoPath.startsWith('http')
                                               ? NetworkImage(item.photoPath) as ImageProvider
-                                              : FileImage(File(item.photoPath)),
+                                              : FileImage(AppConstants.resolveFile(item.photoPath)),
                                           fit: BoxFit.cover,
                                         )
                                       : null,
                                 ),
-                                child: item.photoPath.isEmpty
+                                child: (item.photoPath.isEmpty || (!item.photoPath.startsWith('http') && !AppConstants.resolveFile(item.photoPath).existsSync()))
                                     ? Center(
                                         child: Icon(
                                           _getCategoryIcon(item.category),

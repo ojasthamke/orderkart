@@ -1027,16 +1027,16 @@ class _ItemTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.primarySurface,
             borderRadius: BorderRadius.circular(8),
-            image: item.photoPath.isNotEmpty
+            image: (item.photoPath.isNotEmpty && (item.photoPath.startsWith('http') || AppConstants.resolveFile(item.photoPath).existsSync()))
                 ? DecorationImage(
                     image: item.photoPath.startsWith('http')
                         ? NetworkImage(item.photoPath) as ImageProvider
-                        : FileImage(File(item.photoPath)),
+                        : FileImage(AppConstants.resolveFile(item.photoPath)),
                     fit: BoxFit.cover,
                   )
                 : null,
           ),
-          child: item.photoPath.isEmpty
+          child: (item.photoPath.isEmpty || (!item.photoPath.startsWith('http') && !AppConstants.resolveFile(item.photoPath).existsSync()))
               ? const Icon(Icons.image_outlined, color: AppColors.primary)
               : null,
         ),

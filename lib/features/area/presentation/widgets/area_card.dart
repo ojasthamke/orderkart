@@ -1,11 +1,11 @@
 /// AreaCard — Single area list item
 library;
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../domain/area.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../../core/constants/app_routes.dart';
 
@@ -50,8 +50,9 @@ class AreaCard extends StatelessWidget {
                 // Color / Image avatar
                 GestureDetector(
                   onTap: () {
-                    if (area.photoPath.isNotEmpty && File(area.photoPath).existsSync()) {
-                      FullScreenImageViewer.show(context, area.photoPath, title: area.name);
+                    final resolvedFile = AppConstants.resolveFile(area.photoPath);
+                    if (area.photoPath.isNotEmpty && resolvedFile.existsSync()) {
+                      FullScreenImageViewer.show(context, resolvedFile.path, title: area.name);
                     }
                   },
                   child: Container(
@@ -60,14 +61,14 @@ class AreaCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(14),
-                      image: (area.photoPath.isNotEmpty && File(area.photoPath).existsSync())
+                      image: (area.photoPath.isNotEmpty && AppConstants.resolveFile(area.photoPath).existsSync())
                           ? DecorationImage(
-                              image: FileImage(File(area.photoPath)),
+                              image: FileImage(AppConstants.resolveFile(area.photoPath)),
                               fit: BoxFit.cover,
                             )
                           : null,
                     ),
-                    child: (area.photoPath.isEmpty || !File(area.photoPath).existsSync())
+                    child: (area.photoPath.isEmpty || !AppConstants.resolveFile(area.photoPath).existsSync())
                         ? Icon(Icons.map_rounded, color: color, size: 26)
                         : null,
                   ),

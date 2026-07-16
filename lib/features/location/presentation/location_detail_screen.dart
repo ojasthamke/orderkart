@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -544,8 +545,9 @@ class _LocationTile extends StatelessWidget {
               // Photo/Icon indicator
               GestureDetector(
                 onTap: () {
-                  if (location.photoPath.isNotEmpty && File(location.photoPath).existsSync()) {
-                    FullScreenImageViewer.show(context, location.photoPath, title: location.name);
+                  final resolvedFile = AppConstants.resolveFile(location.photoPath);
+                  if (location.photoPath.isNotEmpty && resolvedFile.existsSync()) {
+                    FullScreenImageViewer.show(context, resolvedFile.path, title: location.name);
                   }
                 },
                 child: Container(
@@ -554,11 +556,11 @@ class _LocationTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.primarySurface,
                     borderRadius: BorderRadius.circular(12),
-                    image: (location.photoPath.isNotEmpty && File(location.photoPath).existsSync())
-                        ? DecorationImage(image: FileImage(File(location.photoPath)), fit: BoxFit.cover)
+                    image: (location.photoPath.isNotEmpty && AppConstants.resolveFile(location.photoPath).existsSync())
+                        ? DecorationImage(image: FileImage(AppConstants.resolveFile(location.photoPath)), fit: BoxFit.cover)
                         : null,
                   ),
-                  child: (location.photoPath.isEmpty || !File(location.photoPath).existsSync())
+                  child: (location.photoPath.isEmpty || !AppConstants.resolveFile(location.photoPath).existsSync())
                       ? Icon(location.locationKind.icon, color: AppColors.primary, size: 24)
                       : null,
                 ),

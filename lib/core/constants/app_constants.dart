@@ -15,9 +15,41 @@ class AppConstants {
     if (file.existsSync()) return file;
     if (appDocsDir.isNotEmpty) {
       final filename = p.basename(originalPath);
-      final fallbackFile = File('$appDocsDir/customer_photos/$filename');
-      if (fallbackFile.existsSync()) {
-        return fallbackFile;
+      
+      // Determine context folder from path structure
+      String subFolder = 'customer_photos';
+      if (originalPath.contains('area_photos')) {
+        subFolder = 'area_photos';
+      } else if (originalPath.contains('street_photos')) {
+        subFolder = 'street_photos';
+      } else if (originalPath.contains('note_photos')) {
+        subFolder = 'note_photos';
+      } else if (originalPath.contains('attachments')) {
+        subFolder = 'attachments';
+      } else if (originalPath.contains('item_photos')) {
+        subFolder = 'item_photos';
+      } else if (originalPath.contains('expense_receipts')) {
+        subFolder = 'expense_receipts';
+      }
+      
+      final candidate = File('$appDocsDir/$subFolder/$filename');
+      if (candidate.existsSync()) return candidate;
+
+      // Fallback: search in all folders
+      final folders = [
+        'customer_photos',
+        'area_photos',
+        'street_photos',
+        'note_photos',
+        'attachments',
+        'item_photos',
+        'expense_receipts'
+      ];
+      for (final f in folders) {
+        final fallbackFile = File('$appDocsDir/$f/$filename');
+        if (fallbackFile.existsSync()) {
+          return fallbackFile;
+        }
       }
     }
     return file;

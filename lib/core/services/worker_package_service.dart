@@ -143,6 +143,7 @@ class WorkerPackageService {
 
     // Export customer photos for only assigned customers
     final photosDir = Directory('${packageDir.path}/photos')..createSync();
+    final custPhotosDir = Directory('${photosDir.path}/customer_photos')..createSync();
     final Set<String> assignedPhotoNames = customersRows
         .map((e) => e['photo_path']?.toString() ?? '')
         .where((e) => e.isNotEmpty)
@@ -156,7 +157,28 @@ class WorkerPackageService {
         if (f is File) {
           final filename = p.basename(f.path);
           if (assignedPhotoNames.contains(filename)) {
-            await f.copy('${photosDir.path}/$filename');
+            await f.copy('${custPhotosDir.path}/$filename');
+          }
+        }
+      }
+    }
+
+    // Export product photos
+    final itemPhotosDir = Directory('${photosDir.path}/item_photos')..createSync();
+    final Set<String> itemPhotoNames = itemsRows
+        .map((e) => e['photo_path']?.toString() ?? '')
+        .where((e) => e.isNotEmpty && !e.startsWith('http'))
+        .map((e) => p.basename(e))
+        .toSet();
+
+    final srcItemPhotoDir = Directory('${AppConstants.appDocsDir}/item_photos');
+    if (srcItemPhotoDir.existsSync()) {
+      final files = srcItemPhotoDir.listSync();
+      for (final f in files) {
+        if (f is File) {
+          final filename = p.basename(f.path);
+          if (itemPhotoNames.contains(filename)) {
+            await f.copy('${itemPhotosDir.path}/$filename');
           }
         }
       }
@@ -190,10 +212,11 @@ class WorkerPackageService {
       fileHashes[f] = await _calculateFileHash(File('${packageDir.path}/$f'));
     }
 
-    final photoList = photosDir.listSync();
+    final photoList = photosDir.listSync(recursive: true);
     for (final f in photoList) {
       if (f is File) {
-        fileHashes['photos/${p.basename(f.path)}'] = await _calculateFileHash(f);
+        final relPath = p.relative(f.path, from: packageDir.path).replaceAll('\\', '/');
+        fileHashes[relPath] = await _calculateFileHash(f);
       }
     }
     if (File('${logoDir.path}/logo.png').existsSync()) {
@@ -254,7 +277,10 @@ class WorkerPackageService {
       if (file.existsSync()) encoder.addFile(file, f);
     }
     for (final f in photoList) {
-      if (f is File) encoder.addFile(f, 'photos/${p.basename(f.path)}');
+      if (f is File) {
+        final relPath = p.relative(f.path, from: packageDir.path).replaceAll('\\', '/');
+        encoder.addFile(f, relPath);
+      }
     }
     if (File('${logoDir.path}/logo.png').existsSync()) {
       encoder.addFile(File('${logoDir.path}/logo.png'), 'logo/logo.png');

@@ -465,6 +465,10 @@ class PackageValidator {
           targetDir = '${AppConstants.appDocsDir}/note_photos';
         } else if (photoPath.startsWith('photos/attachments/')) {
           targetDir = '${AppConstants.appDocsDir}/attachments';
+        } else if (photoPath.startsWith('photos/item_photos/')) {
+          targetDir = '${AppConstants.appDocsDir}/item_photos';
+        } else if (photoPath.startsWith('photos/expense_receipts/')) {
+          targetDir = '${AppConstants.appDocsDir}/expense_receipts';
         } else {
           targetDir = '${AppConstants.appDocsDir}/customer_photos'; // Fallback
         }

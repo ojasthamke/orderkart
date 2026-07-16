@@ -290,6 +290,8 @@ class PackageExporter {
         final List<Map<String, dynamic>> areaPhotos = await tempDb.rawQuery('SELECT photo_path FROM areas WHERE photo_path IS NOT NULL AND photo_path != ""');
         final List<Map<String, dynamic>> streetPhotos = await tempDb.rawQuery('SELECT photo_path FROM streets WHERE photo_path IS NOT NULL AND photo_path != ""');
         final List<Map<String, dynamic>> notePhotos = await tempDb.rawQuery('SELECT photo_path FROM notes WHERE photo_path IS NOT NULL AND photo_path != ""');
+        final List<Map<String, dynamic>> itemPhotos = await tempDb.rawQuery('SELECT photo_path FROM items WHERE photo_path IS NOT NULL AND photo_path != ""');
+        final List<Map<String, dynamic>> expensePhotos = await tempDb.rawQuery('SELECT receipt_photo_path FROM expenses WHERE receipt_photo_path IS NOT NULL AND receipt_photo_path != ""');
         
         for (final r in custPhotos) {
           referencedPhotos.add(p.basename(r['photo_path'].toString()));
@@ -302,6 +304,12 @@ class PackageExporter {
         }
         for (final r in notePhotos) {
           referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        }
+        for (final r in itemPhotos) {
+          referencedPhotos.add(p.basename(r['photo_path'].toString()));
+        }
+        for (final r in expensePhotos) {
+          referencedPhotos.add(p.basename(r['receipt_photo_path'].toString()));
         }
       } catch (_) {}
 
@@ -445,7 +453,7 @@ class PackageExporter {
     // 1. Export photos if selected
     final isEntireDb = selectedModules.contains('entire_db');
     if (selectedModules.contains('photos') || isEntireDb) {
-      final List<String> folders = ['customer_photos', 'area_photos', 'street_photos', 'note_photos', 'attachments'];
+      final List<String> folders = ['customer_photos', 'area_photos', 'street_photos', 'note_photos', 'attachments', 'item_photos', 'expense_receipts'];
       for (final folder in folders) {
         final srcPhotoDir = Directory('${AppConstants.appDocsDir}/$folder');
         if (srcPhotoDir.existsSync()) {

@@ -13,6 +13,7 @@ import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/full_screen_image_viewer.dart';
 import '../domain/street.dart';
 import 'street_provider.dart';
@@ -365,8 +366,9 @@ class _StreetTile extends StatelessWidget {
               // Photo or Icon Avatar
               GestureDetector(
                 onTap: () {
-                  if (street.photoPath.isNotEmpty && File(street.photoPath).existsSync()) {
-                    FullScreenImageViewer.show(context, street.photoPath, title: street.name);
+                  final resolvedFile = AppConstants.resolveFile(street.photoPath);
+                  if (street.photoPath.isNotEmpty && resolvedFile.existsSync()) {
+                    FullScreenImageViewer.show(context, resolvedFile.path, title: street.name);
                   }
                 },
                 child: Container(
@@ -375,11 +377,11 @@ class _StreetTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.primarySurface,
                     borderRadius: BorderRadius.circular(12),
-                    image: (street.photoPath.isNotEmpty && File(street.photoPath).existsSync())
-                        ? DecorationImage(image: FileImage(File(street.photoPath)), fit: BoxFit.cover)
+                    image: (street.photoPath.isNotEmpty && AppConstants.resolveFile(street.photoPath).existsSync())
+                        ? DecorationImage(image: FileImage(AppConstants.resolveFile(street.photoPath)), fit: BoxFit.cover)
                         : null,
                   ),
-                  child: (street.photoPath.isEmpty || !File(street.photoPath).existsSync())
+                  child: (street.photoPath.isEmpty || !AppConstants.resolveFile(street.photoPath).existsSync())
                       ? const Icon(Icons.turn_slight_right_rounded, color: AppColors.primary, size: 24)
                       : null,
                 ),
