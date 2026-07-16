@@ -19,11 +19,13 @@ class MapPinPickerScreen extends StatefulWidget {
 class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
   final MapController _mapController = MapController();
   late LatLng _currentPosition;
+  late final TileProvider _tileProvider;
 
   @override
   void initState() {
     super.initState();
     _currentPosition = widget.initialPosition ?? const LatLng(19.076, 72.877); // default Mumbai
+    _tileProvider = _initTileProvider();
   }
 
   @override
@@ -32,7 +34,7 @@ class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
     super.dispose();
   }
 
-  TileProvider _getTileProvider() {
+  TileProvider _initTileProvider() {
     try {
       return FMTCTileProvider(
         stores: const {
@@ -77,7 +79,7 @@ class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.orderkart.app',
-                tileProvider: _getTileProvider(),
+                tileProvider: _tileProvider,
               ),
             ],
           ),

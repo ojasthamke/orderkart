@@ -2075,7 +2075,11 @@ class DatabaseHelper {
 
     // Migrate customers
     try {
-      final customers = await db.query('customers', columns: ['id', 'maps_location', 'latitude', 'longitude']);
+      final customers = await db.query(
+        'customers',
+        columns: ['id', 'maps_location', 'latitude', 'longitude'],
+        where: "(latitude = 0.0 OR latitude IS NULL) AND maps_location IS NOT NULL AND maps_location != ''",
+      );
       for (final c in customers) {
         final id = c['id'] as String;
         final mapsLocation = c['maps_location'] as String? ?? '';
@@ -2102,7 +2106,11 @@ class DatabaseHelper {
 
     // Migrate locations
     try {
-      final locations = await db.query('locations', columns: ['id', 'maps_location', 'latitude', 'longitude']);
+      final locations = await db.query(
+        'locations',
+        columns: ['id', 'maps_location', 'latitude', 'longitude'],
+        where: "(latitude = 0.0 OR latitude IS NULL) AND maps_location IS NOT NULL AND maps_location != ''",
+      );
       for (final l in locations) {
         final id = l['id'] as String;
         final mapsLocation = l['maps_location'] as String? ?? '';
@@ -2129,7 +2137,11 @@ class DatabaseHelper {
 
     // Migrate areas (legacy)
     try {
-      final areas = await db.query('areas', columns: ['id', 'maps_location', 'latitude', 'longitude']);
+      final areas = await db.query(
+        'areas',
+        columns: ['id', 'maps_location', 'latitude', 'longitude'],
+        where: "(latitude = 0.0 OR latitude IS NULL) AND maps_location IS NOT NULL AND maps_location != ''",
+      );
       for (final a in areas) {
         final id = a['id'] as String;
         final mapsLocation = a['maps_location'] as String? ?? '';

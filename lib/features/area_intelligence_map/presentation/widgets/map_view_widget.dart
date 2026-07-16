@@ -7,6 +7,7 @@ import '../../domain/map_models.dart';
 import '../area_map_provider.dart';
 import '../../../customer/domain/customer.dart';
 import '../../../location/domain/location.dart';
+import '../../utils/marker_clusterer.dart';
 
 class MapViewWidget extends ConsumerStatefulWidget {
   final MapController mapController;
@@ -40,6 +41,8 @@ class MapViewWidget extends ConsumerStatefulWidget {
 
 class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  late final TileProvider _tileProvider;
+  double _currentZoom = 16.0;
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
+    _tileProvider = _initTileProvider();
   }
 
   @override
@@ -56,7 +60,7 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
     super.dispose();
   }
 
-  TileProvider _getTileProvider() {
+  TileProvider _initTileProvider() {
     try {
       return FMTCTileProvider(
         stores: const {
@@ -161,22 +165,60 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
       }
     }
 
-    // 3. Prepare Customer Markers
+    // 3. Prepare Customer Markers (with clustering)
     if (widget.visibility.customerMarkers && !widget.isEditMode) {
-      for (final m in widget.mapData.customerMarkers) {
-        // Skip rendering if they are the selected customer (we render them separately below popup)
-        final isSelected = widget.selectedCustomer?.id == m.id;
-        final c = Customer.fromMap(m.rawData);
+      final clustered = MarkerClusterer.cluster(
+        markers: widget.mapData.customerMarkers,
+        zoom: _currentZoom,
+      );
 
-        markers.add(Marker(
-          point: m.position,
-          width: isSelected ? 48 : 36,
-          height: isSelected ? 48 : 36,
-          child: GestureDetector(
-            onTap: () => widget.onCustomerTap(c),
-            child: _buildCustomerMarkerWidget(m, isSelected),
-          ),
-        ));
+      for (final cluster in clustered) {
+        if (cluster.isCluster) {
+          markers.add(Marker(
+            point: cluster.position,
+            width: 40,
+            height: 40,
+            child: GestureDetector(
+              onTap: () {
+                widget.mapController.move(cluster.position, _currentZoom + 1.5);
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    '${cluster.markers.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ));
+        } else {
+          final m = cluster.markers.first;
+          final isSelected = widget.selectedCustomer?.id == m.id;
+          final c = Customer.fromMap(m.rawData);
+
+          markers.add(Marker(
+            point: m.position,
+            width: isSelected ? 48 : 36,
+            height: isSelected ? 48 : 36,
+            child: GestureDetector(
+              onTap: () => widget.onCustomerTap(c),
+              child: _buildCustomerMarkerWidget(m, isSelected),
+            ),
+          ));
+        }
       }
     }
 
@@ -309,6 +351,11 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
         minZoom: 11.0,
         maxZoom: 19.0,
         onTap: (tapCtx, point) => widget.onMapTap(point),
+        onPositionChanged: (camera, hasGesture) {
+          setState(() {
+            _currentZoom = camera.zoom;
+          });
+        },
       ),
       children: [
         // Base Layer
@@ -316,7 +363,7 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             userAgentPackageName: 'com.orderkart.app',
-            tileProvider: _getTileProvider(),
+            tileProvider: _tileProvider,
           ),
 
         // Polygons (Area & Sections)

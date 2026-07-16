@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'area_map_provider.dart';
 import 'widgets/location_context_banner.dart';
 import 'widgets/map_layer_controls.dart';
@@ -46,9 +48,29 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
 
   void _recenterOnGps() {
     final gpsAsync = ref.read(currentLocationProvider);
-    gpsAsync.whenData((pos) {
-      _mapController.move(pos, 17.0);
-    });
+    gpsAsync.when(
+      data: (pos) {
+        _mapController.move(pos, 17.0);
+      },
+      error: (err, _) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('GPS Error: ${err.toString()}'),
+            backgroundColor: Colors.red[800],
+            action: SnackBarAction(
+              label: 'Settings',
+              textColor: Colors.white,
+              onPressed: () => Geolocator.openAppSettings(),
+            ),
+          ),
+        );
+      },
+      loading: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Determining location...')),
+        );
+      },
+    );
   }
 
   void _startEditing(String locId, String name, [List<LatLng>? pts, String? type]) {
@@ -76,6 +98,7 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
   Widget build(BuildContext context) {
     final mapDataAsync = ref.watch(areaMapDataProvider(widget.areaId));
     final vis = ref.watch(mapLayerVisibilityProvider(widget.areaId));
+    final gpsAsync = ref.watch(currentLocationProvider);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -166,13 +189,85 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
             },
           ),
 
-          // 2. Glassmorphism Position HUD at top
+          // 2. Glassmorphism Position HUD at top OR GPS Error Banner
           if (!_isEditMode)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 60,
-              left: 16,
-              right: 16,
-              child: LocationContextBanner(areaId: widget.areaId),
+            gpsAsync.when(
+              data: (_) => Positioned(
+                top: MediaQuery.of(context).padding.top + 60,
+                left: 16,
+                right: 16,
+                child: LocationContextBanner(areaId: widget.areaId),
+              ),
+              loading: () => const SizedBox.shrink(),
+              error: (error, _) => Positioned(
+                top: MediaQuery.of(context).padding.top + 60,
+                left: 16,
+                right: 16,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.red[900]!.withOpacity(0.85),
+                        border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.gpp_maybe_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'GPS Tracking Disabled',
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  error.toString(),
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 11,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              backgroundColor: Colors.white24,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () => Geolocator.openAppSettings(),
+                            child: Text(
+                              'Enable',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
 
           // 3. Layer toggle buttons on the right

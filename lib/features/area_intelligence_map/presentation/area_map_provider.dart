@@ -141,31 +141,62 @@ final areaMapDataProvider = FutureProvider.family<AreaMapData, String>((ref, are
 // GPS Stream Provider with EMA smoothing
 final currentLocationProvider = StreamProvider<LatLng>((ref) {
   final controller = StreamController<LatLng>();
-  LatLng? prevPoint;
+  StreamSubscription<Position>? positionSubscription;
+  StreamSubscription<ServiceStatus>? serviceStatusSubscription;
 
-  Geolocator.getServiceStatusStream().listen((status) {
-    if (status == ServiceStatus.disabled) {
-      controller.addError('Location services disabled');
+  Future<void> startTracking() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        controller.addError('Location services are disabled.');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          controller.addError('Location permissions are denied.');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        controller.addError('Location permissions are permanently denied.');
+        return;
+      }
+
+      serviceStatusSubscription = Geolocator.getServiceStatusStream().listen((status) {
+        if (status == ServiceStatus.disabled) {
+          controller.addError('Location services disabled');
+        }
+      });
+
+      LatLng? prevPoint;
+      positionSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 5,
+        ),
+      ).listen(
+        (position) {
+          final rawPoint = LatLng(position.latitude, position.longitude);
+          final smoothed = GeoMath.smoothGPS(rawPoint, prevPoint);
+          prevPoint = smoothed;
+          controller.add(smoothed);
+        },
+        onError: (err) => controller.addError(err),
+      );
+    } catch (e) {
+      controller.addError(e);
     }
-  });
+  }
 
-  final subscription = Geolocator.getPositionStream(
-    locationSettings: const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 5,
-    ),
-  ).listen(
-    (position) {
-      final rawPoint = LatLng(position.latitude, position.longitude);
-      final smoothed = GeoMath.smoothGPS(rawPoint, prevPoint);
-      prevPoint = smoothed;
-      controller.add(smoothed);
-    },
-    onError: (err) => controller.addError(err),
-  );
+  startTracking();
 
   ref.onDispose(() {
-    subscription.cancel();
+    positionSubscription?.cancel();
+    serviceStatusSubscription?.cancel();
     controller.close();
   });
 
