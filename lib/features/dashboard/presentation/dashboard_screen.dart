@@ -319,6 +319,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       pendingCount: (summary['pending_count'] as int?) ?? 0,
                       todayExpenses: (summary['today_expenses'] as num?)?.toDouble() ?? 0.0,
                       todayOrdersCount: (summary['today_orders_count'] as int?) ?? 0,
+                      monthlySales: (summary['monthly_sales'] as num?)?.toDouble() ?? 0.0,
+                      cashReceived: (summary['cash_received'] as num?)?.toDouble() ?? 0.0,
+                      onlineReceived: (summary['online_received'] as num?)?.toDouble() ?? 0.0,
                       onCreateOrder: () => Navigator.of(context).pushNamed(AppRoutes.customers),
                       onViewInventory: () => Navigator.of(context).pushNamed(AppRoutes.inventory),
                     );

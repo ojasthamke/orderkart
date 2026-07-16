@@ -13,6 +13,9 @@ class SmartBusinessPulseWidget extends StatelessWidget {
   final int pendingCount;
   final double todayExpenses;
   final int todayOrdersCount;
+  final double monthlySales;
+  final double cashReceived;
+  final double onlineReceived;
   final VoidCallback? onCreateOrder;
   final VoidCallback? onViewInventory;
 
@@ -30,6 +33,9 @@ class SmartBusinessPulseWidget extends StatelessWidget {
     required this.pendingCount,
     required this.todayExpenses,
     required this.todayOrdersCount,
+    required this.monthlySales,
+    required this.cashReceived,
+    required this.onlineReceived,
     this.onCreateOrder,
     this.onViewInventory,
   });
@@ -224,11 +230,11 @@ class SmartBusinessPulseWidget extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildMetricTile(
-                  title: 'VIP Members',
-                  value: '$vipCount / $customerCount',
-                  subtitle: 'Loyalty Count',
-                  icon: Icons.star_outline_rounded,
-                  iconColor: const Color(0xFFFFD700),
+                  title: 'Monthly Volume',
+                  value: '₹${monthlySales.toStringAsFixed(0)}',
+                  subtitle: 'This Month\'s Sales',
+                  icon: Icons.calendar_month_outlined,
+                  iconColor: const Color(0xFFF59E0B),
                 ),
               ),
             ],
@@ -255,6 +261,30 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                   subtitle: 'Total Outflow',
                   icon: Icons.payments_outlined,
                   iconColor: const Color(0xFFEF4444),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetricTile(
+                  title: 'Cash / Online Ratio',
+                  value: '₹${cashReceived.toStringAsFixed(0)} / ₹${onlineReceived.toStringAsFixed(0)}',
+                  subtitle: 'Payment Breakup',
+                  icon: Icons.account_balance_wallet_outlined,
+                  iconColor: const Color(0xFFA855F7),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricTile(
+                  title: 'Active Customers',
+                  value: '$customerCount',
+                  subtitle: 'Total Registered',
+                  icon: Icons.people_outline_rounded,
+                  iconColor: const Color(0xFFEC4899),
                 ),
               ),
             ],

@@ -652,6 +652,14 @@ class WorkerPackageService {
       final pathStr = (n['attachment_path'] ?? n['photo_path'])?.toString() ?? '';
       if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
     }
+    for (final i in itemsRows) {
+      final pathStr = i['photo_path']?.toString() ?? '';
+      if (pathStr.isNotEmpty && !pathStr.startsWith('http')) assignedPhotoNames.add(p.basename(pathStr));
+    }
+    for (final e in expensesRows) {
+      final pathStr = e['receipt_photo_path']?.toString() ?? '';
+      if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+    }
 
     final photoDirsToScan = [
       Directory('${AppConstants.appDocsDir}/customer_photos'),
@@ -659,6 +667,8 @@ class WorkerPackageService {
       Directory('${AppConstants.appDocsDir}/street_photos'),
       Directory('${AppConstants.appDocsDir}/note_photos'),
       Directory('${AppConstants.appDocsDir}/attachments'),
+      Directory('${AppConstants.appDocsDir}/item_photos'),
+      Directory('${AppConstants.appDocsDir}/expense_receipts'),
     ];
 
     for (final srcDir in photoDirsToScan) {
@@ -788,6 +798,7 @@ class WorkerPackageService {
     final permissionsRow = await mainDb.query('worker_permissions', where: 'worker_id = ?', whereArgs: [workerId]);
     final assignmentsRows = await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId]);
 
+    final List<Map<String, dynamic>> locationsRows = await mainDb.query('locations');
     final List<Map<String, dynamic>> areasRows = await mainDb.query('areas');
     final List<Map<String, dynamic>> streetsRows = await mainDb.query('streets');
     final List<Map<String, dynamic>> customersRows = await mainDb.query('customers');
@@ -807,6 +818,7 @@ class WorkerPackageService {
       'workers': workerRow,
       'worker_permissions': permissionsRow,
       'worker_assignments': assignmentsRows,
+      'locations': locationsRows,
       'areas': areasRows,
       'streets': streetsRows,
       'customers': customersRows,

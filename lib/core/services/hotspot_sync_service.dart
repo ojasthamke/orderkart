@@ -341,14 +341,81 @@ class HotspotSyncService {
               'worker_name': wName,
               'device_name': devName,
               'record_count': recordsCount,
-              'status': 'success',
+            'status': 'success',
               'error_log': jsonEncode(stats),
             });
 
             Map<String, dynamic>? scopedWorkerData;
+            List<Map<String, String>> responsePhotos = [];
             if (wId != 'unknown' && wId.isNotEmpty && !isLocalWorker) {
               try {
                 scopedWorkerData = await WorkerPackageService.getScopedDataForWorker(wId);
+                // Compile photos that this worker has access to based on their scoped worker data
+                final Set<String> workerPhotoNames = {};
+                final custRows = scopedWorkerData['customers'] as List?;
+                if (custRows != null) {
+                  for (final c in custRows) {
+                    final pStr = c['photo_path']?.toString() ?? '';
+                    if (pStr.isNotEmpty) workerPhotoNames.add(p.basename(pStr));
+                  }
+                }
+                final areaRows = scopedWorkerData['areas'] as List?;
+                if (areaRows != null) {
+                  for (final a in areaRows) {
+                    final pStr = a['photo_path']?.toString() ?? '';
+                    if (pStr.isNotEmpty) workerPhotoNames.add(p.basename(pStr));
+                  }
+                }
+                final streetRows = scopedWorkerData['streets'] as List?;
+                if (streetRows != null) {
+                  for (final s in streetRows) {
+                    final pStr = s['photo_path']?.toString() ?? '';
+                    if (pStr.isNotEmpty) workerPhotoNames.add(p.basename(pStr));
+                  }
+                }
+                final itemRows = scopedWorkerData['items'] as List?;
+                if (itemRows != null) {
+                  for (final i in itemRows) {
+                    final pStr = i['photo_path']?.toString() ?? '';
+                    if (pStr.isNotEmpty) workerPhotoNames.add(p.basename(pStr));
+                  }
+                }
+
+                // Add expense receipt photo names
+                final mainDb = await DatabaseHelper.instance.database;
+                final expRows = await mainDb.query('expenses', where: 'assigned_worker_id = ? OR created_by = ?', whereArgs: [wId, wId]);
+                for (final e in expRows) {
+                  final pStr = e['receipt_photo_path']?.toString() ?? '';
+                  if (pStr.isNotEmpty) workerPhotoNames.add(p.basename(pStr));
+                }
+
+                final photoDirs = [
+                  Directory('${AppConstants.appDocsDir}/customer_photos'),
+                  Directory('${AppConstants.appDocsDir}/area_photos'),
+                  Directory('${AppConstants.appDocsDir}/street_photos'),
+                  Directory('${AppConstants.appDocsDir}/note_photos'),
+                  Directory('${AppConstants.appDocsDir}/attachments'),
+                  Directory('${AppConstants.appDocsDir}/item_photos'),
+                  Directory('${AppConstants.appDocsDir}/expense_receipts'),
+                ];
+                for (final dir in photoDirs) {
+                  if (dir.existsSync()) {
+                    final folder = p.basename(dir.path);
+                    for (final f in dir.listSync()) {
+                      if (f is File) {
+                        final filename = p.basename(f.path);
+                        if (workerPhotoNames.contains(filename)) {
+                          final bytes = await f.readAsBytes();
+                          responsePhotos.add({
+                            'folder': folder,
+                            'filename': filename,
+                            'base64': base64Encode(bytes),
+                          });
+                        }
+                      }
+                    }
+                  }
+                }
               } catch (err) {
                 debugPrint('Failed to compile scoped data for worker: $err');
               }
@@ -361,6 +428,7 @@ class HotspotSyncService {
                 'status': 'success',
                 'merged_records': recordsCount,
                 if (scopedWorkerData != null) 'scoped_data': scopedWorkerData,
+                if (responsePhotos.isNotEmpty) 'photos': responsePhotos,
               }));
             await request.response.close();
 
@@ -528,6 +596,34 @@ class HotspotSyncService {
     if (modules.contains('areas_streets')) {
       dataMap['areas'] = areasRows;
       dataMap['streets'] = streetsRows;
+
+      // 1.1 Add locations
+      if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
+        final List<String> resolvedLocationIds = [];
+        for (final a in areasRows) {
+          final aId = a['id']?.toString() ?? '';
+          if (aId.isNotEmpty) resolvedLocationIds.add(aId);
+        }
+        for (final s in streetsRows) {
+          final sId = s['id']?.toString() ?? '';
+          if (sId.isNotEmpty) resolvedLocationIds.add(sId);
+        }
+        if (resolvedLocationIds.isNotEmpty) {
+          final placeholders = List.filled(resolvedLocationIds.length, '?').join(',');
+          dataMap['locations'] = await mainDb.query('locations', where: 'id IN ($placeholders)', whereArgs: resolvedLocationIds);
+        } else {
+          dataMap['locations'] = [];
+        }
+      } else {
+        dataMap['locations'] = await mainDb.query('locations');
+      }
+
+      // 1.2 Add visits
+      if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
+        dataMap['visits'] = await mainDb.query('visits', where: 'created_by = ?', whereArgs: [workerId]);
+      } else {
+        dataMap['visits'] = await mainDb.query('visits');
+      }
     }
 
     // 2. Customers catalog selection
@@ -537,8 +633,11 @@ class HotspotSyncService {
       if (customerIds.isNotEmpty) {
         final placeholders = List.filled(customerIds.length, '?').join(',');
         dataMap['vip_membership'] = await mainDb.query('vip_membership', where: 'customer_id IN ($placeholders)', whereArgs: customerIds);
+        // Add customer notes
+        dataMap['notes'] = await mainDb.query('notes', where: 'customer_id IN ($placeholders) OR created_by = ?', whereArgs: [...customerIds, workerId]);
       } else {
         dataMap['vip_membership'] = [];
+        dataMap['notes'] = workerId.isNotEmpty ? await mainDb.query('notes', where: 'created_by = ?', whereArgs: [workerId]) : await mainDb.query('notes');
       }
     }
 
@@ -646,6 +745,29 @@ class HotspotSyncService {
           final pathStr = c['photo_path']?.toString() ?? '';
           if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
         }
+        for (final a in areasRows) {
+          final pathStr = a['photo_path']?.toString() ?? '';
+          if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+        }
+        for (final s in streetsRows) {
+          final pathStr = s['photo_path']?.toString() ?? '';
+          if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+        }
+        final itemsList = await mainDb.query('items');
+        for (final i in itemsList) {
+          final pathStr = i['photo_path']?.toString() ?? '';
+          if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+        }
+        final expensesList = await mainDb.query('expenses', where: 'assigned_worker_id = ? OR created_by = ?', whereArgs: [workerId, workerId]);
+        for (final e in expensesList) {
+          final pathStr = e['receipt_photo_path']?.toString() ?? '';
+          if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+        }
+        final noteRows = await mainDb.query('notes');
+        for (final n in noteRows) {
+          final pathStr = n['photo_path']?.toString() ?? '';
+          if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
+        }
       }
 
       final photoDirsToScan = [
@@ -740,6 +862,25 @@ class HotspotSyncService {
             await DatabaseHelper.instance.mergeDatabaseFromJson(
               Map<String, dynamic>.from(resMap['scoped_data']),
             );
+          }
+          if (resMap is Map && resMap['photos'] != null) {
+            final photos = resMap['photos'];
+            if (photos is List) {
+              for (final photo in photos) {
+                if (photo is Map) {
+                  final filename = photo['filename']?.toString();
+                  final folder = photo['folder']?.toString() ?? 'customer_photos';
+                  final base64Str = photo['base64']?.toString();
+                  if (filename != null && base64Str != null) {
+                    final bytes = base64Decode(base64Str);
+                    final targetPath = '${AppConstants.appDocsDir}/$folder/$filename';
+                    final destFile = File(targetPath);
+                    await destFile.parent.create(recursive: true);
+                    await destFile.writeAsBytes(bytes);
+                  }
+                }
+              }
+            }
           }
         } catch (e) {
           debugPrint('Failed to merge updated scoped data from sync response: $e');

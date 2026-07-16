@@ -573,6 +573,8 @@ class DatabaseHelper {
     if (selectedModules.contains('entire_db')) return true;
 
     switch (table) {
+      case 'locations':
+        return selectedModules.contains('areas') || selectedModules.contains('streets') || selectedModules.contains('entire_db');
       case 'areas':
         return selectedModules.contains('areas') || selectedModules.contains('entire_db');
       case 'streets':
@@ -635,6 +637,7 @@ class DatabaseHelper {
     }
 
     final tables = [
+      'locations',
       'areas',
       'streets',
       'customers',
@@ -756,7 +759,9 @@ class DatabaseHelper {
             try {
               if (!dryRun) {
                 await dbExecutor.insert(table, filteredRow, conflictAlgorithm: ConflictAlgorithm.replace);
-                if (table == 'order_items') {
+                // Only deduct stock when items table is NOT in the same sync payload.
+                // If items were synced together, their stock values already reflect these orders.
+                if (table == 'order_items' && !incomingData.containsKey('items')) {
                   final itemId = filteredRow['item_id']?.toString() ?? '';
                   final qty = (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
                   if (itemId.isNotEmpty && qty > 0) {
@@ -868,6 +873,8 @@ class DatabaseHelper {
       await targetDb.transaction((txn) async {
         await runMerge(txn);
       });
+      // Extract coordinates from any newly imported Maps URLs
+      await _migrateCoordinatesFromUrls(targetDb);
     }
 
     return resultStats;

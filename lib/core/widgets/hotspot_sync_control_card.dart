@@ -63,7 +63,6 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
       valueListenable: HotspotSyncService.isServerRunningNotifier,
@@ -155,7 +154,7 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                   _buildCheckbox('Orders & Payments', 'orders_payments', Icons.receipt_rounded),
                   _buildCheckbox('Products Catalog', 'products', Icons.inventory_2_rounded),
                   _buildCheckbox('Expenses Log', 'expenses', Icons.payments_rounded),
-                  _buildCheckbox('Customer Photos', 'photos', Icons.photo_library_rounded),
+                  _buildCheckbox('All Photos & Media', 'photos', Icons.photo_library_rounded),
                 ],
               ),
               const SizedBox(height: 16),
@@ -460,7 +459,7 @@ class _ConfirmSyncDialogState extends State<ConfirmSyncDialog> {
             _buildRow('Orders & Payments (${counts['orders'] ?? 0} orders)', 'orders_payments', Icons.receipt_rounded),
             _buildRow('Products Catalog (${counts['items'] ?? 0} items)', 'products', Icons.inventory_2_rounded),
             _buildRow('Expenses Log (${counts['expenses'] ?? 0} expenses)', 'expenses', Icons.payments_rounded),
-            _buildRow('Customer Photos (${counts['photos'] ?? 0} photos)', 'photos', Icons.photo_library_rounded),
+            _buildRow('Photos & Receipts (${counts['photos'] ?? 0} files)', 'photos', Icons.photo_library_rounded),
           ],
         ),
       ),
