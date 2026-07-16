@@ -214,6 +214,16 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.settings);
                     },
                   ),
+                  if (!isWorker)
+                    _DrawerItem(
+                      icon: Icons.admin_panel_settings_rounded,
+                      title: 'Advance Operation Control',
+                      iconColor: Colors.blueAccent,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.ownerFeaturesHub);
+                      },
+                    ),
 
                   // Divider & Sync and Data Section
                   const Padding(

@@ -433,14 +433,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         _buildDashboardCard(
                           context,
-                          title: 'Owner Hub',
-                          icon: Icons.admin_panel_settings_rounded,
-                          color: Colors.blueAccent,
-                          providerValue: 'Advanced Tools',
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.ownerFeaturesHub),
-                        ),
-                        _buildDashboardCard(
-                          context,
                           title: 'Catalog Showroom',
                           icon: Icons.grid_view_rounded,
                           color: Colors.pink,
