@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class SmartBusinessPulseWidget extends StatelessWidget {
@@ -54,29 +55,40 @@ class SmartBusinessPulseWidget extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.25),
+            color: const Color(0xFF0F172A).withOpacity(0.35),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
         ],
-        border: Border.all(
-          color: Colors.white.withOpacity(0.12),
-          width: 1.5,
-        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF0F172A).withOpacity(0.55),
+                  const Color(0xFF1E293B).withOpacity(0.40)
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.12),
+                width: 1.5,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           // ── Header Row ──────────────────────────────────────────
           Row(
             children: [
@@ -325,8 +337,11 @@ class SmartBusinessPulseWidget extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+    ),
+    ),
+  );
+}
 
   Widget _buildMetricTile({
     required String title,

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,7 +58,54 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         data: (summary) {
           final double pendingPayments = summary['pending_payments'] ?? 0;
 
-          return RefreshIndicator(
+          return Stack(
+            children: [
+              // ── Apple-style soft atmospheric ambient background glow ──
+              Positioned(
+                top: -120,
+                left: -120,
+                child: Container(
+                  width: 350,
+                  height: 350,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withOpacity(0.18),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 360,
+                right: -180,
+                child: Container(
+                  width: 400,
+                  height: 400,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.purple.withOpacity(0.12),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: -80,
+                left: 80,
+                child: Container(
+                  width: 300,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.amber.withOpacity(0.08),
+                  ),
+                ),
+              ),
+              // Softening filter
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                  child: const SizedBox.shrink(),
+                ),
+              ),
+
+              RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(analyticsSummaryProvider);
               ref.invalidate(inventoryProvider);
@@ -79,15 +127,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // App Logo
-                      Container(
+                      _buildGlassContainer(
+                        context: context,
                         width: 56,
                         height: 56,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: AppColors.cardShadow,
-                          color: Colors.white,
-                          border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 1.5),
-                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        padding: EdgeInsets.zero,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(15),
                           child: Image.asset(
@@ -454,22 +499,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const SizedBox(height: 20),
 
                   // ── Money Remained Tracker ─────────────────────────────
-                  Container(
+                  _buildGlassContainer(
+                    context: context,
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF2E1C00)
-                          : const Color(0xFFFFFBEB),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF78350F)
-                            : const Color(0xFFFDE68A),
-                        width: 1.5,
-                      ),
-                      boxShadow: AppColors.cardShadow,
-                    ),
+                    borderColor: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF78350F).withOpacity(0.6)
+                        : const Color(0xFFFDE68A),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -479,7 +515,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             const Text(
                               'MONEY REMAINED',
                               style: TextStyle(
-                                color: Color(0xFFB45309),
+                                color: Color(0xFFD97706),
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1.2,
@@ -502,10 +538,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         const SizedBox(height: 10),
                         Text(
                           AppFormatters.currency(pendingPayments),
-                          style: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFFFBBF24)
-                                : const Color(0xFF92400E),
+                          style: const TextStyle(
+                            color: Color(0xFFD97706),
                             fontSize: 28,
                             fontWeight: FontWeight.w900,
                           ),
@@ -723,11 +757,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
+          ),
+        ],
+      );
+    },
+  ),
+);
+}
 
   Widget _buildAdvancedActionCard(
     BuildContext context, {
@@ -737,61 +773,59 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+    return _buildGlassContainer(
+      context: context,
+      padding: EdgeInsets.zero,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.gray200),
-          boxShadow: AppColors.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: color.withOpacity(0.12),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            Column(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  overflow: TextOverflow.ellipsis,
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: color.withOpacity(0.12),
+                  child: Icon(icon, color: color, size: 18),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                  overflow: TextOverflow.ellipsis,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildDashboardCard(BuildContext context, {required String title, required IconData icon, required Color color, required String providerValue, required VoidCallback onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: _buildGlassContainer(
+        context: context,
         width: 150,
         margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2), width: 1.5),
-        ),
+        borderColor: color.withOpacity(0.25),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -821,7 +855,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Text(
               title,
               style: TextStyle(
-                color: color.withOpacity(0.9),
+                color: isDark ? Colors.white70 : AppColors.textPrimary.withOpacity(0.9),
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
@@ -1207,6 +1241,53 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlassContainer({
+    required BuildContext context,
+    required Widget child,
+    EdgeInsetsGeometry? padding,
+    EdgeInsetsGeometry? margin,
+    double? width,
+    double? height,
+    BorderRadius? borderRadius,
+    Color? borderColor,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final r = borderRadius ?? BorderRadius.circular(16);
+    return Container(
+      width: width,
+      height: height,
+      margin: margin,
+      decoration: BoxDecoration(
+        borderRadius: r,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.20 : 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          )
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: r,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              color: (isDark ? const Color(0xFF0F172A) : Colors.white).withOpacity(isDark ? 0.45 : 0.70),
+              borderRadius: r,
+              border: Border.all(
+                color: borderColor ?? (isDark ? Colors.white24 : Colors.black12),
+                width: 1.2,
+              ),
+            ),
+            child: child,
           ),
         ),
       ),
