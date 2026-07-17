@@ -615,6 +615,142 @@ class DatabaseHelper {
     }
   }
 
+  /// Ensures that a street and its parent area exist in the legacy tables, JIT creating them from locations if missing.
+  Future<void> ensureLegacyStreetAndAreaExists(DatabaseExecutor db, String locationId) async {
+    if (locationId.isEmpty) return;
+
+    try {
+      final streetCheck = await db.query('streets', columns: ['id'], where: 'id = ?', whereArgs: [locationId]);
+      if (streetCheck.isNotEmpty) return;
+
+      final locRows = await db.query('locations', where: 'id = ?', whereArgs: [locationId], limit: 1);
+      if (locRows.isEmpty) {
+        final nowStr = DateTime.now().toIso8601String();
+        await db.insert('areas', {
+          'id': locationId,
+          'name': 'Legacy Location',
+          'description': 'Auto-created fallback area',
+          'color': 0xFF1565C0,
+          'created_at': nowStr,
+          'updated_at': nowStr,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+        await db.insert('streets', {
+          'id': locationId,
+          'area_id': locationId,
+          'name': 'Legacy Location',
+          'description': 'Auto-created fallback street',
+          'created_at': nowStr,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        return;
+      }
+
+      final loc = locRows.first;
+      final parentId = loc['parent_location_id'] as String?;
+      final name = loc['name'] as String? ?? 'Unnamed Location';
+      final desc = loc['description'] as String? ?? '';
+      final photo = loc['photo_path'] as String? ?? '';
+      final maps = loc['maps_location'] as String? ?? '';
+      final color = loc['color'] as int? ?? 0xFF1565C0;
+      final createdBy = loc['created_by'] as String? ?? 'owner';
+      final workerId = (loc['assigned_worker_id'] ?? loc['worker_id']) as String? ?? '';
+      final workerName = loc['worker_name'] as String? ?? '';
+      final deviceName = loc['device_name'] as String? ?? '';
+      final createdAt = loc['created_at'] as String? ?? DateTime.now().toIso8601String();
+      final updatedAt = loc['updated_at'] as String? ?? DateTime.now().toIso8601String();
+
+      if (parentId == null) {
+        await db.insert('areas', {
+          'id': locationId,
+          'name': name,
+          'description': desc,
+          'photo_path': photo,
+          'maps_location': maps,
+          'color': color,
+          'created_by': createdBy,
+          'assigned_worker_id': workerId,
+          'worker_name': workerName,
+          'device_name': deviceName,
+          'created_at': createdAt,
+          'updated_at': updatedAt,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+        await db.insert('streets', {
+          'id': locationId,
+          'area_id': locationId,
+          'name': name,
+          'description': desc,
+          'photo_path': photo,
+          'maps_location': maps,
+          'created_by': createdBy,
+          'assigned_worker_id': workerId,
+          'worker_name': workerName,
+          'device_name': deviceName,
+          'created_at': createdAt,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      } else {
+        String rootAreaId = parentId;
+        String? currentParentId = rootAreaId;
+        int maxDepth = 20;
+        while (currentParentId != null && maxDepth-- > 0) {
+          final parentRows = await db.query('locations', columns: ['id', 'parent_location_id'], where: 'id = ?', whereArgs: [currentParentId], limit: 1);
+          if (parentRows.isEmpty) break;
+          final nextParent = parentRows.first['parent_location_id'] as String?;
+          if (nextParent == null) {
+            rootAreaId = parentRows.first['id'] as String;
+            break;
+          }
+          currentParentId = nextParent;
+        }
+
+        final areaCheck = await db.query('areas', columns: ['id'], where: 'id = ?', whereArgs: [rootAreaId]);
+        if (areaCheck.isEmpty) {
+          final rootLocRows = await db.query('locations', where: 'id = ?', whereArgs: [rootAreaId], limit: 1);
+          if (rootLocRows.isNotEmpty) {
+            final rl = rootLocRows.first;
+            await db.insert('areas', {
+              'id': rootAreaId,
+              'name': rl['name'] as String? ?? 'Root Area',
+              'description': rl['description'] as String? ?? '',
+              'photo_path': rl['photo_path'] as String? ?? '',
+              'maps_location': rl['maps_location'] as String? ?? '',
+              'color': rl['color'] as int? ?? 0xFF1565C0,
+              'created_by': rl['created_by'] as String? ?? 'owner',
+              'assigned_worker_id': (rl['assigned_worker_id'] ?? rl['worker_id']) as String? ?? '',
+              'worker_name': rl['worker_name'] as String? ?? '',
+              'device_name': rl['device_name'] as String? ?? '',
+              'created_at': rl['created_at'] as String? ?? createdAt,
+              'updated_at': rl['updated_at'] as String? ?? updatedAt,
+            }, conflictAlgorithm: ConflictAlgorithm.ignore);
+          } else {
+            await db.insert('areas', {
+              'id': rootAreaId,
+              'name': 'Fallback Area',
+              'description': 'Auto-created fallback area',
+              'color': 0xFF1565C0,
+              'created_at': createdAt,
+              'updated_at': updatedAt,
+            }, conflictAlgorithm: ConflictAlgorithm.ignore);
+          }
+        }
+
+        await db.insert('streets', {
+          'id': locationId,
+          'area_id': rootAreaId,
+          'name': name,
+          'description': desc,
+          'photo_path': photo,
+          'maps_location': maps,
+          'created_by': createdBy,
+          'assigned_worker_id': workerId,
+          'worker_name': workerName,
+          'device_name': deviceName,
+          'created_at': createdAt,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+    } catch (_) {}
+  }
+
   /// Smart Non-Destructive Merge Import from JSON:
   /// Performs topological merge across database tables with LWW (Last-Write-Wins) timestamp conflict resolution.
   Future<Map<String, Map<String, int>>> mergeDatabaseFromJson(
@@ -708,6 +844,13 @@ class DatabaseHelper {
           }
 
           final filteredRow = _filterColumns(row, validCols);
+
+          if (table == 'customers') {
+            final streetId = filteredRow['street_id']?.toString() ?? '';
+            if (streetId.isNotEmpty && !dryRun) {
+              await ensureLegacyStreetAndAreaExists(dbExecutor, streetId);
+            }
+          }
 
           List<Map<String, dynamic>> existing;
           if (table == 'settings') {
@@ -1001,6 +1144,13 @@ class DatabaseHelper {
             }
 
             final filteredRow = _filterColumns(row, validCols);
+
+            if (table == 'customers') {
+              final streetId = filteredRow['street_id']?.toString() ?? '';
+              if (streetId.isNotEmpty && !dryRun) {
+                await ensureLegacyStreetAndAreaExists(dbExecutor, streetId);
+              }
+            }
 
             List<Map<String, dynamic>> existing;
             if (table == 'settings') {

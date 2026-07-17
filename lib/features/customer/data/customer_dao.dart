@@ -169,6 +169,7 @@ class CustomerDao {
     }
 
     final map = customer.toMap();
+    await DatabaseHelper.instance.ensureLegacyStreetAndAreaExists(db, customer.streetId);
     await db.insert('customers', {
       ...map,
       'id':         id,
@@ -184,6 +185,7 @@ class CustomerDao {
 
   Future<void> updateCustomer(Customer customer) async {
     final db = await _db;
+    await DatabaseHelper.instance.ensureLegacyStreetAndAreaExists(db, customer.streetId);
     await db.update(
       'customers',
       {

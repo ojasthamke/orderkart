@@ -78,6 +78,7 @@ class WorkerPackageService {
     final permissionsRow = await mainDb.query('worker_permissions', where: 'worker_id = ?', whereArgs: [workerId]);
     final assignmentsRows = await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId]);
 
+    final List<Map<String, dynamic>> locationsRows = await mainDb.query('locations');
     final List<Map<String, dynamic>> areasRows = await mainDb.query('areas');
     final List<Map<String, dynamic>> streetsRows = await mainDb.query('streets');
     final List<Map<String, dynamic>> customersRows = await mainDb.query('customers');
@@ -105,6 +106,7 @@ class WorkerPackageService {
     await writeEncryptedJson('worker.json', workerRow);
     await writeEncryptedJson('permissions.json', permissionsRow);
     await writeEncryptedJson('assignments.json', assignmentsRows);
+    await writeEncryptedJson('locations.json', locationsRows);
     await writeEncryptedJson('areas.json', areasRows);
     await writeEncryptedJson('streets.json', streetsRows);
     await writeEncryptedJson('customers.json', customersRows);
@@ -127,6 +129,7 @@ class WorkerPackageService {
       for (final r in workerRow) { await scopedDb.insert('workers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
       for (final r in permissionsRow) { await scopedDb.insert('worker_permissions', r, conflictAlgorithm: ConflictAlgorithm.replace); }
       for (final r in assignmentsRows) { await scopedDb.insert('worker_assignments', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in locationsRows) { await scopedDb.insert('locations', r, conflictAlgorithm: ConflictAlgorithm.replace); }
       for (final r in areasRows) { await scopedDb.insert('areas', r, conflictAlgorithm: ConflictAlgorithm.replace); }
       for (final r in streetsRows) { await scopedDb.insert('streets', r, conflictAlgorithm: ConflictAlgorithm.replace); }
       for (final r in customersRows) { await scopedDb.insert('customers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
@@ -206,7 +209,7 @@ class WorkerPackageService {
     final fileHashes = <String, String>{};
     final List<String> jsonFiles = [
       'worker.json', 'permissions.json', 'assignments.json', 'areas.json', 'streets.json',
-      'customers.json', 'inventory.json', 'price_list.json', 'business_profile.json', 'settings.json', 'database.enc'
+      'locations.json', 'customers.json', 'inventory.json', 'price_list.json', 'business_profile.json', 'settings.json', 'database.enc'
     ];
     for (final f in jsonFiles) {
       fileHashes[f] = await _calculateFileHash(File('${packageDir.path}/$f'));
