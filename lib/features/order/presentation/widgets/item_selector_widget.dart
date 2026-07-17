@@ -11,6 +11,7 @@ import '../../../../core/utils/haptics.dart';
 import '../../../../core/widgets/custom_search_bar.dart';
 import '../../../inventory/domain/item.dart';
 import '../../../inventory/presentation/inventory_provider.dart';
+import '../../../../core/widgets/glass_container.dart';
 
 class ItemSelectorWidget extends ConsumerStatefulWidget {
   final String customerId;
@@ -109,6 +110,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                 itemBuilder: (_, i) {
                   final cat = _categories[i];
                   final selected = cat == _category;
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
                   return GestureDetector(
                     onTap: () => setState(() => _category = cat),
                     child: AnimatedContainer(
@@ -117,14 +119,22 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: selected ? AppColors.primary : AppColors.gray100,
+                        color: selected
+                            ? AppColors.primary.withOpacity(0.3)
+                            : (isDark ? Colors.white.withOpacity(0.08) : AppColors.gray100),
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: selected
+                              ? AppColors.primary
+                              : (isDark ? Colors.white.withOpacity(0.1) : Colors.transparent),
+                        ),
                       ),
                       child: Text(
                         cat,
                         style: TextStyle(
-                          color:
-                              selected ? Colors.white : AppColors.textSecondary,
+                          color: selected
+                              ? Colors.white
+                              : (isDark ? Colors.white70 : AppColors.textSecondary),
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -174,9 +184,10 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                     itemCount: filtered.length,
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    itemBuilder: (_, i) {
+                    itemBuilder: (context, i) {
                       final item = filtered[i];
                       final isSelected = _selected?.id == item.id;
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
 
                       return GestureDetector(
                         onTap: () {
@@ -199,24 +210,20 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                           });
                           _loadCustomPrice(item.id, item.sellingPrice);
                         },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                        child: GlassContainer(
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: item.stock <= 0
-                                ? AppColors.gray200.withOpacity(0.4)
-                                : isSelected
-                                    ? AppColors.primarySurface
-                                    : AppColors.gray50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : (item.stock <= 0 ? AppColors.error.withOpacity(0.3) : AppColors.gray200),
-                              width: isSelected ? 2 : 1,
-                            ),
-                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          color: isSelected
+                              ? AppColors.primary.withOpacity(0.20)
+                              : (item.stock <= 0
+                                  ? Colors.red.withOpacity(0.06)
+                                  : (isDark ? const Color(0xFF1E293B).withOpacity(0.4) : AppColors.gray50)),
+                          borderColor: isSelected
+                              ? AppColors.primary
+                              : (item.stock <= 0
+                                  ? AppColors.error.withOpacity(0.25)
+                                  : (isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200)),
                           child: Row(
                             children: [
                               Expanded(
@@ -228,8 +235,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                             .textTheme
                                             .bodyMedium
                                             ?.copyWith(
-                                                fontWeight: FontWeight.w600,
-                                                color: item.stock <= 0 ? AppColors.textSecondary : null)),
+                                                fontWeight: FontWeight.w700,
+                                                color: item.stock <= 0 ? AppColors.textSecondary : (isDark ? Colors.white : AppColors.textPrimary))),
                                     const SizedBox(height: 2),
                                     Text(
                                       '₹${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Cost: ₹${item.costPrice.toStringAsFixed(item.costPrice == item.costPrice.roundToDouble() ? 0 : 2)}  •  Stock: ${AppFormatters.quantity(item.stock)}',
@@ -237,7 +244,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: item.stock <= 0 ? AppColors.error : AppColors.primary,
+                                            color: item.stock <= 0 ? AppColors.error : (isDark ? Colors.white70 : AppColors.primary),
                                             fontWeight: FontWeight.w600,
                                           ),
                                     ),

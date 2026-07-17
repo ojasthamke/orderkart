@@ -384,57 +384,91 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.successSurface,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.success.withOpacity(0.3)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
+                        child: Builder(
+                          builder: (context) {
+                            final isDark = Theme.of(context).brightness == Brightness.dark;
+                            return Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.success.withOpacity(0.12)
+                                    : AppColors.successSurface,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark
+                                      ? AppColors.success.withOpacity(0.4)
+                                      : AppColors.success.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.emoji_events_rounded, color: AppColors.success, size: 20),
-                                  SizedBox(width: 6),
-                                  Text('TOP PERFORMER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.success)),
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.emoji_events_rounded, color: AppColors.success, size: 20),
+                                      SizedBox(width: 6),
+                                      Text('TOP PERFORMER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.success)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(topWorker['name'] as String,
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 16,
+                                          color: isDark ? Colors.white : AppColors.textPrimary)),
+                                  Text('Collected: ${AppFormatters.currency(topWorker['total_collected'] as double)}',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDark ? Colors.white70 : AppColors.textSecondary)),
                                 ],
                               ),
-                              const SizedBox(height: 8),
-                              Text(topWorker['name'] as String, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                              Text('Collected: ${AppFormatters.currency(topWorker['total_collected'] as double)}',
-                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                            ],
-                          ),
+                            );
+                          }
                         ),
                       ),
                       if (lowestWorker != null) ...[
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.errorSurface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.error.withOpacity(0.3)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Row(
+                          child: Builder(
+                            builder: (context) {
+                              final isDark = Theme.of(context).brightness == Brightness.dark;
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? AppColors.error.withOpacity(0.12)
+                                      : AppColors.errorSurface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? AppColors.error.withOpacity(0.4)
+                                        : AppColors.error.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.trending_down_rounded, color: AppColors.error, size: 20),
-                                    SizedBox(width: 6),
-                                    Text('NEEDS SUPPORT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.error)),
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.trending_down_rounded, color: AppColors.error, size: 20),
+                                        SizedBox(width: 6),
+                                        Text('NEEDS SUPPORT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.error)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(lowestWorker['name'] as String,
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 16,
+                                            color: isDark ? Colors.white : AppColors.textPrimary)),
+                                    Text('Collected: ${AppFormatters.currency(lowestWorker['total_collected'] as double)}',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: isDark ? Colors.white70 : AppColors.textSecondary)),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
-                                Text(lowestWorker['name'] as String, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                                Text('Collected: ${AppFormatters.currency(lowestWorker['total_collected'] as double)}',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                              ],
-                            ),
+                              );
+                            }
                           ),
                         ),
                       ],
@@ -469,15 +503,18 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                           _showWorkerDetailsSheet(context, workerId, w['name'] as String);
                         },
                         borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.gray200),
-                            boxShadow: AppColors.cardShadow,
-                          ),
+                        child: Builder(
+                          builder: (context) {
+                            final isDark = Theme.of(context).brightness == Brightness.dark;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E293B).withOpacity(0.55) : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200),
+                                boxShadow: AppColors.cardShadow,
+                              ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -548,9 +585,10 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                               ),
                             ],
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      }),
+                    );
+                  },
                   ),
                 ],
               ),

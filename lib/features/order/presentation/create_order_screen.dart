@@ -302,17 +302,22 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final customerAsync = ref.watch(customerDetailProvider(widget.customerId));
     final customer = customerAsync.valueOrNull;
     final isVip = customer?.isVipActive ?? false;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isVip ? const Color(0xFFFFD700).withOpacity(0.12) : AppColors.primarySurface,
+            color: isVip
+                ? const Color(0xFFFFD700).withOpacity(0.12)
+                : (isDark
+                    ? AppColors.primary.withOpacity(0.15)
+                    : AppColors.primarySurface),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isVip ? const Color(0xFFFFD700) : AppColors.primary.withOpacity(0.2),
+              color: isVip
+                  ? const Color(0xFFFFD700)
+                  : (isDark ? Colors.white.withOpacity(0.12) : AppColors.primary.withOpacity(0.2)),
               width: isVip ? 1.5 : 1.0,
             ),
           ),
@@ -334,7 +339,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           child: Text(
                             widget.customerName,
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: isVip ? const Color(0xFFB45309) : AppColors.primary,
+                                  color: isVip
+                                      ? const Color(0xFFFFD700)
+                                      : (isDark ? Colors.white : AppColors.primary),
                                   fontWeight: FontWeight.w800,
                                 ),
                             overflow: TextOverflow.ellipsis,
@@ -367,25 +374,31 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ),
             ],
           ),
-        ),
-      ],
-    );
+        );
   }
 
   // ── Cart section ─────────────────────────────────────────────────────────────
   Widget _buildCartSection(BuildContext context, String currency) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_cart.isEmpty) {
       return Container(
         height: 120,
         decoration: BoxDecoration(
-          color: AppColors.gray50,
+          color: isDark ? const Color(0xFF1E293B).withOpacity(0.4) : AppColors.gray50,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.gray200, style: BorderStyle.solid),
+          border: Border.all(
+            color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200,
+            style: BorderStyle.solid,
+          ),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             'No items added yet.\nTap "Add Item" to begin.',
             textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isDark ? Colors.white70 : AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       );
@@ -1186,7 +1199,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       return Card(
         margin: const EdgeInsets.only(top: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: Colors.white,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -1226,8 +1238,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return Card(
       margin: const EdgeInsets.only(top: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 1,
-      color: Colors.white,
+      elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -1442,13 +1453,16 @@ class _CartItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.gray50,
+        color: isDark ? const Color(0xFF1E293B).withOpacity(0.4) : AppColors.gray50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray200),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200,
+        ),
       ),
       child: Row(
         children: [

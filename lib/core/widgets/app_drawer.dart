@@ -440,25 +440,24 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? AppColors.textPrimary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = iconColor ?? (isDark ? Colors.white : AppColors.textPrimary);
     return ListTile(
       leading: Container(
         width: 36,
         height: 36,
-        decoration: iconColor != null
-            ? BoxDecoration(
-                color: iconColor!.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              )
-            : null,
-        child: Icon(icon, color: color, size: iconColor != null ? 20 : 24),
+        decoration: BoxDecoration(
+          color: (iconColor ?? (isDark ? Colors.white : AppColors.primary)).withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color, size: 20),
       ),
       title: Text(
         title,
         style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 15,
-          color: iconColor != null ? color : null,
+          color: color,
         ),
       ),
       shape: RoundedRectangleBorder(

@@ -54,27 +54,37 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               itemBuilder: (_, i) {
                 final f = _filters[i];
                 final selected = f['value'] == _currentFilter;
-                return GestureDetector(
-                  onTap: () => setState(() => _currentFilter = f['value']!),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.primary : AppColors.gray100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      f['label']!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: selected ? Colors.white : AppColors.textSecondary,
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    return GestureDetector(
+                      onTap: () => setState(() => _currentFilter = f['value']!),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? AppColors.primary.withOpacity(0.3)
+                              : (isDark ? Colors.white.withOpacity(0.08) : AppColors.gray100),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: selected
+                                ? AppColors.primary
+                                : (isDark ? Colors.white.withOpacity(0.1) : Colors.transparent),
+                          ),
+                        ),
+                        child: Text(
+                          f['label']!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: selected
+                                ? Colors.white
+                                : (isDark ? Colors.white70 : AppColors.textSecondary),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                );
+                    );
               },
             ),
           ),

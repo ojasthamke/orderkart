@@ -47,6 +47,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(child: Text('Error loading stats: $e')),
         data: (summary) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final cardColor = isDark ? const Color(0xFF1E293B).withOpacity(0.55) : Colors.white;
+          final borderColor = isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200;
+
           final double todaySales      = summary['today_sales'] ?? 0;
           final double monthlySales    = summary['monthly_sales'] ?? 0;
           final double pendingPayments = summary['pending_payments'] ?? 0;
@@ -199,9 +203,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     height: 220,
                     padding: const EdgeInsets.fromLTRB(8, 16, 24, 8),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.gray200),
+                      border: Border.all(color: borderColor),
                     ),
                     child: (_chartRange == 'weekly' ? weeklySalesAsync : monthlySalesAsync).when(
                       loading: () => const Center(child: CircularProgressIndicator()),
@@ -226,9 +230,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.gray200),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Column(
                       children: [
@@ -265,9 +269,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.gray200),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Column(
                       children: [
@@ -301,9 +305,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.gray200),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Column(
                       children: [
@@ -353,9 +357,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   const SizedBox(height: 12),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.gray200),
+                      border: Border.all(color: borderColor),
                     ),
                     child: topItems.isEmpty
                         ? const Padding(
@@ -438,9 +442,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.gray200),
+                      border: Border.all(color: borderColor),
                     ),
                     child: topCustomersAsync.when(
                       loading: () => const Padding(
@@ -658,9 +662,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: cardColor,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: AppColors.gray200),
+                                  border: Border.all(color: borderColor),
                                 ),
                                 child: Column(
                                   children: [

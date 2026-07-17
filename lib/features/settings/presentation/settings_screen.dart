@@ -253,6 +253,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
 
+              // ── Theme & Appearance ──────────────────────────────────
+              _sectionHeader('Theme & Appearance', Icons.palette_rounded),
+              _card([
+                ListTile(
+                  leading: Icon(
+                    settings.themeMode == 'dark' ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text('App Theme'),
+                  subtitle: Text(
+                    settings.themeMode == 'dark'
+                        ? 'Midnight Dark'
+                        : settings.themeMode == 'light'
+                            ? 'Sunny Light'
+                            : 'System Default',
+                  ),
+                  trailing: DropdownButton<String>(
+                    value: settings.themeMode,
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: 'light', child: Text('Light Mode')),
+                      DropdownMenuItem(value: 'dark', child: Text('Dark Mode')),
+                      DropdownMenuItem(value: 'system', child: Text('System Default')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        ref.read(settingsProvider.notifier).update(settings.copyWith(themeMode: v));
+                      }
+                    },
+                  ),
+                ),
+              ]),
+
               const SizedBox(height: 20),
 
               // ── UPI Payments & QR Code ─────────────────────────────

@@ -249,6 +249,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
   @override
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(inventoryProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AppScaffold(
       title: 'Showroom Mode',
@@ -272,9 +273,9 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppColors.white,
+                      color: isDark ? const Color(0xFF1E293B).withOpacity(0.4) : AppColors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.gray200),
+                      border: Border.all(color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200),
                     ),
                     child: TextField(
                       controller: _searchController,
@@ -319,14 +320,21 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                     label: Text(
                       cat == 'all' ? 'All Items' : cat,
                       style: TextStyle(
-                        color: isSelected ? Colors.white : AppColors.textSecondary,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark ? Colors.white70 : AppColors.textSecondary),
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
                     ),
                     selected: isSelected,
-                    selectedColor: catColor,
-                    backgroundColor: AppColors.gray100,
+                    selectedColor: catColor.withOpacity(isSelected ? 0.35 : 0.8),
+                    backgroundColor: isDark ? Colors.white.withOpacity(0.08) : AppColors.gray100,
+                    side: BorderSide(
+                      color: isSelected
+                          ? catColor
+                          : (isDark ? Colors.white.withOpacity(0.1) : Colors.transparent),
+                    ),
                     onSelected: (selected) {
                       if (selected) {
                         setState(() => _selectedCategory = cat);
@@ -379,9 +387,9 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                       onTap: () => _showItemDetails(item),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: AppColors.white,
+                          color: isDark ? const Color(0xFF1E293B).withOpacity(0.55) : AppColors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.gray200),
+                          border: Border.all(color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.02),

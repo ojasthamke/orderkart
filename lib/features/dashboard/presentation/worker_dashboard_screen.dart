@@ -466,9 +466,9 @@ class WorkerDashboardScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          color: isDark ? const Color(0xFF1E293B).withOpacity(0.55) : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isDark ? Colors.transparent : AppColors.gray200),
+          border: Border.all(color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200),
           boxShadow: AppColors.cardShadow,
         ),
         child: Column(
@@ -487,13 +487,21 @@ class WorkerDashboardScreen extends ConsumerWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                )),
             const SizedBox(height: 2),
             Text(subtitle,
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 9, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                style: TextStyle(
+                  fontSize: 9,
+                  color: isDark ? Colors.white60 : AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                )),
           ],
         ),
       ),
