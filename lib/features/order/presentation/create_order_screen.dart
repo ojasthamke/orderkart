@@ -1117,7 +1117,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ItemSelectorWidget(
-        onItemSelected: (item, qty) {
+        customerId: widget.customerId,
+        onItemSelected: (item, qty, price) {
           setState(() {
             final existing = _cart.indexWhere((c) => c.itemId == item.id);
             if (existing >= 0) {
@@ -1138,12 +1139,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 );
                 return;
               }
-              double unitPrice = item.sellingPrice;
-              final customer = ref.read(customerDetailProvider(widget.customerId)).value;
-              final settings = ref.read(settingsProvider).valueOrNull;
-              final enableMarkup = settings?.enableVipPriceMarkup ?? true;
-              if (enableMarkup && customer != null && customer.isVipActive && customer.vipMarkupPct > 0) {
-                unitPrice = double.parse((item.sellingPrice * (1 + (customer.vipMarkupPct / 100))).toStringAsFixed(2));
+              double unitPrice = price;
+              if (price == item.sellingPrice) {
+                final customer = ref.read(customerDetailProvider(widget.customerId)).value;
+                final settings = ref.read(settingsProvider).valueOrNull;
+                final enableMarkup = settings?.enableVipPriceMarkup ?? true;
+                if (enableMarkup && customer != null && customer.isVipActive && customer.vipMarkupPct > 0) {
+                  unitPrice = double.parse((item.sellingPrice * (1 + (customer.vipMarkupPct / 100))).toStringAsFixed(2));
+                }
               }
 
               _cart.add(_CartItem(

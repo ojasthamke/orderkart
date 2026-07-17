@@ -87,6 +87,7 @@ class DatabaseHelper {
         await _ensurePriceHistoryTables(db);
         await _ensureAreaAndStreetColumns(db);
         await _ensureCallLogsTable(db);
+        await _ensureCustomerItemPricesTable(db);
         await _ensureItemPhotoColumn(db);
         await _createV4Tables(db);
         await _ensureV4Columns(db);
@@ -505,6 +506,59 @@ class DatabaseHelper {
         called_at     TEXT NOT NULL
       )
     ''');
+  }
+
+  Future<void> _ensureCustomerItemPricesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS customer_item_prices (
+        customer_id   TEXT NOT NULL,
+        item_id       TEXT NOT NULL,
+        custom_price  REAL NOT NULL,
+        created_at    TEXT NOT NULL,
+        PRIMARY KEY(customer_id, item_id)
+      )
+    ''');
+  }
+
+  Future<double?> getCustomerCustomPrice(String customerId, String itemId) async {
+    final db = await database;
+    final res = await db.query(
+      'customer_item_prices',
+      columns: ['custom_price'],
+      where: 'customer_id = ? AND item_id = ?',
+      whereArgs: [customerId, itemId],
+    );
+    if (res.isNotEmpty) {
+      return (res.first['custom_price'] as num).toDouble();
+    }
+    return null;
+  }
+
+  Future<void> setCustomerCustomPrice(String customerId, String itemId, double price) async {
+    final db = await database;
+    await db.insert(
+      'customer_item_prices',
+      {
+        'customer_id': customerId,
+        'item_id': itemId,
+        'custom_price': price,
+        'created_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> updateItemSellingPrice(String itemId, double newPrice) async {
+    final db = await database;
+    await db.update(
+      'items',
+      {
+        'selling_price': newPrice,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [itemId],
+    );
   }
 
   Future<void> insertCallLog({

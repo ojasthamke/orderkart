@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/database/database_helper.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/formatters.dart';
@@ -12,9 +13,14 @@ import '../../../inventory/domain/item.dart';
 import '../../../inventory/presentation/inventory_provider.dart';
 
 class ItemSelectorWidget extends ConsumerStatefulWidget {
-  final void Function(Item item, double qty) onItemSelected;
+  final String customerId;
+  final void Function(Item item, double qty, double price) onItemSelected;
 
-  const ItemSelectorWidget({super.key, required this.onItemSelected});
+  const ItemSelectorWidget({
+    super.key,
+    required this.customerId,
+    required this.onItemSelected,
+  });
 
   @override
   ConsumerState<ItemSelectorWidget> createState() => _ItemSelectorWidgetState();
@@ -26,6 +32,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
   String _category = 'All';
   double _qty = 1.0;
   final _qtyController = TextEditingController(text: '1');
+  final _priceController = TextEditingController();
+  double _customPrice = 0.0;
   Item?  _selected;
 
   final _categories = ['All', ...AppConstants.itemCategories];
@@ -33,6 +41,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
   @override
   void dispose() {
     _qtyController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
@@ -188,6 +197,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                             _qty = 1.0.clamp(0.1, item.stock);
                             _qtyController.text = AppFormatters.quantity(_qty);
                           });
+                          _loadCustomPrice(item.id, item.sellingPrice);
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
@@ -332,10 +342,9 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                         Expanded(
                           child: TextFormField(
                             controller: _qtyController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             decoration: InputDecoration(
-                              labelText: 'Custom qty',
+                              labelText: 'Qty',
                               isDense: true,
                               errorText: _qty > _selected!.stock ? 'Exceeds stock (${_selected!.stock})' : null,
                             ),
@@ -358,7 +367,24 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _priceController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Price (₹)',
+                              isDense: true,
+                            ),
+                            onChanged: (v) {
+                              final p = double.tryParse(v);
+                              if (p != null && p >= 0) {
+                                _customPrice = p;
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: _qty > _selected!.stock || _selected!.stock <= 0
                               ? () {
@@ -372,31 +398,59 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                     ),
                                   );
                                 }
-                              : () {
+                              : () async {
                                   AppHaptics.itemAdded();
-                                  widget.onItemSelected(_selected!, _qty);
-                                  
-                                  // Success feedback SnackBar
+
+                                  final double enteredPrice = double.tryParse(_priceController.text) ?? _selected!.sellingPrice;
+                                  double finalPriceToUse = enteredPrice;
+
+                                  // Check if the user changed the price from the loaded custom price
+                                  final customPrice = await DatabaseHelper.instance.getCustomerCustomPrice(widget.customerId, _selected!.id);
+                                  final currentPriceToCompare = customPrice ?? _selected!.sellingPrice;
+
+                                  if (enteredPrice != currentPriceToCompare) {
+                                    if (context.mounted) {
+                                      final choice = await _showPriceScopeDialog(context, _selected!.name);
+                                      if (choice == null) return; // user cancelled
+
+                                      if (choice == 1) {
+                                        // This Customer Only
+                                        await DatabaseHelper.instance.setCustomerCustomPrice(widget.customerId, _selected!.id, enteredPrice);
+                                        ref.invalidate(inventoryProvider);
+                                      } else if (choice == 2) {
+                                        // General
+                                        await DatabaseHelper.instance.updateItemSellingPrice(_selected!.id, enteredPrice);
+                                        ref.invalidate(inventoryProvider);
+                                      }
+                                    }
+                                  }
+
+                                  widget.onItemSelected(_selected!, _qty, finalPriceToUse);
+
+                                  // Success SnackBar
                                   final addedItemName = _selected!.name;
                                   final addedQty = _qty;
                                   final addedUnit = _selected!.unit;
-                                  ScaffoldMessenger.of(context).clearSnackBars();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Added $addedQty $addedUnit of $addedItemName to order'),
-                                      duration: const Duration(seconds: 1),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Added $addedQty $addedUnit of $addedItemName to order'),
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
 
                                   setState(() {
                                     _selected = null;
                                     _qty = 1.0;
                                     _qtyController.text = '1';
+                                    _priceController.clear();
                                   });
                                 },
                           icon: const Icon(Icons.add_rounded),
-                          label: const Text('Add to Order'),
+                          label: const Text('Add'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _qty > _selected!.stock || _selected!.stock <= 0
                                 ? Colors.grey
@@ -455,5 +509,41 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
             .toList(),
       ),
     ];
+  }
+
+  Future<void> _loadCustomPrice(String itemId, double defaultPrice) async {
+    final customPrice = await DatabaseHelper.instance.getCustomerCustomPrice(widget.customerId, itemId);
+    if (mounted) {
+      setState(() {
+        _customPrice = customPrice ?? defaultPrice;
+        _priceController.text = _customPrice.toStringAsFixed(2);
+      });
+    }
+  }
+
+  Future<int?> _showPriceScopeDialog(BuildContext context, String itemName) async {
+    return await showDialog<int>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Update Price Scope'),
+        content: Text('You changed the price of "$itemName". How should this new price be saved?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 3),
+            child: const Text('Just this Order'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 1),
+            child: const Text('This Customer Only'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 2),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            child: const Text('For General (All)'),
+          ),
+        ],
+      ),
+    );
   }
 }
