@@ -1128,8 +1128,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: (isDark ? const Color(0xFF0F172A) : Colors.white).withOpacity(isDark ? 0.45 : 0.70),
               borderRadius: r,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  (isDark ? const Color(0xFF1E293B) : Colors.white).withOpacity(isDark ? 0.60 : 0.85),
+                  (isDark ? const Color(0xFF0F172A) : Colors.white).withOpacity(isDark ? 0.35 : 0.50),
+                ],
+              ),
               border: Border.all(
                 color: borderColor ?? (isDark ? Colors.white24 : Colors.black12),
                 width: 1.2,

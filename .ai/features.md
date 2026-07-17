@@ -1,37 +1,75 @@
 # Features Registry
 
-The features in OrderKart are divided into isolated modules:
+The features in OrderKart are divided into 18 isolated modules matching the folder structure in `lib/features/`:
 
-## 1. Area & Locations Intelligence
-- **Purpose**: Defines location scopes. Supports multi-level nested spatial tree hierarchy (Area > Sector > Road > Galli) and custom spatial coordinates.
-- **Files**: `lib/features/location/`
-- **Integrations**: Linked to Customers and Visits.
+## 1. `analytics`
+- **Purpose**: Compiles workers collection charts, revenue graphs, collection ratios, and commission values.
+- **Data Model**: `lib/features/analytics/`
 
-## 2. Customer Profile & VIP Membership
-- **Purpose**: Manage customer directories, ledger history, contact information, dietary choices, and VIP plan subscriptions.
-- **VIP Plan**: Supports Gold, Platinum, Custom tier structures with markups, automatic priority deliveries, and discount percentages.
-- **Files**: `lib/features/customer/`
+## 2. `area`
+- **Purpose**: Legacy Area database replica module kept alive to prevent foreign-key constraints on customer entries.
+- **Data Model**: `lib/features/area/`
 
-## 3. Inventory Directory
-- **Purpose**: Track product items, minimum stock alerts, and automated stock deductions/restorations on order generation/cancellation.
-- **Files**: `lib/features/inventory/`
+## 3. `area_intelligence_map`
+- **Purpose**: Offline GIS mapping using FMTC cached tiles, polygon geofence editing, and custom customer marker indicators.
+- **Data Model**: `lib/features/area_intelligence_map/`
 
-## 4. Order & Billing Ledger
-- **Purpose**: Add, edit, dispatch orders. Generates professional WhatsApp receipts with store contacts separated at the bottom.
-- **Files**: `lib/features/order/`, `lib/core/utils/bill_text_generator.dart`
+## 4. `auth`
+- **Purpose**: Manages Owner PIN authentications, local lockout timelines, and activation code matching steps.
+- **Data Model**: `lib/features/auth/`
 
-## 5. Worker Provisioning & Management
-- **Purpose**: Manage active worker list. Generate encrypted and signature-signed `.orderkart` configuration file scoped specifically to the worker's assignments to protect proprietary customer directories.
-- **Files**: `lib/features/worker/`, `lib/core/services/worker_package_service.dart`
+## 5. `customer`
+- **Purpose**: Stores customer profiles, photo pickers, outstanding dues ledgers, dietary choices, and Gold/Platinum VIP plans.
+- **Data Model**: `lib/features/customer/`
 
-## 6. Financial Profit & Loss Analytics
-- **Purpose**: Summarize total revenues, monthly summary expense tables, margins, ratios, and progress indicator bars.
-- **Files**: `lib/features/analytics/`, `lib/features/expense/`
+## 6. `dashboard`
+- **Purpose**: Displays outstanding balances summaries, system logs tickers, and general feature launch grids.
+- **Data Model**: `lib/features/dashboard/`
 
-## 7. Dynamic Checkout Questions & Attributes
-- **Purpose**: Define custom field attributes for customers, dynamic checkout questions, and compile checkout response histories.
-- **Files**: Handled in custom schemas and field views.
+## 7. `expense`
+- **Purpose**: Tracks operational and worker-scoped business expenditures.
+- **Data Model**: `lib/features/expense/`
 
-## 8. Supplier Logistics & Procurement
-- **Purpose**: Manage supplier directory, procurement logs, third-party ledger details, item warehouse distributions, and purchase orders.
-- **Files**: Handled in extended inventory and logistics services.
+## 8. `inventory`
+- **Purpose**: Catalog of items, standard cost/selling prices, min-stock warning levels, and PDF export catalog utilities.
+- **Data Model**: `lib/features/inventory/`
+
+## 9. `location`
+- **Purpose**: Unified spatial tree nodes (Area > Sector > Road > Galli) representing hierarchical territories.
+- **Data Model**: `lib/features/location/`
+
+## 10. `note`
+- **Purpose**: Sticky checklist notes for driver remarks, general assignments, and instructions.
+- **Data Model**: `lib/features/note/`
+
+## 11. `notification`
+- **Purpose**: System alerts listing page containing summaries of low-stock, due collections, or upcoming route plans.
+- **Data Model**: `lib/features/notification/`
+
+## 12. `order`
+- **Purpose**: Billing ledger and order checkout dispatcher.
+- **Data Model**: `lib/features/order/`
+
+## 13. `search`
+- **Purpose**: Speech-to-text voice recognition and query customer directory searches.
+- **Data Model**: `lib/features/search/`
+
+## 14. `settings`
+- **Purpose**: UPI QR text setups, business profiles configuration, and global preferences.
+- **Data Model**: `lib/features/settings/`
+
+## 15. `street`
+- **Purpose**: Legacy Street database replica table kept alive for foreign key consistency.
+- **Data Model**: `lib/features/street/`
+
+## 16. `sync`
+- **Purpose**: Backup files exporter and imports merge wizard dialog interfaces.
+- **Data Model**: `lib/features/sync/`
+
+## 17. `visit`
+- **Purpose**: Daily scheduled driver route visits linked to locations.
+- **Data Model**: `lib/features/visit/`
+
+## 18. `worker`
+- **Purpose**: Worker directory, salary logs, targets, and scoped provisioning packages generator.
+- **Data Model**: `lib/features/worker/`

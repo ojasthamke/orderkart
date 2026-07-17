@@ -14,3 +14,11 @@ Significant architectural decisions recorded chronologically:
 ## Decision 3: JIT Legacy Constraint Assertion
 - **Context**: Worker devices provisioned without explicit `streets`/`areas` table rows crashed during customer creation due to legacy foreign key checks on `customers(street_id)`.
 - **Decision**: Implemented `ensureLegacyStreetAndAreaExists` to JIT check and seed matching records in `streets` and `areas` tables prior to customer insertion/updates.
+
+## Decision 4: Scoped Locations Packaging in Worker Provisioning
+- **Context**: Excluding the `locations` table during worker ZIP packaging broke navigation, area detail lists, and visits on fresh worker client setups.
+- **Decision**: Query, encrypt, write, and hash the unified `locations` table during worker provisioning package generation.
+
+## Decision 5: Fix Worker Analytics Binding Index
+- **Context**: Mismatched parameter placeholders and arguments array sizes crashed dashboard aggregates when entering the workers analytics hub.
+- **Decision**: Aligned the arguments array size (reduced from 6 to 5 values) to match the parameter count in SQL queries.

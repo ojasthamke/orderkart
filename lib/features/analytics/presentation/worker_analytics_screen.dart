@@ -53,7 +53,7 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
              c.assigned_worker_id = ? OR o.id IN (
                SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
              )) AND LOWER(p.method) = 'cash'
-    ''', [wid, wid, wid, wid, wid, wid]);
+    ''', [wid, wid, wid, wid, wid]);
 
     final onlineRes = await db.rawQuery('''
       SELECT COALESCE(SUM(p.amount), 0) as sum 
@@ -64,7 +64,7 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
              c.assigned_worker_id = ? OR o.id IN (
                SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
              )) AND LOWER(p.method) != 'cash'
-    ''', [wid, wid, wid, wid, wid, wid]);
+    ''', [wid, wid, wid, wid, wid]);
 
     final cashColl = (cashRes.first['sum'] as num?)?.toDouble() ?? 0.0;
     final onlineColl = (onlineRes.first['sum'] as num?)?.toDouble() ?? 0.0;
