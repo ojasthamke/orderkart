@@ -10,6 +10,7 @@
 - Added interactive price scope choice dialog (General vs This Customer vs Temporary) when manual unit price changes are made during checkout.
 - Added all missing feature links (Expenses, Visits, Area Intelligence Map, Groceries Hub, Medicines Hub, Catalog Showroom, Churn Risk Alerts, and Notifications) to the AppDrawer list menu.
 - Implemented manual Serial No. (Sequence) input form field in AddEditItemScreen to custom-arrange items in the inventory, matching the customer shuffle sorting comparator logic.
+- Implemented custom premium Royal Midnight Dark Theme (deep royal blue base, emerald brand accents, and frosted dark card styling) and set it as the default app theme fallback.
 
 ### Fixed
 - Fixed customer saving exception in the worker app due to legacy foreign key checks on `customers.street_id` referencing empty `streets` tables (JIT constraint assertion added).
