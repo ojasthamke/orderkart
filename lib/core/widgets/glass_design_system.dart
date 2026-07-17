@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../utils/haptics.dart';
 
 /// Reusable Glass Container mapping to Apple's Frosted Material specs.
 class GlassContainer extends StatelessWidget {
@@ -361,7 +362,7 @@ class GlassSwitch extends StatelessWidget {
             color: value ? AppColors.primary.withOpacity(0.5) : Colors.transparent,
           ),
         ),
-        child: AlignmentCard(
+        child: Align(
           alignment: value ? Alignment.centerRight : Alignment.centerLeft,
           child: GlassContainer(
             width: 24,
@@ -373,21 +374,6 @@ class GlassSwitch extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class AlignmentCard extends StatelessWidget {
-  final Alignment alignment;
-  final Widget child;
-
-  const AlignmentCard({super.key, required this.alignment, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: child,
     );
   }
 }
@@ -442,36 +428,62 @@ class GlassSegmentedControl<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final keysList = children.keys.toList();
+    final selectedIndex = keysList.indexOf(selectedValue);
+
     return GlassContainer(
       padding: const EdgeInsets.all(4),
       borderRadius: BorderRadius.circular(14),
-      child: Row(
-        children: children.entries.map((entry) {
-          final isSelected = entry.key == selectedValue;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => onValueChanged(entry.key),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: isSelected ? AppColors.primary.withOpacity(0.20) : Colors.transparent,
-                ),
-                child: Center(
-                  child: Text(
-                    entry.value,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final segmentWidth = constraints.maxWidth / keysList.length;
+          return Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutBack,
+                left: selectedIndex * segmentWidth,
+                width: segmentWidth,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.primary.withOpacity(0.20),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.3),
+                      width: 1.0,
                     ),
                   ),
                 ),
               ),
-            ),
+              Row(
+                children: children.entries.map((entry) {
+                  final isSelected = entry.key == selectedValue;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => onValueChanged(entry.key),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Center(
+                          child: Text(
+                            entry.value,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
           );
-        }).toList(),
+        },
       ),
     );
   }
@@ -631,6 +643,192 @@ class GlassBanner extends StatelessWidget {
             ),
           )
         ],
+      ),
+    );
+  }
+}
+
+/// Apple Floating Glass Dock (Bottom Navigation Bar)
+class GlassFloatingDock extends StatelessWidget {
+  final int selectedIndex;
+  final List<(IconData icon, String label)> items;
+  final ValueChanged<int> onTap;
+
+  const GlassFloatingDock({
+    super.key,
+    required this.selectedIndex,
+    required this.items,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: GlassContainer(
+        height: 64,
+        borderRadius: BorderRadius.circular(32),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: List.generate(items.length, (index) {
+            final isSelected = selectedIndex == index;
+            final item = items[index];
+
+            return GestureDetector(
+              onTap: () {
+                AppHaptics.buttonClick();
+                onTap(index);
+              },
+              behavior: HitTestBehavior.opaque,
+              child: AnimatedScale(
+                scale: isSelected ? 1.15 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutBack,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      item.$1,
+                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                      size: 24,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.$2,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+}
+
+/// Frosted Glass List Tile widget with responsive touch sizes.
+class GlassListTile extends StatelessWidget {
+  final Widget? leading;
+  final Widget title;
+  final Widget? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final Color? color;
+
+  const GlassListTile({
+    super.key,
+    this.leading,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      margin: const EdgeInsets.only(bottom: 8),
+      borderRadius: BorderRadius.circular(16),
+      color: color,
+      padding: EdgeInsets.zero,
+      child: ListTile(
+        leading: leading,
+        title: title,
+        subtitle: subtitle,
+        trailing: trailing,
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
+}
+
+/// Premium Glass Dialog window with spring scale entrance.
+class GlassDialog extends StatelessWidget {
+  final Widget title;
+  final Widget content;
+  final List<Widget> actions;
+
+  const GlassDialog({
+    super.key,
+    required this.title,
+    required this.content,
+    required this.actions,
+  });
+
+  static Future<T?> show<T>({
+    required BuildContext context,
+    required Widget title,
+    required Widget content,
+    required List<Widget> actions,
+  }) {
+    return showGeneralDialog<T>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.black45,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox.shrink(),
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        final double scale = 0.85 + (anim1.value * 0.15);
+        final double opacity = anim1.value;
+        return Transform.scale(
+          scale: scale,
+          child: Opacity(
+            opacity: opacity,
+            child: GlassDialog(title: title, content: content, actions: actions),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      contentPadding: EdgeInsets.zero,
+      titlePadding: EdgeInsets.zero,
+      actionsPadding: EdgeInsets.zero,
+      content: GlassContainer(
+        borderRadius: BorderRadius.circular(24),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DefaultTextStyle(
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold) ?? const TextStyle(),
+              child: title,
+            ),
+            const SizedBox(height: 12),
+            DefaultTextStyle(
+              style: Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
+              child: content,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: actions.map((a) {
+                return Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: a,
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
