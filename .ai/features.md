@@ -3,7 +3,7 @@
 The features in OrderKart are divided into isolated modules:
 
 ## 1. Area & Locations Intelligence
-- **Purpose**: Defines location scopes. Supports nested spatial hierarchy (Area > Sector > Road > Galli).
+- **Purpose**: Defines location scopes. Supports multi-level nested spatial tree hierarchy (Area > Sector > Road > Galli) and custom spatial coordinates.
 - **Files**: `lib/features/location/`
 - **Integrations**: Linked to Customers and Visits.
 
@@ -27,3 +27,11 @@ The features in OrderKart are divided into isolated modules:
 ## 6. Financial Profit & Loss Analytics
 - **Purpose**: Summarize total revenues, monthly summary expense tables, margins, ratios, and progress indicator bars.
 - **Files**: `lib/features/analytics/`, `lib/features/expense/`
+
+## 7. Dynamic Checkout Questions & Attributes
+- **Purpose**: Define custom field attributes for customers, dynamic checkout questions, and compile checkout response histories.
+- **Files**: Handled in custom schemas and field views.
+
+## 8. Supplier Logistics & Procurement
+- **Purpose**: Manage supplier directory, procurement logs, third-party ledger details, item warehouse distributions, and purchase orders.
+- **Files**: Handled in extended inventory and logistics services.
