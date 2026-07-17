@@ -6,6 +6,8 @@
 - Created `security.md`, `performance.md`, and `workflows.md` to document worker scoping encryption, SQLite WAL optimizations, P2P sync socket sequence, and dynamic checkout questions.
 - Prepend product sequence numbers (e.g. #1, #2) to item names in both inventory lists and order creation selector cards.
 - Display unit cost price alongside selling price in inventory screens and ordering sheets.
+- Created `customer_item_prices` database table to support customer-specific custom price overrides during checkout.
+- Added interactive price scope choice dialog (General vs This Customer vs Temporary) when manual unit price changes are made during checkout.
 
 ### Fixed
 - Fixed customer saving exception in the worker app due to legacy foreign key checks on `customers.street_id` referencing empty `streets` tables (JIT constraint assertion added).

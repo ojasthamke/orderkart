@@ -163,3 +163,10 @@ OrderKart uses SQLite (via `sqflite`) with foreign keys enabled (`PRAGMA foreign
 - `name` (TEXT NOT NULL)
 - `description` (TEXT DEFAULT '')
 - `created_at` (TEXT NOT NULL)
+
+### 13. `customer_item_prices` (Custom Customer Price Overrides)
+- `customer_id` (TEXT NOT NULL)
+- `item_id` (TEXT NOT NULL)
+- `custom_price` (REAL NOT NULL)
+- `created_at` (TEXT NOT NULL)
+- **PRIMARY KEY**: (`customer_id`, `item_id`)
