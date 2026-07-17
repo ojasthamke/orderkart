@@ -95,11 +95,11 @@ final settingsProvider =
 
 final themeModeProvider = Provider<ThemeMode>((ref) {
   final settings = ref.watch(settingsProvider).valueOrNull;
-  if (settings == null) return ThemeMode.light;
+  if (settings == null) return ThemeMode.dark;
   switch (settings.themeMode) {
-    case 'dark':   return ThemeMode.dark;
+    case 'light':  return ThemeMode.light;
     case 'system': return ThemeMode.system;
-    case 'light':
-    default:       return ThemeMode.light;
+    case 'dark':
+    default:       return ThemeMode.dark;
   }
 });
