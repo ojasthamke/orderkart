@@ -4,20 +4,29 @@ import '../constants/app_routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../security/app_mode_service.dart';
 
+import 'glass_design_system.dart';
+
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark ? const Color(0xFF1A1A1A) : Colors.white;
     final modeAsync = ref.watch(appModeProvider);
     final isWorker = modeAsync.value == AppMode.worker;
 
     return Drawer(
-      backgroundColor: backgroundColor,
-      child: SafeArea(
-        child: Column(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: GlassContainer(
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        padding: EdgeInsets.zero,
+        borderColor: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.06),
+        child: SafeArea(
+          child: Column(
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -410,6 +419,7 @@ class AppDrawer extends ConsumerWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -37,47 +37,85 @@ class AppScaffold extends StatelessWidget {
     // Premium Apple-style frosted background stack
     final backgroundStack = Stack(
       children: [
-        // Ambient soft pastel glow circles
-        Positioned(
-          top: -100,
-          left: -100,
+        // Base solid background layer to prevent black window bleed
+        Positioned.fill(
           child: Container(
-            width: 320,
-            height: 320,
+            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          ),
+        ),
+        // Ambient soft pastel glow circles (Vibrant Mesh)
+        Positioned(
+          top: -50,
+          left: -50,
+          child: Container(
+            width: 300,
+            height: 300,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: theme.colorScheme.primary.withOpacity(isDark ? 0.15 : 0.08),
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFF3B82F6).withOpacity(isDark ? 0.35 : 0.22), // Electric Blue
+                  const Color(0xFF3B82F6).withOpacity(0),
+                ],
+              ),
             ),
           ),
         ),
         Positioned(
-          top: MediaQuery.of(context).size.height * 0.35,
-          right: -150,
+          top: MediaQuery.of(context).size.height * 0.28,
+          right: -100,
           child: Container(
-            width: 360,
-            height: 360,
+            width: 350,
+            height: 350,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.purple.withOpacity(isDark ? 0.12 : 0.06),
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFF8B5CF6).withOpacity(isDark ? 0.30 : 0.18), // Rich Violet
+                  const Color(0xFF8B5CF6).withOpacity(0),
+                ],
+              ),
             ),
           ),
         ),
         Positioned(
-          bottom: -50,
-          left: 50,
+          bottom: 50,
+          left: -50,
           child: Container(
             width: 280,
             height: 280,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.amber.withOpacity(isDark ? 0.10 : 0.05),
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFEC4899).withOpacity(isDark ? 0.25 : 0.15), // Rose/Pink
+                  const Color(0xFFEC4899).withOpacity(0),
+                ],
+              ),
             ),
           ),
         ),
-        // Glass filter overlay
+        Positioned(
+          bottom: -100,
+          right: 50,
+          child: Container(
+            width: 320,
+            height: 320,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  const Color(0xFFF59E0B).withOpacity(isDark ? 0.20 : 0.12), // Amber/Orange
+                  const Color(0xFFF59E0B).withOpacity(0),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Glass filter overlay (tuned blur sigma)
         Positioned.fill(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+            filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
             child: Container(
               color: Colors.transparent,
             ),
