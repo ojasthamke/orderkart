@@ -103,30 +103,7 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
 
-                  // 3. Order Notes Questions
-                  if (!isWorker)
-                    _DrawerItem(
-                      icon: Icons.question_answer_rounded,
-                      title: 'Order Notes Questions',
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.orderQuestionsConfig);
-                      },
-                    ),
-
-                  // 4. Worker Sync Activity & Imports
-                  if (!isWorker)
-                    _DrawerItem(
-                      icon: Icons.history_edu_rounded,
-                      title: 'Worker Sync Activity & Imports',
-                      iconColor: Colors.teal,
-                      onTap: () async {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.workerSyncActivity);
-                      },
-                    ),
-
-                  // 5. Customers
+                  // 3. Customers
                   _DrawerItem(
                     icon: Icons.people_alt_rounded,
                     title: isWorker ? 'My Customers' : 'Customers',
@@ -136,7 +113,39 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
 
-                  // 6. VIP Membership Club
+                  // 4. Inventory Catalog
+                  _DrawerItem(
+                    icon: Icons.inventory_rounded,
+                    title: 'Inventory Catalog',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.inventory);
+                    },
+                  ),
+
+                  // 5. Catalog Showroom
+                  _DrawerItem(
+                    icon: Icons.image_rounded,
+                    title: 'Catalog Showroom',
+                    iconColor: Colors.deepPurple,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.catalogShowroom);
+                    },
+                  ),
+
+                  // 6. Area Intelligence Map
+                  _DrawerItem(
+                    icon: Icons.map_rounded,
+                    title: 'Area Intelligence Map',
+                    iconColor: Colors.orange,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.areaIntelligenceMap);
+                    },
+                  ),
+
+                  // 7. VIP Membership Club
                   if (!isWorker)
                     _DrawerItem(
                       icon: Icons.workspace_premium_rounded,
@@ -147,13 +156,53 @@ class AppDrawer extends ConsumerWidget {
                       },
                     ),
 
-                  // 7. Inventory Catalog
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+                    child: Divider(height: 1),
+                  ),
+                  const _SectionHeader(title: 'LOGISTICS & SERVICES'),
+
+                  // 8. Field Visits Schedule
                   _DrawerItem(
-                    icon: Icons.inventory_rounded,
-                    title: 'Inventory Catalog',
+                    icon: Icons.calendar_today_rounded,
+                    title: 'Field Visits Schedule',
+                    iconColor: Colors.blueAccent,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.inventory);
+                      Navigator.pushNamed(context, AppRoutes.visits);
+                    },
+                  ),
+
+                  // 9. Expenses Tracker
+                  _DrawerItem(
+                    icon: Icons.receipt_long_rounded,
+                    title: 'Expenses Tracker',
+                    iconColor: Colors.redAccent,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.expenses);
+                    },
+                  ),
+
+                  // 10. Groceries Hub
+                  _DrawerItem(
+                    icon: Icons.local_grocery_store_rounded,
+                    title: 'Groceries Hub',
+                    iconColor: Colors.green,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.groceriesHub);
+                    },
+                  ),
+
+                  // 11. Medicines Hub
+                  _DrawerItem(
+                    icon: Icons.local_pharmacy_rounded,
+                    title: 'Medicines Hub',
+                    iconColor: Colors.pink,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.medicinesHub);
                     },
                   ),
 
@@ -182,6 +231,15 @@ class AppDrawer extends ConsumerWidget {
                       },
                     ),
                     _DrawerItem(
+                      icon: Icons.warning_amber_rounded,
+                      title: 'Churn Risk Analyzer',
+                      iconColor: Colors.red,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.churnRisk);
+                      },
+                    ),
+                    _DrawerItem(
                       icon: Icons.history_rounded,
                       title: 'Activity Timeline',
                       onTap: () {
@@ -200,6 +258,17 @@ class AppDrawer extends ConsumerWidget {
                     ),
                   ],
 
+                  // Alerts & Notifications
+                  _DrawerItem(
+                    icon: Icons.notifications_rounded,
+                    title: 'Notifications & Alerts',
+                    iconColor: Colors.amber,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.notifications);
+                    },
+                  ),
+
                   // Divider & Settings Section
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
@@ -214,7 +283,24 @@ class AppDrawer extends ConsumerWidget {
                       Navigator.pushNamed(context, AppRoutes.settings);
                     },
                   ),
-                  if (!isWorker)
+                  if (!isWorker) ...[
+                    _DrawerItem(
+                      icon: Icons.question_answer_rounded,
+                      title: 'Order Notes Questions',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.orderQuestionsConfig);
+                      },
+                    ),
+                    _DrawerItem(
+                      icon: Icons.history_edu_rounded,
+                      title: 'Worker Sync Activity',
+                      iconColor: Colors.teal,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.workerSyncActivity);
+                      },
+                    ),
                     _DrawerItem(
                       icon: Icons.admin_panel_settings_rounded,
                       title: 'Advance Operation Control',
@@ -222,51 +308,6 @@ class AppDrawer extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.pushNamed(context, AppRoutes.ownerFeaturesHub);
-                      },
-                    ),
-
-                  // Divider & Sync and Data Section
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
-                    child: Divider(height: 1),
-                  ),
-                  const _SectionHeader(title: 'SYNC & DATA'),
-                  
-                  _DrawerItem(
-                    icon: Icons.sync_alt_rounded,
-                    title: isWorker ? 'Sync & Export' : 'Import & Export Data',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.backupRestore);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.history_toggle_off_rounded,
-                    title: 'Sync Log History',
-                    iconColor: const Color(0xFF8B5CF6),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.syncHistory);
-                    },
-                  ),
-                  
-                  if (!isWorker) ...[
-                    _DrawerItem(
-                      icon: Icons.auto_mode_rounded,
-                      title: 'Import Wizard (Merge)',
-                      iconColor: const Color(0xFF0284C7),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.importWizard);
-                      },
-                    ),
-                    _DrawerItem(
-                      icon: Icons.storefront_rounded,
-                      title: 'Business Profile',
-                      iconColor: const Color(0xFF10B981),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.businessProfile);
                       },
                     ),
                     _DrawerItem(
@@ -305,6 +346,51 @@ class AppDrawer extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.pushNamed(context, AppRoutes.notes);
+                      },
+                    ),
+                  ],
+
+                  // Divider & Sync and Data Section
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+                    child: Divider(height: 1),
+                  ),
+                  const _SectionHeader(title: 'SYNC & DATA'),
+                  
+                  _DrawerItem(
+                    icon: Icons.sync_alt_rounded,
+                    title: isWorker ? 'Sync & Export' : 'Import & Export Data',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.backupRestore);
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.history_toggle_off_rounded,
+                    title: 'Sync Log History',
+                    iconColor: const Color(0xFF8B5CF6),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.syncHistory);
+                    },
+                  ),
+                  if (!isWorker) ...[
+                    _DrawerItem(
+                      icon: Icons.auto_mode_rounded,
+                      title: 'Import Wizard (Merge)',
+                      iconColor: const Color(0xFF0284C7),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.importWizard);
+                      },
+                    ),
+                    _DrawerItem(
+                      icon: Icons.storefront_rounded,
+                      title: 'Business Profile',
+                      iconColor: const Color(0xFF10B981),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, AppRoutes.businessProfile);
                       },
                     ),
                   ],
