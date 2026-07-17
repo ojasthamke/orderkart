@@ -224,24 +224,28 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: selected
-                        ? AppColors.primary
+                        ? AppColors.primary.withOpacity(0.3)
                         : (Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white10
+                            ? Colors.white.withOpacity(0.08)
                             : Colors.black.withOpacity(0.04)),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: selected
                           ? AppColors.primary
                           : (Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white12
-                              : Colors.black12),
+                              ? Colors.white.withOpacity(0.12)
+                              : Colors.black.withOpacity(0.1)),
                     ),
                   ),
                   child: Center(
                     child: Text(
                       cat,
                       style: TextStyle(
-                        color: selected ? Colors.white : AppColors.textPrimary,
+                        color: selected
+                            ? Colors.white
+                            : (Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white70
+                                : AppColors.textPrimary),
                         fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
                       ),
                     ),
