@@ -1013,7 +1013,7 @@ class _ItemTile extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                item.name,
+                '${item.sequenceNo > 0 ? "#${item.sequenceNo} " : ""}${item.name}',
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
               ),
             ),
@@ -1042,7 +1042,7 @@ class _ItemTile extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'Price: ${AppFormatters.currency(item.sellingPrice)} / ${item.unit}',
+                  'Price: ${AppFormatters.currency(item.sellingPrice)} / ${item.unit}  •  Cost: ${AppFormatters.currency(item.costPrice)}',
                   style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary),
                 ),
                 if (item.marketPrice > 0) ...[

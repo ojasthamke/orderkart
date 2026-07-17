@@ -4,11 +4,14 @@
 ### Added
 - Created permanent project brain and documentation vault in `.ai/` directory.
 - Created `security.md`, `performance.md`, and `workflows.md` to document worker scoping encryption, SQLite WAL optimizations, P2P sync socket sequence, and dynamic checkout questions.
+- Prepend product sequence numbers (e.g. #1, #2) to item names in both inventory lists and order creation selector cards.
+- Display unit cost price alongside selling price in inventory screens and ordering sheets.
 
 ### Fixed
 - Fixed customer saving exception in the worker app due to legacy foreign key checks on `customers.street_id` referencing empty `streets` tables (JIT constraint assertion added).
 - Fixed worker provisioning package generation by query-serializing the unified `locations` table.
 - Fixed SQLite database exception on the Worker Analytics & Performance screen by matching parameter count and arguments list length (reduced from 6 to 5 values).
+- Fixed P2P hotspot sync handshake token mismatch when worker devices (lacking the owner's master secret) attempt connection with owner devices by allowing fallback token validation.
 
 ## 2026-07-16
 ### Added

@@ -213,7 +213,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(item.name,
+                                    Text('${item.sequenceNo > 0 ? "#${item.sequenceNo} " : ""}${item.name}',
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyMedium
@@ -222,7 +222,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                                 color: item.stock <= 0 ? AppColors.textSecondary : null)),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '₹${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Stock: ${AppFormatters.quantity(item.stock)}',
+                                      '₹${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Cost: ₹${item.costPrice.toStringAsFixed(item.costPrice == item.costPrice.roundToDouble() ? 0 : 2)}  •  Stock: ${AppFormatters.quantity(item.stock)}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall

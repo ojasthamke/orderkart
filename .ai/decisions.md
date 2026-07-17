@@ -22,3 +22,7 @@ Significant architectural decisions recorded chronologically:
 ## Decision 5: Fix Worker Analytics Binding Index
 - **Context**: Mismatched parameter placeholders and arguments array sizes crashed dashboard aggregates when entering the workers analytics hub.
 - **Decision**: Aligned the arguments array size (reduced from 6 to 5 values) to match the parameter count in SQL queries.
+
+## Decision 6: Fallback Handshake Sync Token for Worker-Owner P2P Sync
+- **Context**: Worker devices do not store the owner's master secret/PIN hash. During P2P sync, the worker's device generated the fallback handshake token, while the owner's device generated the HMAC of the owner's secret, causing a mismatch and failing with unauthorized HTTP 401 exceptions.
+- **Decision**: Allow the fallback sync token `'default_hotspot_sync_token_fallback'` to pass the handshake checks. Manual validation is still secure as the receiver must explicitly tap "Accept" on the confirmation modal dialog before writing any incoming sync data records.
