@@ -31,6 +31,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   final _stockCon     = TextEditingController();
   final _minStockCon  = TextEditingController();
   final _barcodeCon   = TextEditingController();
+  final _sequenceCon  = TextEditingController();
 
   // New V6 fields
   final _expiryCon     = TextEditingController();
@@ -75,6 +76,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _stockCon.text    = item.stock.toString();
         _minStockCon.text = item.minStock.toString();
         _barcodeCon.text  = item.barcode;
+        _sequenceCon.text = item.sequenceNo > 0 ? '${item.sequenceNo}' : '';
         _category         = item.category;
         _unit             = item.unit;
         _expiryCon.text   = item.expiryDate;
@@ -93,7 +95,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   @override
   void dispose() {
     _nameCon.dispose(); _costCon.dispose(); _sellCon.dispose(); _marketCon.dispose();
-    _stockCon.dispose(); _minStockCon.dispose(); _barcodeCon.dispose();
+    _stockCon.dispose(); _minStockCon.dispose(); _barcodeCon.dispose(); _sequenceCon.dispose();
     _expiryCon.dispose(); _batchCon.dispose(); _dosageCon.dispose();
     _bestBeforeCon.dispose(); _packCon.dispose();
     _weightPerPieceCon.dispose();
@@ -160,6 +162,24 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 ),
                 validator: (v) => AppValidators.nameField(v, field: 'Item name'),
                 textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _sequenceCon,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Serial No. / Sequence No.',
+                  prefixIcon: Icon(Icons.format_list_numbered_rounded),
+                  helperText: 'Used to arrange items in custom display order (1, 2, 3...)',
+                ),
+                validator: (v) {
+                  if (v != null && v.trim().isNotEmpty) {
+                    final val = int.tryParse(v.trim());
+                    if (val == null || val < 0) return 'Enter a valid positive integer';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
 
@@ -497,6 +517,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         bestBefore:   _category == AppConstants.catGroceries ? _bestBeforeCon.text : '',
         packDate:     _category == AppConstants.catGroceries ? _packCon.text : '',
         weightPerPiece: double.tryParse(_weightPerPieceCon.text) ?? 0.25,
+        sequenceNo:   int.tryParse(_sequenceCon.text.trim()) ?? 0,
       );
 
       if (_isEdit) {

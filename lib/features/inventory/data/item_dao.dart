@@ -40,7 +40,7 @@ class ItemDao {
             final catComp = a.category.compareTo(b.category);
             if (catComp != 0) return catComp;
           }
-          return a.name.compareTo(b.name);
+          return a.createdAt.compareTo(b.createdAt);
         }
         if (aNo == 0) return 1;
         if (bNo == 0) return -1;

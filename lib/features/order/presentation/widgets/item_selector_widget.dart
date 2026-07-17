@@ -223,7 +223,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('${item.sequenceNo > 0 ? "#${item.sequenceNo} " : ""}${item.name}',
+                                    Text(item.name,
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyMedium
