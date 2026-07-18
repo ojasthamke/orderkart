@@ -108,6 +108,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await _repo.moveCustomers(customerIds, newStreetId);
     await load();
     _invalidateAll();
+    _ref.invalidate(customerListProvider(newStreetId));
   }
 }
 

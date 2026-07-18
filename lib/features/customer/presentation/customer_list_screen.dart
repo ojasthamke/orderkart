@@ -439,6 +439,25 @@ class _CustomerCard extends ConsumerWidget {
                                       fontWeight: FontWeight.w700,
                                     ),
                               ),
+                            )
+                          else if (customer.outstandingBalance < 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Credit: ${AppFormatters.currency(customer.outstandingBalance.abs())}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      color: Colors.teal,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
                             ),
                         ],
                       ),

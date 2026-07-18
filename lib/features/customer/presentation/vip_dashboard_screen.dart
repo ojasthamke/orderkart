@@ -451,10 +451,7 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
       vipStartDate: customer.vipStartDate.isEmpty ? now.toIso8601String() : customer.vipStartDate,
     );
 
-    final repo = ref.read(customerRepositoryProvider);
-    await repo.updateCustomer(updated);
-    ref.invalidate(allCustomersProvider);
-    ref.invalidate(customerDetailProvider(customer.id));
+    await ref.read(customerListProvider(updated.streetId).notifier).update(updated);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Renewed VIP Membership for ${customer.name} by $planDays days!')),
@@ -477,10 +474,7 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
       vipMarkupPct: 0.0,
       vipPriorityDelivery: false,
     );
-    final repo = ref.read(customerRepositoryProvider);
-    await repo.updateCustomer(updated);
-    ref.invalidate(allCustomersProvider);
-    ref.invalidate(customerDetailProvider(customer.id));
+    await ref.read(customerListProvider(updated.streetId).notifier).update(updated);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Cancelled VIP Membership for ${customer.name}')),
@@ -948,10 +942,7 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
       vipAutoRenewal: _autoRenewal,
     );
 
-    final repo = ref.read(customerRepositoryProvider);
-    await repo.updateCustomer(updated);
-    ref.invalidate(allCustomersProvider);
-    ref.invalidate(customerDetailProvider(updated.id));
+    await ref.read(customerListProvider(updated.streetId).notifier).update(updated);
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(

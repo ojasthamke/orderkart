@@ -594,11 +594,14 @@ class CustomerProfileScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _headerStat(context, 'Outstanding',
-                  AppFormatters.currency(customer.outstandingBalance),
-                  color: customer.outstandingBalance > 0
-                      ? AppColors.warning
-                      : AppColors.success),
+              _headerStat(
+                context,
+                customer.outstandingBalance >= 0 ? 'Outstanding' : 'Credit / Advance',
+                AppFormatters.currency(customer.outstandingBalance.abs()),
+                color: customer.outstandingBalance > 0
+                    ? AppColors.warning
+                    : (customer.outstandingBalance < 0 ? Colors.teal : AppColors.textPrimary),
+              ),
               _headerStat(context, 'Total Orders', '${customer.totalOrders}'),
               _headerStat(context, 'Total Paid',
                   AppFormatters.currency(customer.totalPaid)),
