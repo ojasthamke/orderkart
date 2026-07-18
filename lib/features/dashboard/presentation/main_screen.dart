@@ -19,6 +19,7 @@ class MainScreen extends ConsumerStatefulWidget {
 class _MainScreenState extends ConsumerState<MainScreen> {
   int _currentIndex = 0;
   DateTime? _lastBackPressTime;
+  late final PageController _pageController;
 
   final List<Widget> _screens = const [
     DashboardScreen(),
@@ -31,7 +32,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
     _requestPermissions();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _requestPermissions() async {
@@ -48,7 +56,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           if (didPop) return;
 
           if (_currentIndex != 0) {
-            setState(() => _currentIndex = 0);
+            _pageController.animateToPage(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+            );
             return;
           }
 
@@ -68,17 +80,25 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             SystemNavigator.pop();
           }
         },
-        child: IndexedStack(
-          index: _currentIndex,
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          physics: const BouncingScrollPhysics(),
           children: _screens,
         ),
       ),
       bottomNavigationBar: FloatingGlassBottomBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOutCubic,
+          );
         },
         destinations: const [
           FloatingBottomDestination(
