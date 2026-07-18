@@ -491,49 +491,59 @@ class _CustomerCard extends ConsumerWidget {
                   ),
                 ),
                 // Three-dot menu
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded,
-                      color: AppColors.gray500),
-                  onSelected: (v) async {
-                    if (v == 'order') {
-                      Navigator.of(context).pushNamed(
-                        AppRoutes.createOrder,
-                        arguments: {
-                          'customerId':   customer.id,
-                          'customerName': customer.name,
-                          'orderId':      null,
-                        },
-                      ).then((_) =>
-                          ref.refresh(customerListProvider(streetId)));
-                    } else if (v == 'edit') {
-                      Navigator.of(context)
-                          .pushNamed(
-                        AppRoutes.addEditCustomer,
-                        arguments: {
-                          'streetId':   streetId,
-                          'customerId': customer.id,
-                        },
-                      )
-                          .then((_) =>
-                              ref.refresh(customerListProvider(streetId)));
-                    } else if (v == 'ledger') {
-                      InstantLedgerSheet.show(context, customer);
-                    } else if (v == 'delete') {
-                      final ok = await ConfirmDeleteDialog.show(
-                        context,
-                        title: 'Delete Customer',
-                        message:
-                            'Delete "${customer.name}"? All orders will also be deleted.',
-                      );
-                      if (!ok) return;
-                      await ref
-                          .read(customerListProvider(streetId).notifier)
-                          .delete(customer.id);
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(
-                        value: 'order',
+                if (!isSelectionMode)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert_rounded,
+                        color: AppColors.gray500),
+                    onSelected: (v) async {
+                      if (v == 'select') {
+                        onLongPress();
+                      } else if (v == 'order') {
+                        Navigator.of(context).pushNamed(
+                          AppRoutes.createOrder,
+                          arguments: {
+                            'customerId':   customer.id,
+                            'customerName': customer.name,
+                            'orderId':      null,
+                          },
+                        ).then((_) =>
+                            ref.refresh(customerListProvider(streetId)));
+                      } else if (v == 'edit') {
+                        Navigator.of(context)
+                            .pushNamed(
+                          AppRoutes.addEditCustomer,
+                          arguments: {
+                            'streetId':   streetId,
+                            'customerId': customer.id,
+                          },
+                        )
+                            .then((_) =>
+                                ref.refresh(customerListProvider(streetId)));
+                      } else if (v == 'ledger') {
+                        InstantLedgerSheet.show(context, customer);
+                      } else if (v == 'delete') {
+                        final ok = await ConfirmDeleteDialog.show(
+                          context,
+                          title: 'Delete Customer',
+                          message:
+                              'Delete "${customer.name}"? All orders will also be deleted.',
+                        );
+                        if (!ok) return;
+                        await ref
+                            .read(customerListProvider(streetId).notifier)
+                            .delete(customer.id);
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                          value: 'select',
+                          child: ListTile(
+                            leading: Icon(Icons.check_box_outlined),
+                            title: Text('Select to Move'),
+                            contentPadding: EdgeInsets.zero,
+                          )),
+                      const PopupMenuItem(
+                          value: 'order',
                         child: ListTile(
                           leading: Icon(Icons.add_shopping_cart_rounded),
                           title: Text('Create Order'),
