@@ -4,6 +4,7 @@ import '../data/area_repository_impl.dart';
 import '../domain/area.dart';
 import '../domain/area_repository.dart';
 import '../../order/presentation/order_provider.dart';
+import '../../customer/presentation/customer_provider.dart';
 
 // Repository provider
 final areaRepositoryProvider = Provider<AreaRepository>((ref) {
@@ -34,6 +35,8 @@ class AreaNotifier extends StateNotifier<AsyncValue<List<Area>>> {
   void _invalidateAll() {
     _ref.invalidate(areaProvider);
     _ref.invalidate(analyticsSummaryProvider);
+    _ref.invalidate(allCustomersProvider);
+    _ref.invalidate(pendingCustomersProvider);
   }
 
   void search(String query) {

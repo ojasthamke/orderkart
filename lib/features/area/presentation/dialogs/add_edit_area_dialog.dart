@@ -198,6 +198,8 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
                 spacing: 10,
                 children: _colorOptions.map((c) {
                   final selected = c == _color;
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  final borderColor = isDark ? Colors.white : AppColors.gray800;
                   return GestureDetector(
                     onTap: () => setState(() => _color = c),
                     child: AnimatedContainer(
@@ -208,7 +210,7 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
                         color: Color(c),
                         shape: BoxShape.circle,
                         border: selected
-                            ? Border.all(color: AppColors.gray800, width: 3)
+                            ? Border.all(color: borderColor, width: 3)
                             : null,
                         boxShadow: selected ? AppColors.cardShadow : null,
                       ),

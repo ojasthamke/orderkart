@@ -184,6 +184,29 @@ class AreaDao {
 
   Future<void> deleteArea(String id) async {
     final db = await _db;
+    
+    // Find all streets belonging to this area
+    final streets = await db.query('locations', columns: ['id'], where: 'parent_location_id = ?', whereArgs: [id]);
+    final streetIds = streets.map((s) => s['id'] as String).toList();
+    
+    if (streetIds.isNotEmpty) {
+      final placeholders = List.filled(streetIds.length, '?').join(',');
+      await db.update(
+        'customers',
+        {'street_id': '', 'location_id': ''},
+        where: "street_id IN ($placeholders) OR location_id IN ($placeholders)",
+        whereArgs: [...streetIds, ...streetIds],
+      );
+    }
+    
+    // Clear area itself
+    await db.update(
+      'customers',
+      {'street_id': '', 'location_id': ''},
+      where: 'location_id = ?',
+      whereArgs: [id],
+    );
+
     await db.delete('locations', where: 'id = ?', whereArgs: [id]);
     
     // Also delete from legacy table

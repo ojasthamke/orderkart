@@ -346,6 +346,7 @@ class _OrderManagementScreenState
       deliveryStatus: AppConstants.statusPending,
       createdAt:      now,
       updatedAt:      now,
+      payments:       const [],
     );
     // Get items to duplicate
     try {
@@ -384,11 +385,12 @@ class _OrderCard extends ConsumerWidget {
     required this.onDuplicate,
   });
 
-  Color get _statusColor {
+  Color _statusColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (order.deliveryStatus) {
-      case 'delivered': return AppColors.delivered;
-      case 'cancelled': return AppColors.cancelled;
-      default:          return AppColors.pending;
+      case 'delivered': return isDark ? const Color(0xFF81C784) : AppColors.delivered;
+      case 'cancelled': return isDark ? const Color(0xFFE57373) : AppColors.cancelled;
+      default:          return isDark ? const Color(0xFFFFB74D) : AppColors.pending;
     }
   }
 
@@ -458,7 +460,7 @@ class _OrderCard extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _statusColor.withOpacity(0.12),
+                        color: _statusColor(context).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -466,7 +468,7 @@ class _OrderCard extends ConsumerWidget {
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: _statusColor),
+                            color: _statusColor(context)),
                       ),
                     ),
                     const SizedBox(width: 4),

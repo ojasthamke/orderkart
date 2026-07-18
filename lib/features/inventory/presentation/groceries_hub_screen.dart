@@ -12,6 +12,7 @@ import '../domain/item.dart';
 import '../domain/stock_history.dart';
 import '../data/item_dao.dart';
 import 'inventory_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 import '../../expense/domain/expense.dart';
 import '../../expense/data/expense_dao.dart';
 
@@ -116,9 +117,11 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
       ref.invalidate(inventoryProvider);
       
       if (mounted) {
+        final settingsVal = ref.read(settingsProvider).valueOrNull;
+        final currency = settingsVal?.currency ?? '₹';
         SnackbarHelper.showSuccess(
           context,
-          'Logged spoliage! Stock reduced by $qty and ₹${totalLoss.toStringAsFixed(2)} logged to Spoilage Expenses.',
+          'Logged spoliage! Stock reduced by $qty and $currency${totalLoss.toStringAsFixed(2)} logged to Spoilage Expenses.',
         );
         setState(() {
           _selectedSpoilageItem = null;

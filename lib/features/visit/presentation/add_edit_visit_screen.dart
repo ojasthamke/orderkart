@@ -78,11 +78,17 @@ class _AddEditVisitScreenState extends ConsumerState<AddEditVisitScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-            ),
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: AppColors.primary,
+                    surface: Color(0xFF1E293B),
+                  )
+                : const ColorScheme.light(
+                    primary: AppColors.primary,
+                  ),
           ),
           child: child!,
         );
@@ -132,8 +138,9 @@ class _AddEditVisitScreenState extends ConsumerState<AddEditVisitScreen> {
                 loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
                 error: (e, _) => Text('Error loading areas: $e', style: const TextStyle(color: AppColors.error)),
                 data: (areas) {
+                  final areaExists = areas.any((a) => a.id == _areaId);
                   return DropdownButtonFormField<String>(
-                    value: _areaId.isEmpty ? null : _areaId,
+                    value: areaExists ? _areaId : null,
                     decoration: InputDecoration(
                       labelText: 'Select Area *',
                       filled: true,
@@ -167,8 +174,9 @@ class _AddEditVisitScreenState extends ConsumerState<AddEditVisitScreen> {
                   loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
                   error: (e, _) => Text('Error loading streets: $e', style: const TextStyle(color: AppColors.error)),
                   data: (streets) {
+                    final streetExists = streets.any((s) => s.id == _streetId);
                     return DropdownButtonFormField<String>(
-                      value: _streetId.isEmpty ? null : _streetId,
+                      value: streetExists ? _streetId : null,
                       decoration: InputDecoration(
                         labelText: 'Select Street (Optional)',
                         filled: true,

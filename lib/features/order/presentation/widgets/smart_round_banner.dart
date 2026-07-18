@@ -20,17 +20,23 @@ class SmartRoundBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bannerBg = isDark ? Colors.orange.shade900.withOpacity(0.15) : AppColors.warningSurface;
+    final borderCol = isDark ? Colors.orange.shade300.withOpacity(0.3) : AppColors.warning.withOpacity(0.3);
+    final accentCol = isDark ? Colors.orange.shade300 : AppColors.warning;
+    final subTextCol = isDark ? Colors.white70 : AppColors.textSecondary;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.warningSurface,
+        color: bannerBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+        border: Border.all(color: borderCol),
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_fix_high_rounded,
-              color: AppColors.warning, size: 20),
+          Icon(Icons.auto_fix_high_rounded,
+              color: accentCol, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -40,13 +46,13 @@ class SmartRoundBanner extends StatelessWidget {
                   'Smart Rounding',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.warning,
+                        color: accentCol,
                       ),
                 ),
                 Text(
                   SmartRounding.label(original, rounded, currency),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: subTextCol,
                       ),
                 ),
               ],
@@ -55,7 +61,7 @@ class SmartRoundBanner extends StatelessWidget {
           Switch(
             value:     enabled,
             onChanged: onToggle,
-            activeColor: AppColors.warning,
+            activeColor: accentCol,
           ),
         ],
       ),

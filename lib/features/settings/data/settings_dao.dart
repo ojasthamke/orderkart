@@ -25,7 +25,7 @@ class SettingsDao {
     final maps = await db.query('settings');
     final m = <String, String>{};
     for (final row in maps) {
-      m[row['key'] as String] = row['value'] as String;
+      m[row['key'] as String] = (row['value'] ?? '').toString();
     }
     return AppSettings(
       businessName:         m[AppConstants.keyBusinessName]    ?? 'My Business',

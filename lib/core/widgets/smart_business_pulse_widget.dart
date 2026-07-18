@@ -56,10 +56,10 @@ class SmartBusinessPulseWidget extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final bgColors = isDark 
-        ? [const Color(0xFF0F172A).withOpacity(0.65), const Color(0xFF1E293B).withOpacity(0.45)]
-        : [Colors.white.withOpacity(0.75), Colors.white.withOpacity(0.55)];
-    final shadowColor = isDark ? const Color(0xFF0F172A).withOpacity(0.35) : Colors.black.withOpacity(0.04);
-    final borderColor = isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08);
+        ? [const Color(0xFF1E293B).withOpacity(0.65), const Color(0xFF0F172A).withOpacity(0.35)]
+        : [Colors.white.withOpacity(0.85), Colors.white.withOpacity(0.50)];
+    final shadowColor = isDark ? const Color(0xFF0F172A).withOpacity(0.40) : Colors.black.withOpacity(0.08);
+    final borderColor = isDark ? Colors.white30 : Colors.white70;
 
     final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final textMainColor = isDark ? Colors.white : const Color(0xFF1E293B);
@@ -82,12 +82,17 @@ class SmartBusinessPulseWidget extends StatelessWidget {
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
+          BoxShadow(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.03 : 0.02),
+            blurRadius: 1,
+            offset: const Offset(0, -1),
+          ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -102,7 +107,8 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                 width: 1.5,
               ),
             ),
-            child: Column(
+            child: RepaintBoundary(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Header Row ──────────────────────────────────────────
@@ -397,6 +403,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

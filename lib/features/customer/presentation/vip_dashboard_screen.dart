@@ -9,6 +9,7 @@ import '../../../core/widgets/vip_glow_avatar.dart';
 import '../../../core/widgets/glass_container.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 
 class VipDashboardScreen extends ConsumerStatefulWidget {
   const VipDashboardScreen({super.key});
@@ -580,6 +581,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
   @override
   Widget build(BuildContext context) {
     final customersAsync = ref.watch(allCustomersProvider);
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final currency = settingsVal?.currency ?? '₹';
 
     return Container(
       decoration: BoxDecoration(
@@ -705,7 +708,7 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                                 : Theme.of(context).cardTheme.color,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: isSelected ? const Color(0xFFFFD700) : AppColors.gray200,
+                              color: isSelected ? const Color(0xFFFFD700) : AppColors.borderColor(context),
                             ),
                           ),
                           child: Row(
@@ -749,9 +752,9 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                   child: TextFormField(
                     initialValue: _fee.toStringAsFixed(0),
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Subscription Fee (₹)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: 'Subscription Fee ($currency)',
+                      border: const OutlineInputBorder(),
                     ),
                     onChanged: (v) => _fee = double.tryParse(v) ?? 0.0,
                   ),
@@ -847,27 +850,33 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
             const SizedBox(height: 12),
 
             // Price Markup adjustment setting
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.purple.withOpacity(0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Item Price Adjustment: +${_markupPct.toStringAsFixed(0)}%',
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.purple, fontSize: 13),
+            Builder(
+              builder: (context) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                final vipColor = isDark ? const Color(0xFFC084FC) : Colors.purple;
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: vipColor.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: vipColor.withOpacity(0.2)),
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Item Price Adjustment: +${_markupPct.toStringAsFixed(0)}%',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: vipColor, fontSize: 13),
+                      ),
                   const SizedBox(height: 2),
                   const Text(
                     'App item prices will adjust by +5% or +10% so actual realization matches business margin while receipt displays full VIP discount.',
                     style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                   ),
-                ],
-              ),
+                    ],
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 12),

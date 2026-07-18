@@ -23,6 +23,8 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
   bool _loadingLogs = true;
   String _searchQuery = '';
 
+  final _directorySearchCon = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +34,7 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
 
   @override
   void dispose() {
+    _directorySearchCon.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -236,19 +239,28 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
 
         return Column(
           children: [
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: TextField(
-                onChanged: (val) => setState(() => _searchQuery = val),
-                decoration: InputDecoration(
-                  hintText: 'Search contacts...',
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                ),
-              ),
-            ),
+             Padding(
+               padding: const EdgeInsets.all(16),
+               child: TextField(
+                 controller: _directorySearchCon,
+                 onChanged: (val) => setState(() => _searchQuery = val),
+                 decoration: InputDecoration(
+                   hintText: 'Search contacts...',
+                   prefixIcon: const Icon(Icons.search_rounded),
+                   suffixIcon: _searchQuery.isNotEmpty
+                       ? IconButton(
+                           icon: const Icon(Icons.clear_rounded),
+                           onPressed: () {
+                             _directorySearchCon.clear();
+                             setState(() => _searchQuery = '');
+                           },
+                         )
+                       : null,
+                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                 ),
+               ),
+             ),
 
             // Customer List
             Expanded(

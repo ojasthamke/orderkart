@@ -109,31 +109,36 @@ class _MonthlySummaryCard extends StatelessWidget {
     final count = thisMonth['count'] as int? ?? 0;
     final month = thisMonth['month'] as String? ?? '';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.red.shade900;
+    final secTextColor = isDark ? Colors.white70 : Colors.red.shade700;
+    final iconColor = isDark ? Colors.redAccent.shade100 : Colors.red.shade700;
+
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       borderRadius: BorderRadius.circular(16),
-      color: AppColors.error.withOpacity(0.8),
-      borderColor: AppColors.error.withOpacity(0.4),
+      color: isDark ? Colors.red.withOpacity(0.20) : Colors.red.shade100.withOpacity(0.50),
+      borderColor: isDark ? Colors.red.withOpacity(0.40) : Colors.red.shade200.withOpacity(0.60),
       child: Row(
         children: [
-          const Icon(Icons.trending_down_rounded, color: Colors.white, size: 32),
+          Icon(Icons.trending_down_rounded, color: iconColor, size: 32),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('This Month ($month)',
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12)),
+                    style: TextStyle(
+                        color: secTextColor, fontSize: 12)),
                 Text(AppFormatters.currency(total),
-                    style: const TextStyle(
-                        color: Colors.white,
+                    style: TextStyle(
+                        color: textColor,
                         fontSize: 22,
                         fontWeight: FontWeight.w700)),
                 Text('$count expense(s)',
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 12)),
+                    style: TextStyle(
+                        color: secTextColor, fontSize: 12)),
               ],
             ),
           ),

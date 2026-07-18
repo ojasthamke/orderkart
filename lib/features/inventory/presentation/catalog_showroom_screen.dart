@@ -9,8 +9,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 
 class CatalogShowroomScreen extends ConsumerStatefulWidget {
   const CatalogShowroomScreen({super.key});
@@ -32,6 +34,9 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
         pdfItems = all;
       }
     } catch (_) {}
+
+    final settingsVal = ref.read(settingsProvider).valueOrNull;
+    final currency = settingsVal?.currency ?? '₹';
 
     final pdf = pw.Document();
 
@@ -64,7 +69,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                       return [
                         i.name,
                         i.category,
-                        'Rs. ${i.sellingPrice.toStringAsFixed(2)}',
+                        '$currency ${i.sellingPrice.toStringAsFixed(2)}',
                         i.unit,
                         i.stock > 0 ? 'In Stock (${i.stock})' : 'Out of Stock'
                       ];
@@ -139,6 +144,8 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
   }
 
   void _showItemDetails(Item item) {
+    final settingsVal = ref.read(settingsProvider).valueOrNull;
+    final currency = settingsVal?.currency ?? '₹';
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -185,10 +192,10 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
             
             // Specification fields
             _buildDetailRow('Unit / Pack Size', item.unit),
-            _buildDetailRow('Price', '₹${item.sellingPrice.toStringAsFixed(2)}'),
+            _buildDetailRow('Price', '$currency${item.sellingPrice.toStringAsFixed(2)}'),
             if (item.marketPrice > item.sellingPrice) ...[
-              _buildDetailRow('Market Price', '₹${item.marketPrice.toStringAsFixed(2)}', isStrike: true),
-              _buildDetailRow('Instant Savings', '₹${(item.marketPrice - item.sellingPrice).toStringAsFixed(2)}', isSavings: true),
+              _buildDetailRow('Market Price', '$currency${item.marketPrice.toStringAsFixed(2)}', isStrike: true),
+              _buildDetailRow('Instant Savings', '$currency${(item.marketPrice - item.sellingPrice).toStringAsFixed(2)}', isSavings: true),
             ],
 
             if (item.category == AppConstants.catMedicines) ...[
@@ -250,6 +257,8 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(inventoryProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final currency = settingsVal?.currency ?? '₹';
 
     return AppScaffold(
       title: 'Showroom Mode',
@@ -321,7 +330,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                       cat == 'all' ? 'All Items' : cat,
                       style: TextStyle(
                         color: isSelected
-                            ? Colors.white
+                            ? (isDark ? Colors.white : catColor)
                             : (isDark ? Colors.white70 : AppColors.textSecondary),
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -385,19 +394,9 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
 
                     return GestureDetector(
                       onTap: () => _showItemDetails(item),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B).withOpacity(0.55) : AppColors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.02),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
+                      child: GlassContainer(
+                        borderRadius: BorderRadius.circular(16),
+                        padding: EdgeInsets.zero,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -457,8 +456,8 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                       textBaseline: TextBaseline.alphabetic,
                                       children: [
                                         Text(
-                                          '₹${item.sellingPrice.toStringAsFixed(1)}',
-                                          style: const TextStyle(
+                                          '$currency${item.sellingPrice.toStringAsFixed(1)}',
+                                          style: TextStyle(
                                             fontWeight: FontWeight.w800,
                                             fontSize: 15,
                                             color: AppColors.primary,
@@ -467,8 +466,8 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                         if (item.marketPrice > item.sellingPrice) ...[
                                           const SizedBox(width: 4),
                                           Text(
-                                            '₹${item.marketPrice.toStringAsFixed(1)}',
-                                            style: const TextStyle(
+                                            '$currency${item.marketPrice.toStringAsFixed(1)}',
+                                            style: TextStyle(
                                               decoration: TextDecoration.lineThrough,
                                               color: Colors.grey,
                                               fontSize: 10,
@@ -486,8 +485,8 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Text(
-                                          'Save ₹${savings.toStringAsFixed(1)}',
-                                          style: const TextStyle(
+                                          'Save $currency${savings.toStringAsFixed(1)}',
+                                          style: TextStyle(
                                             color: Colors.green,
                                             fontSize: 9,
                                             fontWeight: FontWeight.bold,

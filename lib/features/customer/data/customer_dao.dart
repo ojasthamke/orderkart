@@ -268,19 +268,7 @@ class CustomerDao {
       }
     }
 
-    final query = (workerId != null && workerId.isNotEmpty)
-        ? '''
-          SELECT
-            COUNT(*)            AS total_orders,
-            COALESCE(SUM(grand_total),     0) AS total_amount,
-            COALESCE(SUM(paid_amount),     0) AS total_paid,
-            COALESCE(SUM(remaining_amount),0) AS total_pending,
-            MAX(created_at)     AS last_order
-          FROM orders
-          WHERE customer_id = ? AND delivery_status != 'cancelled'
-            AND (created_by = ? OR assigned_worker_id = ?)
-          '''
-        : '''
+    final query = '''
           SELECT
             COUNT(*)            AS total_orders,
             COALESCE(SUM(grand_total),     0) AS total_amount,
@@ -291,9 +279,7 @@ class CustomerDao {
           WHERE customer_id = ? AND delivery_status != 'cancelled'
           ''';
 
-    final queryArgs = (workerId != null && workerId.isNotEmpty)
-        ? [customerId, workerId, workerId]
-        : [customerId];
+    final queryArgs = [customerId];
 
     final result = await db.rawQuery(query, queryArgs);
 

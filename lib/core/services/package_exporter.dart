@@ -287,8 +287,7 @@ class PackageExporter {
       // Query photo_path columns from cloned tables to scope photo exports (H17)
       try {
         final List<Map<String, dynamic>> custPhotos = await tempDb.rawQuery('SELECT photo_path FROM customers WHERE photo_path IS NOT NULL AND photo_path != ""');
-        final List<Map<String, dynamic>> areaPhotos = await tempDb.rawQuery('SELECT photo_path FROM areas WHERE photo_path IS NOT NULL AND photo_path != ""');
-        final List<Map<String, dynamic>> streetPhotos = await tempDb.rawQuery('SELECT photo_path FROM streets WHERE photo_path IS NOT NULL AND photo_path != ""');
+        final List<Map<String, dynamic>> locationPhotos = await tempDb.rawQuery('SELECT photo_path FROM locations WHERE photo_path IS NOT NULL AND photo_path != ""');
         final List<Map<String, dynamic>> notePhotos = await tempDb.rawQuery('SELECT photo_path FROM notes WHERE photo_path IS NOT NULL AND photo_path != ""');
         final List<Map<String, dynamic>> itemPhotos = await tempDb.rawQuery('SELECT photo_path FROM items WHERE photo_path IS NOT NULL AND photo_path != ""');
         final List<Map<String, dynamic>> expensePhotos = await tempDb.rawQuery('SELECT receipt_photo_path FROM expenses WHERE receipt_photo_path IS NOT NULL AND receipt_photo_path != ""');
@@ -296,10 +295,7 @@ class PackageExporter {
         for (final r in custPhotos) {
           referencedPhotos.add(p.basename(r['photo_path'].toString()));
         }
-        for (final r in areaPhotos) {
-          referencedPhotos.add(p.basename(r['photo_path'].toString()));
-        }
-        for (final r in streetPhotos) {
+        for (final r in locationPhotos) {
           referencedPhotos.add(p.basename(r['photo_path'].toString()));
         }
         for (final r in notePhotos) {

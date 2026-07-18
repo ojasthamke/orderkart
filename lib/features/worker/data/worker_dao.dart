@@ -272,13 +272,14 @@ class WorkerDao {
 
     // Calculate sum of snapshotted order commissions
     Future<double> calcHistoricalCommission(String? dateClause, List<dynamic> params) async {
-      String sql = 'SELECT grand_total, commission_rate FROM orders WHERE assigned_worker_id = ?';
+      String sql = 'SELECT grand_total, paid_amount, commission_rate FROM orders WHERE assigned_worker_id = ?';
       if (dateClause != null) sql += ' AND $dateClause';
 
       final orders = await db.rawQuery(sql, [workerId, ...params]);
       double total = 0.0;
       for (final o in orders) {
         final gt = (o['grand_total'] as num?)?.toDouble() ?? 0.0;
+        final paid = (o['paid_amount'] as num?)?.toDouble() ?? 0.0;
         final rate = (o['commission_rate'] as num?)?.toDouble();
         final effectiveRate = (rate != null && rate > 0) ? rate : worker.commissionValue;
 
@@ -287,6 +288,8 @@ class WorkerDao {
             total += effectiveRate;
             break;
           case CommissionType.pctCollection:
+            total += (paid * effectiveRate) / 100.0;
+            break;
           case CommissionType.pctOrder:
           case CommissionType.mixed:
           default:

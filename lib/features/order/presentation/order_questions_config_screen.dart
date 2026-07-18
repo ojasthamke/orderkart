@@ -138,13 +138,17 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.amber.shade900.withOpacity(0.2)
+                    : Colors.amber.shade50,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.question_answer_outlined,
                 size: 64,
-                color: Colors.amber.shade800,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.amber.shade300
+                    : Colors.amber.shade800,
               ),
             ),
             const SizedBox(height: 24),

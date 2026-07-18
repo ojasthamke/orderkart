@@ -313,37 +313,43 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
     return Column(
       children: [
         // Warnings Checklist header
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.error.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.error.withOpacity(0.18)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        Builder(
+          builder: (context) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final rxColor = isDark ? const Color(0xFFF87171) : AppColors.error;
+            return Container(
+              width: double.infinity,
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: rxColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: rxColor.withOpacity(0.18)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: AppColors.error),
-                  const SizedBox(width: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: rxColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Rx Prescription Compliance Guide',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: rxColor),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   Text(
-                    'Rx Prescription Compliance Guide',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.error.withOpacity(0.9)),
+                    '1. Verify the customer doctor note during order delivery.\n'
+                    '2. Check and record customer signatures/drawings on receipt checkout.\n'
+                    '3. Keep expired medical batches isolated from active stocks.',
+                    style: TextStyle(fontSize: 12, height: 1.5, color: rxColor.withOpacity(0.85)),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                '1. Verify the customer doctor note during order delivery.\n'
-                '2. Check and record customer signatures/drawings on receipt checkout.\n'
-                '3. Keep expired medical batches isolated from active stocks.',
-                style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.error.withOpacity(0.85)),
-              ),
-            ],
-          ),
+            );
+          },
         ),
 
         Expanded(

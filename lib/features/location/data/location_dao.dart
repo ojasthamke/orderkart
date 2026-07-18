@@ -268,9 +268,27 @@ class LocationDao {
     } catch (_) {}
   }
 
-  /// Delete a location.
   Future<void> deleteLocation(String id) async {
     final db = await _db;
+    
+    // Clear location references for all customers belonging to this location or any child/descendant locations
+    final descendantLocations = await db.query(
+      'locations',
+      columns: ['id'],
+      where: "materialized_path LIKE ? OR id = ?",
+      whereArgs: ['%/$id/%', id],
+    );
+    final descIds = descendantLocations.map((l) => l['id'] as String).toList();
+    if (descIds.isNotEmpty) {
+      final placeholders = List.filled(descIds.length, '?').join(',');
+      await db.update(
+        'customers',
+        {'street_id': '', 'location_id': ''},
+        where: "street_id IN ($placeholders) OR location_id IN ($placeholders)",
+        whereArgs: [...descIds, ...descIds],
+      );
+    }
+
     await db.delete('locations', where: 'id = ?', whereArgs: [id]);
     
     // Also delete from legacy tables if present

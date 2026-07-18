@@ -357,47 +357,65 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _dietaryPreference = _dietaryPreference == 'veg' ? '' : 'veg';
-                        });
-                      },
-                      icon: Icon(
-                        _dietaryPreference == 'veg' ? Icons.check_circle_rounded : Icons.circle_outlined,
-                        color: _dietaryPreference == 'veg' ? Colors.green : Colors.grey,
-                      ),
-                      label: const Text('Veg'),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: _dietaryPreference == 'veg' ? Colors.green : Colors.grey.shade300,
-                          width: _dietaryPreference == 'veg' ? 2 : 1,
+                    child: Builder(builder: (ctx) {
+                      final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                      final unselectedBorder = isDark ? Colors.white24 : Colors.grey.shade300;
+                      final unselectedText = isDark ? Colors.white60 : Colors.grey.shade700;
+                      final isSelected = _dietaryPreference == 'veg';
+                      final activeColor = isDark ? const Color(0xFF4ADE80) : Colors.green.shade700;
+                      final activeBorder = isDark ? const Color(0xFF4ADE80) : Colors.green;
+
+                      return OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _dietaryPreference = isSelected ? '' : 'veg';
+                          });
+                        },
+                        icon: Icon(
+                          isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                          color: isSelected ? activeBorder : unselectedText,
                         ),
-                        foregroundColor: _dietaryPreference == 'veg' ? Colors.green.shade700 : Colors.grey.shade700,
-                      ),
-                    ),
+                        label: const Text('Veg'),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: isSelected ? activeBorder : unselectedBorder,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          foregroundColor: isSelected ? activeColor : unselectedText,
+                        ),
+                      );
+                    }),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _dietaryPreference = _dietaryPreference == 'non_veg' ? '' : 'non_veg';
-                        });
-                      },
-                      icon: Icon(
-                        _dietaryPreference == 'non_veg' ? Icons.check_circle_rounded : Icons.circle_outlined,
-                        color: _dietaryPreference == 'non_veg' ? Colors.red : Colors.grey,
-                      ),
-                      label: const Text('Non-Veg'),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: _dietaryPreference == 'non_veg' ? Colors.red : Colors.grey.shade300,
-                          width: _dietaryPreference == 'non_veg' ? 2 : 1,
+                    child: Builder(builder: (ctx) {
+                      final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                      final unselectedBorder = isDark ? Colors.white24 : Colors.grey.shade300;
+                      final unselectedText = isDark ? Colors.white60 : Colors.grey.shade700;
+                      final isSelected = _dietaryPreference == 'non_veg';
+                      final activeColor = isDark ? const Color(0xFFF87171) : Colors.red.shade700;
+                      final activeBorder = isDark ? const Color(0xFFF87171) : Colors.red;
+
+                      return OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _dietaryPreference = isSelected ? '' : 'non_veg';
+                          });
+                        },
+                        icon: Icon(
+                          isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                          color: isSelected ? activeBorder : unselectedText,
                         ),
-                        foregroundColor: _dietaryPreference == 'non_veg' ? Colors.red.shade700 : Colors.grey.shade700,
-                      ),
-                    ),
+                        label: const Text('Non-Veg'),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: isSelected ? activeBorder : unselectedBorder,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          foregroundColor: isSelected ? activeColor : unselectedText,
+                        ),
+                      );
+                    }),
                   ),
                 ],
               ),

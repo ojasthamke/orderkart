@@ -11,6 +11,7 @@ import '../../../../core/utils/haptics.dart';
 import '../../../../core/widgets/custom_search_bar.dart';
 import '../../../inventory/domain/item.dart';
 import '../../../inventory/presentation/inventory_provider.dart';
+import '../../../settings/presentation/settings_provider.dart';
 import '../../../../core/widgets/glass_container.dart';
 
 class ItemSelectorWidget extends ConsumerStatefulWidget {
@@ -49,6 +50,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
   @override
   Widget build(BuildContext context) {
     final inventoryAsync = ref.watch(inventoryProvider);
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final currency = settingsVal?.currency ?? '₹';
 
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
@@ -239,7 +242,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                                 color: item.stock <= 0 ? AppColors.textSecondary : (isDark ? Colors.white : AppColors.textPrimary))),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '₹${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Cost: ₹${item.costPrice.toStringAsFixed(item.costPrice == item.costPrice.roundToDouble() ? 0 : 2)}  •  Stock: ${AppFormatters.quantity(item.stock)}',
+                                      '$currency${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Cost: $currency${item.costPrice.toStringAsFixed(item.costPrice == item.costPrice.roundToDouble() ? 0 : 2)}  •  Stock: ${AppFormatters.quantity(item.stock)}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -379,10 +382,10 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                           child: TextFormField(
                             controller: _priceController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
-                              labelText: 'Price (₹)',
-                              isDense: true,
-                            ),
+                            decoration: InputDecoration(
+                               labelText: 'Price ($currency)',
+                               isDense: true,
+                             ),
                             onChanged: (v) {
                               final p = double.tryParse(v);
                               if (p != null && p >= 0) {

@@ -10,6 +10,7 @@ import '../../../core/utils/image_utils.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
@@ -302,14 +303,10 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   final marginPrice = cost > 0 ? cost / 0.35 : 0.0;
                   final doubleMrpPrice = cost > 0 ? cost * 2.0 : sell * 2.0;
 
-                  return Container(
+                  return GlassContainer(
                     margin: const EdgeInsets.only(bottom: 16),
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySurface.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primaryLight.withOpacity(0.3)),
-                    ),
+                    borderRadius: BorderRadius.circular(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -335,14 +332,14 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                             if (cost > 0) ...[
                               ActionChip(
                                 avatar: const Icon(Icons.trending_up_rounded, size: 14),
-                                label: Text('65% Markup (₹${markupPrice.toStringAsFixed(2)})'),
+                                label: Text('65% Markup ($currency${markupPrice.toStringAsFixed(2)})'),
                                 onPressed: () {
                                   _sellCon.text = markupPrice.toStringAsFixed(2);
                                 },
                               ),
                               ActionChip(
                                 avatar: const Icon(Icons.percent_rounded, size: 14),
-                                label: Text('65% Margin (₹${marginPrice.toStringAsFixed(2)})'),
+                                label: Text('65% Margin ($currency${marginPrice.toStringAsFixed(2)})'),
                                 onPressed: () {
                                   _sellCon.text = marginPrice.toStringAsFixed(2);
                                 },
@@ -351,7 +348,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                             if (doubleMrpPrice > 0)
                               ActionChip(
                                 avatar: const Icon(Icons.double_arrow_rounded, size: 14),
-                                label: Text('Double MRP (₹${doubleMrpPrice.toStringAsFixed(2)})'),
+                                label: Text('Double MRP ($currency${doubleMrpPrice.toStringAsFixed(2)})'),
                                 onPressed: () {
                                   _marketCon.text = doubleMrpPrice.toStringAsFixed(2);
                                 },

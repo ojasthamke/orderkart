@@ -19,6 +19,7 @@ import '../../order/domain/order.dart';
 import '../../visit/presentation/visit_provider.dart';
 import '../../note/presentation/note_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
+import '../../area/presentation/area_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -68,6 +69,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ref.invalidate(pendingCustomersProvider);
               ref.invalidate(noteListNotifier);
               ref.invalidate(notificationListProvider);
+              ref.invalidate(areaProvider);
+              ref.invalidate(allCustomersProvider);
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -1115,34 +1118,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         borderRadius: r,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.20 : 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          )
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.03 : 0.02),
+            blurRadius: 1,
+            offset: const Offset(0, -1),
+          ),
         ],
       ),
       child: ClipRRect(
         borderRadius: r,
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
               borderRadius: r,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  (isDark ? const Color(0xFF1E293B) : Colors.white).withOpacity(isDark ? 0.60 : 0.85),
-                  (isDark ? const Color(0xFF0F172A) : Colors.white).withOpacity(isDark ? 0.35 : 0.50),
-                ],
-              ),
+              gradient: isDark ? AppColors.glassGradientDark : AppColors.glassGradientLight,
               border: Border.all(
-                color: borderColor ?? (isDark ? Colors.white24 : Colors.black12),
-                width: 1.2,
+                color: borderColor ?? (isDark ? Colors.white30 : Colors.white70),
+                width: 1.5,
               ),
             ),
-            child: child,
+            child: RepaintBoundary(
+              child: child,
+            ),
           ),
         ),
       ),

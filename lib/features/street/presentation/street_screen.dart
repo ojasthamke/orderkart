@@ -324,7 +324,7 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
     final ok = await ConfirmDeleteDialog.show(
       context,
       title: 'Delete Street',
-      message: 'Delete "${street.name}"? All customers inside will also be deleted.',
+      message: 'Delete "${street.name}"? This will unassign all customers inside it.',
     );
     if (!ok || !mounted) return;
     await ref.read(streetProviderFamily(widget.areaId).notifier).delete(street.id);

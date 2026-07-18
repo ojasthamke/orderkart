@@ -124,28 +124,34 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.warningSurface,
+                color: widget.remainingAmount > 0
+                    ? AppColors.warningSurface
+                    : Colors.teal.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                border: Border.all(
+                  color: widget.remainingAmount > 0
+                      ? AppColors.warning.withOpacity(0.3)
+                      : Colors.teal.withOpacity(0.3),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Remaining Due:',
+                  Text(
+                    widget.remainingAmount >= 0 ? 'Remaining Due:' : 'Credit / Advance Balance:',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.warning,
+                      color: widget.remainingAmount > 0 ? AppColors.warning : Colors.teal,
                     ),
                   ),
                   Text(
-                    AppFormatters.currency(widget.remainingAmount,
+                    AppFormatters.currency(widget.remainingAmount.abs(),
                         symbol: currency),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 24,
-                      color: AppColors.warning,
+                      color: widget.remainingAmount > 0 ? AppColors.warning : Colors.teal,
                     ),
                   ),
                 ],
@@ -172,15 +178,18 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
             const SizedBox(height: 16),
 
             // Quick buttons
-            Row(
-              children: [
-                _quickBtn('Full Amount', widget.remainingAmount),
-                const SizedBox(width: 12),
-                _quickBtn('Half Amount', widget.remainingAmount / 2),
-              ],
-            ),
-
-            const SizedBox(height: 32),
+            if (widget.remainingAmount > 0) ...[
+              Row(
+                children: [
+                  _quickBtn('Full Amount', widget.remainingAmount),
+                  const SizedBox(width: 12),
+                  _quickBtn('Half Amount', widget.remainingAmount / 2),
+                ],
+              ),
+              const SizedBox(height: 32),
+            ] else ...[
+              const SizedBox(height: 16),
+            ],
 
             // Method
             Text(

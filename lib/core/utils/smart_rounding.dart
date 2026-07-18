@@ -38,12 +38,22 @@ class SmartRounding {
   static double difference(double original, double rounded) =>
       rounded - original;
 
+  static String _format(double val, String currency) {
+    return '$currency${val.toStringAsFixed(val == val.roundToDouble() ? 0 : 2)}';
+  }
+
   /// Friendly label: '₹58 → ₹60 (save ₹2)'
   static String label(double original, double rounded, String currency) {
     final diff = (rounded - original).abs();
+    final origStr = _format(original, currency);
+    final roundStr = _format(rounded, currency);
+    final diffStr = _format(diff, currency);
+
     if (rounded > original) {
-      return '$currency${original.toStringAsFixed(0)} → $currency${rounded.toStringAsFixed(0)} (+$currency${diff.toStringAsFixed(0)})';
+      return '$origStr → $roundStr (+$diffStr)';
+    } else if (rounded < original) {
+      return '$origStr → $roundStr (-$diffStr)';
     }
-    return '$currency${original.toStringAsFixed(0)} → $currency${rounded.toStringAsFixed(0)}';
+    return '$origStr → $roundStr';
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget child;
@@ -27,6 +28,7 @@ class GlassContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final r = borderRadius ?? BorderRadius.circular(16);
+    
     return Container(
       width: width,
       height: height,
@@ -35,29 +37,37 @@ class GlassContainer extends StatelessWidget {
         borderRadius: r,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.20 : 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          )
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.03 : 0.02),
+            blurRadius: 1,
+            offset: const Offset(0, -1),
+          ),
         ],
       ),
       child: ClipRRect(
         borderRadius: r,
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: color ??
-                  (isDark ? const Color(0xFF0F172A) : Colors.white)
-                      .withOpacity(isDark ? 0.45 : 0.70),
+              color: color,
+              gradient: color == null
+                  ? (isDark ? AppColors.glassGradientDark : AppColors.glassGradientLight)
+                  : null,
               borderRadius: r,
               border: Border.all(
-                color: borderColor ?? (isDark ? Colors.white24 : Colors.black12),
-                width: 1.2,
+                color: borderColor ?? (isDark ? Colors.white30 : Colors.white70),
+                width: 1.5,
               ),
             ),
-            child: child,
+            child: RepaintBoundary(
+              child: child,
+            ),
           ),
         ),
       ),

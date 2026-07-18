@@ -85,8 +85,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     AppHaptics.buttonClick();
 
     final db = await DatabaseHelper.instance.database;
-    final int areasCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM areas')) ?? 0;
-    final int streetsCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM streets')) ?? 0;
+    final int areasCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM locations WHERE location_kind = 'area' AND is_archived = 0")) ?? 0;
+    final int streetsCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM locations WHERE location_kind = 'road' AND is_archived = 0")) ?? 0;
     final int customersCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM customers')) ?? 0;
     final int categoriesCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(DISTINCT category) FROM items')) ?? 0;
     final int itemsCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM items')) ?? 0;

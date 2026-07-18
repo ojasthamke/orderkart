@@ -288,9 +288,12 @@ class Customer {
     if (isVip) {
       return isVipActive ? 'VIP' : 'Expired';
     }
+    final now = DateTime.now();
+    if (totalOrders == 0) {
+      return now.difference(customerSince).inDays <= 30 ? 'New' : 'Inactive';
+    }
     if (totalOrders >= 8 || totalPaid >= 5000) return 'Loyal';
     if (totalOrders >= 3) return 'Regular';
-    final now = DateTime.now();
     if (now.difference(customerSince).inDays <= 30) return 'New';
     if (lastOrderDate.isNotEmpty) {
       final lastDate = DateTime.tryParse(lastOrderDate);

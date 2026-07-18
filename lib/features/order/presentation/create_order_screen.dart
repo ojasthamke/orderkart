@@ -139,7 +139,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return SmartRounding.round(_afterDiscount);
   }
   double get _grandTotal => _smartRounded + (_deliveryEnabled ? _deliveryCharge : 0);
-  double get _remaining  => (_grandTotal - _paidAmount).clamp(0, double.infinity);
+  double get _remaining  => _grandTotal - _paidAmount;
 
   @override
   void initState() {
@@ -338,6 +338,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ),
+                  if (_discount > _subtotal && _subtotal > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        '⚠️ Discount cannot exceed the subtotal amount',
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFF87171)
+                              : AppColors.error,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 16),
 
                   // Smart Rounding banner
@@ -468,8 +482,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           'Benefits: ${customer!.vipFreeDelivery ? 'Free Delivery • ' : ''}${customer.vipDiscountPct.toStringAsFixed(0)}% Off',
-                          style: const TextStyle(
-                            color: Color(0xFFB45309),
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFFFBBF24)
+                                : const Color(0xFFB45309),
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -706,9 +722,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               isBold: true, color: AppColors.primary),
           _sumRow('Paid',             AppFormatters.currency(_paidAmount,     symbol: currency),
               color: AppColors.success),
-          if (_remaining > 0)
-            _sumRow('Remaining',      AppFormatters.currency(_remaining,      symbol: currency),
-                color: AppColors.error, isBold: true),
+           if (_remaining > 0)
+             _sumRow('Remaining Due',  AppFormatters.currency(_remaining,      symbol: currency),
+                 color: AppColors.error, isBold: true)
+           else if (_remaining < 0)
+             _sumRow('Advance Credit', AppFormatters.currency(_remaining.abs(),  symbol: currency),
+                 color: Colors.teal, isBold: true),
           if (totalSavings > 0) ...[
             const Divider(height: 20),
             Container(
@@ -720,13 +739,21 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.stars_rounded, color: Colors.green, size: 20),
+                  Icon(
+                    Icons.stars_rounded,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF34D399)
+                        : Colors.green.shade700,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'You are saving ${AppFormatters.currency(totalSavings, symbol: currency)} on this order!',
-                      style: const TextStyle(
-                        color: Colors.green,
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF34D399)
+                            : Colors.green.shade800,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
@@ -1530,24 +1557,27 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     if (!hasRxItems) return const SizedBox.shrink();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final rxColor = isDark ? const Color(0xFFF87171) : AppColors.error;
+
     return Container(
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.error.withOpacity(0.08),
+        color: rxColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withOpacity(0.18), width: 1.5),
+        border: Border.all(color: rxColor.withOpacity(0.18), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+              Icon(Icons.warning_amber_rounded, color: rxColor),
               const SizedBox(width: 8),
               Text(
                 'Prescription Required (Rx)',
-                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error.withOpacity(0.9)),
+                style: TextStyle(fontWeight: FontWeight.bold, color: rxColor),
               ),
             ],
           ),
@@ -1558,9 +1588,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           ),
           const SizedBox(height: 12),
           CheckboxListTile(
-            title: const Text(
+            title: Text(
               'Doctor Prescription Verified physically',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.error),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: rxColor),
             ),
             value: _rxVerified,
             onChanged: (val) {
@@ -1569,7 +1599,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 setState(() => _rxVerified = val);
               }
             },
-            activeColor: AppColors.error,
+            activeColor: rxColor,
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
           ),

@@ -104,17 +104,20 @@ class _AddEditExpenseScreenState
               const SizedBox(height: 16),
 
               // Category
-              DropdownButtonFormField<String>(
-                value: _category,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  prefixIcon: Icon(Icons.category_rounded),
-                ),
-                items: AppConstants.expenseCategories
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _category = v ?? _category),
-              ),
+              Builder(builder: (ctx) {
+                final categoryExists = AppConstants.expenseCategories.contains(_category);
+                return DropdownButtonFormField<String>(
+                  value: categoryExists ? _category : AppConstants.expenseCategories.first,
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    prefixIcon: Icon(Icons.category_rounded),
+                  ),
+                  items: AppConstants.expenseCategories
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _category = v ?? _category),
+                );
+              }),
               const SizedBox(height: 16),
 
               // Date

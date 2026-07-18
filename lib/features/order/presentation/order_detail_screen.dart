@@ -158,7 +158,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
+        border: Border.all(color: AppColors.borderColor(context)),
         boxShadow: AppColors.cardShadow,
       ),
       child: Row(
@@ -207,7 +207,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
+        border: Border.all(color: AppColors.borderColor(context)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +311,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
+        border: Border.all(color: AppColors.borderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,25 +370,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Widget _buildSummarySection(AppOrder order, String currency) {
-    final totalSavings = order.discount;
-    // Compute market price savings from current inventory
-    final inventoryAsync = ref.watch(inventoryProvider);
-    final itemsList = inventoryAsync.valueOrNull ?? [];
-    double marketSavings = 0.0;
-    for (final oi in order.items) {
-      final inv = itemsList.where((i) => i.id == oi.itemId).firstOrNull;
-      if (inv != null && inv.marketPrice > oi.unitPrice) {
-        marketSavings += (inv.marketPrice - oi.unitPrice) * oi.quantity;
-      }
-    }
-    final totalCombinedSavings = totalSavings + marketSavings;
+    final totalCombinedSavings = order.savings;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
+        border: Border.all(color: AppColors.borderColor(context)),
         boxShadow: AppColors.cardShadow,
       ),
       child: Column(
@@ -519,7 +508,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
+        border: Border.all(color: AppColors.borderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,7 +529,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   ? const Color(0xFF141414)
                   : AppColors.gray50,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.gray200),
+              border: Border.all(color: AppColors.borderColor(context)),
             ),
             child: SelectableText(
               order.notes,
@@ -582,7 +571,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gray200),
+        border: Border.all(color: AppColors.borderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -637,6 +626,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Widget _buildActionsSection(AppOrder order, String currency) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cancelColor = isDark ? const Color(0xFFF87171) : AppColors.error;
     Widget? statusButtons;
 
     if (order.deliveryStatus == AppConstants.statusPending) {
@@ -658,11 +649,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           Expanded(
             child: OutlinedButton.icon(
               onPressed: () => _updateStatus(order.id, AppConstants.statusCancelled),
-              icon: const Icon(Icons.cancel_rounded),
+              icon: Icon(Icons.cancel_rounded, color: cancelColor),
               label: const Text('Cancel Order'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: const BorderSide(color: AppColors.error),
+                foregroundColor: cancelColor,
+                side: BorderSide(color: cancelColor),
                 minimumSize: const Size(double.infinity, 50),
               ),
             ),
@@ -688,11 +679,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           Expanded(
             child: OutlinedButton.icon(
               onPressed: () => _updateStatus(order.id, AppConstants.statusCancelled),
-              icon: const Icon(Icons.cancel_rounded),
+              icon: Icon(Icons.cancel_rounded, color: cancelColor),
               label: const Text('Cancel Order'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: const BorderSide(color: AppColors.error),
+                foregroundColor: cancelColor,
+                side: BorderSide(color: cancelColor),
                 minimumSize: const Size(double.infinity, 50),
               ),
             ),

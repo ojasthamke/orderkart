@@ -337,6 +337,8 @@ class _CustomerCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final creditColor = isDark ? const Color(0xFF2DD4BF) : Colors.teal;
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Material(
@@ -445,7 +447,7 @@ class _CustomerCard extends ConsumerWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: Colors.teal.withOpacity(0.12),
+                                color: creditColor.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -454,7 +456,7 @@ class _CustomerCard extends ConsumerWidget {
                                     .textTheme
                                     .labelSmall
                                     ?.copyWith(
-                                      color: Colors.teal,
+                                      color: creditColor,
                                       fontWeight: FontWeight.w700,
                                     ),
                               ),

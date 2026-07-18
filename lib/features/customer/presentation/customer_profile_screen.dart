@@ -874,14 +874,13 @@ class CustomerProfileScreen extends ConsumerWidget {
               onTap: () => ExternalLauncher.openMap(context, customer.mapsLocation),
             ),
           // Record Payment
-          if (customer.outstandingBalance > 0)
-            _actionBtn(
-              context: context,
-              icon: Icons.payments_rounded,
-              label: 'Record Pay',
-              color: AppColors.warning,
-              onTap: () => _showPayDialog(context, ref, customer),
-            ),
+          _actionBtn(
+            context: context,
+            icon: Icons.payments_rounded,
+            label: 'Record Pay',
+            color: AppColors.warning,
+            onTap: () => _showPayDialog(context, ref, customer),
+          ),
           // Instant Ledger
           _actionBtn(
             context: context,
@@ -988,8 +987,31 @@ class CustomerProfileScreen extends ConsumerWidget {
           SnackbarHelper.showSuccess(context, 'Payment applied: $summary');
         }
       } else {
-        if (context.mounted) {
-          SnackbarHelper.showInfo(context, 'No pending orders found to apply payment.');
+        final allOrders = List<AppOrder>.from(orders)
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        if (allOrders.isNotEmpty) {
+          final newestOrder = allOrders.first;
+          await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+                id:         const Uuid().v4(),
+                orderId:    newestOrder.id,
+                customerId: customer.id,
+                amount:     amount,
+                method:     method,
+                notes:      notes.trim().isEmpty ? 'Prepayment / Credit' : '$notes (Prepayment)',
+                createdAt:  DateTime.now(),
+              ));
+          
+          ref.invalidate(customerDetailProvider(customer.id));
+          ref.invalidate(customerOrdersProvider(customer.id));
+          ref.invalidate(pendingCustomersProvider);
+          ref.invalidate(allCustomersProvider);
+          if (context.mounted) {
+            SnackbarHelper.showSuccess(context, 'Prepayment of $currencySymbol$amount registered as account credit');
+          }
+        } else {
+          if (context.mounted) {
+            SnackbarHelper.showError(context, 'Cannot record prepayment: Customer has no order history. Please create an order first.');
+          }
         }
       }
     }
@@ -1245,18 +1267,25 @@ class _CustomerPreferencesCardState extends State<CustomerPreferencesCard> {
                                     ),
                                   ),
                                   if (isSpecific)
-                                    Container(
-                                      margin: const EdgeInsets.only(left: 6),
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.amber.shade100,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'Specific',
-                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
-                                      ),
-                                    ),
+                                    Builder(builder: (ctx) {
+                                      final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                                      return Container(
+                                        margin: const EdgeInsets.only(left: 6),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? Colors.amber.withOpacity(0.18) : Colors.amber.shade100,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Specific',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? Colors.amber.shade400 : Colors.amber.shade900,
+                                          ),
+                                        ),
+                                      );
+                                    }),
                                 ],
                               ),
                               const SizedBox(height: 2),

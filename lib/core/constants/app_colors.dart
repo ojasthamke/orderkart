@@ -64,6 +64,42 @@ class AppColors {
   static const Color groceries  = Color(0xFF1565C0); // Blue
   static const Color medicines  = Color(0xFFAD1457); // Pink/Red
 
+  static LinearGradient get glassGradientLight => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withOpacity(0.85),
+          Colors.white.withOpacity(0.50),
+        ],
+      );
+
+  static LinearGradient get glassGradientDark => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          const Color(0xFF1E293B).withOpacity(0.65),
+          const Color(0xFF0F172A).withOpacity(0.35),
+        ],
+      );
+
+  static LinearGradient get specularGlowLight => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withOpacity(0.70),
+          Colors.white.withOpacity(0.15),
+        ],
+      );
+
+  static LinearGradient get specularGlowDark => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withOpacity(0.25),
+          Colors.white.withOpacity(0.05),
+        ],
+      );
+
   // ── Card Shadow ────────────────────────────────────────────────────────────
   static List<BoxShadow> get cardShadow => [
         BoxShadow(

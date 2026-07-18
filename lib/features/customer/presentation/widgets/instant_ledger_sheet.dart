@@ -79,6 +79,15 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
     final ordersAsync = ref.watch(customerOrdersProvider(widget.customer.id));
     final currency = ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
 
+    final isDark = theme.brightness == Brightness.dark;
+    final errorColor = isDark ? const Color(0xFFF87171) : AppColors.error;
+    final successColor = isDark ? const Color(0xFF4ADE80) : AppColors.success;
+    final creditColor = isDark ? const Color(0xFF2DD4BF) : Colors.teal;
+
+    final activeColor = widget.customer.outstandingBalance > 0
+        ? errorColor
+        : (widget.customer.outstandingBalance < 0 ? creditColor : successColor);
+
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
@@ -148,31 +157,27 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
               margin: const EdgeInsets.symmetric(horizontal: 20),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: widget.customer.outstandingBalance > 0
-                    ? AppColors.error.withOpacity(0.08)
-                    : AppColors.success.withOpacity(0.08),
+                color: activeColor.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: widget.customer.outstandingBalance > 0
-                      ? AppColors.error.withOpacity(0.2)
-                      : AppColors.success.withOpacity(0.2),
+                  color: activeColor.withOpacity(0.2),
                 ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Outstanding Balance Dues:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  Text(
+                    widget.customer.outstandingBalance >= 0
+                        ? 'Outstanding Balance Dues:'
+                        : 'Credit / Advance Balance:',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   Text(
-                    '$currency${widget.customer.outstandingBalance.toStringAsFixed(2)}',
+                    '$currency${widget.customer.outstandingBalance.abs().toStringAsFixed(2)}',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: widget.customer.outstandingBalance > 0
-                          ? AppColors.error
-                          : AppColors.success,
+                      color: activeColor,
                     ),
                   ),
                 ],
@@ -250,9 +255,7 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                                               padding: const EdgeInsets.symmetric(
                                                   horizontal: 6, vertical: 2),
                                               decoration: BoxDecoration(
-                                                color: isPending
-                                                    ? AppColors.error.withOpacity(0.1)
-                                                    : AppColors.success.withOpacity(0.1),
+                                                color: (isPending ? errorColor : successColor).withOpacity(0.1),
                                                 borderRadius: BorderRadius.circular(4),
                                               ),
                                               child: Text(
@@ -263,8 +266,8 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                                                   fontSize: 9,
                                                   fontWeight: FontWeight.bold,
                                                   color: isPending
-                                                      ? AppColors.error
-                                                      : AppColors.success,
+                                                      ? errorColor
+                                                      : successColor,
                                                 ),
                                               ),
                                             ),

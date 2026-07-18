@@ -72,14 +72,14 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
 
     // Fetch areas added
     final areaRes = await db.rawQuery(
-      'SELECT COUNT(id) as count FROM areas WHERE assigned_worker_id = ? OR created_by = ? OR worker_name = ?',
+      "SELECT COUNT(id) as count FROM locations WHERE location_kind = 'area' AND (assigned_worker_id = ? OR created_by = ? OR worker_name = ?)",
       [wid, wid, wname],
     );
     final areasAdded = (areaRes.first['count'] as num?)?.toInt() ?? 0;
 
     // Fetch streets added
     final streetRes = await db.rawQuery(
-      'SELECT COUNT(id) as count FROM streets WHERE assigned_worker_id = ? OR created_by = ? OR worker_name = ?',
+      "SELECT COUNT(id) as count FROM locations WHERE location_kind = 'road' AND (assigned_worker_id = ? OR created_by = ? OR worker_name = ?)",
       [wid, wid, wname],
     );
     final streetsAdded = (streetRes.first['count'] as num?)?.toInt() ?? 0;

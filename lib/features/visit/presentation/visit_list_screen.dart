@@ -58,12 +58,14 @@ class VisitListScreen extends ConsumerWidget {
 
               return GlassContainer(
                 borderRadius: BorderRadius.circular(16),
-                borderColor: isCompleted ? AppColors.success.withOpacity(0.4) : null,
-                color: isCompleted ? AppColors.success.withOpacity(0.08) : null,
+                borderColor: isCompleted ? Colors.green.withOpacity(0.5) : null,
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   onTap: () {
-                    // Navigate to edit visit
+                    Navigator.of(context).pushNamed(
+                      AppRoutes.addEditVisit,
+                      arguments: {'visit': visit},
+                    );
                   },
                   leading: CircleAvatar(
                     backgroundColor: isCompleted

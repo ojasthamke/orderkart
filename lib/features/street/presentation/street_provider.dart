@@ -5,6 +5,7 @@ import '../domain/street.dart';
 import '../domain/street_repository.dart';
 import '../../area/presentation/area_provider.dart';
 import '../../order/presentation/order_provider.dart';
+import '../../customer/presentation/customer_provider.dart';
 
 final streetRepositoryProvider = Provider<StreetRepository>(
     (ref) => StreetRepositoryImpl(StreetDao()));
@@ -33,6 +34,8 @@ class StreetNotifier extends StateNotifier<AsyncValue<List<Street>>> {
     _ref.invalidate(streetProviderFamily);
     _ref.invalidate(areaProvider);
     _ref.invalidate(analyticsSummaryProvider);
+    _ref.invalidate(allCustomersProvider);
+    _ref.invalidate(pendingCustomersProvider);
   }
 
   void search(String q) {

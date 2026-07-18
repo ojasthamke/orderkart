@@ -140,6 +140,15 @@ class StreetDao {
 
   Future<void> deleteStreet(String id) async {
     final db = await _db;
+    
+    // Clear street and location references for all customers in this street
+    await db.update(
+      'customers',
+      {'street_id': '', 'location_id': ''},
+      where: 'street_id = ? OR location_id = ?',
+      whereArgs: [id, id],
+    );
+
     await db.delete('locations', where: 'id = ?', whereArgs: [id]);
     
     // Keep legacy table updated
