@@ -957,24 +957,48 @@ class DatabaseHelper {
             try {
               if (!dryRun) {
                 await dbExecutor.insert(table, filteredRow, conflictAlgorithm: ConflictAlgorithm.replace);
-                // Only deduct stock when items table is NOT in the same sync payload.
-                // If items were synced together, their stock values already reflect these orders.
                 if (table == 'order_items' && !incomingData.containsKey('items')) {
-                  final itemId = filteredRow['item_id']?.toString() ?? '';
-                  final qty = (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
-                  if (itemId.isNotEmpty && qty > 0) {
-                    await dbExecutor.execute(
-                      'UPDATE items SET stock = stock - ? WHERE id = ?',
-                      [qty, itemId],
+                  final orderId = filteredRow['order_id']?.toString() ?? '';
+                  bool isCancelled = false;
+                  if (incomingData.containsKey('orders')) {
+                    final incomingOrders = incomingData['orders'] as List<dynamic>? ?? [];
+                    final matchedOrder = incomingOrders.firstWhere(
+                      (o) => o['id']?.toString() == orderId,
+                      orElse: () => null,
                     );
-                    await dbExecutor.insert('stock_history', {
-                      'id': const Uuid().v4(),
-                      'item_id': itemId,
-                      'item_name': filteredRow['item_name']?.toString() ?? '',
-                      'change_amount': -qty,
-                      'reason': 'Imported Order Line (P2P)',
-                      'created_at': DateTime.now().toIso8601String(),
-                    });
+                    if (matchedOrder != null) {
+                      isCancelled = matchedOrder['delivery_status']?.toString() == 'cancelled';
+                    }
+                  }
+                  if (!isCancelled && orderId.isNotEmpty) {
+                    final localOrder = await dbExecutor.query(
+                      'orders',
+                      columns: ['delivery_status'],
+                      where: 'id = ?',
+                      whereArgs: [orderId],
+                    );
+                    if (localOrder.isNotEmpty) {
+                      isCancelled = localOrder.first['delivery_status']?.toString() == 'cancelled';
+                    }
+                  }
+
+                  if (!isCancelled) {
+                    final itemId = filteredRow['item_id']?.toString() ?? '';
+                    final qty = (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
+                    if (itemId.isNotEmpty && qty > 0) {
+                      await dbExecutor.execute(
+                        'UPDATE items SET stock = stock - ? WHERE id = ?',
+                        [qty, itemId],
+                      );
+                      await dbExecutor.insert('stock_history', {
+                        'id': const Uuid().v4(),
+                        'item_id': itemId,
+                        'item_name': filteredRow['item_name']?.toString() ?? '',
+                        'change_amount': -qty,
+                        'reason': 'Imported Order Line (P2P)',
+                        'created_at': DateTime.now().toIso8601String(),
+                      });
+                    }
                   }
                 }
               }
@@ -1263,22 +1287,48 @@ class DatabaseHelper {
               try {
                 if (!dryRun) {
                   await dbExecutor.insert(table, filteredRow, conflictAlgorithm: ConflictAlgorithm.replace);
-                  if (table == 'order_items') {
-                    final itemId = filteredRow['item_id']?.toString() ?? '';
-                    final qty = (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
-                    if (itemId.isNotEmpty && qty > 0) {
-                      await dbExecutor.execute(
-                        'UPDATE items SET stock = stock - ? WHERE id = ?',
-                        [qty, itemId],
+                  if (table == 'order_items' && !incomingData.containsKey('items')) {
+                    final orderId = filteredRow['order_id']?.toString() ?? '';
+                    bool isCancelled = false;
+                    if (incomingData.containsKey('orders')) {
+                      final incomingOrders = incomingData['orders'] as List<dynamic>? ?? [];
+                      final matchedOrder = incomingOrders.firstWhere(
+                        (o) => o['id']?.toString() == orderId,
+                        orElse: () => null,
                       );
-                      await dbExecutor.insert('stock_history', {
-                        'id': const Uuid().v4(),
-                        'item_id': itemId,
-                        'item_name': filteredRow['item_name']?.toString() ?? '',
-                        'change_amount': -qty,
-                        'reason': 'Imported Order Line (Zip)',
-                        'created_at': DateTime.now().toIso8601String(),
-                      });
+                      if (matchedOrder != null) {
+                        isCancelled = matchedOrder['delivery_status']?.toString() == 'cancelled';
+                      }
+                    }
+                    if (!isCancelled && orderId.isNotEmpty) {
+                      final localOrder = await dbExecutor.query(
+                        'orders',
+                        columns: ['delivery_status'],
+                        where: 'id = ?',
+                        whereArgs: [orderId],
+                      );
+                      if (localOrder.isNotEmpty) {
+                        isCancelled = localOrder.first['delivery_status']?.toString() == 'cancelled';
+                      }
+                    }
+
+                    if (!isCancelled) {
+                      final itemId = filteredRow['item_id']?.toString() ?? '';
+                      final qty = (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
+                      if (itemId.isNotEmpty && qty > 0) {
+                        await dbExecutor.execute(
+                          'UPDATE items SET stock = stock - ? WHERE id = ?',
+                          [qty, itemId],
+                        );
+                        await dbExecutor.insert('stock_history', {
+                          'id': const Uuid().v4(),
+                          'item_id': itemId,
+                          'item_name': filteredRow['item_name']?.toString() ?? '',
+                          'change_amount': -qty,
+                          'reason': 'Imported Order Line (Zip)',
+                          'created_at': DateTime.now().toIso8601String(),
+                        });
+                      }
                     }
                   }
                 }

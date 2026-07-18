@@ -200,7 +200,33 @@ class CustomerDao {
 
   Future<void> deleteCustomer(String id) async {
     final db = await _db;
-    await db.delete('customers', where: 'id = ?', whereArgs: [id]);
+    await db.transaction((txn) async {
+      // 1. Delete customer's order items, payments, answers, and stock history linked to orders
+      final orders = await txn.query('orders', columns: ['id'], where: 'customer_id = ?', whereArgs: [id]);
+      for (final order in orders) {
+        final orderId = order['id'] as String;
+        await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+        await txn.delete('payments', where: 'order_id = ?', whereArgs: [orderId]);
+        await txn.delete('order_question_answers', where: 'order_id = ?', whereArgs: [orderId]);
+        await txn.delete('stock_history', where: 'order_id = ?', whereArgs: [orderId]);
+      }
+      
+      // 2. Delete customer's orders
+      await txn.delete('orders', where: 'customer_id = ?', whereArgs: [id]);
+      
+      // 3. Delete payments linked directly to the customer
+      await txn.delete('payments', where: 'customer_id = ?', whereArgs: [id]);
+      
+      // 4. Delete customer specific records
+      await txn.delete('customer_question_answers', where: 'customer_id = ?', whereArgs: [id]);
+      await txn.delete('customer_item_prices', where: 'customer_id = ?', whereArgs: [id]);
+      await txn.delete('call_logs', where: 'customer_id = ?', whereArgs: [id]);
+      await txn.delete('visits', where: 'customer_id = ?', whereArgs: [id]);
+      await txn.delete('worker_assignments', where: "entity_type = 'customer' AND entity_id = ?", whereArgs: [id]);
+      
+      // 5. Finally delete the customer
+      await txn.delete('customers', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   Future<void> updateBalance(String customerId, {

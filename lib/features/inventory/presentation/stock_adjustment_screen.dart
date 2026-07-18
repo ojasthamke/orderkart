@@ -246,6 +246,15 @@ class _StockAdjustmentScreenState
   }
 
   Future<void> _adjust() async {
+    final itemObj = await ItemDao().getItemById(widget.itemId);
+    final currentStock = itemObj?.stock ?? 0.0;
+    if ((_mode == 'wastage' || _mode == 'remove') && _change > currentStock) {
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Cannot adjust stock: quantity (${AppFormatters.quantity(_change)}) exceeds current stock (${AppFormatters.quantity(currentStock)})');
+      }
+      return;
+    }
+
     AppHaptics.primarySave();
     if (_mode == 'wastage') {
       final reason = _reasonCon.text.trim().isEmpty ? 'Wastage / Spoilage loss' : _reasonCon.text.trim();

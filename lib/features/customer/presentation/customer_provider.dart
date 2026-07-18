@@ -64,6 +64,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await _repo.updateCustomer(c);
     await load();
     _invalidateAll();
+    _ref.invalidate(customerDetailProvider(c.id));
   }
 
   Future<void> delete(String id) async {
@@ -81,6 +82,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await _repo.deleteCustomer(id);
     await load();
     _invalidateAll();
+    _ref.invalidate(customerDetailProvider(id));
   }
 
   Future<void> reorder(int oldIndex, int newIndex) async {

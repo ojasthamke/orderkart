@@ -838,6 +838,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   final qty = double.tryParse(qtyCon.text.trim());
                   if (qty == null || qty <= 0) return;
 
+                  if ((mode == 'reduce' || mode == 'wastage') && qty > item.stock) {
+                    SnackbarHelper.showError(context, 'Cannot reduce stock below 0. Current stock is ${AppFormatters.quantity(item.stock, unit: item.unit)}');
+                    return;
+                  }
+
                   AppHaptics.primarySave();
 
                   if (mode == 'wastage') {

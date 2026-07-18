@@ -84,6 +84,18 @@ class ItemDao {
       'updated_at': now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
 
+    if (itemWithId.stock > 0) {
+      await insertStockHistory(StockHistory(
+        id:           _uuid.v4(),
+        itemId:       id,
+        itemName:     itemWithId.name,
+        changeAmount: itemWithId.stock,
+        reason:       'Initial Stock Allocation',
+        orderId:      '',
+        createdAt:    DateTime.now(),
+      ));
+    }
+
     await _recordDailyPriceSnapshot(itemWithId);
     await _checkAndTriggerLowStock(id, db);
     return id;
@@ -91,12 +103,28 @@ class ItemDao {
 
   Future<void> updateItem(Item item) async {
     final db = await _db;
+    final oldItem = await getItemById(item.id);
     await db.update(
       'items',
       {...item.toMap(), 'updated_at': DateTime.now().toIso8601String()},
       where: 'id = ?',
       whereArgs: [item.id],
     );
+
+    if (oldItem != null) {
+      final stockDiff = item.stock - oldItem.stock;
+      if (stockDiff != 0) {
+        await insertStockHistory(StockHistory(
+          id:           _uuid.v4(),
+          itemId:       item.id,
+          itemName:     item.name,
+          changeAmount: stockDiff,
+          reason:       'Manual Inventory Update (Edit)',
+          orderId:      '',
+          createdAt:    DateTime.now(),
+        ));
+      }
+    }
 
     await _recordDailyPriceSnapshot(item);
     await _checkAndTriggerLowStock(item.id, db);
