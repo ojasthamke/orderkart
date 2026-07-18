@@ -609,10 +609,59 @@ class CustomerProfileScreen extends ConsumerWidget {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
+        const Divider(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              AppHaptics.buttonClick();
+              
+              final msg = StringBuffer();
+              msg.writeln('Hello dear customer,');
+              msg.writeln();
+              msg.writeln('Welcome to OrderKart! 🛒💚');
+              msg.writeln();
+              msg.writeln('Thank you for joining us. We are very happy to serve you! Here is how we work:');
+              msg.writeln();
+              msg.writeln('* 🌾 *Best Quality*: Fresh and clean vegetables delivered to your home.');
+              msg.writeln('* 💰 *Wholesale Rates*: You can order any quantity at wholesale rates.');
+              msg.writeln('* 📅 *Weekly Visits*: Our agent visits you once a week.');
+              msg.writeln('* ⚡ *Doorstep Delivery*: Simply give your order to our agent when he arrives at your door, and the fresh vegetables will be delivered to your doorstep.');
+              msg.writeln('* 🤝 *Trusted Service*: Honest pricing with zero compromise on quality.');
+              msg.writeln();
+              msg.writeln('_Note: We take weekly orders only through our agent when he visits._');
+              msg.writeln();
+              msg.writeln('Contact No: 9021107009');
+              msg.writeln();
+              msg.writeln('Thank you,');
+              msg.writeln('OrderKart Team');
+              
+              final cleanPhone = customer.whatsapp.isNotEmpty ? customer.whatsapp : customer.phone1;
+              final phone = cleanPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+              final url = 'https://wa.me/$phone?text=${Uri.encodeComponent(msg.toString())}';
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } else {
+                if (context.mounted) SnackbarHelper.showError(context, 'Could not open WhatsApp');
+              }
+            },
+            icon: const Icon(Icons.mark_chat_read_rounded, size: 16, color: Colors.white),
+            label: const Text('Send Welcome Message'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[700],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 
 
