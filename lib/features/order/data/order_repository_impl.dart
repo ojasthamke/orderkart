@@ -135,6 +135,7 @@ class OrderRepositoryImpl implements OrderRepository {
           }
         }
       }
+      await txn.delete('order_question_answers', where: 'order_id = ?', whereArgs: [id]);
       await _orderDao.deleteOrder(id, executor: txn);
       if (order != null) {
         await _customerDao.recalcCustomerTotals(order.customerId, executor: txn);

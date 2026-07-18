@@ -73,35 +73,39 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
   }
 
   Future<void> _loadAllData() async {
-    final db = await DatabaseHelper.instance.database;
-    final sups = await db.query('suppliers');
-    final prices = await db.query('supplier_price_tracker', orderBy: 'change_date DESC');
-    final fields = await db.query('custom_fields');
-    final warehouseLogs = await db.query('item_warehouses');
-    final audits = await db.query('audit_logs', orderBy: 'created_at DESC', limit: 30);
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final sups = await db.query('suppliers');
+      final prices = await db.query('supplier_price_tracker', orderBy: 'change_date DESC');
+      final fields = await db.query('custom_fields');
+      final warehouseLogs = await db.query('item_warehouses');
+      final audits = await db.query('audit_logs', orderBy: 'created_at DESC', limit: 30);
 
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    final cashRes = await db.rawQuery(
-      "SELECT SUM(amount) as total FROM payments WHERE created_at LIKE ?",
-      ['$todayStr%'],
-    );
-    final cashToday = (cashRes.first['total'] as num?)?.toDouble() ?? 0.0;
+      final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+      final cashRes = await db.rawQuery(
+        "SELECT SUM(amount) as total FROM payments WHERE created_at LIKE ?",
+        ['$todayStr%'],
+      );
+      final cashToday = (cashRes.first['total'] as num?)?.toDouble() ?? 0.0;
 
-    final duesRes = await db.rawQuery(
-      "SELECT SUM(remaining_amount) as total FROM orders WHERE remaining_amount > 0"
-    );
-    final totalDues = (duesRes.first['total'] as num?)?.toDouble() ?? 0.0;
+      final duesRes = await db.rawQuery(
+        "SELECT SUM(remaining_amount) as total FROM orders WHERE remaining_amount > 0"
+      );
+      final totalDues = (duesRes.first['total'] as num?)?.toDouble() ?? 0.0;
 
-    if (mounted) {
-      setState(() {
-        _suppliers = sups;
-        _priceChanges = prices;
-        _customFields = fields;
-        _warehouseStock = warehouseLogs;
-        _auditLogs = audits;
-        _cashCollectedToday = cashToday;
-        _outstandingDuesLedger = totalDues;
-      });
+      if (mounted) {
+        setState(() {
+          _suppliers = sups;
+          _priceChanges = prices;
+          _customFields = fields;
+          _warehouseStock = warehouseLogs;
+          _auditLogs = audits;
+          _cashCollectedToday = cashToday;
+          _outstandingDuesLedger = totalDues;
+        });
+      }
+    } catch (e, stack) {
+      debugPrint("Error loading owner features data: $e\n$stack");
     }
   }
 
@@ -380,7 +384,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                       return [
                         i.name,
                         i.category,
-                        'Rs. ${i.sellingPrice.toStringAsFixed(2)}',
+                        '$currency ${i.sellingPrice.toStringAsFixed(2)}',
                         i.unit,
                         i.stock > 0 ? 'In Stock (${i.stock})' : 'Out of Stock'
                       ];
@@ -445,9 +449,12 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                final db = await DatabaseHelper.instance.database;
-                // Move orders out of main tables
-                await db.delete('orders', where: 'created_at < ?', whereArgs: [cutoffDate]);
+                await db.transaction((txn) async {
+                  await txn.delete('orders', where: 'created_at < ?', whereArgs: [cutoffDate]);
+                  await txn.delete('order_items', where: 'order_id NOT IN (SELECT id FROM orders)');
+                  await txn.delete('payments', where: 'order_id NOT IN (SELECT id FROM orders)');
+                  await txn.delete('order_question_answers', where: 'order_id NOT IN (SELECT id FROM orders)');
+                });
                 await _loadAllData();
                 if (mounted) {
                   SnackbarHelper.showSuccess(context, 'Successfully archived $count old records!');
@@ -494,9 +501,18 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       final db = await DatabaseHelper.instance.database;
       final Map<String, dynamic> oldData = jsonDecode(oldValue);
 
+      Future<Map<String, dynamic>> filterColumns(String tableName, Map<String, dynamic> row) async {
+        final pragma = await db.rawQuery('PRAGMA table_info($tableName)');
+        final columns = pragma.map((r) => r['name'] as String).toList();
+        return Map.fromEntries(
+          row.entries.where((e) => columns.contains(e.key)),
+        );
+      }
+
       if (entityType == 'item' || entityType == 'items') {
         // Resolve target fields if conflict algorithms require it
-        await db.insert('items', oldData, conflictAlgorithm: ConflictAlgorithm.replace);
+        final filtered = await filterColumns('items', oldData);
+        await db.insert('items', filtered, conflictAlgorithm: ConflictAlgorithm.replace);
         ref.invalidate(inventoryProvider);
       } else if (entityType == 'customer' || entityType == 'customers') {
         final mapWithLocation = {
@@ -504,9 +520,11 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
           if (!oldData.containsKey('location_id') && oldData.containsKey('street_id'))
             'location_id': oldData['street_id'],
         };
-        await db.insert('customers', mapWithLocation, conflictAlgorithm: ConflictAlgorithm.replace);
+        final filtered = await filterColumns('customers', mapWithLocation);
+        await db.insert('customers', filtered, conflictAlgorithm: ConflictAlgorithm.replace);
       } else if (entityType == 'order' || entityType == 'orders') {
-        await db.insert('orders', oldData, conflictAlgorithm: ConflictAlgorithm.replace);
+        final filtered = await filterColumns('orders', oldData);
+        await db.insert('orders', filtered, conflictAlgorithm: ConflictAlgorithm.replace);
       } else {
         throw Exception('Unsupported entity rollback type: $entityType');
       }
@@ -646,13 +664,13 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
         ),
         if (_priceChanges.isNotEmpty) ...[
           const Divider(),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Supplier Cost Tracker Logs [21]',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                'Supplier Cost Tracker Logs [${_priceChanges.length}]',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
               ),
             ),
           ),
@@ -990,7 +1008,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                         leading: const Icon(Icons.lock_person_rounded, size: 20),
                         title: Text(log['action'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                         subtitle: Text('User: ${log['user_type'] ?? ''} • ${log['created_at'] ?? ''}'),
-                        trailing: (log['old_value'] != null && (log['old_value'] as String).isNotEmpty)
+                        trailing: (log['old_value'] != null && log['old_value'].toString().isNotEmpty)
                             ? TextButton.icon(
                                 icon: const Icon(Icons.undo_rounded, size: 14),
                                 label: const Text('Revert', style: TextStyle(fontSize: 11)),
