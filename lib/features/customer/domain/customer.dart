@@ -42,6 +42,7 @@ class Customer {
   final double vipDiscountPct;      // 5%, 10%, 15%, 20%, or Custom %
   final double vipMarkupPct;        // 5% price markup for 10% discount, 10% for 20%
   final bool   vipPriorityDelivery;
+  final String customWelcomeMessage;
 
   const Customer({
     required this.id,
@@ -83,6 +84,7 @@ class Customer {
     this.vipDiscountPct      = 10.0,
     this.vipMarkupPct        = 5.0,
     this.vipPriorityDelivery = true,
+    this.customWelcomeMessage = '',
   });
 
   Customer copyWith({
@@ -124,6 +126,7 @@ class Customer {
     double? vipDiscountPct,
     double? vipMarkupPct,
     bool?   vipPriorityDelivery,
+    String? customWelcomeMessage,
   }) {
     return Customer(
       id:                 id                 ?? this.id,
@@ -164,6 +167,7 @@ class Customer {
       vipDiscountPct:      vipDiscountPct      ?? this.vipDiscountPct,
       vipMarkupPct:        vipMarkupPct        ?? this.vipMarkupPct,
       vipPriorityDelivery: vipPriorityDelivery ?? this.vipPriorityDelivery,
+      customWelcomeMessage: customWelcomeMessage ?? this.customWelcomeMessage,
     );
   }
 
@@ -206,6 +210,7 @@ class Customer {
         'vip_discount_pct':      vipDiscountPct,
         'vip_markup_pct':        vipMarkupPct,
         'vip_priority_delivery': vipPriorityDelivery ? 1 : 0,
+        'custom_welcome_message': customWelcomeMessage,
       };
 
   factory Customer.fromMap(Map<String, dynamic> map) => Customer(
@@ -247,6 +252,7 @@ class Customer {
         vipDiscountPct:      (map['vip_discount_pct'] as num?)?.toDouble() ?? 10.0,
         vipMarkupPct:        (map['vip_markup_pct'] as num?)?.toDouble() ?? 5.0,
         vipPriorityDelivery: (map['vip_priority_delivery'] as int? ?? 1) == 1,
+        customWelcomeMessage: map['custom_welcome_message'] as String? ?? '',
       );
 
   String get serialLabel => serialNo > 0 ? '#$serialNo' : '';

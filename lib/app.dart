@@ -94,7 +94,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         );
         return MediaQuery(
           data: mediaQuery.copyWith(textScaler: clampedScaler),
-          child: child ?? const SizedBox.shrink(),
+          child: SafeArea(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       initialRoute: '/',

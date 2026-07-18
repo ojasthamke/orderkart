@@ -21,6 +21,7 @@ import '../domain/order.dart';
 import '../data/order_dao.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
+import '../../location/presentation/location_provider.dart';
 
 class OrderManagementScreen extends ConsumerStatefulWidget {
   const OrderManagementScreen({super.key});
@@ -479,10 +480,8 @@ class _OrderCard extends ConsumerWidget {
                 customerAsync.when(
                   data: (cust) {
                     if (cust == null) return const SizedBox.shrink();
-                    return ref.watch(customerLocationProvider(cust.streetId)).when(
-                      data: (loc) {
-                        final streetName = loc['street'] ?? '';
-                        final areaName = loc['area'] ?? '';
+                    return ref.watch(locationPathNameProvider(cust.streetId)).when(
+                      data: (fullPath) {
                         return Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(10),
@@ -527,9 +526,9 @@ class _OrderCard extends ConsumerWidget {
                                     softWrap: true,
                                   ),
                                 ),
-                              if (streetName.isNotEmpty || areaName.isNotEmpty)
+                              if (fullPath.isNotEmpty)
                                 Text(
-                                  'Route: $streetName  •  Area: $areaName',
+                                  'Location: $fullPath',
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodySmall

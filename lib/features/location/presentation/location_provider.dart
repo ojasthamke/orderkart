@@ -85,3 +85,7 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
 final locationListProvider = StateNotifierProvider.family<LocationListNotifier, AsyncValue<List<Location>>, String?>((ref, parentId) {
   return LocationListNotifier(ref, ref.read(locationRepositoryProvider), parentId);
 });
+
+final locationPathNameProvider = FutureProvider.family<String, String>((ref, locationId) async {
+  return await LocationDao().getFullLocationPathName(locationId);
+});

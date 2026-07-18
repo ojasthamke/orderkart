@@ -27,11 +27,40 @@ import '../domain/order_item.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
 import '../data/order_dao.dart';
+import '../../location/presentation/location_provider.dart';
 import '../data/order_questions_dao.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../../../core/localization/app_localization.dart';
 import 'widgets/item_selector_widget.dart';
 import 'widgets/smart_round_banner.dart';
+
+class CartItem {
+  final String itemId;
+  final String name;
+  final String unit;
+  final double price;
+  final double quantity;
+
+  double get total => double.parse((price * quantity).toStringAsFixed(2));
+
+  const CartItem({
+    required this.itemId,
+    required this.name,
+    required this.unit,
+    required this.price,
+    required this.quantity,
+  });
+
+  CartItem copyWith({double? quantity, String? unit, double? price}) => CartItem(
+        itemId:   itemId,
+        name:     name,
+        unit:     unit ?? this.unit,
+        price:    price ?? this.price,
+        quantity: quantity ?? this.quantity,
+      );
+}
+
+final createOrderCartProvider = StateProvider.family<List<CartItem>, String>((ref, customerId) => []);
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   final String customerId;
@@ -52,7 +81,7 @@ class CreateOrderScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
-  final List<_CartItem> _cart = [];
+  final List<CartItem> _cart = [];
   double _deliveryCharge = AppConstants.defaultDeliveryCharge;
   double _discount       = 0;
   double _paidAmount     = 0;
@@ -125,6 +154,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     if (widget.orderId != null) {
       Future.microtask(() => _loadExistingOrder(widget.orderId!));
+    } else {
+      final savedCart = ref.read(createOrderCartProvider(widget.customerId));
+      if (savedCart.isNotEmpty) {
+        _cart.addAll(savedCart);
+      }
     }
     _loadQuestionsAndPreferences();
   }
@@ -149,7 +183,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         
         _cart.clear();
         for (final item in order.items) {
-          _cart.add(_CartItem(
+          _cart.add(CartItem(
             itemId: item.itemId,
             name: item.itemName,
             unit: item.itemUnit,
@@ -179,12 +213,19 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final enteredDiscountPct = _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
     final exceedsCap = isWorker && enteredDiscountPct > discountCapPct;
 
-    return AppScaffold(
-      title: widget.orderId == null
-          ? AppLocalization.translate(ref, 'create_order', 'Create Order')
-          : 'Edit Order',
-      body: Column(
-        children: [
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          ref.read(createOrderCartProvider(widget.customerId).notifier).state = List.from(_cart);
+        }
+      },
+      child: AppScaffold(
+        title: widget.orderId == null
+            ? AppLocalization.translate(ref, 'create_order', 'Create Order')
+            : 'Edit Order',
+        body: Column(
+          children: [
           // Customer header
           _buildCustomerHeader(currency),
           Expanded(
@@ -294,7 +335,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       ),
       // Bottom Save bar
       bottomNavigationBar: _cart.isNotEmpty ? _buildBottomBar(context, currency) : null,
-    );
+    ));
   }
 
   // ── Customer header ──────────────────────────────────────────────────────────
@@ -353,13 +394,36 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         ],
                       ],
                     ),
+                    if (customer != null)
+                      ref.watch(locationPathNameProvider(customer.streetId)).when(
+                        data: (fullPath) {
+                          if (fullPath.isEmpty) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              fullPath,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        },
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
                     if (isVip)
-                      Text(
-                        'Benefits: ${customer!.vipFreeDelivery ? 'Free Delivery • ' : ''}${customer.vipDiscountPct.toStringAsFixed(0)}% Off',
-                        style: const TextStyle(
-                          color: Color(0xFFB45309),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          'Benefits: ${customer!.vipFreeDelivery ? 'Free Delivery • ' : ''}${customer.vipDiscountPct.toStringAsFixed(0)}% Off',
+                          style: const TextStyle(
+                            color: Color(0xFFB45309),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                   ],
@@ -431,6 +495,22 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             currency: currency,
             canToggleUnit: canToggleUnit,
             onQtyChanged: (qty) {
+              if (qty <= 0) {
+                SnackbarHelper.showError(
+                  context,
+                  'Quantity for "${cartItem.name}" must be greater than 0',
+                );
+                setState(() => _cart[e.key] = cartItem.copyWith(quantity: 0.25));
+                return;
+              }
+              if (qty > dbItem.stock) {
+                SnackbarHelper.showError(
+                  context,
+                  'Cannot exceed stock limit of ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit} for "${cartItem.name}"',
+                );
+                setState(() => _cart[e.key] = cartItem.copyWith(quantity: dbItem.stock));
+                return;
+              }
               setState(() => _cart[e.key] = cartItem.copyWith(quantity: qty));
             },
             onRemove: () => setState(() => _cart.removeAt(e.key)),
@@ -1022,6 +1102,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       // Persist last delivery charge
       ref.read(settingsProvider.notifier).updateLastDeliveryCharge(_deliveryCharge);
 
+      // Clear the saved cart provider
+      ref.read(createOrderCartProvider(widget.customerId).notifier).state = [];
+
       if (!mounted) return;
       // Navigate to order detail
       Navigator.of(context).pushReplacementNamed(
@@ -1095,7 +1178,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                   setState(() {
                                     _cart.clear();
                                     for (final it in o.items) {
-                                      _cart.add(_CartItem(
+                                      _cart.add(CartItem(
                                         itemId: it.itemId,
                                         name: it.itemName,
                                         unit: it.itemUnit,
@@ -1162,7 +1245,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 }
               }
 
-              _cart.add(_CartItem(
+              _cart.add(CartItem(
                 itemId:   item.id,
                 name:     item.name,
                 unit:     item.unit,
@@ -1406,36 +1489,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 }
 
-// ── Cart data model ───────────────────────────────────────────────────────────
-class _CartItem {
-  final String itemId;
-  final String name;
-  final String unit;
-  final double price;
-  final double quantity;
-
-  double get total => double.parse((price * quantity).toStringAsFixed(2));
-
-  const _CartItem({
-    required this.itemId,
-    required this.name,
-    required this.unit,
-    required this.price,
-    required this.quantity,
-  });
-
-  _CartItem copyWith({double? quantity, String? unit, double? price}) => _CartItem(
-        itemId:   itemId,
-        name:     name,
-        unit:     unit ?? this.unit,
-        price:    price ?? this.price,
-        quantity: quantity ?? this.quantity,
-      );
-}
-
 // ── Cart item tile ────────────────────────────────────────────────────────────
 class _CartItemTile extends StatelessWidget {
-  final _CartItem cartItem;
+  final CartItem cartItem;
   final String currency;
   final ValueChanged<double> onQtyChanged;
   final VoidCallback onRemove;

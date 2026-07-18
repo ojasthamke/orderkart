@@ -256,6 +256,7 @@ class DatabaseHelper {
         created_at          TEXT NOT NULL,
         updated_at          TEXT NOT NULL,
         dietary_preference  TEXT DEFAULT '',
+        custom_welcome_message TEXT DEFAULT '',
         FOREIGN KEY(street_id) REFERENCES streets(id) ON DELETE CASCADE
       )
     ''');
@@ -2284,6 +2285,11 @@ class DatabaseHelper {
 
     // 3. Extract coordinates from existing maps_location Google Maps URLs
     await _migrateCoordinatesFromUrls(db);
+
+    // 4. Ensure custom_welcome_message column exists
+    try {
+      await db.execute('ALTER TABLE customers ADD COLUMN custom_welcome_message TEXT DEFAULT ""');
+    } catch (_) {}
   }
 
   Future<void> _migrateCoordinatesFromUrls(Database db) async {

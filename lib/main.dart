@@ -27,6 +27,12 @@ Future<void> main() async {
       DeviceOrientation.portraitDown,
     ]);
 
+    // Enable showing the status bar on top and system navigation buttons at the bottom
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+    );
+
     // Set system UI overlay style for sunlight-friendly white theme
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(

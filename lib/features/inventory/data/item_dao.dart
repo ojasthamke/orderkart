@@ -226,4 +226,26 @@ class ItemDao {
     );
     return maps.map(StockHistory.fromMap).toList();
   }
+
+  Future<List<Map<String, dynamic>>> getOrderedItemStats() async {
+    final db = await _db;
+    return await db.rawQuery(
+      '''
+      SELECT 
+        i.name AS item_name,
+        i.unit AS item_unit,
+        i.cost_price AS cost_price,
+        SUM(oi.quantity) AS total_quantity,
+        SUM(oi.quantity) * i.cost_price AS total_cost_price,
+        SUM(oi.total_price) AS total_selling_price,
+        SUM(oi.total_price) - (SUM(oi.quantity) * i.cost_price) AS total_profit
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      JOIN items i ON oi.item_id = i.id
+      WHERE o.delivery_status != 'cancelled'
+      GROUP BY oi.item_id, i.name, i.unit, i.cost_price
+      ORDER BY total_profit DESC, total_quantity DESC
+      '''
+    );
+  }
 }

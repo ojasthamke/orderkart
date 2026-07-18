@@ -44,6 +44,7 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     _ref.invalidate(spillageHistoryProvider);
     _ref.invalidate(analyticsSummaryProvider);
     _ref.invalidate(searchProvider);
+    _ref.invalidate(orderedItemStatsProvider);
   }
 
   void filterByCategory(String category) {
@@ -139,4 +140,8 @@ final stockHistoryProvider =
 
 final spillageHistoryProvider = FutureProvider<List<StockHistory>>((ref) {
   return ref.read(inventoryRepositoryProvider).getSpillageHistory();
+});
+
+final orderedItemStatsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  return await ItemDao().getOrderedItemStats();
 });

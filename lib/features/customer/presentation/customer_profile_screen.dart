@@ -27,6 +27,7 @@ import '../../settings/presentation/settings_provider.dart';
 import '../../../core/utils/contact_exporter.dart';
 import '../../order/data/order_questions_dao.dart';
 import 'vip_dashboard_screen.dart';
+import '../data/customer_dao.dart';
 
 class CustomerProfileScreen extends ConsumerWidget {
   final String customerId;
@@ -110,6 +111,9 @@ class CustomerProfileScreen extends ConsumerWidget {
                   case 'delete':
                     _confirmDelete(context, ref, customer);
                     break;
+                  case 'welcome':
+                    await _sendDefaultWelcomeMessage(context, customer);
+                    break;
                 }
               },
               itemBuilder: (context) => [
@@ -133,13 +137,23 @@ class CustomerProfileScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                 const PopupMenuItem(
                   value: 'vip',
                   child: Row(
                     children: [
                       Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700), size: 20),
                       SizedBox(width: 12),
                       Text('VIP Club Membership'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'welcome',
+                  child: Row(
+                    children: [
+                      Icon(Icons.mark_chat_read_rounded, color: Colors.green, size: 20),
+                      SizedBox(width: 12),
+                      Text('Send Welcome Message'),
                     ],
                   ),
                 ),
@@ -609,55 +623,7 @@ class CustomerProfileScreen extends ConsumerWidget {
               ),
             ),
           ],
-        const Divider(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () async {
-              AppHaptics.buttonClick();
-              
-              final msg = StringBuffer();
-              msg.writeln('Hello dear customer,');
-              msg.writeln();
-              msg.writeln('Welcome to OrderKart! 🛒💚');
-              msg.writeln();
-              msg.writeln('Thank you for joining us. We are very happy to serve you! Here is how we work:');
-              msg.writeln();
-              msg.writeln('* 🌾 *Best Quality*: Fresh and clean vegetables delivered to your home.');
-              msg.writeln('* 💰 *Wholesale Rates*: You can order any quantity at wholesale rates.');
-              msg.writeln('* 📅 *Weekly Visits*: Our agent visits you once a week.');
-              msg.writeln('* ⚡ *Doorstep Delivery*: Simply give your order to our agent when he arrives at your door, and the fresh vegetables will be delivered to your doorstep.');
-              msg.writeln('* 🤝 *Trusted Service*: Honest pricing with zero compromise on quality.');
-              msg.writeln();
-              msg.writeln('_Note: We take weekly orders only through our agent when he visits._');
-              msg.writeln();
-              msg.writeln('Contact No: 9021107009');
-              msg.writeln();
-              msg.writeln('Thank you,');
-              msg.writeln('OrderKart Team');
-              
-              final cleanPhone = customer.whatsapp.isNotEmpty ? customer.whatsapp : customer.phone1;
-              final phone = cleanPhone.replaceAll(RegExp(r'[^0-9+]'), '');
-              final url = 'https://wa.me/$phone?text=${Uri.encodeComponent(msg.toString())}';
-              final uri = Uri.parse(url);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              } else {
-                if (context.mounted) SnackbarHelper.showError(context, 'Could not open WhatsApp');
-              }
-            },
-            icon: const Icon(Icons.mark_chat_read_rounded, size: 16, color: Colors.white),
-            label: const Text('Send Welcome Message'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[700],
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
+        _CustomMessageCard(customer: customer, ref: ref),
       ],
     ),
   );
@@ -759,8 +725,13 @@ class CustomerProfileScreen extends ConsumerWidget {
                         msg.writeln('Thank you for your valuable trust & business at *$businessName*! 🙏');
                       }
                       final cleanPhone = customer.whatsapp.isNotEmpty ? customer.whatsapp : customer.phone1;
-                      final phone = cleanPhone.replaceAll(RegExp(r'[^0-9+]'), '');
-                      final url = 'https://wa.me/$phone?text=${Uri.encodeComponent(msg.toString())}';
+                      var phoneDigits = cleanPhone.replaceAll(RegExp(r'\D'), '');
+                      if (phoneDigits.length == 10) {
+                        phoneDigits = '91$phoneDigits';
+                      } else if (phoneDigits.length == 11 && phoneDigits.startsWith('0')) {
+                        phoneDigits = '91${phoneDigits.substring(1)}';
+                      }
+                      final url = 'https://wa.me/$phoneDigits?text=${Uri.encodeComponent(msg.toString())}';
                       final uri = Uri.parse(url);
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -1584,6 +1555,260 @@ class _DietaryPreferenceIcon extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+Future<void> _sendDefaultWelcomeMessage(BuildContext context, Customer customer) async {
+  final msg = StringBuffer();
+  msg.writeln('Hello dear customer,');
+  msg.writeln();
+  msg.writeln('Welcome to OrderKart! 🛒💚');
+  msg.writeln();
+  msg.writeln('Thank you for joining us. We are very happy to serve you! Here is how we work:');
+  msg.writeln();
+  msg.writeln('* 🌾 *Best Quality*: Fresh and clean vegetables delivered to your home.');
+  msg.writeln('* 💰 *Wholesale Rates*: You can order any quantity at wholesale rates.');
+  msg.writeln('* 📅 *Weekly Visits*: Our agent visits you once a week.');
+  msg.writeln('* ⚡ *Doorstep Delivery*: Simply give your order to our agent when he arrives at your door, and the fresh vegetables will be delivered to your doorstep.');
+  msg.writeln('* 🤝 *Trusted Service*: Honest pricing with zero compromise on quality.');
+  msg.writeln();
+  msg.writeln('_Note: We take weekly orders only through our agent when he visits._');
+  msg.writeln();
+  msg.writeln('Contact No: 9021107009');
+  msg.writeln();
+  msg.writeln('Thank you,');
+  msg.writeln('OrderKart Team');
+
+  final cleanPhone = customer.whatsapp.isNotEmpty ? customer.whatsapp : customer.phone1;
+  var phoneDigits = cleanPhone.replaceAll(RegExp(r'\D'), '');
+  if (phoneDigits.length == 10) {
+    phoneDigits = '91$phoneDigits';
+  } else if (phoneDigits.length == 11 && phoneDigits.startsWith('0')) {
+    phoneDigits = '91${phoneDigits.substring(1)}';
+  }
+  final url = 'https://wa.me/$phoneDigits?text=${Uri.encodeComponent(msg.toString())}';
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    
+    // Prompt done confirmation dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Done?'),
+        content: const Text('Did you successfully send the welcome message to the customer?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            child: const Text('Done?'),
+          ),
+        ],
+      ),
+    );
+  } else {
+    SnackbarHelper.showError(context, 'Could not open WhatsApp');
+  }
+}
+
+class _CustomMessageCard extends StatefulWidget {
+  final Customer customer;
+  final WidgetRef ref;
+
+  const _CustomMessageCard({required this.customer, required this.ref});
+
+  @override
+  State<_CustomMessageCard> createState() => _CustomMessageCardState();
+}
+
+class _CustomMessageCardState extends State<_CustomMessageCard> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final defaultMsg = _buildDefaultWelcomeText(widget.customer);
+    final initialText = widget.customer.customWelcomeMessage.isNotEmpty
+        ? widget.customer.customWelcomeMessage
+        : defaultMsg;
+    _controller = TextEditingController(text: initialText);
+  }
+
+  @override
+  void didUpdateWidget(_CustomMessageCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.customer.customWelcomeMessage != widget.customer.customWelcomeMessage) {
+      if (widget.customer.customWelcomeMessage.isNotEmpty &&
+          _controller.text != widget.customer.customWelcomeMessage) {
+        _controller.text = widget.customer.customWelcomeMessage;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _buildDefaultWelcomeText(Customer customer) {
+    final msg = StringBuffer();
+    msg.writeln('Hello dear customer,');
+    msg.writeln();
+    msg.writeln('Welcome to OrderKart! 🛒💚');
+    msg.writeln();
+    msg.writeln('Thank you for joining us. We are very happy to serve you! Here is how we work:');
+    msg.writeln();
+    msg.writeln('* 🌾 *Best Quality*: Fresh and clean vegetables delivered to your home.');
+    msg.writeln('* 💰 *Wholesale Rates*: You can order any quantity at wholesale rates.');
+    msg.writeln('* 📅 *Weekly Visits*: Our agent visits you once a week.');
+    msg.writeln('* ⚡ *Doorstep Delivery*: Simply give your order to our agent when he arrives at your door, and the fresh vegetables will be delivered to your doorstep.');
+    msg.writeln('* 🤝 *Trusted Service*: Honest pricing with zero compromise on quality.');
+    msg.writeln();
+    msg.writeln('_Note: We take weekly orders only through our agent when he visits._');
+    msg.writeln();
+    msg.writeln('Contact No: 9021107009');
+    msg.writeln();
+    msg.writeln('Thank you,');
+    msg.writeln('OrderKart Team');
+    return msg.toString();
+  }
+
+  Future<void> _handleSendAndPrompt() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      SnackbarHelper.showError(context, 'Message draft cannot be empty');
+      return;
+    }
+
+    final cleanPhone = widget.customer.whatsapp.isNotEmpty ? widget.customer.whatsapp : widget.customer.phone1;
+    var phoneDigits = cleanPhone.replaceAll(RegExp(r'\D'), '');
+    if (phoneDigits.length == 10) {
+      phoneDigits = '91$phoneDigits';
+    } else if (phoneDigits.length == 11 && phoneDigits.startsWith('0')) {
+      phoneDigits = '91${phoneDigits.substring(1)}';
+    }
+
+    final url = 'https://wa.me/$phoneDigits?text=${Uri.encodeComponent(text)}';
+    final uri = Uri.parse(url);
+
+    AppHaptics.buttonClick();
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!mounted) return;
+      _showDoneConfirmationDialog(text);
+    } else {
+      if (mounted) SnackbarHelper.showError(context, 'Could not open WhatsApp');
+    }
+  }
+
+  void _showDoneConfirmationDialog(String textToSave) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Done?'),
+        content: const Text('Did you successfully send the message to the customer? Click Done to save the custom message draft.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                // Save custom message to DB (no history entry)
+                await CustomerDao().updateCustomWelcomeMessage(widget.customer.id, textToSave);
+                widget.ref.invalidate(customerDetailProvider(widget.customer.id));
+                if (mounted) {
+                  SnackbarHelper.showSuccess(context, 'Custom message draft saved successfully!');
+                }
+              } catch (e) {
+                if (mounted) {
+                  SnackbarHelper.showError(context, 'Failed to save message: $e');
+                }
+              }
+            },
+            child: const Text('Done?'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Custom Welcome Message',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            if (widget.customer.customWelcomeMessage.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Saved Draft',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _controller,
+          maxLines: 8,
+          style: const TextStyle(fontSize: 13, height: 1.4),
+          decoration: InputDecoration(
+            hintText: 'Type your custom welcome message here...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            contentPadding: const EdgeInsets.all(12),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _handleSendAndPrompt,
+            icon: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+            label: const Text('Send Custom Message'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[700],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

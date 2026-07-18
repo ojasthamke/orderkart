@@ -366,4 +366,31 @@ class LocationDao {
       'totalRevenue': loc.totalRevenue,
     };
   }
+
+  Future<String> getFullLocationPathName(String locationId) async {
+    if (locationId.isEmpty) return '';
+    try {
+      final db = await _db;
+      final res = await db.query(
+        'locations',
+        columns: ['materialized_path'],
+        where: 'id = ?',
+        whereArgs: [locationId],
+      );
+      if (res.isEmpty) return '';
+      final path = res.first['materialized_path'] as String? ?? '';
+      if (path.isEmpty) return '';
+      final ids = path.split('/').where((id) => id.isNotEmpty).toList();
+      if (ids.isEmpty) return '';
+      
+      final placeholders = List.filled(ids.length, '?').join(', ');
+      final locationsRes = await db.rawQuery(
+        'SELECT name FROM locations WHERE id IN ($placeholders) ORDER BY depth ASC',
+        ids,
+      );
+      return locationsRes.map((r) => r['name'] as String).join(' > ');
+    } catch (_) {
+      return '';
+    }
+  }
 }

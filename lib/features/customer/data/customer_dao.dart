@@ -307,4 +307,17 @@ class CustomerDao {
       }
     });
   }
+
+  Future<void> updateCustomWelcomeMessage(String customerId, String message) async {
+    final db = await _db;
+    await db.update(
+      'customers',
+      {
+        'custom_welcome_message': message,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [customerId],
+    );
+  }
 }

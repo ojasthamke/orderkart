@@ -22,6 +22,7 @@ import '../data/order_questions_dao.dart';
 import '../domain/order.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
+import '../../location/presentation/location_provider.dart';
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -256,10 +257,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 customerAsync.when(
                   data: (cust) {
                     if (cust == null) return const SizedBox.shrink();
-                    return ref.watch(customerLocationProvider(cust.streetId)).when(
-                      data: (loc) {
-                        final streetName = loc['street'] ?? '';
-                        final areaName = loc['area'] ?? '';
+                    return ref.watch(locationPathNameProvider(cust.streetId)).when(
+                      data: (fullPath) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -281,10 +280,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                                 softWrap: true,
                               ),
                             ],
-                            if (streetName.isNotEmpty || areaName.isNotEmpty) ...[
+                            if (fullPath.isNotEmpty) ...[
                               const SizedBox(height: 4),
                               Text(
-                                'Route: $streetName  •  Area: $areaName',
+                                'Location: $fullPath',
                                 style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w800),
                               ),
                             ],
