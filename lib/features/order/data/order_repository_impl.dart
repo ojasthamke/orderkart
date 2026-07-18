@@ -53,16 +53,19 @@ class OrderRepositoryImpl implements OrderRepository {
         final oldItems = await _orderDao.getOrderItems(order.id, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
-            await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
-            await _itemDao.insertStockHistory(StockHistory(
-              id:           _uuid.v4(),
-              itemId:       oldItem.itemId,
-              itemName:     oldItem.itemName,
-              changeAmount: oldItem.quantity,
-              reason:       'order_edit_restore',
-              orderId:      order.id,
-              createdAt:    DateTime.now(),
-            ), executor: txn);
+            final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
+            if (dbItem != null) {
+              await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
+              await _itemDao.insertStockHistory(StockHistory(
+                id:           _uuid.v4(),
+                itemId:       oldItem.itemId,
+                itemName:     oldItem.itemName,
+                changeAmount: oldItem.quantity,
+                reason:       'order_edit_restore',
+                orderId:      order.id,
+                createdAt:    DateTime.now(),
+              ), executor: txn);
+            }
           }
         }
         await _orderDao.deleteOrderItems(order.id, executor: txn);
@@ -74,9 +77,9 @@ class OrderRepositoryImpl implements OrderRepository {
         await _orderDao.insertOrderItem(item.copyWith(orderId: orderId), executor: txn);
 
         if (item.itemId.isNotEmpty) {
-          await _itemDao.adjustStock(item.itemId, -item.quantity, executor: txn);
           final dbItem = await _itemDao.getItemById(item.itemId, executor: txn);
           if (dbItem != null) {
+            await _itemDao.adjustStock(item.itemId, -item.quantity, executor: txn);
             await _itemDao.insertStockHistory(StockHistory(
               id:           _uuid.v4(),
               itemId:       item.itemId,
@@ -113,16 +116,19 @@ class OrderRepositoryImpl implements OrderRepository {
         final oldItems = await _orderDao.getOrderItems(id, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
-            await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
-            await _itemDao.insertStockHistory(StockHistory(
-              id:           _uuid.v4(),
-              itemId:       oldItem.itemId,
-              itemName:     oldItem.itemName,
-              changeAmount: oldItem.quantity,
-              reason:       'order_delete',
-              orderId:      id,
-              createdAt:    DateTime.now(),
-            ), executor: txn);
+            final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
+            if (dbItem != null) {
+              await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
+              await _itemDao.insertStockHistory(StockHistory(
+                id:           _uuid.v4(),
+                itemId:       oldItem.itemId,
+                itemName:     oldItem.itemName,
+                changeAmount: oldItem.quantity,
+                reason:       'order_delete',
+                orderId:      id,
+                createdAt:    DateTime.now(),
+              ), executor: txn);
+            }
           }
         }
       }
@@ -144,16 +150,19 @@ class OrderRepositoryImpl implements OrderRepository {
         final oldItems = await _orderDao.getOrderItems(orderId, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
-            await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
-            await _itemDao.insertStockHistory(StockHistory(
-              id:           _uuid.v4(),
-              itemId:       oldItem.itemId,
-              itemName:     oldItem.itemName,
-              changeAmount: oldItem.quantity,
-              reason:       'order_cancelled',
-              orderId:      orderId,
-              createdAt:    DateTime.now(),
-            ), executor: txn);
+            final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
+            if (dbItem != null) {
+              await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
+              await _itemDao.insertStockHistory(StockHistory(
+                id:           _uuid.v4(),
+                itemId:       oldItem.itemId,
+                itemName:     oldItem.itemName,
+                changeAmount: oldItem.quantity,
+                reason:       'order_cancelled',
+                orderId:      orderId,
+                createdAt:    DateTime.now(),
+              ), executor: txn);
+            }
           }
         }
       }
