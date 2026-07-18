@@ -371,6 +371,15 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Widget _buildSummarySection(AppOrder order, String currency) {
     final totalCombinedSavings = order.savings;
+    final totalSavings = order.discount;
+    final itemsList = ref.watch(inventoryProvider).valueOrNull ?? [];
+    double marketSavings = 0.0;
+    for (final oi in order.items) {
+      final inv = itemsList.where((i) => i.id == oi.itemId).firstOrNull;
+      if (inv != null && inv.marketPrice > oi.unitPrice) {
+        marketSavings += (inv.marketPrice - oi.unitPrice) * oi.quantity;
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
