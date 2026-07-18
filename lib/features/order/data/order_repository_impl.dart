@@ -49,7 +49,7 @@ class OrderRepositoryImpl implements OrderRepository {
     final db = await DatabaseHelper.instance.database;
     return await db.transaction((txn) async {
       final existing = await _orderDao.getOrderById(order.id, executor: txn);
-      if (existing != null) {
+      if (existing != null && existing.deliveryStatus != 'cancelled') {
         final oldItems = await _orderDao.getOrderItems(order.id, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
@@ -69,6 +69,9 @@ class OrderRepositoryImpl implements OrderRepository {
           }
         }
         await _orderDao.deleteOrderItems(order.id, executor: txn);
+      } else if (existing != null) {
+        // Just clear items, no stock reversion since it was already cancelled/restored
+        await _orderDao.deleteOrderItems(order.id, executor: txn);
       }
 
       final orderId = await _orderDao.insertOrder(order, executor: txn);
@@ -76,7 +79,7 @@ class OrderRepositoryImpl implements OrderRepository {
       for (final item in items) {
         await _orderDao.insertOrderItem(item.copyWith(orderId: orderId), executor: txn);
 
-        if (item.itemId.isNotEmpty) {
+        if (item.itemId.isNotEmpty && order.deliveryStatus != 'cancelled') {
           final dbItem = await _itemDao.getItemById(item.itemId, executor: txn);
           if (dbItem != null) {
             await _itemDao.adjustStock(item.itemId, -item.quantity, executor: txn);
@@ -112,7 +115,7 @@ class OrderRepositoryImpl implements OrderRepository {
     final db = await DatabaseHelper.instance.database;
     await db.transaction((txn) async {
       final order = await _orderDao.getOrderById(id, executor: txn);
-      if (order != null) {
+      if (order != null && order.deliveryStatus != 'cancelled') {
         final oldItems = await _orderDao.getOrderItems(id, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
