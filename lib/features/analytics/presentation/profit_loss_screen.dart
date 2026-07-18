@@ -42,67 +42,85 @@ class ProfitLossScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Big Net Profit / Loss Header Card ─────────────────────
-                GlassContainer(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  borderRadius: BorderRadius.circular(24),
-                  color: isProfitable 
-                      ? const Color(0xFF064E3B).withOpacity(0.85) 
-                      : const Color(0xFF7F1D1D).withOpacity(0.85),
-                  borderColor: isProfitable 
-                      ? const Color(0xFF047857).withOpacity(0.4) 
-                      : const Color(0xFFB91C1C).withOpacity(0.4),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            isProfitable ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-                            color: Colors.white,
-                            size: 28,
+                Builder(builder: (ctx) {
+                  final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                  final bannerColor = isProfitable
+                      ? (isDark ? Colors.green.withOpacity(0.20) : Colors.green.shade100.withOpacity(0.50))
+                      : (isDark ? Colors.red.withOpacity(0.20) : Colors.red.shade100.withOpacity(0.50));
+                  final bannerBorder = isProfitable
+                      ? (isDark ? Colors.green.withOpacity(0.40) : Colors.green.shade200.withOpacity(0.60))
+                      : (isDark ? Colors.red.withOpacity(0.40) : Colors.red.shade200.withOpacity(0.60));
+                  final textColor = isProfitable
+                      ? (isDark ? Colors.white : Colors.green.shade900)
+                      : (isDark ? Colors.white : Colors.red.shade900);
+                  final secTextColor = isProfitable
+                      ? (isDark ? Colors.white70 : Colors.green.shade700)
+                      : (isDark ? Colors.white70 : Colors.red.shade700);
+                  final badgeBgColor = isProfitable
+                      ? (isDark ? Colors.white.withOpacity(0.15) : Colors.green.shade200.withOpacity(0.60))
+                      : (isDark ? Colors.white.withOpacity(0.15) : Colors.red.shade200.withOpacity(0.60));
+                  final badgeTextColor = isProfitable
+                      ? (isDark ? Colors.white : Colors.green.shade900)
+                      : (isDark ? Colors.white : Colors.red.shade900);
+
+                  return GlassContainer(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    borderRadius: BorderRadius.circular(24),
+                    color: bannerColor,
+                    borderColor: bannerBorder,
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              isProfitable ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                              color: textColor,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isProfitable ? 'NET PROFIT' : 'NET LOSS',
+                              style: TextStyle(
+                                color: secTextColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          AppFormatters.currency(netProfit.abs()),
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 36,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            isProfitable ? 'NET PROFIT' : 'NET LOSS',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: badgeBgColor,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${isProfitable ? '+' : ''}${marginPct.toStringAsFixed(1)}% Net Margin',
+                            style: TextStyle(
+                              color: badgeTextColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        AppFormatters.currency(netProfit.abs()),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${isProfitable ? '+' : ''}${marginPct.toStringAsFixed(1)}% Net Margin',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                      ],
+                    ),
+                  );
+                }),
 
                 const SizedBox(height: 24),
 
@@ -328,7 +346,7 @@ class ProfitLossScreen extends ConsumerWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context)),
               ),
             ],
           ),
@@ -338,7 +356,7 @@ class ProfitLossScreen extends ConsumerWidget {
           style: TextStyle(
             fontWeight: isBold ? FontWeight.w900 : FontWeight.w700,
             fontSize: isBold ? 16 : 14,
-            color: amountColor ?? AppColors.textPrimary,
+            color: amountColor ?? AppColors.textPrimaryColor(context),
           ),
         ),
       ],
@@ -369,7 +387,7 @@ class ProfitLossScreen extends ConsumerWidget {
         const SizedBox(height: 6),
         LinearProgressIndicator(
           value: pct,
-          backgroundColor: AppColors.gray200,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : AppColors.gray200,
           color: color,
           minHeight: 8,
           borderRadius: BorderRadius.circular(4),

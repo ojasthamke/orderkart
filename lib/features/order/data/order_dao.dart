@@ -373,8 +373,8 @@ class OrderDao {
 
     final customerCount = await db.rawQuery(
         isWorker
-            ? "SELECT COUNT(*) AS v FROM customers WHERE (created_by = ? OR assigned_worker_id = ? OR id IN (SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'customer'))"
-            : 'SELECT COUNT(*) AS v FROM customers',
+            ? "SELECT COUNT(*) AS v FROM customers WHERE is_archived = 0 AND (created_by = ? OR assigned_worker_id = ? OR id IN (SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'customer'))"
+            : 'SELECT COUNT(*) AS v FROM customers WHERE is_archived = 0',
         isWorker ? [workerId, workerId, workerId] : null);
 
     final orderCount = await db.rawQuery(
@@ -384,12 +384,13 @@ class OrderDao {
         isWorker ? [workerId, workerId] : null);
 
     final itemCount = await db.rawQuery(
-        'SELECT COUNT(*) AS v FROM items');
+        'SELECT COUNT(*) AS v FROM items WHERE is_archived = 0');
 
     final vipCount = await db.rawQuery(
         isWorker
-            ? "SELECT COUNT(*) AS v FROM customers WHERE is_vip = 1 AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COUNT(*) AS v FROM customers WHERE is_vip = 1");
+            ? "SELECT COUNT(*) AS v FROM customers WHERE is_vip = 1 AND is_archived = 0 AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM customers WHERE is_vip = 1 AND is_archived = 0",
+        isWorker ? [workerId, workerId] : null);
 
     final todayExpenses = await db.rawQuery(
         isWorker
@@ -420,7 +421,7 @@ class OrderDao {
 
     // Low stock items
     final lowStock = await db.rawQuery(
-        'SELECT * FROM items WHERE min_stock > 0 AND stock <= min_stock ORDER BY stock ASC LIMIT 10');
+        'SELECT * FROM items WHERE min_stock > 0 AND stock <= min_stock AND is_archived = 0 ORDER BY stock ASC LIMIT 10');
 
     // Status counts
     final deliveredOrders = await db.rawQuery(
@@ -485,8 +486,8 @@ class OrderDao {
     // 1. Gross Revenue
     final revenueRes = await db.rawQuery(
         isWorker
-            ? 'SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?)'
-            : 'SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders',
+            ? "SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled'"
+            : "SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders WHERE delivery_status != 'cancelled'",
         isWorker ? [workerId, workerId] : null);
     final totalRevenue = (revenueRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
@@ -497,12 +498,13 @@ class OrderDao {
               SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0)), 0) AS v
               FROM order_items oi
               LEFT JOIN items i ON oi.item_id = i.id
-              WHERE oi.order_id IN (SELECT id FROM orders WHERE created_by = ? OR assigned_worker_id = ?)
+              WHERE oi.order_id IN (SELECT id FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled')
               '''
             : '''
               SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0)), 0) AS v
               FROM order_items oi
               LEFT JOIN items i ON oi.item_id = i.id
+              WHERE oi.order_id IN (SELECT id FROM orders WHERE delivery_status != 'cancelled')
               ''',
         isWorker ? [workerId, workerId] : null);
     final cogs = (cogsRes.first['v'] as num?)?.toDouble() ?? 0.0;
@@ -518,16 +520,16 @@ class OrderDao {
     // 4. Discounts Given
     final discountRes = await db.rawQuery(
         isWorker
-            ? 'SELECT COALESCE(SUM(discount), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?)'
-            : 'SELECT COALESCE(SUM(discount), 0) AS v FROM orders',
+            ? "SELECT COALESCE(SUM(discount), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled'"
+            : "SELECT COALESCE(SUM(discount), 0) AS v FROM orders WHERE delivery_status != 'cancelled'",
         isWorker ? [workerId, workerId] : null);
     final totalDiscounts = (discountRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     // 5. Delivery Income
     final deliveryRes = await db.rawQuery(
         isWorker
-            ? 'SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?)'
-            : 'SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders',
+            ? "SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled'"
+            : "SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE delivery_status != 'cancelled'",
         isWorker ? [workerId, workerId] : null);
     final totalDeliveryIncome = (deliveryRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
@@ -560,14 +562,14 @@ class OrderDao {
             ? '''
               SELECT DATE(created_at) AS day, COALESCE(SUM(grand_total), 0) AS total
               FROM orders
-              WHERE created_at >= datetime('now', '-7 days') AND (created_by = ? OR assigned_worker_id = ?)
+              WHERE created_at >= datetime('now', '-7 days') AND delivery_status != 'cancelled' AND (created_by = ? OR assigned_worker_id = ?)
               GROUP BY DATE(created_at)
               ORDER BY day ASC
               '''
             : '''
               SELECT DATE(created_at) AS day, COALESCE(SUM(grand_total), 0) AS total
               FROM orders
-              WHERE created_at >= datetime('now', '-7 days')
+              WHERE created_at >= datetime('now', '-7 days') AND delivery_status != 'cancelled'
               GROUP BY DATE(created_at)
               ORDER BY day ASC
               ''',
@@ -586,14 +588,14 @@ class OrderDao {
             ? '''
               SELECT strftime('%Y-%m', created_at) AS month, COALESCE(SUM(grand_total), 0) AS total
               FROM orders
-              WHERE created_at >= datetime('now', '-6 months') AND (created_by = ? OR assigned_worker_id = ?)
+              WHERE created_at >= datetime('now', '-6 months') AND delivery_status != 'cancelled' AND (created_by = ? OR assigned_worker_id = ?)
               GROUP BY strftime('%Y-%m', created_at)
               ORDER BY month ASC
               '''
             : '''
               SELECT strftime('%Y-%m', created_at) AS month, COALESCE(SUM(grand_total), 0) AS total
               FROM orders
-              WHERE created_at >= datetime('now', '-6 months')
+              WHERE created_at >= datetime('now', '-6 months') AND delivery_status != 'cancelled'
               GROUP BY strftime('%Y-%m', created_at)
               ORDER BY month ASC
               ''',
@@ -621,7 +623,7 @@ class OrderDao {
                 MAX(o.created_at) AS last_order_date
               FROM customers c
               LEFT JOIN orders o ON c.id = o.customer_id AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)
-              WHERE (c.assigned_worker_id = ? OR c.created_by = ? OR c.id IN (SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'customer'))
+              WHERE c.is_archived = 0 AND (c.assigned_worker_id = ? OR c.created_by = ? OR c.id IN (SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'customer'))
               GROUP BY c.id
               '''
             : '''
@@ -637,6 +639,7 @@ class OrderDao {
                 MAX(o.created_at) AS last_order_date
               FROM customers c
               LEFT JOIN orders o ON c.id = o.customer_id AND o.delivery_status != 'cancelled'
+              WHERE c.is_archived = 0
               GROUP BY c.id
               ''',
         isWorker ? [workerId, workerId, workerId, workerId, workerId] : null);
@@ -658,14 +661,14 @@ class OrderDao {
               SELECT o.*, o.rowid AS order_number, c.name AS customer_name
               FROM orders o
               LEFT JOIN customers c ON o.customer_id = c.id
-              WHERE DATE(o.created_at) = DATE(?) AND (o.created_by = ? OR o.assigned_worker_id = ?)
+              WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)
               ORDER BY o.created_at DESC
               '''
             : '''
               SELECT o.*, o.rowid AS order_number, c.name AS customer_name
               FROM orders o
               LEFT JOIN customers c ON o.customer_id = c.id
-              WHERE DATE(o.created_at) = DATE(?)
+              WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled'
               ORDER BY o.created_at DESC
               ''',
         isWorker ? [today, workerId, workerId] : [today]);
@@ -676,14 +679,14 @@ class OrderDao {
             ? '''
               SELECT item_name, item_unit, SUM(quantity) AS qty, SUM(total_price) AS total
               FROM order_items
-              WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?) AND (created_by = ? OR assigned_worker_id = ?))
+              WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND (created_by = ? OR assigned_worker_id = ?))
               GROUP BY item_name, item_unit
               ORDER BY qty DESC
               '''
             : '''
               SELECT item_name, item_unit, SUM(quantity) AS qty, SUM(total_price) AS total
               FROM order_items
-              WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?))
+              WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled')
               GROUP BY item_name, item_unit
               ORDER BY qty DESC
               ''',
@@ -693,28 +696,32 @@ class OrderDao {
     final cashPayments = await db.rawQuery(
         isWorker
             ? '''
-              SELECT COALESCE(SUM(amount), 0) AS v
-              FROM payments
-              WHERE DATE(created_at) = DATE(?) AND method = 'cash' AND (created_by = ? OR assigned_worker_id = ?)
+              SELECT COALESCE(SUM(p.amount), 0) AS v
+              FROM payments p
+              JOIN orders o ON p.order_id = o.id
+              WHERE DATE(p.created_at) = DATE(?) AND p.method = 'cash' AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)
               '''
             : '''
-              SELECT COALESCE(SUM(amount), 0) AS v
-              FROM payments
-              WHERE DATE(created_at) = DATE(?) AND method = 'cash'
+              SELECT COALESCE(SUM(p.amount), 0) AS v
+              FROM payments p
+              JOIN orders o ON p.order_id = o.id
+              WHERE DATE(p.created_at) = DATE(?) AND p.method = 'cash' AND o.delivery_status != 'cancelled'
               ''',
         isWorker ? [today, workerId, workerId] : [today]);
 
     final onlinePayments = await db.rawQuery(
         isWorker
             ? '''
-              SELECT COALESCE(SUM(amount), 0) AS v
-              FROM payments
-              WHERE DATE(created_at) = DATE(?) AND method != 'cash' AND (created_by = ? OR assigned_worker_id = ?)
+              SELECT COALESCE(SUM(p.amount), 0) AS v
+              FROM payments p
+              JOIN orders o ON p.order_id = o.id
+              WHERE DATE(p.created_at) = DATE(?) AND p.method != 'cash' AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)
               '''
             : '''
-              SELECT COALESCE(SUM(amount), 0) AS v
-              FROM payments
-              WHERE DATE(created_at) = DATE(?) AND method != 'cash'
+              SELECT COALESCE(SUM(p.amount), 0) AS v
+              FROM payments p
+              JOIN orders o ON p.order_id = o.id
+              WHERE DATE(p.created_at) = DATE(?) AND p.method != 'cash' AND o.delivery_status != 'cancelled'
               ''',
         isWorker ? [today, workerId, workerId] : [today]);
 
@@ -723,12 +730,12 @@ class OrderDao {
             ? '''
               SELECT COALESCE(SUM(grand_total), 0) AS v
               FROM orders
-              WHERE DATE(created_at) = DATE(?) AND (created_by = ? OR assigned_worker_id = ?)
+              WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND (created_by = ? OR assigned_worker_id = ?)
               '''
             : '''
               SELECT COALESCE(SUM(grand_total), 0) AS v
               FROM orders
-              WHERE DATE(created_at) = DATE(?)
+              WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled'
               ''',
         isWorker ? [today, workerId, workerId] : [today]);
 

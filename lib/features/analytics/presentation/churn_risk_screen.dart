@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -43,22 +44,22 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
         SELECT 
           c.id, 
           c.name, 
-          c.phone, 
+          c.phone1 AS phone, 
           c.is_vip,
           (
             SELECT MAX(created_at) 
             FROM orders 
-            WHERE customer_id = c.id
+            WHERE customer_id = c.id AND delivery_status != 'cancelled'
           ) as last_order_date,
           (
             SELECT SUM(grand_total)
             FROM orders
-            WHERE customer_id = c.id
+            WHERE customer_id = c.id AND delivery_status != 'cancelled'
           ) as lifetime_value,
           (
             SELECT COUNT(id)
             FROM orders
-            WHERE customer_id = c.id
+            WHERE customer_id = c.id AND delivery_status != 'cancelled'
           ) as order_count
         FROM customers c
         WHERE c.is_archived = 0
@@ -223,9 +224,9 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
         final days = p['days_since'] == 999 ? 'Never' : '${p['days_since']} days';
         final isVip = p['is_vip'] as bool;
 
-        return Card(
+        return GlassContainer(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -254,7 +255,7 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
                             const SizedBox(height: 2),
                             Text(
                               'Phone: ${p['phone']}',
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              style: TextStyle(fontSize: 12, color: AppColors.textSecondaryColor(context)),
                             ),
                           ],
                         ),
@@ -284,7 +285,7 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Last Ordered', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text('Last Ordered', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context))),
                         const SizedBox(height: 2),
                         Text(days, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       ],
@@ -292,7 +293,7 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('LTV', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text('LTV', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context))),
                         const SizedBox(height: 2),
                         Text(
                           AppFormatters.currency(p['lifetime_value']),
@@ -303,7 +304,7 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Promo Discount', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text('Promo Discount', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context))),
                         const SizedBox(height: 2),
                         Text(
                           '₹${(p['promo_amount'] as double).toStringAsFixed(0)}',

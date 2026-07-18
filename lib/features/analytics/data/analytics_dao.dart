@@ -19,6 +19,7 @@ class AnalyticsDao {
         COALESCE(SUM(o.grand_total - o.paid_amount), 0) AS total_outstanding
       FROM workers w
       LEFT JOIN orders o ON o.assigned_worker_id = w.id AND o.delivery_status != 'cancelled'
+      WHERE w.is_archived = 0
       GROUP BY w.id
       ORDER BY total_sales DESC
     ''');
@@ -75,6 +76,7 @@ class AnalyticsDao {
         DATE(created_at) AS date,
         COUNT(id) AS new_customers_count
       FROM customers
+      WHERE is_archived = 0
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     ''');
@@ -88,11 +90,11 @@ class AnalyticsDao {
     final salesRes = await db.rawQuery('''
       SELECT 
         (SELECT COALESCE(SUM(grand_total), 0) FROM orders WHERE delivery_status != 'cancelled') AS total_sales,
-        COALESCE(SUM(oi.quantity * i.cost_price), 0) AS total_cost
-      FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
-      LEFT JOIN items i ON oi.item_id = i.id
-      WHERE o.delivery_status != 'cancelled'
+        (SELECT COALESCE(SUM(oi.quantity * i.cost_price), 0) 
+         FROM order_items oi
+         JOIN orders o ON oi.order_id = o.id
+         LEFT JOIN items i ON oi.item_id = i.id
+         WHERE o.delivery_status != 'cancelled') AS total_cost
     ''');
     
     final double sales = (salesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;

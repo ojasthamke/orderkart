@@ -10,6 +10,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/customer_avatar.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/services/worker_session.dart';
 import '../../../core/security/app_mode_service.dart';
 
@@ -35,9 +36,9 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       SELECT COALESCE(SUM(o.grand_total), 0) as total_sales, COUNT(o.id) as order_count 
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
-      WHERE o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR c.assigned_worker_id = ? OR o.id IN (
+      WHERE (o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR c.assigned_worker_id = ? OR o.id IN (
         SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
-      )
+      )) AND o.delivery_status != 'cancelled'
     ''', [wid, wid, wid, wid, wid]);
     
     final totalSales = (orderRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
@@ -52,7 +53,7 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       WHERE (o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
              c.assigned_worker_id = ? OR o.id IN (
                SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
-             )) AND LOWER(p.method) = 'cash'
+             )) AND LOWER(p.method) = 'cash' AND o.delivery_status != 'cancelled'
     ''', [wid, wid, wid, wid, wid]);
 
     final onlineRes = await db.rawQuery('''
@@ -63,7 +64,7 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
       WHERE (o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
              c.assigned_worker_id = ? OR o.id IN (
                SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
-             )) AND LOWER(p.method) != 'cash'
+             )) AND LOWER(p.method) != 'cash' AND o.delivery_status != 'cancelled'
     ''', [wid, wid, wid, wid, wid]);
 
     final cashColl = (cashRes.first['sum'] as num?)?.toDouble() ?? 0.0;
@@ -72,21 +73,21 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
 
     // Fetch areas added
     final areaRes = await db.rawQuery(
-      "SELECT COUNT(id) as count FROM locations WHERE location_kind = 'area' AND (assigned_worker_id = ? OR created_by = ? OR worker_name = ?)",
+      "SELECT COUNT(id) as count FROM locations WHERE location_kind = 'area' AND is_archived = 0 AND (assigned_worker_id = ? OR created_by = ? OR worker_name = ?)",
       [wid, wid, wname],
     );
     final areasAdded = (areaRes.first['count'] as num?)?.toInt() ?? 0;
 
     // Fetch streets added
     final streetRes = await db.rawQuery(
-      "SELECT COUNT(id) as count FROM locations WHERE location_kind = 'road' AND (assigned_worker_id = ? OR created_by = ? OR worker_name = ?)",
+      "SELECT COUNT(id) as count FROM locations WHERE location_kind = 'road' AND is_archived = 0 AND (assigned_worker_id = ? OR created_by = ? OR worker_name = ?)",
       [wid, wid, wname],
     );
     final streetsAdded = (streetRes.first['count'] as num?)?.toInt() ?? 0;
 
     // Fetch customer count
     final custRes = await db.rawQuery(
-      'SELECT COUNT(id) as count FROM customers WHERE assigned_worker_id = ? OR created_by = ? OR worker_name = ?',
+      'SELECT COUNT(id) as count FROM customers WHERE is_archived = 0 AND (assigned_worker_id = ? OR created_by = ? OR worker_name = ?)',
       [wid, wid, wname],
     );
     final customerCount = (custRes.first['count'] as num?)?.toInt() ?? 0;
@@ -101,7 +102,7 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
 
     // Fetch photos uploaded count
     final photosRes = await db.rawQuery(
-      'SELECT COUNT(id) as count FROM customers WHERE (assigned_worker_id = ? OR created_by = ? OR worker_name = ?) AND photo_path != ""',
+      'SELECT COUNT(id) as count FROM customers WHERE is_archived = 0 AND (assigned_worker_id = ? OR created_by = ? OR worker_name = ?) AND photo_path != ""',
       [wid, wid, wname],
     );
     final photosUploaded = (photosRes.first['count'] as num?)?.toInt() ?? 0;
@@ -158,7 +159,7 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
   final salesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(grand_total), 0) as total_sales, COUNT(id) as order_count 
     FROM orders 
-    WHERE assigned_worker_id = ? OR created_by = ?
+    WHERE (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
   ''', [workerId, workerId]);
   final totalSales = (salesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
   final orderCount = (salesRes.first['order_count'] as num?)?.toInt() ?? 0;
@@ -170,21 +171,21 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
   final todaySalesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(grand_total), 0) as total_sales 
     FROM orders 
-    WHERE DATE(created_at) = DATE(?) AND (assigned_worker_id = ? OR created_by = ?)
+    WHERE DATE(created_at) = DATE(?) AND (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
   ''', [todayStr, workerId, workerId]);
   final todaySales = (todaySalesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
 
   final monthlySalesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(grand_total), 0) as total_sales 
     FROM orders 
-    WHERE strftime('%Y-%m', created_at) = ? AND (assigned_worker_id = ? OR created_by = ?)
+    WHERE strftime('%Y-%m', created_at) = ? AND (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
   ''', [monthStr, workerId, workerId]);
   final monthlySales = (monthlySalesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
 
   final duesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(remaining_amount), 0) as pending_dues 
     FROM orders 
-    WHERE remaining_amount > 0 AND (assigned_worker_id = ? OR created_by = ?)
+    WHERE remaining_amount > 0 AND (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
   ''', [workerId, workerId]);
   final pendingDues = (duesRes.first['pending_dues'] as num?)?.toDouble() ?? 0.0;
 
@@ -193,7 +194,7 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
     SELECT COALESCE(SUM(p.amount), 0) as sum 
     FROM payments p
     JOIN orders o ON p.order_id = o.id
-    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) = 'cash'
+    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) = 'cash' AND o.delivery_status != 'cancelled'
   ''', [workerId, workerId]);
   final cashColl = (cashRes.first['sum'] as num?)?.toDouble() ?? 0.0;
 
@@ -201,7 +202,7 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
     SELECT COALESCE(SUM(p.amount), 0) as sum 
     FROM payments p
     JOIN orders o ON p.order_id = o.id
-    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) != 'cash'
+    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) != 'cash' AND o.delivery_status != 'cancelled'
   ''', [workerId, workerId]);
   final onlineColl = (onlineRes.first['sum'] as num?)?.toDouble() ?? 0.0;
   final totalColl = cashColl + onlineColl;
@@ -225,7 +226,7 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
   final custRes = await db.rawQuery('''
     SELECT COUNT(id) as count 
     FROM customers 
-    WHERE assigned_worker_id = ? OR created_by = ? OR id IN (SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'customer')
+    WHERE is_archived = 0 AND (assigned_worker_id = ? OR created_by = ? OR id IN (SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'customer'))
   ''', [workerId, workerId, workerId]);
   final customerCount = (custRes.first['count'] as num?)?.toInt() ?? 0;
 
@@ -235,7 +236,7 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
   final photosRes = await db.rawQuery('''
     SELECT COUNT(id) as count 
     FROM customers 
-    WHERE (assigned_worker_id = ? OR created_by = ?) AND photo_path != ""
+    WHERE is_archived = 0 AND (assigned_worker_id = ? OR created_by = ?) AND photo_path != ""
   ''', [workerId, workerId]);
   final photosUploaded = (photosRes.first['count'] as num?)?.toInt() ?? 0;
 
@@ -476,15 +477,15 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  const Row(
+                  Row(
                     children: [
-                      Text('Worker Performance Leaderboard', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                      SizedBox(width: 6),
-                      Icon(Icons.touch_app_outlined, color: AppColors.primary, size: 16),
+                      const Text('Worker Performance Leaderboard', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.touch_app_outlined, color: AppColors.primary, size: 16),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text('Tap any worker card below to open their detailed report and charts.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  Text('Tap any worker card below to open their detailed report and charts.', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryColor(context))),
                   const SizedBox(height: 16),
 
                   ListView.builder(
@@ -537,7 +538,7 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                                       children: [
                                         Text(w['name'] as String, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                                         if ((w['employee_id'] as String).isNotEmpty)
-                                          Text('ID: ${w['employee_id']}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                          Text('ID: ${w['employee_id']}', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context))),
                                       ],
                                     ),
                                   ),
@@ -577,10 +578,10 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                                 children: [
-                                  _subStat('Sales', AppFormatters.currency(w['total_sales'] as double)),
-                                  _subStat('Commission', AppFormatters.currency(w['commission_earned'] as double)),
-                                  _subStat('Expenses', AppFormatters.currency(w['total_expenses'] as double)),
-                                  _subStat('Customers', '${w['customer_count']}'),
+                                  _subStat(context, 'Sales', AppFormatters.currency(w['total_sales'] as double)),
+                                  _subStat(context, 'Commission', AppFormatters.currency(w['commission_earned'] as double)),
+                                  _subStat(context, 'Expenses', AppFormatters.currency(w['total_expenses'] as double)),
+                                  _subStat(context, 'Customers', '${w['customer_count']}'),
                                 ],
                               ),
                             ],
@@ -599,10 +600,10 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _subStat(String label, String value) {
+  Widget _subStat(BuildContext context, String label, String value) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimaryColor(context))),
         Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textHint)),
       ],
     );
@@ -642,7 +643,7 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('$workerName Report', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-                              const Text('Detailed analytics and history', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                              Text('Detailed analytics and history', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryColor(context))),
                             ],
                           ),
                         ),
@@ -828,17 +829,12 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
-                Container(
+                GlassContainer(
                   height: 220,
                   padding: const EdgeInsets.fromLTRB(8, 16, 24, 8),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1F2937) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.gray200),
-                  ),
                   child: weeklySalesData.isEmpty
                       ? const Center(child: Text('Not enough sales trend data'))
-                      : _buildLineChart(weeklySalesData),
+                      : _buildLineChart(context, weeklySalesData),
                 ),
                 const SizedBox(height: 24),
 
@@ -883,29 +879,25 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
-                Container(
+                GlassContainer(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1F2937) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.gray200),
-                  ),
+                  borderRadius: BorderRadius.circular(16),
                   child: Column(
                     children: [
-                      _detailRow('All-Time Sales', AppFormatters.currency(stats['total_sales'] as double)),
+                      _detailRow(context, 'All-Time Sales', AppFormatters.currency(stats['total_sales'] as double)),
                       const Divider(height: 20),
-                      _detailRow('Average Order Value (AOV)', 
+                      _detailRow(context, 'Average Order Value (AOV)', 
                           AppFormatters.currency(orderCount > 0 ? ((stats['total_sales'] as double) / orderCount) : 0.0)),
                       const Divider(height: 20),
-                      _detailRow('Expenses Logged', AppFormatters.currency(totalExpenses), valueColor: AppColors.error),
+                      _detailRow(context, 'Expenses Logged', AppFormatters.currency(totalExpenses), valueColor: AppColors.error),
                       const Divider(height: 20),
-                      _detailRow('Active Customers Served', '${stats['customer_count']}'),
+                      _detailRow(context, 'Active Customers Served', '${stats['customer_count']}'),
                       const Divider(height: 20),
-                      _detailRow('Assigned Areas/Streets', '${stats['areas_count']} / ${stats['streets_count']}'),
+                      _detailRow(context, 'Assigned Areas/Streets', '${stats['areas_count']} / ${stats['streets_count']}'),
                       const Divider(height: 20),
-                      _detailRow('Notes Logged', '${stats['notes_count']}'),
+                      _detailRow(context, 'Notes Logged', '${stats['notes_count']}'),
                       const Divider(height: 20),
-                      _detailRow('Photos Uploaded', '${stats['photos_uploaded']}'),
+                      _detailRow(context, 'Photos Uploaded', '${stats['photos_uploaded']}'),
                     ],
                   ),
                 ),
@@ -917,13 +909,9 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
-                Container(
+                GlassContainer(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1F2937) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.gray200),
-                  ),
+                  borderRadius: BorderRadius.circular(16),
                   child: Column(
                     children: [
                       _paymentSplitRow(
@@ -960,12 +948,9 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1F2937) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.gray200),
-                  ),
+                GlassContainer(
+                  borderRadius: BorderRadius.circular(16),
+                  padding: EdgeInsets.zero,
                   child: topItems.isEmpty
                       ? const Padding(
                           padding: EdgeInsets.all(24),
@@ -1003,12 +988,9 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1F2937) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.gray200),
-                  ),
+                GlassContainer(
+                  borderRadius: BorderRadius.circular(16),
+                  padding: EdgeInsets.zero,
                   child: topCustomers.isEmpty
                       ? const Padding(
                           padding: EdgeInsets.all(24),
@@ -1055,7 +1037,7 @@ class _WorkerStatsDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _buildLineChart(List<dynamic> data) {
+  Widget _buildLineChart(BuildContext context, List<dynamic> data) {
     final List<FlSpot> spots = [];
     final List<String> labels = [];
 
@@ -1082,7 +1064,7 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     labels[index],
-                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 10, color: AppColors.textSecondaryColor(context)),
                   ),
                 );
               },
@@ -1108,12 +1090,12 @@ class _WorkerStatsDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _detailRow(String label, String value, {Color? valueColor}) {
+  Widget _detailRow(BuildContext context, String label, String value, {Color? valueColor}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-        Text(value, style: TextStyle(fontWeight: FontWeight.w700, color: valueColor ?? AppColors.textPrimary)),
+        Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondaryColor(context))),
+        Text(value, style: TextStyle(fontWeight: FontWeight.w700, color: valueColor ?? AppColors.textPrimaryColor(context))),
       ],
     );
   }

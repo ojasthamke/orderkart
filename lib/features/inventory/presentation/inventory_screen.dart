@@ -1080,7 +1080,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                               AppFormatters.currency(overallProfit),
                               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: overallProfit >= 0 ? Colors.green : Colors.red,
+                                    color: overallProfit >= 0 ? AppColors.success : AppColors.error,
                                   ),
                             ),
                           ],
@@ -1179,7 +1179,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                               Text(
                                 AppFormatters.currency(profit),
                                 style: TextStyle(
-                                  color: profit >= 0 ? Colors.green[700] : Colors.red,
+                                  color: profit >= 0 ? AppColors.success : AppColors.error,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
                                 ),

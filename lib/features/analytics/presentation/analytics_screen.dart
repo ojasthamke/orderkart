@@ -7,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/loading_shimmer.dart';
+import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
@@ -117,52 +118,55 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   ),
 
                   // ── Worker Performance Banner ────────────────────────
-                  Container(
-                    margin: const EdgeInsets.only(top: 16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, Color(0xFF1E40AF)],
-                        begin: Alignment.topLeft, end: Alignment.bottomRight,
-                      ),
+                  Builder(builder: (ctx) {
+                    final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                    final bannerColor = isDark ? AppColors.primary.withOpacity(0.20) : AppColors.primary.withOpacity(0.08);
+                    final bannerBorder = isDark ? AppColors.primary.withOpacity(0.40) : AppColors.primary.withOpacity(0.20);
+                    final textColor = isDark ? Colors.white : AppColors.primary;
+                    final secTextColor = isDark ? Colors.white70 : AppColors.textSecondary;
+
+                    return GlassContainer(
+                      margin: const EdgeInsets.only(top: 16),
+                      padding: const EdgeInsets.all(16),
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: AppColors.cardShadow,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
+                      color: bannerColor,
+                      borderColor: bannerBorder,
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.badge_rounded, color: AppColors.primary, size: 28),
                           ),
-                          child: const Icon(Icons.badge_rounded, color: Colors.white, size: 28),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Worker Analytics & Leaderboard',
-                                  style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 15)),
-                              const SizedBox(height: 2),
-                              Text('Track collections, commissions & sales per worker',
-                                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.8))),
-                            ],
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Worker Analytics & Leaderboard',
+                                    style: TextStyle(fontWeight: FontWeight.w800, color: textColor, fontSize: 15)),
+                                const SizedBox(height: 2),
+                                Text('Track collections, commissions & sales per worker',
+                                    style: TextStyle(fontSize: 11, color: secTextColor)),
+                              ],
+                            ),
                           ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.workerAnalytics),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(context).pushNamed(AppRoutes.workerAnalytics),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('View', style: TextStyle(fontWeight: FontWeight.w800)),
                           ),
-                          child: const Text('View', style: TextStyle(fontWeight: FontWeight.w800)),
-                        ),
-                      ],
-                    ),
-                  ),
+                        ],
+                      ),
+                    );
+                  }),
 
                   const SizedBox(height: 24),
 
@@ -515,7 +519,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: pending > 0 ? FontWeight.w600 : FontWeight.normal,
-                                      color: pending > 0 ? AppColors.error : AppColors.textSecondary,
+                                      color: pending > 0 ? AppColors.error : AppColors.textSecondaryColor(context),
                                     ),
                                   ),
                                   if (lastOrder.isNotEmpty) ...[
@@ -687,12 +691,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                       fontWeight: FontWeight.w700, color: AppColors.error),
                                 ),
                                 const SizedBox(height: 8),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.error.withOpacity(0.04),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppColors.error.withOpacity(0.2)),
-                                  ),
+                                Builder(builder: (ctx) {
+                                   final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                                   return GlassContainer(
+                                     borderRadius: BorderRadius.circular(12),
+                                     padding: EdgeInsets.zero,
+                                     color: isDark ? AppColors.error.withOpacity(0.12) : AppColors.error.withOpacity(0.04),
+                                     borderColor: isDark ? AppColors.error.withOpacity(0.3) : AppColors.error.withOpacity(0.2),
                                   child: ListView.separated(
                                     shrinkWrap: true,
                                     physics: const NeverScrollableScrollPhysics(),
@@ -715,7 +720,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                       );
                                     },
                                   ),
-                                ),
+                                );
+                              }),
                               ],
 
                               if (lowList.isNotEmpty) ...[
@@ -726,12 +732,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                       fontWeight: FontWeight.w700, color: AppColors.warning),
                                 ),
                                 const SizedBox(height: 8),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.warning.withOpacity(0.04),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: AppColors.warning.withOpacity(0.2)),
-                                  ),
+                                 Builder(builder: (ctx) {
+                                   final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                                   return GlassContainer(
+                                     borderRadius: BorderRadius.circular(12),
+                                     padding: EdgeInsets.zero,
+                                     color: isDark ? AppColors.warning.withOpacity(0.12) : AppColors.warning.withOpacity(0.04),
+                                     borderColor: isDark ? AppColors.warning.withOpacity(0.3) : AppColors.warning.withOpacity(0.2),
                                   child: ListView.separated(
                                     shrinkWrap: true,
                                     physics: const NeverScrollableScrollPhysics(),
@@ -755,7 +762,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                       );
                                     },
                                   ),
-                                ),
+                                );
+                              }),
                               ],
                             ],
                           );
@@ -799,7 +807,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     labels[index],
-                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 10, color: AppColors.textSecondaryColor(context)),
                   ),
                 );
               },
@@ -831,13 +839,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondaryColor(context)),
         ),
         Text(
           value,
           style: TextStyle(
             fontWeight: FontWeight.w700,
-            color: valueColor ?? AppColors.textPrimary,
+            color: valueColor ?? AppColors.textPrimaryColor(context),
           ),
         ),
       ],
