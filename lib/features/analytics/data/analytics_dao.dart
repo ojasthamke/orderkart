@@ -19,7 +19,6 @@ class AnalyticsDao {
         COALESCE(SUM(o.grand_total - o.paid_amount), 0) AS total_outstanding
       FROM workers w
       LEFT JOIN orders o ON o.assigned_worker_id = w.id AND o.delivery_status != 'cancelled'
-      WHERE w.is_archived = 0
       GROUP BY w.id
       ORDER BY total_sales DESC
     ''');
