@@ -168,6 +168,42 @@ class OrderRepositoryImpl implements OrderRepository {
             }
           }
         }
+        // Void payments for the order
+        await txn.delete('payments', where: 'order_id = ?', whereArgs: [orderId]);
+        // Set order paid and remaining to 0
+        await txn.update(
+          'orders',
+          {'paid_amount': 0.0, 'remaining_amount': 0.0},
+          where: 'id = ?',
+          whereArgs: [orderId],
+        );
+      } else if (status != 'cancelled' && order.deliveryStatus == 'cancelled') {
+        // Un-cancel: deduct stock again
+        final oldItems = await _orderDao.getOrderItems(orderId, executor: txn);
+        for (final oldItem in oldItems) {
+          if (oldItem.itemId.isNotEmpty) {
+            final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
+            if (dbItem != null) {
+              await _itemDao.adjustStock(oldItem.itemId, -oldItem.quantity, executor: txn);
+              await _itemDao.insertStockHistory(StockHistory(
+                id:           _uuid.v4(),
+                itemId:       oldItem.itemId,
+                itemName:     oldItem.itemName,
+                changeAmount: -oldItem.quantity,
+                reason:       'order_uncancelled',
+                orderId:      orderId,
+                createdAt:    DateTime.now(),
+              ), executor: txn);
+            }
+          }
+        }
+        // Set order remaining amount back to grand_total
+        await txn.update(
+          'orders',
+          {'paid_amount': 0.0, 'remaining_amount': order.grandTotal},
+          where: 'id = ?',
+          whereArgs: [orderId],
+        );
       }
 
       await _orderDao.updateDeliveryStatus(orderId, status, executor: txn);
