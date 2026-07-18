@@ -253,7 +253,9 @@ class _StockAdjustmentScreenState
       
       if (_autoLogExpense) {
         final itemObj = await ItemDao().getItemById(widget.itemId);
-        final rate = itemObj?.sellingPrice ?? 0.0;
+        final rate = (itemObj?.costPrice != null && itemObj!.costPrice > 0)
+            ? itemObj.costPrice
+            : (itemObj?.sellingPrice ?? 0.0);
         final costLoss = _change * rate;
         if (costLoss > 0) {
           await ExpenseDao().insertExpense(

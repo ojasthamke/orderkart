@@ -186,18 +186,32 @@ class OrderDao {
 
     final map = order.toMap();
 
-    await db.insert('orders', {
-      ...map,
-      'id':                 id,
-      'assigned_worker_id': assignedWorkerId,
-      'created_by':         createdBy,
-      'worker_name':        workerName,
-      'device_name':        deviceName,
-      'commission_rate':    commRate > 0 ? commRate : 5.0,
-      'commission_type':    commType.isNotEmpty ? commType : 'pct_order',
-      'created_at':         order.createdAt.toIso8601String(),
-      'updated_at':         now,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    final existing = await db.query('orders', columns: ['id'], where: 'id = ?', whereArgs: [id]);
+    if (existing.isNotEmpty) {
+      await db.update('orders', {
+        ...map,
+        'assigned_worker_id': assignedWorkerId,
+        'created_by':         createdBy,
+        'worker_name':        workerName,
+        'device_name':        deviceName,
+        'commission_rate':    commRate > 0 ? commRate : 5.0,
+        'commission_type':    commType.isNotEmpty ? commType : 'pct_order',
+        'updated_at':         now,
+      }, where: 'id = ?', whereArgs: [id]);
+    } else {
+      await db.insert('orders', {
+        ...map,
+        'id':                 id,
+        'assigned_worker_id': assignedWorkerId,
+        'created_by':         createdBy,
+        'worker_name':        workerName,
+        'device_name':        deviceName,
+        'commission_rate':    commRate > 0 ? commRate : 5.0,
+        'commission_type':    commType.isNotEmpty ? commType : 'pct_order',
+        'created_at':         order.createdAt.toIso8601String(),
+        'updated_at':         now,
+      });
+    }
     return id;
   }
 

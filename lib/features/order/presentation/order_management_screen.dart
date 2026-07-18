@@ -17,6 +17,7 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../customer/presentation/customer_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 import '../domain/order.dart';
 import '../data/order_dao.dart';
 import '../domain/payment.dart';
@@ -266,16 +267,22 @@ class _OrderManagementScreenState
         : (order.deliveryStatus == AppConstants.statusCancelled
             ? AppConstants.statusPending
             : AppConstants.statusDelivered);
-    await ref
-        .read(orderManagementProvider.notifier)
-        .updateDeliveryStatus(order.id, newStatus);
-    if (mounted) {
-      SnackbarHelper.showSuccess(
-          context, 'Order marked as ${AppFormatters.deliveryStatus(newStatus).toUpperCase()}');
+    try {
+      await ref
+          .read(orderManagementProvider.notifier)
+          .updateDeliveryStatus(order.id, newStatus);
+      if (mounted) {
+        SnackbarHelper.showSuccess(
+            context, 'Order marked as ${AppFormatters.deliveryStatus(newStatus).toUpperCase()}');
+      }
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Failed to update status: $e');
     }
   }
 
   Future<void> _addPayment(BuildContext context, AppOrder order) async {
+    final settings = ref.read(settingsProvider).valueOrNull;
+    final currency = settings?.currency ?? '₹';
     final result = await Navigator.pushNamed(
       context,
       AppRoutes.paymentDetails,
@@ -283,7 +290,7 @@ class _OrderManagementScreenState
         'customerId': order.customerId,
         'remainingAmount': order.remainingAmount,
         'grandTotal': order.grandTotal,
-        'currency': '₹',
+        'currency': currency,
       },
     );
 
@@ -292,18 +299,24 @@ class _OrderManagementScreenState
       final method = (result['method'] as String?) ?? 'cash';
       final notes = (result['notes'] as String?) ?? '';
 
-      await ref.read(orderManagementProvider.notifier).addPayment(Payment(
-            id:         const Uuid().v4(),
-            orderId:    order.id,
-            customerId: order.customerId,
-            amount:     amount,
-            method:     method,
-            notes:      notes,
-            createdAt:  DateTime.now(),
-          ));
-      
-      if (context.mounted) {
-        SnackbarHelper.showSuccess(context, 'Payment of ₹$amount added');
+      try {
+        await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+              id:         const Uuid().v4(),
+              orderId:    order.id,
+              customerId: order.customerId,
+              amount:     amount,
+              method:     method,
+              notes:      notes,
+              createdAt:  DateTime.now(),
+            ));
+        
+        if (context.mounted) {
+          SnackbarHelper.showSuccess(context, 'Payment of $currency$amount added');
+        }
+      } catch (e) {
+        if (context.mounted) {
+          SnackbarHelper.showError(context, 'Failed to add payment: $e');
+        }
       }
     }
   }
@@ -315,8 +328,12 @@ class _OrderManagementScreenState
       message: 'Delete this order? This cannot be undone.',
     );
     if (!ok || !mounted) return;
-    await ref.read(orderManagementProvider.notifier).deleteOrder(order.id);
-    if (mounted) SnackbarHelper.showSuccess(context, 'Order deleted');
+    try {
+      await ref.read(orderManagementProvider.notifier).deleteOrder(order.id);
+      if (mounted) SnackbarHelper.showSuccess(context, 'Order deleted');
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Failed to delete order: $e');
+    }
   }
 
   Future<void> _duplicateOrder(AppOrder order) async {
@@ -331,14 +348,18 @@ class _OrderManagementScreenState
       updatedAt:      now,
     );
     // Get items to duplicate
-    final repo  = ref.read(orderRepositoryProvider);
-    final items = await repo.getOrderItems(order.id);
-    await ref
-        .read(orderManagementProvider.notifier)
-        .createOrder(duplicate, items.map((it) =>
-            it.copyWith(id: const Uuid().v4(), orderId: newId)).toList());
-    if (mounted) {
-      SnackbarHelper.showSuccess(context, 'Order duplicated');
+    try {
+      final repo  = ref.read(orderRepositoryProvider);
+      final items = await repo.getOrderItems(order.id);
+      await ref
+          .read(orderManagementProvider.notifier)
+          .createOrder(duplicate, items.map((it) =>
+              it.copyWith(id: const Uuid().v4(), orderId: newId)).toList());
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Order duplicated');
+      }
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Failed to duplicate order: $e');
     }
   }
 }
@@ -373,6 +394,8 @@ class _OrderCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final currency = settingsVal?.currency ?? '₹';
     final customerAsync = ref.watch(customerDetailProvider(order.customerId));
 
     return GlassContainer(
@@ -573,17 +596,17 @@ class _OrderCard extends ConsumerWidget {
                 Row(
                   children: [
                     _amountChip(context, 'Total',
-                        '\u20b9${order.grandTotal.toStringAsFixed(2)}',
+                        '$currency${order.grandTotal.toStringAsFixed(2)}',
                         AppColors.primary),
                     const SizedBox(width: 8),
                     if (order.paidAmount > 0)
                       _amountChip(context, 'Paid',
-                          '\u20b9${order.paidAmount.toStringAsFixed(2)}',
+                          '$currency${order.paidAmount.toStringAsFixed(2)}',
                           AppColors.success),
                     const SizedBox(width: 8),
                     if (order.remainingAmount > 0)
                       _amountChip(context, 'Due',
-                          '\u20b9${order.remainingAmount.toStringAsFixed(2)}',
+                          '$currency${order.remainingAmount.toStringAsFixed(2)}',
                           AppColors.warning),
                   ],
                 ),

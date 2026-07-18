@@ -62,6 +62,8 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final currency = settingsVal?.currency ?? widget.currency;
     return AppScaffold(
       title: 'Record Payment',
       body: SingleChildScrollView(
@@ -139,7 +141,7 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                   ),
                   Text(
                     AppFormatters.currency(widget.remainingAmount,
-                        symbol: widget.currency),
+                        symbol: currency),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 24,
@@ -159,7 +161,7 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 labelText: 'Payment Amount',
-                prefixText: '${widget.currency} ',
+                prefixText: '$currency ',
                 prefixStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 prefixIcon: const Icon(Icons.payments_rounded),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),

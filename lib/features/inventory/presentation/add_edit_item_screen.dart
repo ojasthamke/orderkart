@@ -13,6 +13,7 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 
 class AddEditItemScreen extends ConsumerStatefulWidget {
   final String? itemId;
@@ -104,6 +105,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider).valueOrNull;
+    final currency = settings?.currency ?? AppConstants.defaultCurrency;
+
     return AppScaffold(
       title: _isEdit ? 'Edit Item' : 'Add Item',
       body: SingleChildScrollView(
@@ -247,9 +251,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                     child: TextFormField(
                       controller: _costCon,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Cost Price',
-                        prefixText: '₹ ',
+                        prefixText: '$currency ',
                       ),
                       validator: (v) => AppValidators.positiveNumber(v, field: 'Cost price'),
                     ),
@@ -259,9 +263,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                     child: TextFormField(
                       controller: _sellCon,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Selling Price *',
-                        prefixText: '₹ ',
+                        prefixText: '$currency ',
                       ),
                       validator: (v) => AppValidators.positiveNumber(v, field: 'Selling price'),
                     ),
@@ -274,10 +278,10 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               TextFormField(
                 controller: _marketCon,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Market Retail Price (MRP for Savings Calc)',
-                  prefixText: '₹ ',
-                  prefixIcon: Icon(Icons.store_rounded),
+                  prefixText: '$currency ',
+                  prefixIcon: const Icon(Icons.store_rounded),
                   helperText: 'Used to calculate customer savings against market rates',
                 ),
               ),

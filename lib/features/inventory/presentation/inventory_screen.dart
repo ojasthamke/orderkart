@@ -723,7 +723,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       builder: (_) => StatefulBuilder(
         builder: (ctx, setStateDialog) {
           final qtyVal = double.tryParse(qtyCon.text.trim()) ?? 0;
-          final costLoss = qtyVal * item.sellingPrice;
+          final cost = item.costPrice > 0 ? item.costPrice : item.sellingPrice;
+          final costLoss = qtyVal * cost;
 
           return AlertDialog(
             title: Text('Adjust Stock — ${item.name}'),

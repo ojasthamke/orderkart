@@ -5,6 +5,7 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/glass_container.dart';
 import '../data/order_questions_dao.dart';
+import '../../../core/security/app_mode_service.dart';
 
 class OrderQuestionsConfigScreen extends StatefulWidget {
   const OrderQuestionsConfigScreen({super.key});
@@ -20,6 +21,18 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
   @override
   void initState() {
     super.initState();
+    _checkPermissionAndLoad();
+  }
+
+  Future<void> _checkPermissionAndLoad() async {
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Access Denied: Only owners can manage order questions.');
+        Navigator.of(context).pop();
+      }
+      return;
+    }
     _loadQuestions();
   }
 
@@ -257,9 +270,12 @@ class _AddEditQuestionDialogState extends State<AddEditQuestionDialog> {
 
   void _removeOptionField(int index) {
     AppHaptics.buttonClick();
+    final controller = _optionCons[index];
     setState(() {
-      _optionCons[index].dispose();
       _optionCons.removeAt(index);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
     });
   }
 

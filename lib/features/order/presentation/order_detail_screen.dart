@@ -120,20 +120,18 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 ],
 
                 // Order Questions & Answers Section
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: OrderQuestionDao.instance.getOrderAnswers(order.id),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildQuestionsSection(snapshot.data!),
-                          const SizedBox(height: 16),
-                        ],
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
+                ref.watch(orderAnswersProvider(order.id)).when(
+                  data: (answers) => answers.isNotEmpty
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildQuestionsSection(answers),
+                            const SizedBox(height: 16),
+                          ],
+                        )
+                      : const SizedBox.shrink(),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
                 ),
 
                 // Payments list
@@ -752,6 +750,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Future<void> _addPayment(AppOrder order) async {
+    final settings = ref.read(settingsProvider).valueOrNull;
+    final currency = settings?.currency ?? '₹';
     final result = await Navigator.pushNamed(
       context,
       AppRoutes.paymentDetails,
@@ -759,7 +759,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         'customerId': order.customerId,
         'remainingAmount': order.remainingAmount,
         'grandTotal': order.grandTotal,
-        'currency': '₹',
+        'currency': currency,
       },
     );
 
@@ -768,24 +768,32 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       final method = result['method'] as String;
       final notes = result['notes'] as String;
 
-      await ref.read(orderManagementProvider.notifier).addPayment(Payment(
-            id:         const Uuid().v4(),
-            orderId:    order.id,
-            customerId: order.customerId,
-            amount:     amount,
-            method:     method,
-            notes:      notes,
-            createdAt:  DateTime.now(),
-          ));
-      ref.invalidate(orderDetailProvider(widget.orderId));
-      if (mounted) SnackbarHelper.showSuccess(context, 'Payment of ₹$amount added');
+      try {
+        await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+              id:         const Uuid().v4(),
+              orderId:    order.id,
+              customerId: order.customerId,
+              amount:     amount,
+              method:     method,
+              notes:      notes,
+              createdAt:  DateTime.now(),
+            ));
+        ref.invalidate(orderDetailProvider(widget.orderId));
+        if (mounted) SnackbarHelper.showSuccess(context, 'Payment of $currency$amount added');
+      } catch (e) {
+        if (mounted) SnackbarHelper.showError(context, 'Failed to add payment: $e');
+      }
     }
   }
 
   Future<void> _updateStatus(String orderId, String status) async {
-    await ref.read(orderManagementProvider.notifier).updateDeliveryStatus(orderId, status);
-    ref.invalidate(orderDetailProvider(widget.orderId));
-    if (mounted) SnackbarHelper.showSuccess(context, 'Order updated to ${status.toUpperCase()}');
+    try {
+      await ref.read(orderManagementProvider.notifier).updateDeliveryStatus(orderId, status);
+      ref.invalidate(orderDetailProvider(widget.orderId));
+      if (mounted) SnackbarHelper.showSuccess(context, 'Order updated to ${status.toUpperCase()}');
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Failed to update status: $e');
+    }
   }
 
   Future<void> _deleteOrder(AppOrder order) async {
@@ -795,10 +803,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       message: 'Delete this order permanently?',
     );
     if (!ok) return;
-    await ref.read(orderManagementProvider.notifier).deleteOrder(order.id);
-    if (mounted) {
-      SnackbarHelper.showSuccess(context, 'Order deleted');
-      Navigator.of(context).pop();
+    try {
+      await ref.read(orderManagementProvider.notifier).deleteOrder(order.id);
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Order deleted');
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) SnackbarHelper.showError(context, 'Failed to delete order: $e');
     }
   }
 

@@ -32,7 +32,7 @@ class SmartRounding {
   }
 
   /// Returns true if rounding would change the amount
-  static bool needsRounding(double amount) => round(amount) != amount.roundToDouble();
+  static bool needsRounding(double amount) => round(amount) != amount;
 
   /// Savings (or extra) from rounding
   static double difference(double original, double rounded) =>

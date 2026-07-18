@@ -94,6 +94,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   AppOrder? _existingOrder;
   bool   _saving         = false;
   bool   _rxVerified     = false;
+  bool   _orderSaved     = false;
+  bool   _isDiscountManuallyEdited = false;
+  bool   _isDeliveryManuallyToggled = false;
 
   List<OrderQuestion> _questions = [];
   Map<String, String> _selectedAnswers = {};
@@ -164,34 +167,43 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 
   Future<void> _loadExistingOrder(String orderId) async {
-    final order = await ref.read(orderDetailProvider(orderId).future);
-    if (order != null && mounted) {
-      setState(() {
-        _existingOrder = order;
-        _discount = order.discount;
-        _deliveryCharge = order.deliveryCharge;
-        _deliveryEnabled = order.deliveryCharge > 0;
-        _paidAmount = order.paidAmount;
-        _noteCon.text = order.notes;
-        
-        if (_discount > 0) _discountCon.text = _discount.toStringAsFixed(2);
-        if (_paidAmount > 0) _paidCon.text = _paidAmount.toStringAsFixed(2);
-        
-        if (order.payments.isNotEmpty) {
-          _paymentMethod = order.payments.first.method;
-        }
-        
-        _cart.clear();
-        for (final item in order.items) {
-          _cart.add(CartItem(
-            itemId: item.itemId,
-            name: item.itemName,
-            unit: item.itemUnit,
-            price: item.unitPrice,
-            quantity: item.quantity,
-          ));
-        }
-      });
+    try {
+      final order = await ref.read(orderDetailProvider(orderId).future);
+      if (order != null && mounted) {
+        setState(() {
+          _existingOrder = order;
+          _discount = order.discount;
+          _deliveryCharge = order.deliveryCharge;
+          _deliveryEnabled = order.deliveryCharge > 0;
+          _paidAmount = order.paidAmount;
+          _noteCon.text = order.notes;
+          
+          _isDiscountManuallyEdited = true;
+          _isDeliveryManuallyToggled = true;
+          
+          if (_discount > 0) _discountCon.text = _discount.toStringAsFixed(2);
+          if (_paidAmount > 0) _paidCon.text = _paidAmount.toStringAsFixed(2);
+          
+          if (order.payments.isNotEmpty) {
+            _paymentMethod = order.payments.first.method;
+          }
+          
+          _cart.clear();
+          for (final item in order.items) {
+            _cart.add(CartItem(
+              itemId: item.itemId,
+              name: item.itemName,
+              unit: item.itemUnit,
+              price: item.unitPrice,
+              quantity: item.quantity,
+            ));
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Failed to load existing order: $e');
+      }
     }
   }
 
@@ -205,8 +217,43 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(settingsProvider).value;
+    final settings = ref.watch(settingsProvider).valueOrNull;
     final currency = settings?.currency ?? AppConstants.defaultCurrency;
+
+    final customerAsync = ref.watch(customerDetailProvider(widget.customerId));
+    final customer = customerAsync.valueOrNull;
+    final isVip = customer?.isVipActive ?? false;
+
+    // Auto-calculate VIP discount if not manually edited
+    if (customer != null && isVip && !_isDiscountManuallyEdited) {
+      final targetDiscount = double.parse((_subtotal * (customer.vipDiscountPct / 100)).toStringAsFixed(2));
+      if (_discount != targetDiscount) {
+        _discount = targetDiscount;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_isDiscountManuallyEdited) {
+            _discountCon.text = _discount > 0 ? _discount.toStringAsFixed(2) : '';
+          }
+        });
+      }
+    } else if ((customer == null || !isVip) && !_isDiscountManuallyEdited && _discount != 0) {
+      _discount = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_isDiscountManuallyEdited) {
+          _discountCon.text = '';
+        }
+      });
+    }
+
+    // Auto-calculate VIP free delivery if not manually toggled
+    if (customer != null && isVip && customer.vipFreeDelivery && !_isDeliveryManuallyToggled) {
+      if (_deliveryEnabled) {
+        _deliveryEnabled = false;
+      }
+    } else if ((customer == null || !isVip || !customer.vipFreeDelivery) && !_isDeliveryManuallyToggled) {
+      if (!_deliveryEnabled) {
+        _deliveryEnabled = true;
+      }
+    }
 
     final discountCapPct = settings?.workerDiscountCap ?? 10.0;
     final isWorker = ref.watch(appModeProvider).valueOrNull == AppMode.worker;
@@ -216,7 +263,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
+        if (didPop && !_orderSaved) {
           ref.read(createOrderCartProvider(widget.customerId).notifier).state = List.from(_cart);
         }
       },
@@ -273,13 +320,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   TextFormField(
                     controller: _discountCon,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Discount',
-                      prefixText: '₹ ',
-                      prefixIcon: Icon(Icons.discount_rounded),
+                      prefixText: '$currency ',
+                      prefixIcon: const Icon(Icons.discount_rounded),
                     ),
-                    onChanged: (v) =>
-                        setState(() => _discount = double.tryParse(v) ?? 0),
+                    onChanged: (v) {
+                      _isDiscountManuallyEdited = true;
+                      setState(() => _discount = double.tryParse(v) ?? 0);
+                    },
                   ),
                   if (exceedsCap)
                     Padding(
@@ -517,28 +566,49 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             onUnitChanged: (newUnit) {
               if (newUnit == cartItem.unit) return;
 
-              final conversion = dbItem.weightPerPiece;
-              double newQty = cartItem.quantity;
-              double newPrice = cartItem.price;
+              final conversion = dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
+              double baseQty = cartItem.quantity;
+              double basePrice = cartItem.price;
 
-              if (newUnit == 'piece' && cartItem.unit == 'dozen') {
-                newQty = cartItem.quantity * 12;
-                newPrice = cartItem.price / 12;
-              } else if (newUnit == 'dozen' && cartItem.unit == 'piece') {
-                newQty = cartItem.quantity / 12;
-                newPrice = cartItem.price * 12;
-              } else if (newUnit == 'piece' && dbItem.unit == 'kg') {
-                newQty = cartItem.quantity / conversion;
-                newPrice = dbItem.sellingPrice * conversion;
-              } else if (newUnit == 'kg' && dbItem.unit == 'kg') {
-                newQty = cartItem.quantity * conversion;
-                newPrice = dbItem.sellingPrice;
-              } else if (newUnit == 'kg' && dbItem.unit == 'piece') {
-                newQty = cartItem.quantity * conversion;
-                newPrice = dbItem.sellingPrice / conversion;
-              } else if (newUnit == 'piece' && dbItem.unit == 'piece') {
-                newQty = cartItem.quantity / conversion;
-                newPrice = dbItem.sellingPrice;
+              // 1. Convert current (cartItem.unit) to base unit (dbItem.unit)
+              if (dbItem.unit == 'kg') {
+                if (cartItem.unit == 'gram') {
+                  baseQty = cartItem.quantity / 1000.0;
+                  basePrice = cartItem.price * 1000.0;
+                } else if (cartItem.unit == 'piece') {
+                  baseQty = cartItem.quantity * conversion;
+                  basePrice = cartItem.price / conversion;
+                }
+              } else if (dbItem.unit == 'piece') {
+                if (cartItem.unit == 'dozen') {
+                  baseQty = cartItem.quantity * 12.0;
+                  basePrice = cartItem.price / 12.0;
+                } else if (cartItem.unit == 'kg') {
+                  baseQty = cartItem.quantity / conversion;
+                  basePrice = cartItem.price * conversion;
+                }
+              }
+
+              // 2. Convert base unit (dbItem.unit) to new unit (newUnit)
+              double newQty = baseQty;
+              double newPrice = basePrice;
+
+              if (dbItem.unit == 'kg') {
+                if (newUnit == 'gram') {
+                  newQty = baseQty * 1000.0;
+                  newPrice = basePrice / 1000.0;
+                } else if (newUnit == 'piece') {
+                  newQty = baseQty / conversion;
+                  newPrice = basePrice * conversion;
+                }
+              } else if (dbItem.unit == 'piece') {
+                if (newUnit == 'dozen') {
+                  newQty = baseQty / 12.0;
+                  newPrice = basePrice * 12.0;
+                } else if (newUnit == 'kg') {
+                  newQty = baseQty * conversion;
+                  newPrice = basePrice / conversion;
+                }
               }
 
               setState(() {
@@ -570,8 +640,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               prefixIcon: const Icon(Icons.delivery_dining_rounded),
               suffixText: _deliveryEnabled ? null : 'DISABLED',
             ),
-            onChanged: (v) =>
-                setState(() => _deliveryCharge = double.tryParse(v) ?? 0),
+            onChanged: (v) {
+              _isDeliveryManuallyToggled = true;
+              setState(() => _deliveryCharge = double.tryParse(v) ?? 0);
+            },
           ),
         ),
         const SizedBox(width: 12),
@@ -580,7 +652,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             const Text('Enable', style: TextStyle(fontSize: 11)),
             Switch(
               value: _deliveryEnabled,
-              onChanged: (v) => setState(() => _deliveryEnabled = v),
+              onChanged: (v) {
+                _isDeliveryManuallyToggled = true;
+                setState(() => _deliveryEnabled = v);
+              },
             ),
           ],
         ),
@@ -964,7 +1039,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 updatedAt: DateTime.now(),
               ));
       
-      if (cartItem.quantity > dbItem.stock) {
+      double oldQty = 0.0;
+      if (_existingOrder != null) {
+        final existingItem = _existingOrder!.items
+            .where((dynamic oi) => oi.itemId == cartItem.itemId)
+            .firstOrNull;
+        if (existingItem != null) {
+          oldQty = (existingItem.quantity as num).toDouble();
+        }
+      }
+      final double availableStock = dbItem.stock + oldQty;
+
+      if (cartItem.quantity > availableStock) {
         if (!mounted) return;
         showDialog(
           context: context,
@@ -977,7 +1063,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ],
             ),
             content: Text(
-              'Item "${cartItem.name}" has only ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit} in stock, but ${AppFormatters.quantity(cartItem.quantity)} was added to order.\n\nPlease adjust quantity before saving.',
+              'Item "${cartItem.name}" has only ${AppFormatters.quantity(availableStock)} ${dbItem.unit} available (including current order), but ${AppFormatters.quantity(cartItem.quantity)} was requested.\n\nPlease adjust quantity before saving.',
             ),
             actions: [
               TextButton(
@@ -1087,14 +1173,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       }
       await OrderQuestionDao.instance.saveOrderAnswers(orderId, orderAnsToSave);
 
-      // Add initial payment if any
-      if (_paidAmount > 0) {
+      _orderSaved = true;
+
+      // Add initial payment or adjust payment difference if editing
+      final double diff = _paidAmount - (_existingOrder?.paidAmount ?? 0.0);
+      if (diff != 0) {
         await ref.read(orderManagementProvider.notifier).addPayment(Payment(
               id:         const Uuid().v4(),
               orderId:    orderId,
               customerId: widget.customerId,
-              amount:     _paidAmount,
+              amount:     diff,
               method:     _paymentMethod,
+              notes:      diff < 0 ? 'Adjustment: Paid amount decreased' : (_existingOrder == null ? 'Initial payment' : 'Adjustment: Additional payment'),
               createdAt:  now,
             ));
       }
@@ -1623,7 +1713,7 @@ class _QtyPickerState extends State<_QtyPicker> {
   @override
   void didUpdateWidget(_QtyPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.quantity != widget.quantity) {
+    if (widget.quantity != _qty) {
       _qty = widget.quantity;
       final formatted = AppFormatters.quantity(_qty);
       if (_ctrl.text != formatted) {

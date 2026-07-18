@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/order_dao.dart';
+import '../data/order_questions_dao.dart';
 import '../data/order_repository_impl.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
@@ -65,6 +66,9 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
     _ref.invalidate(allCustomersProvider);
     _ref.invalidate(todaysDetailedReportProvider);
     _ref.invalidate(orderedItemStatsProvider);
+    _ref.invalidate(customerSavingsProvider);
+    _ref.invalidate(profitLossProvider);
+    _ref.invalidate(orderAnswersProvider);
   }
 
   void setStatus(String status) {
@@ -187,4 +191,9 @@ final dashboardOrdersProvider = FutureProvider.family<List<AppOrder>, DashboardO
 final customerSavingsProvider =
     FutureProvider.family<Map<String, double>, String>((ref, customerId) {
   return OrderDao().getCustomerSavings(customerId);
+});
+
+final orderAnswersProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((ref, orderId) {
+  return OrderQuestionDao.instance.getOrderAnswers(orderId);
 });
