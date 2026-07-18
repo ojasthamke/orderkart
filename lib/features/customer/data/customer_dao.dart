@@ -288,4 +288,23 @@ class CustomerDao {
       );
     }
   }
+
+  Future<void> moveCustomers(List<String> customerIds, String newStreetId) async {
+    final db = await _db;
+    final now = DateTime.now().toIso8601String();
+    await db.transaction((txn) async {
+      for (final id in customerIds) {
+        await txn.update(
+          'customers',
+          {
+            'street_id': newStreetId,
+            'location_id': newStreetId,
+            'updated_at': now,
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+    });
+  }
 }

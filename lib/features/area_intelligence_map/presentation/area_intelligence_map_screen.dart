@@ -35,6 +35,7 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
   bool _isEditMode = false;
   String? _editLocationId;
   String? _editLocationName;
+  String? _editBoundaryId;
   final List<LatLng> _editPoints = [];
   String _editGeometryType = 'polygon';
 
@@ -73,12 +74,13 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
     );
   }
 
-  void _startEditing(String locId, String name, [List<LatLng>? pts, String? type]) {
+  void _startEditing(String locId, String name, [List<LatLng>? pts, String? type, String? boundaryId]) {
     setState(() {
       _selectedCustomer = null;
       _isEditMode = true;
       _editLocationId = locId;
       _editLocationName = name;
+      _editBoundaryId = boundaryId;
       _editPoints.clear();
       if (pts != null) _editPoints.addAll(pts);
       _editGeometryType = type ?? 'polygon';
@@ -90,6 +92,7 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
       _isEditMode = false;
       _editLocationId = null;
       _editLocationName = null;
+      _editBoundaryId = null;
       _editPoints.clear();
     });
   }
@@ -100,11 +103,17 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
     final vis = ref.watch(mapLayerVisibilityProvider(widget.areaId));
     final gpsAsync = ref.watch(currentLocationProvider);
 
-    // Automatically center map camera on user's current location when first resolved
+    // Automatically center map camera on user's current location when first resolved ONLY IF no custom boundaries/pins exist
     ref.listen<AsyncValue<LatLng>>(currentLocationProvider, (previous, next) {
       if (previous == null || !previous.hasValue) {
         next.whenData((pos) {
-          _mapController.move(pos, 17.0);
+          mapDataAsync.whenData((data) {
+            final hasBoundaries = data.boundaries.any((b) => b.points.isNotEmpty);
+            final hasCustomers = data.customerMarkers.isNotEmpty;
+            if (!hasBoundaries && !hasCustomers) {
+              _mapController.move(pos, 17.0);
+            }
+          });
         });
       }
     });
@@ -135,7 +144,7 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                     if (existing.isNotEmpty) {
                       final b = existing.first;
                       final pts = b.points.map((p) => LatLng(p.latitude, p.longitude)).toList();
-                      _startEditing(locId, loc.name, pts, b.geometryType);
+                      _startEditing(locId, loc.name, pts, b.geometryType, b.id);
                     } else {
                       _startEditing(locId, loc.name);
                     }
@@ -312,6 +321,7 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                 locationName: _editLocationName!,
                 initialPoints: _editPoints,
                 initialGeometryType: _editGeometryType,
+                boundaryId: _editBoundaryId,
                 onCancel: _exitEditing,
                 onPointsChanged: (pts) {
                   setState(() {
@@ -322,7 +332,7 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                 onSaveSuccess: () {
                   _exitEditing();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Boundary saved successfully')),
+                    const SnackBar(content: Text('Boundary saved/updated successfully')),
                   );
                 },
               ),

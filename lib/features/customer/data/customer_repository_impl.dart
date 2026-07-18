@@ -35,4 +35,8 @@ class CustomerRepositoryImpl implements CustomerRepository {
   @override
   Future<void> reorderCustomers(String streetId, List<String> orderedIds) =>
       _dao.saveCustomerOrder(streetId, orderedIds);
+
+  @override
+  Future<void> moveCustomers(List<String> customerIds, String newStreetId) =>
+      _dao.moveCustomers(customerIds, newStreetId);
 }

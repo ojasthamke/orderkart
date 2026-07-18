@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:latlong2/latlong.dart';
 import '../../domain/map_models.dart';
+import '../../domain/geo_boundary.dart';
 import '../area_map_provider.dart';
 import '../../../customer/domain/customer.dart';
 import '../../../location/domain/location.dart';
@@ -333,14 +334,44 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
       ));
     }
 
-    // Center on user GPS, area centroid, or fallback
+    // Center on area centroid, average customer pins, area coord, or fallback to GPS/Mumbai
     final LatLng initialCenter;
-    if (gpsPoint != null) {
-      initialCenter = gpsPoint;
+    final areaBoundary = widget.mapData.boundaries.firstWhere(
+      (b) => b.locationId == widget.areaId && b.points.isNotEmpty,
+      orElse: () => widget.mapData.boundaries.firstWhere(
+        (b) => b.points.isNotEmpty,
+        orElse: () => GeoBoundary(
+          id: '',
+          locationId: '',
+          points: [],
+          geometryType: '',
+          label: '',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      ),
+    );
+
+    if (areaBoundary.points.isNotEmpty) {
+      double latSum = 0;
+      double lngSum = 0;
+      for (final p in areaBoundary.points) {
+        latSum += p.latitude;
+        lngSum += p.longitude;
+      }
+      initialCenter = LatLng(latSum / areaBoundary.points.length, lngSum / areaBoundary.points.length);
+    } else if (widget.mapData.customerMarkers.isNotEmpty) {
+      double latSum = 0;
+      double lngSum = 0;
+      for (final m in widget.mapData.customerMarkers) {
+        latSum += m.position.latitude;
+        lngSum += m.position.longitude;
+      }
+      initialCenter = LatLng(latSum / widget.mapData.customerMarkers.length, lngSum / widget.mapData.customerMarkers.length);
     } else if (widget.mapData.areaLocation.latitude != 0.0 && widget.mapData.areaLocation.longitude != 0.0) {
       initialCenter = LatLng(widget.mapData.areaLocation.latitude, widget.mapData.areaLocation.longitude);
-    } else if (widget.mapData.customerMarkers.isNotEmpty) {
-      initialCenter = widget.mapData.customerMarkers.first.position;
+    } else if (gpsPoint != null) {
+      initialCenter = gpsPoint;
     } else {
       initialCenter = const LatLng(19.076, 72.877); // Default fallback Mumbai
     }

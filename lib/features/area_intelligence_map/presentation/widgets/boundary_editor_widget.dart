@@ -13,6 +13,7 @@ class BoundaryEditorWidget extends ConsumerStatefulWidget {
   final String locationName;
   final List<LatLng> initialPoints;
   final String initialGeometryType;
+  final String? boundaryId;
   final VoidCallback onCancel;
   final VoidCallback onSaveSuccess;
   final ValueChanged<List<LatLng>>? onPointsChanged;
@@ -24,6 +25,7 @@ class BoundaryEditorWidget extends ConsumerStatefulWidget {
     required this.locationName,
     required this.initialPoints,
     required this.initialGeometryType,
+    this.boundaryId,
     required this.onCancel,
     required this.onSaveSuccess,
     this.onPointsChanged,
@@ -157,6 +159,29 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
     widget.onSaveSuccess();
   }
 
+  Future<void> _delete() async {
+    if (widget.boundaryId == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Boundary'),
+        content: Text('Are you sure you want to delete the boundary for "${widget.locationName}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await ref.read(mapBoundaryNotifierProvider(widget.areaId).notifier).deleteBoundary(widget.boundaryId!);
+      widget.onSaveSuccess();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -280,6 +305,18 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
                 child: const Text('Cancel'),
               ),
               const SizedBox(width: 8),
+              if (widget.boundaryId != null) ...[
+                ElevatedButton.icon(
+                  onPressed: _delete,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.delete_forever_rounded, size: 16),
+                  label: const Text('Delete'),
+                ),
+                const SizedBox(width: 8),
+              ],
               ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(

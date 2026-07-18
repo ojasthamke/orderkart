@@ -100,6 +100,12 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await load();
     _invalidateAll();
   }
+
+  Future<void> moveCustomers(List<String> customerIds, String newStreetId) async {
+    await _repo.moveCustomers(customerIds, newStreetId);
+    await load();
+    _invalidateAll();
+  }
 }
 
 final customerListProvider = StateNotifierProvider.family<

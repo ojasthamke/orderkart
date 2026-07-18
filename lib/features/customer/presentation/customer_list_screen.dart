@@ -13,6 +13,9 @@ import '../../../core/widgets/vip_glow_avatar.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
 import 'widgets/instant_ledger_sheet.dart';
+import '../../area/presentation/area_provider.dart';
+import '../../street/presentation/street_provider.dart';
+
 
 class CustomerListScreen extends ConsumerStatefulWidget {
   final String? streetId;
@@ -29,88 +32,279 @@ class CustomerListScreen extends ConsumerStatefulWidget {
 }
 
 class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
+  bool _isSelectionMode = false;
+  final Set<String> _selectedCustomerIds = {};
+
+  void _toggleSelection(String customerId) {
+    setState(() {
+      if (_selectedCustomerIds.contains(customerId)) {
+        _selectedCustomerIds.remove(customerId);
+        if (_selectedCustomerIds.isEmpty) {
+          _isSelectionMode = false;
+        }
+      } else {
+        _selectedCustomerIds.add(customerId);
+      }
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedCustomerIds.clear();
+    });
+  }
+
+  void _selectAll(List<Customer> customers) {
+    setState(() {
+      if (_selectedCustomerIds.length == customers.length) {
+        _selectedCustomerIds.clear();
+        _isSelectionMode = false;
+      } else {
+        _selectedCustomerIds.addAll(customers.map((c) => c.id));
+      }
+    });
+  }
+
+  Future<void> _showMoveDialog(BuildContext context, List<String> customerIds) async {
+    String? selectedAreaId;
+    String? selectedStreetId;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Consumer(
+              builder: (context, ref, child) {
+                final areasAsync = ref.watch(areaProvider);
+
+                return AlertDialog(
+                  title: Text('Move ${customerIds.length} Customers'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      areasAsync.when(
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (err, _) => Text('Error loading areas: $err'),
+                        data: (areas) {
+                          return DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(labelText: 'Select Area'),
+                            value: selectedAreaId,
+                            items: areas.map((a) {
+                              return DropdownMenuItem(
+                                value: a.id,
+                                child: Text(a.name),
+                              );
+                            }).toList(),
+                            onChanged: (areaId) {
+                              setStateDialog(() {
+                                selectedAreaId = areaId;
+                                selectedStreetId = null; // reset street
+                              });
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      if (selectedAreaId != null)
+                        ref.watch(streetProviderFamily(selectedAreaId!)).when(
+                              loading: () => const Center(child: CircularProgressIndicator()),
+                              error: (err, _) => Text('Error loading streets: $err'),
+                              data: (streets) {
+                                return DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(labelText: 'Select Street/Road'),
+                                  value: selectedStreetId,
+                                  items: streets.map((s) {
+                                    return DropdownMenuItem(
+                                      value: s.id,
+                                      child: Text(s.name),
+                                    );
+                                  }).toList(),
+                                  onChanged: (streetId) {
+                                    setStateDialog(() {
+                                      selectedStreetId = streetId;
+                                    });
+                                  },
+                                );
+                              },
+                            ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: selectedStreetId == null
+                          ? null
+                          : () async {
+                              Navigator.pop(ctx);
+                              final effectiveStreetId = widget.streetId ?? '';
+                              await ref
+                                  .read(customerListProvider(effectiveStreetId).notifier)
+                                  .moveCustomers(customerIds, selectedStreetId!);
+                              _exitSelectionMode();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Customers moved successfully')),
+                                );
+                              }
+                            },
+                      child: const Text('Move'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final effectiveStreetId = widget.streetId ?? '';
     final customersAsync = ref.watch(customerListProvider(effectiveStreetId));
 
-    return AppScaffold(
-      title: widget.streetName ?? 'All Customers',
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.search_rounded),
-          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
-        ),
-      ],
-      floatingActionButton: widget.streetId != null 
-        ? FloatingActionButton(
-            heroTag: 'add_customer',
-            onPressed: () => Navigator.of(context).pushNamed(
-              AppRoutes.addEditCustomer,
-              arguments: {'streetId': widget.streetId},
-            ).then((_) => ref.refresh(customerListProvider(effectiveStreetId))),
-            child: const Icon(Icons.person_add_rounded),
-          )
-        : null,
-      body: Column(
-        children: [
-          CustomSearchBar(
-            hint: 'Search customers, phone, house no...',
-            onChanged: (q) =>
-                ref.read(customerListProvider(effectiveStreetId).notifier).search(q),
-          ),
-
-          Expanded(
-            child: customersAsync.when(
-              loading: () => const LoadingShimmer(),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (rawCustomers) {
-                final customers = rawCustomers;
-
-                if (customers.isEmpty) {
-                  return EmptyStateWidget(
-                    icon: Icons.people_outline_rounded,
-                    title: 'No Customers Found',
-                    subtitle: 'Try changing search filter',
-                    actionLabel: 'Add Customer',
-                    onAction: () {
-                      if (widget.streetId != null) {
-                        Navigator.of(context)
-                          .pushNamed(
-                            AppRoutes.addEditCustomer,
-                            arguments: {'streetId': widget.streetId},
-                          )
-                          .then((_) =>
-                              ref.refresh(customerListProvider(effectiveStreetId)));
-                      }
-                    },
-                  );
-                }
-
-                return ReorderableListView.builder(
-                  padding: const EdgeInsets.only(bottom: 96),
-                  itemCount: customers.length,
-                  onReorder: (oldIndex, newIndex) {
-                    if (newIndex > oldIndex) {
-                      newIndex -= 1;
-                    }
-                    ref
-                        .read(customerListProvider(effectiveStreetId).notifier)
-                        .reorder(oldIndex, newIndex);
-                  },
-                  itemBuilder: (ctx, i) => KeyedSubtree(
-                    key: ValueKey(customers[i].id),
-                    child: _CustomerCard(
-                      customer: customers[i],
-                      streetId: effectiveStreetId,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+    return customersAsync.when(
+      loading: () => AppScaffold(
+        title: widget.streetName ?? 'All Customers',
+        body: const LoadingShimmer(),
       ),
+      error: (e, _) => AppScaffold(
+        title: widget.streetName ?? 'All Customers',
+        body: Center(child: Text('Error: $e')),
+      ),
+      data: (customers) {
+        return AppScaffold(
+          title: _isSelectionMode
+              ? '${_selectedCustomerIds.length} Selected'
+              : (widget.streetName ?? 'All Customers'),
+          actions: _isSelectionMode
+              ? [
+                  IconButton(
+                    icon: const Icon(Icons.select_all_rounded),
+                    onPressed: () => _selectAll(customers),
+                    tooltip: 'Select All',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.drive_file_move_rounded),
+                    onPressed: _selectedCustomerIds.isEmpty
+                        ? null
+                        : () => _showMoveDialog(context, _selectedCustomerIds.toList()),
+                    tooltip: 'Move Customers',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: _exitSelectionMode,
+                    tooltip: 'Cancel',
+                  ),
+                ]
+              : [
+                  IconButton(
+                    icon: const Icon(Icons.swap_horiz_rounded),
+                    onPressed: () {
+                      setState(() {
+                        _isSelectionMode = true;
+                      });
+                    },
+                    tooltip: 'Bulk Move',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.search_rounded),
+                    onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
+                  ),
+                ],
+          floatingActionButton: widget.streetId != null && !_isSelectionMode
+              ? FloatingActionButton(
+                  heroTag: 'add_customer',
+                  onPressed: () => Navigator.of(context).pushNamed(
+                    AppRoutes.addEditCustomer,
+                    arguments: {'streetId': widget.streetId},
+                  ).then((_) => ref.refresh(customerListProvider(effectiveStreetId))),
+                  child: const Icon(Icons.person_add_rounded),
+                )
+              : null,
+          body: Column(
+            children: [
+              CustomSearchBar(
+                hint: 'Search customers, phone, house no...',
+                onChanged: (q) =>
+                    ref.read(customerListProvider(effectiveStreetId).notifier).search(q),
+              ),
+              Expanded(
+                child: customers.isEmpty
+                    ? EmptyStateWidget(
+                        icon: Icons.people_outline_rounded,
+                        title: 'No Customers Found',
+                        subtitle: 'Try changing search filter',
+                        actionLabel: 'Add Customer',
+                        onAction: () {
+                          if (widget.streetId != null) {
+                            Navigator.of(context)
+                                .pushNamed(
+                                  AppRoutes.addEditCustomer,
+                                  arguments: {'streetId': widget.streetId},
+                                )
+                                .then((_) =>
+                                    ref.refresh(customerListProvider(effectiveStreetId)));
+                          }
+                        },
+                      )
+                    : (_isSelectionMode
+                        ? ListView.builder(
+                            padding: const EdgeInsets.only(bottom: 96),
+                            itemCount: customers.length,
+                            itemBuilder: (ctx, i) => _CustomerCard(
+                              key: ValueKey(customers[i].id),
+                              customer: customers[i],
+                              streetId: effectiveStreetId,
+                              isSelectionMode: true,
+                              isSelected: _selectedCustomerIds.contains(customers[i].id),
+                              onTap: () => _toggleSelection(customers[i].id),
+                              onLongPress: () {},
+                            ),
+                          )
+                        : ReorderableListView.builder(
+                            padding: const EdgeInsets.only(bottom: 96),
+                            itemCount: customers.length,
+                            onReorder: (oldIndex, newIndex) {
+                              if (newIndex > oldIndex) {
+                                newIndex -= 1;
+                              }
+                              ref
+                                  .read(customerListProvider(effectiveStreetId).notifier)
+                                  .reorder(oldIndex, newIndex);
+                            },
+                            itemBuilder: (ctx, i) => KeyedSubtree(
+                              key: ValueKey(customers[i].id),
+                              child: _CustomerCard(
+                                customer: customers[i],
+                                streetId: effectiveStreetId,
+                                isSelectionMode: false,
+                                isSelected: false,
+                                onTap: () => Navigator.of(context)
+                                    .pushNamed(AppRoutes.customerProfile,
+                                        arguments: {'customerId': customers[i].id})
+                                    .then((_) =>
+                                        ref.refresh(customerListProvider(effectiveStreetId))),
+                                onLongPress: () {
+                                  setState(() {
+                                    _isSelectionMode = true;
+                                    _selectedCustomerIds.add(customers[i].id);
+                                  });
+                                },
+                              ),
+                            ),
+                          )),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -118,10 +312,19 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
 class _CustomerCard extends ConsumerWidget {
   final Customer customer;
   final String streetId;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   const _CustomerCard({
+    super.key,
     required this.customer,
     required this.streetId,
+    required this.isSelectionMode,
+    required this.isSelected,
+    required this.onTap,
+    required this.onLongPress,
   });
 
   @override
@@ -133,14 +336,22 @@ class _CustomerCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.of(context)
-              .pushNamed(AppRoutes.customerProfile,
-                  arguments: {'customerId': customer.id})
-              .then((_) => ref.refresh(customerListProvider(streetId))),
+          onTap: onTap,
+          onLongPress: onLongPress,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
+                if (isSelectionMode) ...[
+                  Icon(
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: isSelected ? AppColors.primary : AppColors.gray400,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 VipGlowAvatar(
                   photoPath: customer.photoPath,
                   isVip: customer.isVipActive,
