@@ -14,7 +14,6 @@ import '../domain/customer.dart';
 import 'customer_provider.dart';
 import 'widgets/instant_ledger_sheet.dart';
 import '../../area/presentation/area_provider.dart';
-import '../../street/presentation/street_provider.dart';
 
 
 class CustomerListScreen extends ConsumerStatefulWidget {
@@ -108,17 +107,26 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                       ),
                       const SizedBox(height: 16),
                       if (selectedAreaId != null)
-                        ref.watch(streetProviderFamily(selectedAreaId!)).when(
+                        ref.watch(areaDescendantLocationsProvider(selectedAreaId!)).when(
                               loading: () => const Center(child: CircularProgressIndicator()),
-                              error: (err, _) => Text('Error loading streets: $err'),
-                              data: (streets) {
+                              error: (err, _) => Text('Error loading locations: $err'),
+                              data: (locations) {
+                                final locationMap = {for (final l in locations) l.id: l};
                                 return DropdownButtonFormField<String>(
                                   decoration: const InputDecoration(labelText: 'Select Street/Road'),
                                   value: selectedStreetId,
-                                  items: streets.map((s) {
+                                  isExpanded: true,
+                                  items: locations.map((s) {
+                                    final parts = s.materializedPath.split('/').where((p) => p.isNotEmpty).toList();
+                                    final names = parts.skip(1).map((id) => locationMap[id]?.name ?? id).toList();
+                                    final pathDisplay = names.isEmpty ? s.name : names.join(' ➜ ');
                                     return DropdownMenuItem(
                                       value: s.id,
-                                      child: Text(s.name),
+                                      child: Text(
+                                        pathDisplay,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
                                     );
                                   }).toList(),
                                   onChanged: (streetId) {

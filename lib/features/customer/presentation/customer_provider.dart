@@ -5,6 +5,7 @@ import '../data/customer_dao.dart';
 import '../data/customer_repository_impl.dart';
 import '../domain/customer.dart';
 import '../domain/customer_repository.dart';
+import '../../location/domain/location.dart';
 import '../../street/presentation/street_provider.dart';
 import '../../area/presentation/area_provider.dart';
 import '../../order/presentation/order_provider.dart';
@@ -178,4 +179,15 @@ final customerLocationProvider = FutureProvider.family<Map<String, String>, Stri
   } catch (_) {
     return {'street': '', 'area': ''};
   }
+});
+
+final areaDescendantLocationsProvider = FutureProvider.family<List<Location>, String>((ref, areaId) async {
+  final db = await DatabaseHelper.instance.database;
+  final res = await db.query(
+    'locations',
+    where: '(parent_location_id = ? OR materialized_path LIKE ?) AND location_kind != ? AND is_archived = 0',
+    whereArgs: [areaId, '/$areaId/%', 'area'],
+    orderBy: 'materialized_path ASC, name ASC',
+  );
+  return res.map(Location.fromMap).toList();
 });
