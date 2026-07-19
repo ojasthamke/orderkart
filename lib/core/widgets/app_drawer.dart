@@ -72,7 +72,7 @@ class AppDrawer extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w900,
-                          color: isWorker ? const Color(0xFF0EA5E9) : AppColors.textSecondary,
+                          color: isWorker ? const Color(0xFF0EA5E9) : (isDark ? Colors.white60 : AppColors.textSecondary),
                           letterSpacing: 1,
                         ),
                       ),
@@ -407,12 +407,12 @@ class AppDrawer extends ConsumerWidget {
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.all(16.0),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Text(
                 'v1.0.0 • FreshFlow',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: isDark ? Colors.white54 : AppColors.textSecondary,
                   fontSize: 12,
                 ),
               ),
@@ -441,23 +441,26 @@ class _DrawerItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = iconColor ?? (isDark ? Colors.white : AppColors.textPrimary);
+    // Unified text color across ALL drawer items for optimal visibility in both themes
+    final textColor = isDark ? Colors.white : AppColors.textPrimary;
+    final iconClr = iconColor ?? (isDark ? Colors.white70 : AppColors.primary);
+
     return ListTile(
       leading: Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: (iconColor ?? (isDark ? Colors.white : AppColors.primary)).withOpacity(0.08),
+          color: iconClr.withOpacity(0.12),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: color, size: 20),
+        child: Icon(icon, color: iconClr, size: 20),
       ),
       title: Text(
         title,
         style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 15,
-          color: color,
+          color: textColor,
         ),
       ),
       shape: RoundedRectangleBorder(
@@ -476,14 +479,15 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w800,
-          color: AppColors.textHint,
+          color: isDark ? Colors.white60 : AppColors.textSecondary,
           letterSpacing: 1.1,
         ),
       ),
