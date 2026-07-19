@@ -26,15 +26,18 @@ class ExpenseScreen extends ConsumerWidget {
     return AppScaffold(
       title: 'Expenses',
       showBack: showBack,
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'add_expense',
-        onPressed: () => Navigator.of(context)
-            .pushNamed(AppRoutes.addEditExpense)
-            .then((_) {
-          ref.invalidate(expenseProvider);
-          ref.invalidate(monthlySummaryProvider);
-        }),
-        child: const Icon(Icons.add_rounded),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: showBack ? 0 : 100),
+        child: FloatingActionButton(
+          heroTag: 'add_expense',
+          onPressed: () => Navigator.of(context)
+              .pushNamed(AppRoutes.addEditExpense)
+              .then((_) {
+            ref.invalidate(expenseProvider);
+            ref.invalidate(monthlySummaryProvider);
+          }),
+          child: const Icon(Icons.add_rounded),
+        ),
       ),
       body: Column(
         children: [

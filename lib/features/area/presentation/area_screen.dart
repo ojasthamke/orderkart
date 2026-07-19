@@ -63,10 +63,13 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
         ),
       ],
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'add_area',
-        onPressed: () => _showAddEditDialog(context, null),
-        child: const Icon(Icons.add_rounded),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: widget.showBack ? 0 : 100),
+        child: FloatingActionButton(
+          heroTag: 'add_area',
+          onPressed: () => _showAddEditDialog(context, null),
+          child: const Icon(Icons.add_rounded),
+        ),
       ),
       body: Column(
         children: [

@@ -415,6 +415,7 @@ class DatabaseHelper {
       AppConstants.keyQrContent:      '',
       AppConstants.keyStaffWhatsApp:  '',
       AppConstants.keyLastDeliveryCharge: '10.0',
+      AppConstants.keyEnableDeliveryCharges: 'true',
     };
 
     for (final entry in defaults.entries) {

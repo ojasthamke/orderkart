@@ -51,19 +51,22 @@ class NotesListScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error loading notes: $err')),
       ),
-      floatingActionButton: Builder(builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return LiquidGlassButton(
-          width: 56,
-          height: 56,
-          padding: EdgeInsets.zero,
-          borderRadius: BorderRadius.circular(28),
-          onTap: () {
-            Navigator.pushNamed(context, AppRoutes.addEditNote);
-          },
-          child: Icon(Icons.add_rounded, color: isDark ? Colors.white : AppColors.primary, size: 24),
-        );
-      }),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: showBack ? 0 : 100),
+        child: Builder(builder: (ctx) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          return LiquidGlassButton(
+            width: 56,
+            height: 56,
+            padding: EdgeInsets.zero,
+            borderRadius: BorderRadius.circular(28),
+            onTap: () {
+              Navigator.pushNamed(context, AppRoutes.addEditNote);
+            },
+            child: Icon(Icons.add_rounded, color: isDark ? Colors.white : AppColors.primary, size: 24),
+          );
+        }),
+      ),
     );
   }
 }

@@ -25,6 +25,8 @@ class AppSettings {
   final bool   notificationSound;
   final bool   notificationVibration;
 
+  final bool   enableDeliveryCharges;
+
   const AppSettings({
     this.businessName      = 'My Business',
     this.ownerName         = 'Owner',
@@ -48,6 +50,7 @@ class AppSettings {
     this.workerDiscountCap = 10.0,
     this.notificationSound = true,
     this.notificationVibration = true,
+    this.enableDeliveryCharges = true,
   });
 
   AppSettings copyWith({
@@ -73,6 +76,7 @@ class AppSettings {
     double? workerDiscountCap,
     bool?   notificationSound,
     bool?   notificationVibration,
+    bool?   enableDeliveryCharges,
   }) {
     return AppSettings(
       businessName:       businessName       ?? this.businessName,
@@ -97,6 +101,7 @@ class AppSettings {
       workerDiscountCap:   workerDiscountCap   ?? this.workerDiscountCap,
       notificationSound:  notificationSound  ?? this.notificationSound,
       notificationVibration: notificationVibration ?? this.notificationVibration,
+      enableDeliveryCharges: enableDeliveryCharges ?? this.enableDeliveryCharges,
     );
   }
 }

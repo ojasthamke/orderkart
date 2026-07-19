@@ -146,8 +146,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     super.initState();
     final settings = ref.read(settingsProvider).value;
     if (settings != null) {
-      _deliveryCharge = settings.lastDeliveryCharge;
-      _smartRound     = settings.smartRounding;
+      _deliveryCharge  = settings.deliveryCharge;
+      _deliveryEnabled = settings.enableDeliveryCharges;
+      _smartRound      = settings.smartRounding;
     }
 
     if (widget.initialDiscount != null && widget.initialDiscount! > 0) {
@@ -245,13 +246,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
 
     // Auto-calculate VIP free delivery if not manually toggled
-    if (customer != null && isVip && customer.vipFreeDelivery && !_isDeliveryManuallyToggled) {
+    final enableDelivery = settings?.enableDeliveryCharges ?? true;
+    if (!enableDelivery) {
       if (_deliveryEnabled) {
         _deliveryEnabled = false;
       }
-    } else if ((customer == null || !isVip || !customer.vipFreeDelivery) && !_isDeliveryManuallyToggled) {
-      if (!_deliveryEnabled) {
-        _deliveryEnabled = true;
+    } else {
+      if (customer != null && isVip && customer.vipFreeDelivery && !_isDeliveryManuallyToggled) {
+        if (_deliveryEnabled) {
+          _deliveryEnabled = false;
+        }
+      } else if ((customer == null || !isVip || !customer.vipFreeDelivery) && !_isDeliveryManuallyToggled) {
+        if (!_deliveryEnabled) {
+          _deliveryEnabled = true;
+        }
       }
     }
 
@@ -643,6 +651,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // ── Delivery section ─────────────────────────────────────────────────────────
   Widget _buildDeliverySection(String currency) {
+    final enableDelivery = ref.watch(settingsProvider).valueOrNull?.enableDeliveryCharges ?? true;
+    if (!enableDelivery) return const SizedBox.shrink();
     return Row(
       children: [
         Expanded(

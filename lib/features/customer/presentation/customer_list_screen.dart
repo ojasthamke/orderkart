@@ -274,11 +274,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                               isSelected: _selectedCustomerIds.contains(customers[i].id),
                               onTap: () => _toggleSelection(customers[i].id),
                               onLongPress: () {},
+                              index: i,
                             ),
                           )
                         : ReorderableListView.builder(
                             padding: const EdgeInsets.only(bottom: 96),
                             itemCount: customers.length,
+                            buildDefaultDragHandles: false,
                             onReorder: (oldIndex, newIndex) {
                               if (newIndex > oldIndex) {
                                 newIndex -= 1;
@@ -305,6 +307,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                                     _selectedCustomerIds.add(customers[i].id);
                                   });
                                 },
+                                index: i,
                               ),
                             ),
                           )),
@@ -324,6 +327,7 @@ class _CustomerCard extends ConsumerWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final int index;
 
   const _CustomerCard({
     super.key,
@@ -333,12 +337,175 @@ class _CustomerCard extends ConsumerWidget {
     required this.isSelected,
     required this.onTap,
     required this.onLongPress,
+    required this.index,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final creditColor = isDark ? const Color(0xFF2DD4BF) : Colors.teal;
+
+    // ── Ghost House tile — special visual ────────────────────────────────────
+    if (customer.isGhostHouse) {
+      return Container(
+        key: key,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.orange.withOpacity(0.06)
+              : Colors.orange.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.orange.withOpacity(0.45),
+            width: 1.4,
+            style: BorderStyle.solid,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: isSelectionMode ? onTap : () => Navigator.of(context).pushNamed(
+              AppRoutes.addEditCustomer,
+              arguments: {'streetId': streetId, 'customerId': customer.id},
+            ).then((_) => ref.refresh(customerListProvider(streetId))),
+            onLongPress: onLongPress,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  if (isSelectionMode) ...[
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      color: isSelected ? AppColors.primary : AppColors.gray400,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                  ] else ...[
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: const Padding(
+                        padding: EdgeInsets.only(right: 12),
+                        child: Icon(Icons.drag_indicator_rounded, color: AppColors.gray400, size: 22),
+                      ),
+                    ),
+                  ],
+                  // Ghost icon
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.orange.withOpacity(0.12),
+                      border: Border.all(color: Colors.orange.withOpacity(0.4), width: 1.5),
+                    ),
+                    child: const Icon(Icons.home_work_outlined, color: Colors.orange, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            if (customer.serialNo > 0) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '#${customer.serialNo}',
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        color: Colors.orange,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Text(
+                              'Blank House',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    color: Colors.orange.withOpacity(0.85),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Tap to fill customer details',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textHint,
+                                fontStyle: FontStyle.italic,
+                              ),
+                        ),
+                        if (customer.houseNumber.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'House No: ${customer.houseNumber}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  // Three-dot menu for ghost houses — Edit & Delete only
+                  if (!isSelectionMode)
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert_rounded, color: AppColors.gray500),
+                      onSelected: (v) async {
+                        if (v == 'edit') {
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.addEditCustomer,
+                            arguments: {'streetId': streetId, 'customerId': customer.id},
+                          ).then((_) => ref.refresh(customerListProvider(streetId)));
+                        } else if (v == 'delete') {
+                          final ok = await ConfirmDeleteDialog.show(
+                            context,
+                            title: 'Delete Ghost House',
+                            message: 'Remove this blank house slot #${customer.serialNo}?',
+                          );
+                          if (!ok) return;
+                          await ref.read(customerListProvider(streetId).notifier).delete(customer.id);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: ListTile(
+                            leading: Icon(Icons.edit_rounded),
+                            title: Text('Fill Details / Edit'),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: Icon(Icons.delete_outline_rounded, color: Colors.red),
+                            title: Text('Delete', style: TextStyle(color: Colors.red)),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── Normal Customer Card ─────────────────────────────────────────────────
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Material(
@@ -361,6 +528,14 @@ class _CustomerCard extends ConsumerWidget {
                     size: 24,
                   ),
                   const SizedBox(width: 12),
+                ] else ...[
+                  ReorderableDragStartListener(
+                    index: index,
+                    child: const Padding(
+                      padding: EdgeInsets.only(right: 12),
+                      child: Icon(Icons.drag_indicator_rounded, color: AppColors.gray400, size: 22),
+                    ),
+                  ),
                 ],
                 VipGlowAvatar(
                   photoPath: customer.photoPath,

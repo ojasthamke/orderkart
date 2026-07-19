@@ -103,14 +103,14 @@ final lowStockProvider = FutureProvider<List<Item>>(
 
 final outOfStockProvider = FutureProvider<List<Item>>((ref) async {
   final items = await ref.read(inventoryRepositoryProvider).getAllItems();
-  return items.where((i) => i.stock <= 0).toList();
+  return items.where((i) => i.stock < 0.001).toList();
 });
 
 final stockSummaryProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final items = await ref.read(inventoryRepositoryProvider).getAllItems();
   final totalItems = items.length;
-  final outOfStock = items.where((i) => i.stock <= 0).toList();
-  final lowStock = items.where((i) => i.isLowStock && i.stock > 0).toList();
+  final outOfStock = items.where((i) => i.stock < 0.001).toList();
+  final lowStock = items.where((i) => i.isLowStock && i.stock >= 0.001).toList();
   
   double totalCostValue = 0;
   double totalSellingValue = 0;

@@ -225,6 +225,7 @@ class AppConstants {
   static const String keyOwnerSecret = 'owner_secret';
   static const String keyLanguage = 'language';
   static const String keyWorkerDiscountCap = 'worker_discount_cap';
+  static const String keyEnableDeliveryCharges = 'enable_delivery_charges';
 
   // Pagination
   static const int pageSize = 30;

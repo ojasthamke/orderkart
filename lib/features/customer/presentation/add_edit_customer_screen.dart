@@ -50,6 +50,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   bool   _loading   = false;
   bool   _isEdit    = false;
   String _dietaryPreference = '';
+  bool   _isGhostHouse = false;
 
   // Custom Fields state
   List<Map<String, dynamic>> _customFields = [];
@@ -100,18 +101,20 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         .read(customerRepositoryProvider)
         .getCustomerById(widget.customerId!);
     if (customer != null && mounted) {
+      final ghost = customer.isGhostHouse;
       setState(() {
-        _streetId         = customer.streetId;
-        _nameCon.text     = customer.name;
-        _phone1Con.text   = customer.phone1;
-        _phone2Con.text   = customer.phone2;
+        _streetId          = customer.streetId;
+        _isGhostHouse      = ghost;
+        _nameCon.text      = ghost ? '' : customer.name;
+        _phone1Con.text    = ghost ? '' : customer.phone1;
+        _phone2Con.text    = customer.phone2;
         _waCon.text        = customer.whatsapp;
         _serialNoCon.text  = customer.serialNo > 0 ? '${customer.serialNo}' : '';
-        _houseCon.text    = customer.houseNumber;
-        _addressCon.text  = customer.address;
-        _notesCon.text    = customer.notes;
-        _mapsCon.text     = customer.mapsLocation;
-        _photoPath        = customer.photoPath;
+        _houseCon.text     = customer.houseNumber;
+        _addressCon.text   = customer.address;
+        _notesCon.text     = customer.notes;
+        _mapsCon.text      = customer.mapsLocation;
+        _photoPath         = customer.photoPath;
         _dietaryPreference = customer.dietaryPreference;
       });
     }
@@ -174,6 +177,54 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               ),
               const SizedBox(height: 24),
 
+              // ── Ghost / Blank House Toggle ──────────────────────────────
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: _isGhostHouse
+                      ? Colors.orange.withOpacity(0.10)
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: _isGhostHouse
+                        ? Colors.orange.withOpacity(0.5)
+                        : Colors.grey.withOpacity(0.25),
+                    width: 1.2,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: SwitchListTile(
+                  value: _isGhostHouse,
+                  onChanged: (val) {
+                    setState(() {
+                      _isGhostHouse = val;
+                      if (val) {
+                        _nameCon.text   = '';
+                        _phone1Con.text = '';
+                      }
+                    });
+                  },
+                  secondary: Icon(
+                    Icons.home_work_outlined,
+                    color: _isGhostHouse ? Colors.orange : AppColors.gray400,
+                  ),
+                  title: Text(
+                    'Blank / Ghost House',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: _isGhostHouse ? Colors.orange : null,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _isGhostHouse
+                        ? 'Placeholder slot — fill details when customer is known'
+                        : 'Customer refused to share details — mark as placeholder',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  activeColor: Colors.orange,
+                ),
+              ),
+
+              if (!_isGhostHouse) ...[ // Hide photo & contact fields for ghost houses
               // Name
               TextFormField(
                 controller: _nameCon,
@@ -181,7 +232,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                   labelText: 'Full Name *',
                   prefixIcon: Icon(Icons.person_rounded),
                 ),
-                validator: (v) => AppValidators.nameField(v, field: 'Name'),
+                validator: _isGhostHouse ? null : (v) => AppValidators.nameField(v, field: 'Name'),
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 16),
@@ -194,9 +245,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                   labelText: 'Primary Phone *',
                   prefixIcon: Icon(Icons.phone_rounded),
                 ),
-                validator: AppValidators.phoneRequired,
+                validator: _isGhostHouse ? null : AppValidators.phoneRequired,
               ),
               const SizedBox(height: 16),
+              ], // end !_isGhostHouse block
 
               // Phone 2
               TextFormField(
@@ -578,16 +630,22 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       final now = DateTime.now();
       final customerId = widget.customerId ?? const Uuid().v4();
 
+      // For ghost houses: auto-fill placeholder name and phone so DB constraints are satisfied
+      final String finalName  = _isGhostHouse ? '[Ghost House]' : _nameCon.text.trim();
+      final String finalPhone = _isGhostHouse ? '0000000000'    : _phone1Con.text.trim();
+
       final db = await DatabaseHelper.instance.database;
-      final phone = _phone1Con.text.trim();
-      final duplicateCheck = await db.query(
-        'customers',
-        columns: ['name'],
-        where: 'phone1 = ? AND id != ?',
-        whereArgs: [phone, customerId],
-      );
-      if (duplicateCheck.isNotEmpty) {
-        throw Exception('A customer named "${duplicateCheck.first['name']}" already has this phone number ($phone).');
+      // Skip duplicate-phone check for ghost houses (they all share the same placeholder phone)
+      if (!_isGhostHouse) {
+        final duplicateCheck = await db.query(
+          'customers',
+          columns: ['name'],
+          where: 'phone1 = ? AND id != ?',
+          whereArgs: [finalPhone, customerId],
+        );
+        if (duplicateCheck.isNotEmpty) {
+          throw Exception('A customer named "${duplicateCheck.first['name']}" already has this phone number ($finalPhone).');
+        }
       }
 
       String finalPhotoPath = _photoPath;
@@ -620,8 +678,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
       final customer = existing != null
           ? existing.copyWith(
-              name:               _nameCon.text.trim(),
-              phone1:             _phone1Con.text.trim(),
+              name:               finalName,
+              phone1:             finalPhone,
               phone2:             _phone2Con.text.trim(),
               whatsapp:           _waCon.text.trim(),
               houseNumber:        _houseCon.text.trim(),
@@ -638,8 +696,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           : Customer(
               id:                 customerId,
               streetId:           _streetId!,
-              name:               _nameCon.text.trim(),
-              phone1:             _phone1Con.text.trim(),
+              name:               finalName,
+              phone1:             finalPhone,
               phone2:             _phone2Con.text.trim(),
               whatsapp:           _waCon.text.trim(),
               houseNumber:        _houseCon.text.trim(),

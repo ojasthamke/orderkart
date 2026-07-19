@@ -180,6 +180,10 @@ class CustomerDao {
       'created_at': now,
       'updated_at': now,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+    if (customer.serialNo > 0) {
+      await _adjustSequences(db, customer.streetId, id, customer.serialNo);
+    }
     return id;
   }
 
@@ -196,6 +200,65 @@ class CustomerDao {
       where: 'id = ?',
       whereArgs: [customer.id],
     );
+
+    if (customer.serialNo > 0) {
+      await _adjustSequences(db, customer.streetId, customer.id, customer.serialNo);
+    }
+  }
+
+  Future<void> _adjustSequences(Database db, String streetId, String customerId, int newSerialNo) async {
+    if (newSerialNo <= 0) return;
+
+    // Get all active customers on this street
+    final maps = await db.query(
+      'customers',
+      where: 'street_id = ? AND is_archived = 0',
+      whereArgs: [streetId],
+    );
+
+    List<Map<String, dynamic>> list = List.from(maps);
+    // Sort by serial_no first, then by createdAt to keep standard ordering
+    list.sort((a, b) {
+      final aNo = a['serial_no'] as int? ?? 0;
+      final bNo = b['serial_no'] as int? ?? 0;
+      if (aNo == 0 && bNo == 0) {
+        final aTime = a['created_at']?.toString() ?? '';
+        final bTime = b['created_at']?.toString() ?? '';
+        return aTime.compareTo(bTime);
+      }
+      if (aNo == 0) return 1;
+      if (bNo == 0) return -1;
+      return aNo.compareTo(bNo);
+    });
+
+    // Find the item matching customerId
+    int currentIndex = list.indexWhere((c) => c['id'] == customerId);
+    Map<String, dynamic>? item;
+    if (currentIndex != -1) {
+      item = list.removeAt(currentIndex);
+    }
+
+    // Insert at desired 0-based index
+    int insertIndex = newSerialNo - 1;
+    if (insertIndex < 0) insertIndex = 0;
+    if (insertIndex > list.length) insertIndex = list.length;
+
+    if (item != null) {
+      list.insert(insertIndex, item);
+    }
+
+    // Save updated serial_no to the database in a transaction
+    await db.transaction((txn) async {
+      for (int i = 0; i < list.length; i++) {
+        final id = list[i]['id'] as String;
+        await txn.update(
+          'customers',
+          {'serial_no': i + 1},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+    });
   }
 
   Future<void> deleteCustomer(String id) async {
@@ -221,7 +284,6 @@ class CustomerDao {
       await txn.delete('customer_question_answers', where: 'customer_id = ?', whereArgs: [id]);
       await txn.delete('customer_item_prices', where: 'customer_id = ?', whereArgs: [id]);
       await txn.delete('call_logs', where: 'customer_id = ?', whereArgs: [id]);
-      await txn.delete('visits', where: 'customer_id = ?', whereArgs: [id]);
       await txn.delete('worker_assignments', where: "entity_type = 'customer' AND entity_id = ?", whereArgs: [id]);
       
       // 5. Finally delete the customer
@@ -268,7 +330,7 @@ class CustomerDao {
       }
     }
 
-    final query = '''
+    const query = '''
           SELECT
             COUNT(*)            AS total_orders,
             COALESCE(SUM(grand_total),     0) AS total_amount,

@@ -31,7 +31,7 @@ class ItemDao {
         where: where, whereArgs: args.isEmpty ? null : args);
     final items = maps.map(Item.fromMap).toList();
 
-    if (sortBy == null || sortBy.isEmpty || sortBy == 'category') {
+    if (sortBy == null || sortBy.isEmpty || sortBy == 'category' || sortBy == 'name') {
       items.sort((a, b) {
         final aNo = a.sequenceNo;
         final bNo = b.sequenceNo;
@@ -39,6 +39,9 @@ class ItemDao {
           if (sortBy == 'category') {
             final catComp = a.category.compareTo(b.category);
             if (catComp != 0) return catComp;
+          } else if (sortBy == 'name') {
+            final nameComp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+            if (nameComp != 0) return nameComp;
           }
           return a.createdAt.compareTo(b.createdAt);
         }

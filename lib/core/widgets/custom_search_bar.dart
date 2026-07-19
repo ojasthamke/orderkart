@@ -53,7 +53,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
         style: Theme.of(context)
             .textTheme
             .bodyMedium
-            ?.copyWith(color: AppColors.textPrimary),
+            ?.copyWith(color: AppColors.textPrimaryColor(context)),
         decoration: InputDecoration(
           hintText: widget.hint,
           prefixIcon:

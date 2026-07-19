@@ -359,7 +359,7 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       labelStyle: TextStyle(
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        color: isSelected ? Colors.white : AppColors.textPrimary,
+        color: isSelected ? Colors.white : AppColors.textPrimaryColor(context),
       ),
       selectedColor: AppColors.primary,
       backgroundColor: Theme.of(context).cardTheme.color,

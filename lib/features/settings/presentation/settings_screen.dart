@@ -161,12 +161,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ── Order Defaults ────────────────────────────────────
               _sectionHeader('Order Defaults', Icons.shopping_cart_rounded),
               _card([
+                SwitchListTile(
+                  secondary: const Icon(Icons.delivery_dining_rounded),
+                  title: const Text('Enable Delivery Charges'),
+                  value: settings.enableDeliveryCharges,
+                  onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(enableDeliveryCharges: v)),
+                ),
+                const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.delivery_dining_rounded),
-                  title: const Text('Default Delivery Charge'),
+                  enabled: settings.enableDeliveryCharges,
+                  leading: Icon(Icons.payments_rounded, color: settings.enableDeliveryCharges ? null : Colors.grey),
+                  title: Text(
+                    'Default Delivery Charge',
+                    style: TextStyle(color: settings.enableDeliveryCharges ? null : Colors.grey),
+                  ),
                   trailing: SizedBox(
                     width: 80,
                     child: TextField(
+                      enabled: settings.enableDeliveryCharges,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       textAlign: TextAlign.right,
                       controller: _deliveryChargeCon,
@@ -179,7 +191,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         hintText: '0.0',
-                        prefixText: settings.currency,
+                        prefixText: settings.enableDeliveryCharges ? settings.currency : '',
                       ),
                     ),
                   ),

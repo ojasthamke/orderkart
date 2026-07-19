@@ -257,6 +257,8 @@ class Customer {
 
   String get serialLabel => serialNo > 0 ? '#$serialNo' : '';
 
+  bool get isGhostHouse => name.trim().toLowerCase() == 'ghost house' || name.trim().startsWith('[Ghost House]');
+
   /// VIP Active Status calculation
   bool get isVipActive {
     if (!isVip) return false;

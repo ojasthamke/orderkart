@@ -169,8 +169,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
 
                   // Push out-of-stock items to the bottom of the list
                   filtered.sort((a, b) {
-                    final aOut = a.stock <= 0;
-                    final bOut = b.stock <= 0;
+                    final aOut = a.stock < 0.001;
+                    final bOut = b.stock < 0.001;
                     if (aOut && !bOut) return 1;
                     if (!aOut && bOut) return -1;
                     return 0;
@@ -194,7 +194,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
 
                       return GestureDetector(
                         onTap: () {
-                          if (item.stock <= 0) {
+                          if (item.stock < 0.001) {
                             ScaffoldMessenger.of(context).clearSnackBars();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -219,12 +219,12 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                           borderRadius: BorderRadius.circular(12),
                           color: isSelected
                               ? AppColors.primary.withOpacity(0.20)
-                              : (item.stock <= 0
+                              : (item.stock < 0.001
                                   ? Colors.red.withOpacity(0.06)
                                   : (isDark ? const Color(0xFF1E293B).withOpacity(0.4) : AppColors.gray50)),
                           borderColor: isSelected
                               ? AppColors.primary
-                              : (item.stock <= 0
+                              : (item.stock < 0.001
                                   ? AppColors.error.withOpacity(0.25)
                                   : (isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200)),
                           child: Row(
@@ -239,7 +239,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                             .bodyMedium
                                             ?.copyWith(
                                                 fontWeight: FontWeight.w700,
-                                                color: item.stock <= 0 ? AppColors.textSecondary : (isDark ? Colors.white : AppColors.textPrimary))),
+                                                color: item.stock < 0.001 ? AppColors.textSecondary : (isDark ? Colors.white : AppColors.textPrimary))),
                                     const SizedBox(height: 2),
                                     Text(
                                       '$currency${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Cost: $currency${item.costPrice.toStringAsFixed(item.costPrice == item.costPrice.roundToDouble() ? 0 : 2)}  •  Stock: ${AppFormatters.quantity(item.stock)}',
@@ -247,13 +247,13 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: item.stock <= 0 ? AppColors.error : (isDark ? Colors.white70 : AppColors.primary),
+                                            color: item.stock < 0.001 ? AppColors.error : (isDark ? Colors.white70 : AppColors.primary),
                                             fontWeight: FontWeight.w600,
                                           ),
                                     ),
                                     // Fractional price hints
                                     ..._fractionalHints(context, item.sellingPrice, item.unit),
-                                    if (item.stock <= 0)
+                                    if (item.stock < 0.001)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 2),
                                         child: Text('❌ OUT OF STOCK — Cannot add to order',
@@ -280,7 +280,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                               if (isSelected)
                                 const Icon(Icons.check_circle_rounded,
                                     color: AppColors.primary)
-                              else if (item.stock <= 0)
+                              else if (item.stock < 0.001)
                                 const Icon(Icons.block_rounded,
                                     color: AppColors.error, size: 20),
                             ],
@@ -396,7 +396,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
-                          onPressed: _qty > _selected!.stock || _selected!.stock <= 0
+                          onPressed: _qty > _selected!.stock || _selected!.stock < 0.001
                               ? () {
                                   ScaffoldMessenger.of(context).clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -462,7 +462,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                           icon: const Icon(Icons.add_rounded),
                           label: const Text('Add'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _qty > _selected!.stock || _selected!.stock <= 0
+                            backgroundColor: _qty > _selected!.stock || _selected!.stock < 0.001
                                 ? Colors.grey
                                 : AppColors.primary,
                             foregroundColor: Colors.white,

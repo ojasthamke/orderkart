@@ -50,6 +50,7 @@ class SettingsDao {
       workerDiscountCap:    double.tryParse(m[AppConstants.keyWorkerDiscountCap] ?? '10') ?? 10.0,
       notificationSound:    (m[AppConstants.keyNotifSound]     ?? 'true') == 'true',
       notificationVibration:(m[AppConstants.keyNotifVibration] ?? 'true') == 'true',
+      enableDeliveryCharges:(m[AppConstants.keyEnableDeliveryCharges] ?? 'true') == 'true',
     );
   }
 }

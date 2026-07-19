@@ -191,7 +191,7 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                   children: [
                     IconButton.filledTonal(
                       icon: const Icon(Icons.remove_rounded),
-                      onPressed: item.stock <= 0 ? null : () => _adjustStock(item, -1),
+                      onPressed: item.stock < 0.001 ? null : () => _adjustStock(item, -1),
                     ),
                     const SizedBox(width: 4),
                     IconButton.filledTonal(

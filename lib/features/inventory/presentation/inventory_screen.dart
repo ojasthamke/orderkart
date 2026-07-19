@@ -170,12 +170,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       ),
       floatingActionButton: isWorker
           ? null
-          : FloatingActionButton(
-              heroTag: 'add_item',
-              onPressed: () => Navigator.of(context)
-                  .pushNamed(AppRoutes.addEditItem)
-                  .then((_) => ref.refresh(inventoryProvider)),
-              child: const Icon(Icons.add_rounded),
+          : Padding(
+              padding: EdgeInsets.only(bottom: widget.showBack ? 0 : 100),
+              child: FloatingActionButton(
+                heroTag: 'add_item',
+                onPressed: () => Navigator.of(context)
+                    .pushNamed(AppRoutes.addEditItem)
+                    .then((_) => ref.refresh(inventoryProvider)),
+                child: const Icon(Icons.add_rounded),
+              ),
             ),
       body: TabBarView(
         controller: _tabController,
@@ -1281,32 +1284,50 @@ class _ItemTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
-                  'Price: ${AppFormatters.currency(item.sellingPrice)} / ${item.unit}  •  Cost: ${AppFormatters.currency(item.costPrice)}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary),
+                  'Price: ${AppFormatters.currency(item.sellingPrice)} / ${item.unit}',
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary, fontSize: 13),
                 ),
-                if (item.marketPrice > 0) ...[
-                  const SizedBox(width: 8),
+                if (item.marketPrice > 0)
                   Text(
                     'MRP: ${AppFormatters.currency(item.marketPrice)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       decoration: TextDecoration.lineThrough,
-                      color: AppColors.textSecondary,
+                      color: AppColors.textSecondaryColor(context),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ],
               ],
             ),
-            Text(
-              'Stock: ${AppFormatters.quantity(item.stock, unit: item.unit)}',
-              style: TextStyle(
-                color: item.isLowStock ? AppColors.error : AppColors.textSecondary,
-                fontWeight: item.isLowStock ? FontWeight.w800 : FontWeight.normal,
-                fontSize: 12,
-              ),
+            const SizedBox(height: 2),
+            Wrap(
+              spacing: 12,
+              runSpacing: 2,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Cost: ${AppFormatters.currency(item.costPrice)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF80CBC4) : Colors.teal,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  'Stock: ${AppFormatters.quantity(item.stock, unit: item.unit)}',
+                  style: TextStyle(
+                    color: item.isLowStock ? AppColors.error : AppColors.textSecondaryColor(context),
+                    fontWeight: item.isLowStock ? FontWeight.w800 : FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

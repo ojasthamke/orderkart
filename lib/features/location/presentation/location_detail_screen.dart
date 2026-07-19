@@ -129,7 +129,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
-                                color: isLast ? AppColors.textPrimary : AppColors.primary,
+                                color: isLast ? AppColors.textPrimaryColor(context) : AppColors.primary,
                               ),
                             ),
                           ),
