@@ -74,6 +74,12 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     _invalidateAll();
   }
 
+  Future<void> updateItems(List<Item> items) async {
+    await _repo.updateItems(items);
+    await load();
+    _invalidateAll();
+  }
+
   Future<void> deleteItem(String id) async {
     await _repo.deleteItem(id);
     await load();

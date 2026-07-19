@@ -61,6 +61,7 @@ import 'features/inventory/presentation/groceries_hub_screen.dart';
 import 'features/inventory/presentation/medicines_hub_screen.dart';
 import 'features/dashboard/presentation/owner_features_hub_screen.dart';
 import 'features/inventory/presentation/catalog_showroom_screen.dart';
+import 'features/inventory/presentation/quick_inventory_adjust_screen.dart';
 import 'features/area_intelligence_map/presentation/area_intelligence_map_screen.dart';
 import 'features/area_intelligence_map/presentation/map_pin_picker_screen.dart';
 import 'package:latlong2/latlong.dart';
@@ -169,6 +170,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.inventory:
         return _slide(const InventoryScreen());
+
+      case AppRoutes.quickInventoryAdjust:
+        return _slide(const QuickInventoryAdjustScreen());
 
       case AppRoutes.addEditItem:
         final args = settings.arguments as Map<String, dynamic>?;

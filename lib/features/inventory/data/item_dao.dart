@@ -133,6 +133,55 @@ class ItemDao {
     await _checkAndTriggerLowStock(item.id, db);
   }
 
+  Future<void> updateItems(List<Item> items) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      for (final item in items) {
+        final maps = await txn.query('items', where: 'id = ?', whereArgs: [item.id]);
+        final oldItem = maps.isNotEmpty ? Item.fromMap(maps.first) : null;
+
+        await txn.update(
+          'items',
+          {...item.toMap(), 'updated_at': DateTime.now().toIso8601String()},
+          where: 'id = ?',
+          whereArgs: [item.id],
+        );
+
+        if (oldItem != null) {
+          final stockDiff = item.stock - oldItem.stock;
+          if (stockDiff != 0) {
+            await txn.insert('stock_history', {
+              'id': _uuid.v4(),
+              'item_id': item.id,
+              'item_name': item.name,
+              'change_amount': stockDiff,
+              'reason': 'Bulk Inventory Adjust',
+              'order_id': '',
+              'created_at': DateTime.now().toIso8601String(),
+            });
+          }
+        }
+
+        final dateKey = DateTime.now().toIso8601String().substring(0, 10);
+        await txn.rawInsert('''
+          INSERT OR REPLACE INTO item_price_history (id, item_id, date, selling_price, market_price, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        ''', [
+          '${item.id}_$dateKey',
+          item.id,
+          dateKey,
+          item.sellingPrice,
+          item.marketPrice,
+          DateTime.now().toIso8601String(),
+        ]);
+
+        if (item.minStock > 0 && item.stock <= item.minStock) {
+          await _checkAndTriggerLowStock(item.id, txn);
+        }
+      }
+    });
+  }
+
   Future<void> _recordDailyPriceSnapshot(Item item) async {
     final db = await _db;
     final dateKey = DateTime.now().toIso8601String().substring(0, 10);

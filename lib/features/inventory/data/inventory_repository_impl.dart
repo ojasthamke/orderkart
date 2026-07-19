@@ -26,6 +26,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
   Future<void> updateItem(Item item) => _dao.updateItem(item);
 
   @override
+  Future<void> updateItems(List<Item> items) => _dao.updateItems(items);
+
+  @override
   Future<void> deleteItem(String id) => _dao.deleteItem(id);
 
   @override

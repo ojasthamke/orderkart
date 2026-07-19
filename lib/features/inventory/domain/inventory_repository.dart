@@ -8,6 +8,7 @@ abstract class InventoryRepository {
   Future<String> addItem(Item item);
   Future<void> updateItem(Item item);
   Future<void> deleteItem(String id);
+  Future<void> updateItems(List<Item> items);
   Future<void> adjustStock(String itemId, double change, String reason, {String? orderId});
   Future<List<StockHistory>> getStockHistory(String itemId);
   Future<void> updateItemSequences(List<String> itemIds);

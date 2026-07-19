@@ -124,12 +124,21 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       title: 'Inventory & Prices',
       showBack: widget.showBack,
       actions: [
-        if (!isWorker)
+        if (!isWorker) ...[
           IconButton(
             icon: const Icon(Icons.share_rounded),
             tooltip: 'Export Stock & Price List (Owner)',
             onPressed: _exportPriceList,
           ),
+          IconButton(
+            icon: const Icon(Icons.edit_note_rounded),
+            tooltip: 'Quick Adjust Inventory',
+            onPressed: () {
+              AppHaptics.buttonClick();
+              Navigator.of(context).pushNamed(AppRoutes.quickInventoryAdjust);
+            },
+          ),
+        ],
         IconButton(
           icon: const Icon(Icons.download_rounded),
           tooltip: 'Import Stock & Price List (Worker)',

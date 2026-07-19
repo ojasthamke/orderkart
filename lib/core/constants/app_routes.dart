@@ -27,6 +27,7 @@ class AppRoutes {
   static const String backupRestore = '/backup-restore';
   static const String search = '/search';
   static const String qrPreview = '/qr-preview';
+  static const String quickInventoryAdjust = '/quick-inventory-adjust';
 
   // Notes
   static const String notes         = '/notes';
