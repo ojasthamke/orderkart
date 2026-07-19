@@ -226,6 +226,7 @@ class AppConstants {
   static const String keyLanguage = 'language';
   static const String keyWorkerDiscountCap = 'worker_discount_cap';
   static const String keyEnableDeliveryCharges = 'enable_delivery_charges';
+  static const String keyMeshTheme = 'mesh_theme';
 
   // Pagination
   static const int pageSize = 30;

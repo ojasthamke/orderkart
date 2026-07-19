@@ -296,6 +296,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     },
                   ),
                 ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(
+                    Icons.blur_circular_rounded,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text('Ambient Glow Theme'),
+                  subtitle: Text(
+                    settings.meshTheme == 'sunset'
+                        ? 'Sunset Glow'
+                        : settings.meshTheme == 'forest'
+                            ? 'Emerald Forest'
+                            : 'Midnight Abyss',
+                  ),
+                  trailing: DropdownButton<String>(
+                    value: settings.meshTheme,
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: 'sunset', child: Text('Sunset Glow')),
+                      DropdownMenuItem(value: 'forest', child: Text('Emerald Forest')),
+                      DropdownMenuItem(value: 'abyss', child: Text('Midnight Abyss')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        ref.read(settingsProvider.notifier).update(settings.copyWith(meshTheme: v));
+                      }
+                    },
+                  ),
+                ),
               ]),
 
               const SizedBox(height: 20),

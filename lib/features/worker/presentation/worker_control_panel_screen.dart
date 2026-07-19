@@ -230,7 +230,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
         controller: _tabController,
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
-        indicatorColor: AppColors.primary,
+        indicatorColor: Colors.transparent,
+        indicator: AppColors.tabDecoration(context),
         tabs: const [
           Tab(text: 'Overview', icon: Icon(Icons.person_rounded, size: 20)),
           Tab(text: 'Stats', icon: Icon(Icons.analytics_rounded, size: 20)),

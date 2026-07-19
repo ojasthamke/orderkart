@@ -127,8 +127,8 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
             controller: _tabController,
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
-            indicatorColor: AppColors.primary,
-            indicatorWeight: 3,
+            indicatorColor: Colors.transparent,
+            indicator: AppColors.tabDecoration(context),
             labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
             tabs: const [
               Tab(text: 'Recent Calls', icon: Icon(Icons.history_rounded)),

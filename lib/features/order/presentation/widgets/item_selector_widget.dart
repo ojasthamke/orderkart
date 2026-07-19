@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/database/database_helper.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -273,7 +274,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                                 .labelSmall
                                                 ?.copyWith(
                                                     color: AppColors.warning)),
-                                      ),
+                                      ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+                                       .fadeIn(begin: 0.40, duration: 1000.ms),
                                   ],
                                 ),
                               ),

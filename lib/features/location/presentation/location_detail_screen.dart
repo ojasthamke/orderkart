@@ -155,7 +155,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
               Tab(text: 'Sub-Roads / Sectors'),
             ],
             labelColor: AppColors.primary,
-            indicatorColor: AppColors.primary,
+            indicatorColor: Colors.transparent,
+            indicator: AppColors.tabDecoration(context),
             unselectedLabelColor: AppColors.textSecondary,
           ),
 

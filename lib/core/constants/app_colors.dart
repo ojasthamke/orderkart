@@ -136,4 +136,13 @@ class AppColors {
 
   static Color cardColor(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0A0A0A) : white;
+
+  static Decoration tabDecoration(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(24),
+      color: primary.withOpacity(isDark ? 0.25 : 0.15),
+      border: Border.all(color: primary.withOpacity(isDark ? 0.50 : 0.30), width: 1.2),
+    );
+  }
 }

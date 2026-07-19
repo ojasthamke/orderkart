@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
@@ -157,7 +158,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       ],
       bottom: TabBar(
         controller: _tabController,
-        indicatorColor: AppColors.primary,
+        indicatorColor: Colors.transparent,
+        indicator: AppColors.tabDecoration(context),
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         tabs: const [
@@ -1277,7 +1279,8 @@ class _ItemTile extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-              ),
+              ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+               .fadeIn(begin: 0.40, duration: 1000.ms),
           ],
         ),
         subtitle: Column(

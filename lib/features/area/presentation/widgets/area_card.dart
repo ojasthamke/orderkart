@@ -8,6 +8,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../../core/widgets/glass_container.dart';
+import '../../../../core/widgets/scale_on_tap.dart';
 import '../../../../core/constants/app_routes.dart';
 
 class AreaCard extends StatelessWidget {
@@ -30,16 +31,12 @@ class AreaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Color(area.color);
 
-    return GlassContainer(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+    return ScaleOnTap(
+      onTap: onTap,
+      child: GlassContainer(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 // Color / Image avatar
@@ -163,8 +160,7 @@ class AreaCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _chip(BuildContext context, String label, IconData icon, Color color) {

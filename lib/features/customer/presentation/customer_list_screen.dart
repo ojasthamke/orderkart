@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/glass_container.dart';
+import '../../../core/widgets/scale_on_tap.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
@@ -347,33 +348,33 @@ class _CustomerCard extends ConsumerWidget {
 
     // ── Ghost House tile — special visual ────────────────────────────────────
     if (customer.isGhostHouse) {
-      return Container(
-        key: key,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.orange.withOpacity(0.06)
-              : Colors.orange.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.orange.withOpacity(0.45),
-            width: 1.4,
-            style: BorderStyle.solid,
-          ),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
+      final VoidCallback ghostTap = isSelectionMode ? onTap : () {
+        Navigator.of(context).pushNamed(
+          AppRoutes.addEditCustomer,
+          arguments: {'streetId': streetId, 'customerId': customer.id},
+        ).then((_) => ref.refresh(customerListProvider(streetId)));
+      };
+
+      return ScaleOnTap(
+        onTap: ghostTap,
+        onLongPress: onLongPress,
+        child: Container(
+          key: key,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.orange.withOpacity(0.06)
+                : Colors.orange.withOpacity(0.04),
             borderRadius: BorderRadius.circular(16),
-            onTap: isSelectionMode ? onTap : () => Navigator.of(context).pushNamed(
-              AppRoutes.addEditCustomer,
-              arguments: {'streetId': streetId, 'customerId': customer.id},
-            ).then((_) => ref.refresh(customerListProvider(streetId))),
-            onLongPress: onLongPress,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(
+            border: Border.all(
+              color: Colors.orange.withOpacity(0.45),
+              width: 1.4,
+              style: BorderStyle.solid,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
                 children: [
                   if (isSelectionMode) ...[
                     Icon(
@@ -501,23 +502,18 @@ class _CustomerCard extends ConsumerWidget {
               ),
             ),
           ),
-        ),
-      );
-    }
+        );
+      }
 
     // ── Normal Customer Card ─────────────────────────────────────────────────
-    return GlassContainer(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          onLongPress: onLongPress,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
+    return ScaleOnTap(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: GlassContainer(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
               children: [
                 if (isSelectionMode) ...[
                   Icon(
@@ -782,8 +778,7 @@ class _CustomerCard extends ConsumerWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildTagBadge(String tag) {

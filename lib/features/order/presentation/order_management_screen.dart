@@ -93,6 +93,10 @@ class _OrderManagementScreenState
                 .toList(),
             isScrollable: true,
             tabAlignment: TabAlignment.start,
+            labelColor: AppColors.primary,
+            indicatorColor: Colors.transparent,
+            indicator: AppColors.tabDecoration(context),
+            unselectedLabelColor: AppColors.textSecondary,
           ),
 
           // Source filter chips (Owner vs Worker orders)

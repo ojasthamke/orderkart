@@ -67,7 +67,8 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
       title: 'Medicines Hub',
       bottom: TabBar(
         controller: _tabController,
-        indicatorColor: AppColors.primary,
+        indicatorColor: Colors.transparent,
+        indicator: AppColors.tabDecoration(context),
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         tabs: const [

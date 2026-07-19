@@ -7,6 +7,7 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/glass_container.dart';
+import '../../../core/widgets/scale_on_tap.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
@@ -164,10 +165,12 @@ class _ExpenseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      borderRadius: BorderRadius.circular(14),
-      child: ListTile(
+    return ScaleOnTap(
+      onTap: onEdit,
+      child: GlassContainer(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        borderRadius: BorderRadius.circular(14),
+        child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: GestureDetector(
           onTap: expense.receiptPhotoPath.isNotEmpty
@@ -253,6 +256,7 @@ class _ExpenseCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

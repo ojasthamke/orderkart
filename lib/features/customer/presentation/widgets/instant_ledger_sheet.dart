@@ -193,7 +193,8 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                     controller: _tabController,
                     labelColor: AppColors.primary,
                     unselectedLabelColor: AppColors.textSecondary,
-                    indicatorColor: AppColors.primary,
+                    indicatorColor: Colors.transparent,
+                    indicator: AppColors.tabDecoration(context),
                     tabs: const [
                       Tab(text: 'Past 5 Orders'),
                       Tab(text: 'Items Purchased'),

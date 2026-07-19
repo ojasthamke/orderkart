@@ -26,6 +26,7 @@ class AppSettings {
   final bool   notificationVibration;
 
   final bool   enableDeliveryCharges;
+  final String meshTheme;
 
   const AppSettings({
     this.businessName      = 'My Business',
@@ -51,6 +52,7 @@ class AppSettings {
     this.notificationSound = true,
     this.notificationVibration = true,
     this.enableDeliveryCharges = true,
+    this.meshTheme             = 'sunset',
   });
 
   AppSettings copyWith({
@@ -77,6 +79,7 @@ class AppSettings {
     bool?   notificationSound,
     bool?   notificationVibration,
     bool?   enableDeliveryCharges,
+    String? meshTheme,
   }) {
     return AppSettings(
       businessName:       businessName       ?? this.businessName,
@@ -102,6 +105,7 @@ class AppSettings {
       notificationSound:  notificationSound  ?? this.notificationSound,
       notificationVibration: notificationVibration ?? this.notificationVibration,
       enableDeliveryCharges: enableDeliveryCharges ?? this.enableDeliveryCharges,
+      meshTheme:           meshTheme          ?? this.meshTheme,
     );
   }
 }

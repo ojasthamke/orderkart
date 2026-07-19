@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/settings/presentation/settings_provider.dart';
 
 class FloatingGlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -70,7 +72,48 @@ class FloatingGlassAppBar extends StatelessWidget implements PreferredSizeWidget
   Size get preferredSize => Size.fromHeight(56.0 + 16.0 + (bottom?.preferredSize.height ?? 0.0));
 }
 
-class AppScaffold extends StatelessWidget {
+class MeshColors {
+  final Color color1;
+  final Color color2;
+  final Color color3;
+  final Color color4;
+
+  const MeshColors({
+    required this.color1,
+    required this.color2,
+    required this.color3,
+    required this.color4,
+  });
+
+  static MeshColors resolve(String theme) {
+    switch (theme) {
+      case 'forest':
+        return const MeshColors(
+          color1: Color(0xFF0D9488),
+          color2: Color(0xFF10B981),
+          color3: Color(0xFF34D399),
+          color4: Color(0xFFF59E0B),
+        );
+      case 'abyss':
+        return const MeshColors(
+          color1: Color(0xFF312E81),
+          color2: Color(0xFF1E1B4B),
+          color3: Color(0xFF4C1D95),
+          color4: Colors.black,
+        );
+      case 'sunset':
+      default:
+        return const MeshColors(
+          color1: Color(0xFF3B82F6),
+          color2: Color(0xFF8B5CF6),
+          color3: Color(0xFFEC4899),
+          color4: Color(0xFFF59E0B),
+        );
+    }
+  }
+}
+
+class AppScaffold extends ConsumerWidget {
   final String title;
   final Widget? body;
   final Widget? floatingActionButton;
@@ -99,9 +142,12 @@ class AppScaffold extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    final meshTheme = ref.watch(settingsProvider).valueOrNull?.meshTheme ?? 'sunset';
+    final colors = MeshColors.resolve(meshTheme);
 
     return Stack(
       children: [
@@ -122,8 +168,8 @@ class AppScaffold extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFF3B82F6).withOpacity(isDark ? 0.35 : 0.22), // Electric Blue
-                  const Color(0xFF3B82F6).withOpacity(0),
+                  colors.color1.withOpacity(isDark ? 0.35 : 0.22),
+                  colors.color1.withOpacity(0),
                 ],
               ),
             ),
@@ -139,8 +185,8 @@ class AppScaffold extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFF8B5CF6).withOpacity(isDark ? 0.30 : 0.18), // Rich Violet
-                  const Color(0xFF8B5CF6).withOpacity(0),
+                  colors.color2.withOpacity(isDark ? 0.30 : 0.18),
+                  colors.color2.withOpacity(0),
                 ],
               ),
             ),
@@ -156,8 +202,8 @@ class AppScaffold extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFFEC4899).withOpacity(isDark ? 0.25 : 0.15), // Rose/Pink
-                  const Color(0xFFEC4899).withOpacity(0),
+                  colors.color3.withOpacity(isDark ? 0.25 : 0.15),
+                  colors.color3.withOpacity(0),
                 ],
               ),
             ),
@@ -173,8 +219,8 @@ class AppScaffold extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFFF59E0B).withOpacity(isDark ? 0.20 : 0.12), // Amber/Orange
-                  const Color(0xFFF59E0B).withOpacity(0),
+                  colors.color4.withOpacity(isDark ? 0.20 : 0.12),
+                  colors.color4.withOpacity(0),
                 ],
               ),
             ),

@@ -70,6 +70,7 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     await _dao.setValue(AppConstants.keyNotifSound,         settings.notificationSound.toString());
     await _dao.setValue(AppConstants.keyNotifVibration,     settings.notificationVibration.toString());
     await _dao.setValue(AppConstants.keyEnableDeliveryCharges, settings.enableDeliveryCharges.toString());
+    await _dao.setValue(AppConstants.keyMeshTheme,             settings.meshTheme);
     state = AsyncValue.data(settings);
     _invalidateAll();
   }

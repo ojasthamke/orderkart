@@ -51,6 +51,7 @@ class SettingsDao {
       notificationSound:    (m[AppConstants.keyNotifSound]     ?? 'true') == 'true',
       notificationVibration:(m[AppConstants.keyNotifVibration] ?? 'true') == 'true',
       enableDeliveryCharges:(m[AppConstants.keyEnableDeliveryCharges] ?? 'true') == 'true',
+      meshTheme:             m[AppConstants.keyMeshTheme]       ?? 'sunset',
     );
   }
 }

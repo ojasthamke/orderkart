@@ -34,9 +34,9 @@ class VipGlowAvatar extends StatelessWidget {
           Container(
             width: (radius * 2) + 10,
             height: (radius * 2) + 10,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const RadialGradient(
+              gradient: RadialGradient(
                 colors: [
                   Color(0xFFFFD700), // Gold
                   Color(0xFFFFA500), // Amber Gold
@@ -44,17 +44,15 @@ class VipGlowAvatar extends StatelessWidget {
                 ],
                 stops: [0.4, 0.8, 1.0],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFFD700).withOpacity(0.5),
-                  blurRadius: 12,
-                  spreadRadius: 2,
-                ),
-              ],
             ),
           )
               .animate(onPlay: (controller) => controller.repeat(reverse: true))
-              .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1500.ms),
+              .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1500.ms)
+              .boxShadow(
+                begin: BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.3), blurRadius: 6, spreadRadius: 0),
+                end: BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.7), blurRadius: 16, spreadRadius: 3),
+                duration: 1500.ms,
+              ),
 
           // ── Main Customer Avatar ──────────────────────────────────────
           Container(
