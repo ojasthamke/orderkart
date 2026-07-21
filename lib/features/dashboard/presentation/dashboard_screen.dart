@@ -9,6 +9,7 @@ import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/customer_avatar.dart';
+import '../../../core/widgets/quick_launcher_grid.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/smart_business_pulse_widget.dart';
 import '../../customer/presentation/customer_provider.dart';
@@ -327,6 +328,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       onViewInventory: () => Navigator.of(context).pushNamed(AppRoutes.inventory),
                     );
                   }(),
+
+                  const SizedBox(height: 20),
+
+                  // ── Quick Actions Launcher Grid ──────────────────────
+                  const Text(
+                    'QUICK LAUNCHER',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textHint,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const QuickLauncherGrid(),
 
                   const SizedBox(height: 20),
 

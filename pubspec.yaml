@@ -110,4 +110,3 @@ flutter:
   assets:
     - assets/logo.png
     - assets/icon.png
-    - assets/worker_sync_received.jpg

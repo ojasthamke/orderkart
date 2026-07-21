@@ -339,17 +339,28 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         if (instant) {
           return child;
         }
-        const begin = Offset(1.0, 0.0);
+        const begin = Offset(0.05, 0.0);
         const end = Offset.zero;
-        const curve = Curves.easeInOutCubic;
-        final tween =
+        const curve = Curves.fastOutSlowIn;
+        final slideTween =
             Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        final scaleTween =
+            Tween<double>(begin: 0.97, end: 1.0).chain(CurveTween(curve: curve));
+        final fadeTween =
+            Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
+
         return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
+          position: animation.drive(slideTween),
+          child: FadeTransition(
+            opacity: animation.drive(fadeTween),
+            child: ScaleTransition(
+              scale: animation.drive(scaleTween),
+              child: child,
+            ),
+          ),
         );
       },
-      transitionDuration: instant ? Duration.zero : const Duration(milliseconds: 280),
+      transitionDuration: instant ? Duration.zero : const Duration(milliseconds: 250),
     );
   }
 }

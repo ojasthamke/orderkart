@@ -13,6 +13,8 @@ class StatCard extends StatelessWidget {
   final Color? surfaceColor;
   final VoidCallback? onTap;
   final String? subtitle;
+  final String? trendText;
+  final Color? trendColor;
 
   const StatCard({
     super.key,
@@ -23,6 +25,8 @@ class StatCard extends StatelessWidget {
     this.surfaceColor,
     this.onTap,
     this.subtitle,
+    this.trendText,
+    this.trendColor,
   });
 
   @override
@@ -53,9 +57,35 @@ class StatCard extends StatelessWidget {
                   ),
                   child: Icon(icon, color: color, size: 22),
                 ),
-                if (onTap != null)
-                  const Icon(Icons.arrow_forward_ios_rounded,
-                      size: 12, color: AppColors.gray400),
+                Row(
+                  children: [
+                    if (trendText != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: (trendColor ?? color).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: (trendColor ?? color).withOpacity(0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          trendText!,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: trendColor ?? color,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    if (onTap != null)
+                      const Icon(Icons.arrow_forward_ios_rounded,
+                          size: 12, color: AppColors.gray400),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 12),

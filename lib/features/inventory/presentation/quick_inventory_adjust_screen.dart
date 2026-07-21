@@ -7,6 +7,7 @@ import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/custom_search_bar.dart';
+import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
@@ -216,7 +217,7 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
             // Item Adjustment List
             Expanded(
               child: itemsAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => LoadingShimmer.cardList(count: 6, height: 160),
                 error: (e, st) => Center(child: Text('Error loading inventory: $e')),
                 data: (items) {
                   // Apply local filters

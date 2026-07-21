@@ -16,6 +16,7 @@ import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/customer_avatar.dart';
+import '../../../core/widgets/status_dot_badge.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../domain/order.dart';
@@ -389,15 +390,6 @@ class _OrderCard extends ConsumerWidget {
     required this.onDuplicate,
   });
 
-  Color _statusColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (order.deliveryStatus) {
-      case 'delivered': return isDark ? const Color(0xFF81C784) : AppColors.delivered;
-      case 'cancelled': return isDark ? const Color(0xFFE57373) : AppColors.cancelled;
-      default:          return isDark ? const Color(0xFFFFB74D) : AppColors.pending;
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsVal = ref.watch(settingsProvider).valueOrNull;
@@ -460,21 +452,7 @@ class _OrderCard extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _statusColor(context).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        AppFormatters.deliveryStatus(order.deliveryStatus),
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: _statusColor(context)),
-                      ),
-                    ),
+                    StatusDotBadge(status: order.deliveryStatus),
                     const SizedBox(width: 4),
                     PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert_rounded,

@@ -14,6 +14,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/customer_avatar.dart';
+import '../../../core/widgets/status_dot_badge.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../inventory/domain/item.dart';
@@ -149,10 +150,6 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Widget _buildHeaderCard(AppOrder order, String currency) {
-    Color statusColor = AppColors.pending;
-    if (order.deliveryStatus == AppConstants.statusDelivered) statusColor = AppColors.success;
-    if (order.deliveryStatus == AppConstants.statusCancelled) statusColor = AppColors.error;
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -178,21 +175,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              AppFormatters.deliveryStatus(order.deliveryStatus),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: statusColor,
-              ),
-            ),
-          ),
+          StatusDotBadge(status: order.deliveryStatus),
         ],
       ),
     );

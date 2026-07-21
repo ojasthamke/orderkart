@@ -10,6 +10,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/glass_container.dart';
+import '../../../core/widgets/loading_shimmer.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
@@ -360,7 +361,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
           // Grid View of Showroom Products
           Expanded(
             child: itemsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              loading: () => LoadingShimmer.grid(count: 6, childAspectRatio: 0.82),
               error: (e, _) => Center(child: Text('Error loading showroom: $e')),
               data: (itemsList) {
                 // Filter items
