@@ -170,7 +170,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
       totalInventoryCost += (item.costPrice * qty);
     }
 
-    final markupPct = ((multiplier - 1.0) * 100).round();
+    final safeMultiplier = (multiplier.isNaN || multiplier.isInfinite || multiplier < 1.0) ? 1.43 : multiplier;
+    final markupPct = ((safeMultiplier - 1.0) * 100).round();
 
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -211,7 +212,7 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  '${multiplier.toStringAsFixed(2)}x Target',
+                  '${safeMultiplier.toStringAsFixed(2)}x Target',
                   style: const TextStyle(
                     color: AppColors.success,
                     fontWeight: FontWeight.w900,
@@ -227,7 +228,7 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
             children: [
               _buildStatMini('Monthly Expenses', AppFormatters.currency(monthlyExpenses, symbol: _currency), context),
               _buildStatMini('Est. Stock Cost', AppFormatters.currency(totalInventoryCost, symbol: _currency), context),
-              _buildStatMini('Req. Selling Multiplier', '${multiplier.toStringAsFixed(2)}x (+$markupPct%)', context),
+              _buildStatMini('Req. Selling Multiplier', '${safeMultiplier.toStringAsFixed(2)}x (+$markupPct%)', context),
             ],
           ),
           const SizedBox(height: 10),
@@ -239,19 +240,19 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                 int updatedCount = 0;
                 for (final item in allItems) {
                   if (item.costPrice > 0) {
-                    final targetPrice = (item.costPrice * multiplier).toStringAsFixed(2);
+                    final targetPrice = (item.costPrice * safeMultiplier).toStringAsFixed(2);
                     _onFieldChanged(item, 'sellingPrice', targetPrice);
                     updatedCount++;
                   }
                 }
                 SnackbarHelper.showSuccess(
                   context,
-                  '✨ Applied 30% profit target price (${multiplier.toStringAsFixed(2)}x) to $updatedCount items! Tap Save Changes to apply.',
+                  '✨ Applied 30% profit target price (${safeMultiplier.toStringAsFixed(2)}x) to $updatedCount items! Tap Save Changes to apply.',
                 );
               },
               icon: const Icon(Icons.bolt_rounded, size: 16),
               label: Text(
-                'Auto-Apply 30% Profit Target to All Items (${multiplier.toStringAsFixed(2)}x)',
+                'Auto-Apply 30% Profit Target to All Items (${safeMultiplier.toStringAsFixed(2)}x)',
                 style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
               ),
               style: ElevatedButton.styleFrom(
@@ -543,7 +544,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                                       InkWell(
                                         onTap: () {
                                           AppHaptics.buttonClick();
-                                          final target30 = (workingItem.costPrice * multiplier).toStringAsFixed(2);
+                                          final mult = (multiplier.isNaN || multiplier.isInfinite || multiplier < 1.0) ? 1.43 : multiplier;
+                                          final target30 = (workingItem.costPrice * mult).toStringAsFixed(2);
                                           _onFieldChanged(item, 'sellingPrice', target30);
                                         },
                                         borderRadius: BorderRadius.circular(8),
@@ -560,7 +562,7 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                                               const Icon(Icons.verified_rounded, size: 14, color: AppColors.success),
                                               const SizedBox(width: 6),
                                               Text(
-                                                '🎯 30% Profit Target: $_currency${(workingItem.costPrice * multiplier).toStringAsFixed(2)}',
+                                                '🎯 30% Profit Target: $_currency${(workingItem.costPrice * ((multiplier.isNaN || multiplier.isInfinite || multiplier < 1.0) ? 1.43 : multiplier)).toStringAsFixed(2)}',
                                                 style: const TextStyle(
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.bold,
