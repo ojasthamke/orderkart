@@ -346,6 +346,8 @@ class _CustomerCard extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final creditColor = isDark ? const Color(0xFF2DD4BF) : Colors.teal;
 
+    Widget cardChild;
+
     // ── Ghost House tile — special visual ────────────────────────────────────
     if (customer.isGhostHouse) {
       final VoidCallback ghostTap = isSelectionMode ? onTap : () {
@@ -355,7 +357,7 @@ class _CustomerCard extends ConsumerWidget {
         ).then((_) => ref.refresh(customerListProvider(streetId)));
       };
 
-      return ScaleOnTap(
+      cardChild = ScaleOnTap(
         onTap: ghostTap,
         onLongPress: onLongPress,
         child: Container(
@@ -503,18 +505,16 @@ class _CustomerCard extends ConsumerWidget {
             ),
           ),
         );
-      }
-
-    // ── Normal Customer Card ─────────────────────────────────────────────────
-    return ScaleOnTap(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: GlassContainer(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-              children: [
+      } else {
+        cardChild = ScaleOnTap(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: GlassContainer(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                  children: [
                 if (isSelectionMode) ...[
                   Icon(
                     isSelected
@@ -779,6 +779,9 @@ class _CustomerCard extends ConsumerWidget {
           ),
         ),
       );
+    }
+
+    return RepaintBoundary(child: cardChild);
   }
 
   Widget _buildTagBadge(String tag) {
