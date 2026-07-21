@@ -24,40 +24,22 @@ class QuickLauncherGrid extends StatelessWidget {
 
   static const List<_LauncherItem> _items = [
     _LauncherItem(
-      title: 'New Order',
-      icon: Icons.add_shopping_cart_rounded,
+      title: 'Order Quantity',
+      icon: Icons.inventory_2_rounded,
       color: Color(0xFF10B981),
-      route: AppRoutes.createOrder,
+      route: AppRoutes.inventory,
+    ),
+    _LauncherItem(
+      title: 'P & L',
+      icon: Icons.analytics_rounded,
+      color: Color(0xFF8B5CF6),
+      route: AppRoutes.analytics,
     ),
     _LauncherItem(
       title: 'Quick Rates',
       icon: Icons.edit_note_rounded,
       color: Color(0xFF14B8A6),
       route: AppRoutes.quickInventoryAdjust,
-    ),
-    _LauncherItem(
-      title: 'Collect Dues',
-      icon: Icons.payments_rounded,
-      color: Color(0xFFF59E0B),
-      route: AppRoutes.orderManagement,
-    ),
-    _LauncherItem(
-      title: 'Area Map',
-      icon: Icons.map_rounded,
-      color: Color(0xFFF97316),
-      route: AppRoutes.areaIntelligenceMap,
-    ),
-    _LauncherItem(
-      title: 'VIP Club',
-      icon: Icons.workspace_premium_rounded,
-      color: Color(0xFFEAB308),
-      route: AppRoutes.vipDashboard,
-    ),
-    _LauncherItem(
-      title: 'Expenses',
-      icon: Icons.receipt_long_rounded,
-      color: Color(0xFFEF4444),
-      route: AppRoutes.expenses,
     ),
   ];
 
