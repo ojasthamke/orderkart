@@ -27,8 +27,10 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
     loadLocations();
   }
 
-  Future<void> loadLocations() async {
-    state = const AsyncValue.loading();
+  Future<void> loadLocations({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final list = await _repo.getAllLocations(
         searchQuery: _search,
@@ -37,7 +39,9 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
       );
       state = AsyncValue.data(list);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -57,24 +61,23 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
     final toInsert = location.copyWith(sequenceKey: nextSeq);
     
     await _repo.addLocation(toInsert);
-    await loadLocations();
+    await loadLocations(silent: true);
     _invalidateAll();
   }
 
   Future<void> updateLocation(Location location) async {
     await _repo.updateLocation(location);
-    await loadLocations();
+    await loadLocations(silent: true);
     _invalidateAll();
   }
 
   Future<void> delete(String id) async {
     await _repo.deleteLocation(id);
-    await loadLocations();
+    await loadLocations(silent: true);
     _invalidateAll();
   }
 
   void _invalidateAll() {
-    _ref.invalidate(locationListProvider(parentId));
     if (parentId != null) {
       _ref.invalidate(breadcrumbsProvider(parentId!));
     }

@@ -12,29 +12,33 @@ class WorkerListNotifier extends StateNotifier<AsyncValue<List<Worker>>> {
     load();
   }
 
-  Future<void> load() async {
-    state = const AsyncValue.loading();
+  Future<void> load({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final workers = await _dao.getAllWorkers();
       state = AsyncValue.data(workers);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
   Future<void> add(Worker worker) async {
     await _dao.insertWorker(worker);
-    await load();
+    await load(silent: true);
   }
 
   Future<void> update(Worker worker) async {
     await _dao.updateWorker(worker);
-    await load();
+    await load(silent: true);
   }
 
   Future<void> delete(String id) async {
     await _dao.deleteWorker(id);
-    await load();
+    await load(silent: true);
   }
 }
 

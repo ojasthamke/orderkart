@@ -19,8 +19,10 @@ class ExpenseNotifier extends StateNotifier<AsyncValue<List<Expense>>> {
     load();
   }
 
-  Future<void> load() async {
-    state = const AsyncValue.loading();
+  Future<void> load({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final list = await _repo.getAllExpenses(
         searchQuery: _search.isEmpty   ? null : _search,
@@ -29,12 +31,13 @@ class ExpenseNotifier extends StateNotifier<AsyncValue<List<Expense>>> {
       );
       state = AsyncValue.data(list);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
   void _invalidateAll() {
-    _ref.invalidate(expenseProvider);
     _ref.invalidate(monthlySummaryProvider);
     _ref.invalidate(analyticsSummaryProvider);
     _ref.invalidate(weeklyChartProvider);
@@ -58,19 +61,19 @@ class ExpenseNotifier extends StateNotifier<AsyncValue<List<Expense>>> {
 
   Future<void> add(Expense e) async {
     await _repo.addExpense(e);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> update(Expense e) async {
     await _repo.updateExpense(e);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> delete(String id) async {
     await _repo.deleteExpense(id);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 }

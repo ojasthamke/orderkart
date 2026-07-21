@@ -19,13 +19,17 @@ class NotificationListNotifier extends StateNotifier<AsyncValue<List<AppNotifica
     _loadNotifications();
   }
 
-  Future<void> _loadNotifications() async {
-    state = const AsyncValue.loading();
+  Future<void> _loadNotifications({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final notifications = await _dao.getNotifications();
       state = AsyncValue.data(notifications);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -53,7 +57,7 @@ class NotificationListNotifier extends StateNotifier<AsyncValue<List<AppNotifica
 
     try {
       await _dao.insert(notification);
-      await _loadNotifications();
+      await _loadNotifications(silent: true);
 
       // Show top overlay banner
       InAppNotificationBanner.show(
@@ -66,7 +70,7 @@ class NotificationListNotifier extends StateNotifier<AsyncValue<List<AppNotifica
         onTap: () {
           markAsRead(id);
           String? route;
-          Object? routeArgs;
+          Map<String, dynamic>? routeArgs;
           switch (category) {
             case 'payment_due':
               route = AppRoutes.customerProfile;
@@ -91,28 +95,28 @@ class NotificationListNotifier extends StateNotifier<AsyncValue<List<AppNotifica
   Future<void> markAsRead(String id) async {
     try {
       await _dao.markAsRead(id);
-      _loadNotifications();
+      _loadNotifications(silent: true);
     } catch (_) {}
   }
 
   Future<void> markAllAsRead() async {
     try {
       await _dao.markAllAsRead();
-      _loadNotifications();
+      _loadNotifications(silent: true);
     } catch (_) {}
   }
 
   Future<void> deleteNotification(String id) async {
     try {
       await _dao.delete(id);
-      _loadNotifications();
+      _loadNotifications(silent: true);
     } catch (_) {}
   }
 
   Future<void> clearAll() async {
     try {
       await _dao.deleteAll();
-      _loadNotifications();
+      _loadNotifications(silent: true);
     } catch (_) {}
   }
 }

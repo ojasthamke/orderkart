@@ -30,8 +30,10 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
     load();
   }
 
-  Future<void> load() async {
-    state = const AsyncValue.loading();
+  Future<void> load({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final orders = await _repo.getAllOrders(
         status:     _status == 'all' ? null : _status,
@@ -40,12 +42,13 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
       );
       state = AsyncValue.data(orders);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
   void _invalidateAll() {
-    _ref.invalidate(orderManagementProvider);
     _ref.invalidate(customerOrdersProvider);
     _ref.invalidate(orderDetailProvider);
     _ref.invalidate(customerListProvider);
@@ -83,25 +86,25 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
 
   Future<void> updateDeliveryStatus(String orderId, String status) async {
     await _repo.updateDeliveryStatus(orderId, status);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> addPayment(Payment payment) async {
     await _repo.addPayment(payment);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> deleteOrder(String id) async {
     await _repo.deleteOrder(id);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> createOrder(AppOrder order, List<OrderItem> items) async {
     await _repo.createOrder(order, items);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 }

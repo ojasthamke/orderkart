@@ -9,40 +9,50 @@ class NoteListNotifier extends StateNotifier<AsyncValue<List<AppNote>>> {
     _loadNotes();
   }
 
-  Future<void> _loadNotes() async {
-    state = const AsyncValue.loading();
+  Future<void> _loadNotes({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final notes = await _dao.getNotes();
       state = AsyncValue.data(notes);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
   Future<void> addNote(AppNote note) async {
     try {
       await _dao.insert(note);
-      await _loadNotes();
+      await _loadNotes(silent: true);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
   Future<void> updateNote(AppNote note) async {
     try {
       await _dao.update(note);
-      await _loadNotes();
+      await _loadNotes(silent: true);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
   Future<void> deleteNote(String id) async {
     try {
       await _dao.delete(id);
-      await _loadNotes();
+      await _loadNotes(silent: true);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 }

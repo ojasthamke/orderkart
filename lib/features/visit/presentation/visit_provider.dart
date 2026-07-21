@@ -15,31 +15,35 @@ class VisitListNotifier extends StateNotifier<AsyncValue<List<AppVisit>>> {
     loadVisits();
   }
 
-  Future<void> loadVisits() async {
-    state = const AsyncValue.loading();
+  Future<void> loadVisits({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final visits = _selectedDate.isEmpty
           ? await _dao.getAllVisits()
           : await _dao.getVisitsByDate(_selectedDate);
       state = AsyncValue.data(visits);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
   Future<void> addVisit(AppVisit visit) async {
     await _dao.insert(visit);
-    await loadVisits();
+    await loadVisits(silent: true);
   }
 
   Future<void> updateVisit(AppVisit visit) async {
     await _dao.update(visit);
-    await loadVisits();
+    await loadVisits(silent: true);
   }
 
   Future<void> deleteVisit(String id) async {
     await _dao.delete(id);
-    await loadVisits();
+    await loadVisits(silent: true);
   }
 
   Future<void> markStatus(String id, String status) async {
