@@ -21,8 +21,10 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     load();
   }
 
-  Future<void> load() async {
-    state = const AsyncValue.loading();
+  Future<void> load({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final items = await _repo.getAllItems(
         category:    _category.isEmpty ? null : _category,
@@ -31,12 +33,13 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
       );
       state = AsyncValue.data(items);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
   void _invalidateAll() {
-    _ref.invalidate(inventoryProvider);
     _ref.invalidate(lowStockProvider);
     _ref.invalidate(outOfStockProvider);
     _ref.invalidate(stockSummaryProvider);
@@ -64,32 +67,32 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
 
   Future<void> addItem(Item item) async {
     await _repo.addItem(item);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> updateItem(Item item) async {
     await _repo.updateItem(item);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> updateItems(List<Item> items) async {
     await _repo.updateItems(items);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> deleteItem(String id) async {
     await _repo.deleteItem(id);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> adjustStock(
       String itemId, double change, String reason) async {
     await _repo.adjustStock(itemId, change, reason);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 

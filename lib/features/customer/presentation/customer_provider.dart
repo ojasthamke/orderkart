@@ -27,19 +27,22 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     load();
   }
 
-  Future<void> load() async {
-    state = const AsyncValue.loading();
+  Future<void> load({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final list =
           await _repo.getCustomersByStreet(streetId, searchQuery: _search);
       state = AsyncValue.data(list);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
   void _invalidateAll() {
-    _ref.invalidate(customerListProvider(streetId));
     _ref.invalidate(customerDetailProvider);
     _ref.invalidate(streetProviderFamily);
     _ref.invalidate(areaProvider);
@@ -56,13 +59,13 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
 
   Future<void> add(Customer c) async {
     await _repo.addCustomer(c);
-    await load();
+    await load(silent: true);
     _invalidateAll();
   }
 
   Future<void> update(Customer c) async {
     await _repo.updateCustomer(c);
-    await load();
+    await load(silent: true);
     _invalidateAll();
     _ref.invalidate(customerDetailProvider(c.id));
   }
