@@ -325,6 +325,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       monthlySales: (summary['monthly_sales'] as num?)?.toDouble() ?? 0.0,
                       cashReceived: (summary['cash_received'] as num?)?.toDouble() ?? 0.0,
                       onlineReceived: (summary['online_received'] as num?)?.toDouble() ?? 0.0,
+                      todayProfit: (summary['today_profit'] as num?)?.toDouble() ?? 0.0,
+                      monthlyProfit: (summary['monthly_profit'] as num?)?.toDouble() ?? 0.0,
                       currency: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹',
                       onCreateOrder: () => Navigator.of(context).pushNamed(AppRoutes.customers),
                       onViewInventory: () => Navigator.of(context).pushNamed(AppRoutes.inventory),

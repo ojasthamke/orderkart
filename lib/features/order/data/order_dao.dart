@@ -398,6 +398,32 @@ class OrderDao {
             : 'SELECT COALESCE(SUM(amount),0) AS v FROM expenses WHERE DATE(created_at) = DATE(?)',
         isWorker ? [today, workerId, workerId] : [today]);
 
+    final todayGrossProfit = await db.rawQuery(
+        isWorker
+            ? "SELECT COALESCE(SUM(oi.total_price - (oi.quantity * COALESCE(i.cost_price, 0))), 0) AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(oi.total_price - (oi.quantity * COALESCE(i.cost_price, 0))), 0) AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled'",
+        isWorker ? [today, workerId, workerId] : [today]);
+
+    final monthlyExpensesRes = await db.rawQuery(
+        isWorker
+            ? "SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE strftime('%Y-%m', created_at) = ? AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(amount), 0) AS v FROM expenses WHERE strftime('%Y-%m', created_at) = ?",
+        isWorker ? [month, workerId, workerId] : [month]);
+
+    final monthlyGrossProfit = await db.rawQuery(
+        isWorker
+            ? "SELECT COALESCE(SUM(oi.total_price - (oi.quantity * COALESCE(i.cost_price, 0))), 0) AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', o.created_at) = ? AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(oi.total_price - (oi.quantity * COALESCE(i.cost_price, 0))), 0) AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', o.created_at) = ? AND o.delivery_status != 'cancelled'",
+        isWorker ? [month, workerId, workerId] : [month]);
+
+    final double tExp = (todayExpenses.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double mExp = (monthlyExpensesRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double tGross = (todayGrossProfit.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double mGross = (monthlyGrossProfit.first['v'] as num?)?.toDouble() ?? 0.0;
+
+    final double todayNetProfit = tGross - tExp;
+    final double monthlyNetProfit = mGross - mExp;
+
     // Top selling items
     final topItems = await db.rawQuery(
         isWorker
@@ -473,7 +499,9 @@ class OrderDao {
       'all_time_sales':   (allTimeSales.first['v'] as num?)?.toDouble() ?? 0,
       'delivery_fees':    (allTimeDelivery.first['v'] as num?)?.toDouble() ?? 0,
       'vip_count':        vipCount.first['v'] ?? 0,
-      'today_expenses':   (todayExpenses.first['v'] as num?)?.toDouble() ?? 0.0,
+      'today_expenses':   tExp,
+      'today_profit':     todayNetProfit,
+      'monthly_profit':   monthlyNetProfit,
     };
   }
 

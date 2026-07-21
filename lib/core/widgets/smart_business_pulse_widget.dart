@@ -17,6 +17,8 @@ class SmartBusinessPulseWidget extends StatelessWidget {
   final double monthlySales;
   final double cashReceived;
   final double onlineReceived;
+  final double todayProfit;
+  final double monthlyProfit;
   final String currency;
   final VoidCallback? onCreateOrder;
   final VoidCallback? onViewInventory;
@@ -38,6 +40,8 @@ class SmartBusinessPulseWidget extends StatelessWidget {
     required this.monthlySales,
     required this.cashReceived,
     required this.onlineReceived,
+    this.todayProfit = 0.0,
+    this.monthlyProfit = 0.0,
     this.currency = '₹',
     this.onCreateOrder,
     this.onViewInventory,
@@ -265,6 +269,40 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _buildMetricTile(
+                        title: "Today's Profit",
+                        value: '$currency${todayProfit.toStringAsFixed(2)}',
+                        subtitle: 'Net Profit Today',
+                        icon: Icons.trending_up_rounded,
+                        iconColor: const Color(0xFF10B981),
+                        cardBg: subCardBg,
+                        cardBorder: subCardBorder,
+                        titleColor: textMutedColor,
+                        valueColor: todayProfit >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        subtitleColor: textMutedColor.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMetricTile(
+                        title: 'Monthly Profit',
+                        value: '$currency${monthlyProfit.toStringAsFixed(2)}',
+                        subtitle: 'Net Profit This Month',
+                        icon: Icons.monetization_on_rounded,
+                        iconColor: const Color(0xFF8B5CF6),
+                        cardBg: subCardBg,
+                        cardBorder: subCardBorder,
+                        titleColor: textMutedColor,
+                        valueColor: monthlyProfit >= 0 ? const Color(0xFF8B5CF6) : const Color(0xFFEF4444),
+                        subtitleColor: textMutedColor.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricTile(
                         title: 'Success Rate',
                         value: totalOrdersCount > 0
                             ? '${(deliveredCount / totalOrdersCount * 100).toStringAsFixed(1)}%'
@@ -282,81 +320,11 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildMetricTile(
-                        title: 'Monthly Volume',
+                        title: 'Monthly Revenue',
                         value: '$currency${monthlySales.toStringAsFixed(0)}',
-                        subtitle: 'This Month\'s Sales',
+                        subtitle: "This Month's Sales",
                         icon: Icons.calendar_month_outlined,
                         iconColor: const Color(0xFFF59E0B),
-                        cardBg: subCardBg,
-                        cardBorder: subCardBorder,
-                        titleColor: textMutedColor,
-                        valueColor: textMainColor,
-                        subtitleColor: textMutedColor.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMetricTile(
-                        title: 'Avg Order Value',
-                        value: todayOrdersCount > 0
-                            ? '$currency${(todaySales / todayOrdersCount).toStringAsFixed(1)}'
-                            : '${currency}0.0',
-                        subtitle: '$todayOrdersCount Orders Today',
-                        icon: Icons.shopping_bag_outlined,
-                        iconColor: const Color(0xFF38BDF8),
-                        cardBg: subCardBg,
-                        cardBorder: subCardBorder,
-                        titleColor: textMutedColor,
-                        valueColor: textMainColor,
-                        subtitleColor: textMutedColor.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildMetricTile(
-                        title: 'Today\'s Expenses',
-                        value: '$currency${todayExpenses.toStringAsFixed(1)}',
-                        subtitle: 'Total Outflow',
-                        icon: Icons.payments_outlined,
-                        iconColor: const Color(0xFFEF4444),
-                        cardBg: subCardBg,
-                        cardBorder: subCardBorder,
-                        titleColor: textMutedColor,
-                        valueColor: textMainColor,
-                        subtitleColor: textMutedColor.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMetricTile(
-                        title: 'Cash / Online Ratio',
-                        value: '$currency${cashReceived.toStringAsFixed(0)} / $currency${onlineReceived.toStringAsFixed(0)}',
-                        subtitle: 'Payment Breakup',
-                        icon: Icons.account_balance_wallet_outlined,
-                        iconColor: const Color(0xFFA855F7),
-                        cardBg: subCardBg,
-                        cardBorder: subCardBorder,
-                        titleColor: textMutedColor,
-                        valueColor: textMainColor,
-                        subtitleColor: textMutedColor.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildMetricTile(
-                        title: 'Active Customers',
-                        value: '$customerCount',
-                        subtitle: 'Total Registered',
-                        icon: Icons.people_outline_rounded,
-                        iconColor: const Color(0xFFEC4899),
                         cardBg: subCardBg,
                         cardBorder: subCardBorder,
                         titleColor: textMutedColor,
