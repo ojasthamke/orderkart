@@ -594,12 +594,17 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE items ADD COLUMN market_price REAL DEFAULT 0');
     } catch (_) {}
 
+    try {
+      await db.execute('ALTER TABLE item_price_history ADD COLUMN cost_price REAL DEFAULT 0');
+    } catch (_) {}
+
     await db.execute('''
       CREATE TABLE IF NOT EXISTS item_price_history (
         id            TEXT PRIMARY KEY,
         item_id       TEXT NOT NULL,
         date          TEXT NOT NULL,
         selling_price REAL NOT NULL,
+        cost_price    REAL DEFAULT 0,
         market_price  REAL DEFAULT 0,
         created_at    TEXT NOT NULL,
         FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE

@@ -164,13 +164,14 @@ class ItemDao {
 
         final dateKey = DateTime.now().toIso8601String().substring(0, 10);
         await txn.rawInsert('''
-          INSERT OR REPLACE INTO item_price_history (id, item_id, date, selling_price, market_price, created_at)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT OR REPLACE INTO item_price_history (id, item_id, date, selling_price, cost_price, market_price, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', [
           '${item.id}_$dateKey',
           item.id,
           dateKey,
           item.sellingPrice,
+          item.costPrice,
           item.marketPrice,
           DateTime.now().toIso8601String(),
         ]);
@@ -186,13 +187,14 @@ class ItemDao {
     final db = await _db;
     final dateKey = DateTime.now().toIso8601String().substring(0, 10);
     await db.rawInsert('''
-      INSERT OR REPLACE INTO item_price_history (id, item_id, date, selling_price, market_price, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO item_price_history (id, item_id, date, selling_price, cost_price, market_price, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', [
       '${item.id}_$dateKey',
       item.id,
       dateKey,
       item.sellingPrice,
+      item.costPrice,
       item.marketPrice,
       DateTime.now().toIso8601String(),
     ]);
