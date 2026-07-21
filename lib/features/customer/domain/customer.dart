@@ -214,10 +214,10 @@ class Customer {
       };
 
   factory Customer.fromMap(Map<String, dynamic> map) => Customer(
-        id:                  map['id']                  as String,
-        streetId:            map['street_id']           as String,
-        name:                map['name']                as String,
-        phone1:              map['phone1']              as String,
+        id:                  map['id']                  as String? ?? '',
+        streetId:            (map['street_id'] ?? map['location_id']) as String? ?? '',
+        name:                map['name']                as String? ?? '',
+        phone1:              map['phone1']              as String? ?? '',
         phone2:              map['phone2']              as String? ?? '',
         whatsapp:            map['whatsapp']            as String? ?? '',
         houseNumber:         map['house_number']        as String? ?? '',
@@ -230,10 +230,10 @@ class Customer {
         totalOrders:         map['total_orders']        as int?    ?? 0,
         totalPaid:           (map['total_paid']          as num?)?.toDouble() ?? 0,
         totalPending:        (map['total_pending']        as num?)?.toDouble() ?? 0,
-        customerSince:       DateTime.parse(map['customer_since'] as String),
+        customerSince:       DateTime.tryParse(map['customer_since']?.toString() ?? '') ?? DateTime.now(),
         lastOrderDate:       map['last_order_date']     as String? ?? '',
-        createdAt:           DateTime.parse(map['created_at']    as String),
-        updatedAt:           DateTime.parse(map['updated_at']    as String),
+        createdAt:           DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
+        updatedAt:           DateTime.tryParse(map['updated_at']?.toString() ?? '') ?? DateTime.now(),
         assignedWorkerId:    (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
         createdBy:           map['created_by']          as String? ?? 'owner',
         workerName:          map['worker_name']         as String? ?? '',

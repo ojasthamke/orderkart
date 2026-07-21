@@ -21,6 +21,7 @@ import '../../visit/presentation/visit_provider.dart';
 import '../../note/presentation/note_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
 import '../../area/presentation/area_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -324,6 +325,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       monthlySales: (summary['monthly_sales'] as num?)?.toDouble() ?? 0.0,
                       cashReceived: (summary['cash_received'] as num?)?.toDouble() ?? 0.0,
                       onlineReceived: (summary['online_received'] as num?)?.toDouble() ?? 0.0,
+                      currency: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹',
                       onCreateOrder: () => Navigator.of(context).pushNamed(AppRoutes.customers),
                       onViewInventory: () => Navigator.of(context).pushNamed(AppRoutes.inventory),
                     );
@@ -351,7 +353,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     height: 112,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.zero,
                       children: [
                         _buildDashboardCard(
                           context,
@@ -400,7 +402,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.note_alt_rounded,
                           color: Colors.purple,
                           providerValue: ref.watch(noteListNotifier).maybeWhen(
-                            data: (list) => list.where((n) => n.remindAt.isNotEmpty).length.toString(),
+                            data: (list) => list.where((n) => n.remindAt.isNotEmpty && !n.isCompleted && !n.isArchived).length.toString(),
                             orElse: () => '-',
                           ),
                           onTap: () => Navigator.of(context).pushNamed(AppRoutes.notes),

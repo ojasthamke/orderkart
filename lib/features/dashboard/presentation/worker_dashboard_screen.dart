@@ -6,6 +6,7 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_drawer.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/services/worker_session.dart';
 import '../../customer/presentation/customer_provider.dart';
@@ -122,25 +123,17 @@ class WorkerDashboardScreen extends ConsumerWidget {
           : [AppColors.primary, const Color(0xFF0284C7)],
     );
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.badge_rounded, color: AppColors.primary, size: 24),
-            SizedBox(width: 8),
-            Text('Worker Dashboard', style: TextStyle(fontWeight: FontWeight.w800)),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.sync_rounded),
-            tooltip: 'Pending Sync Queue',
-            onPressed: () => Navigator.of(context).pushNamed(AppRoutes.pendingSync),
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Worker Dashboard',
+      showBack: false,
       drawer: const AppDrawer(),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.sync_rounded),
+          tooltip: 'Pending Sync Queue',
+          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.pendingSync),
+        ),
+      ],
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

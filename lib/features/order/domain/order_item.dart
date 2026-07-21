@@ -56,13 +56,13 @@ class OrderItem {
       };
 
   factory OrderItem.fromMap(Map<String, dynamic> map) => OrderItem(
-        id:         map['id']          as String,
-        orderId:    map['order_id']    as String,
+        id:         map['id']          as String? ?? '',
+        orderId:    map['order_id']    as String? ?? '',
         itemId:     map['item_id']     as String? ?? '',
-        itemName:   map['item_name']   as String,
-        itemUnit:   map['item_unit']   as String,
-        quantity:   (map['quantity']   as num).toDouble(),
-        unitPrice:  (map['unit_price'] as num).toDouble(),
-        totalPrice: (map['total_price']as num).toDouble(),
+        itemName:   map['item_name']   as String? ?? '',
+        itemUnit:   map['item_unit']   as String? ?? '',
+        quantity:   (map['quantity']   as num?)?.toDouble() ?? 0.0,
+        unitPrice:  (map['unit_price'] as num?)?.toDouble() ?? 0.0,
+        totalPrice: (map['total_price'] as num?)?.toDouble() ?? 0.0,
       );
 }

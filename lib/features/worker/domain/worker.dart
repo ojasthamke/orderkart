@@ -198,8 +198,8 @@ class Worker {
     }
 
     return Worker(
-      id: map['id'] as String,
-      name: map['name'] as String,
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? '',
       photoPath: map['photo_path'] as String? ?? '',
       phone: map['phone'] as String? ?? '',
       address: map['address'] as String? ?? '',
@@ -212,8 +212,8 @@ class Worker {
       salary: (map['salary'] as num?)?.toDouble() ?? 0.0,
       bonus: (map['bonus'] as num?)?.toDouble() ?? 0.0,
       notes: map['notes'] as String? ?? '',
-      createdAt: DateTime.parse(map['created_at'] as String),
-      updatedAt: DateTime.parse(map['updated_at'] as String),
+      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(map['updated_at']?.toString() ?? '') ?? DateTime.now(),
       aadhaarId: map['aadhaar_id'] as String? ?? '',
       emergencyContact: map['emergency_contact'] as String? ?? '',
       bankDetails: map['bank_details'] as String? ?? '',

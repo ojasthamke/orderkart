@@ -64,14 +64,14 @@ class AppVisit {
 
   factory AppVisit.fromMap(Map<String, dynamic> map) {
     return AppVisit(
-      id: map['id'] as String,
-      date: map['date'] as String,
-      areaId: map['area_id'] as String,
+      id: map['id'] as String? ?? '',
+      date: map['date'] as String? ?? '',
+      areaId: (map['area_id'] ?? map['location_id']) as String? ?? '',
       streetId: map['street_id'] as String? ?? '',
       notes: map['notes'] as String? ?? '',
       priority: map['priority'] as int? ?? 0,
-      status: map['status'] as String,
-      createdAt: DateTime.parse(map['created_at'] as String),
+      status: map['status'] as String? ?? 'pending',
+      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
       areaName: map['area_name'] as String? ?? '',
       streetName: map['street_name'] as String? ?? '',
     );

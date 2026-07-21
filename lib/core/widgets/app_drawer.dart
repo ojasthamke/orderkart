@@ -93,11 +93,10 @@ class AppDrawer extends ConsumerWidget {
                     icon: Icons.dashboard_rounded,
                     title: 'Dashboard',
                     onTap: () {
+                      final target = isWorker ? AppRoutes.workerDashboard : AppRoutes.dashboard;
                       Navigator.pop(context);
-                      if (isWorker) {
-                        Navigator.pushNamed(context, AppRoutes.workerDashboard);
-                      } else {
-                        Navigator.pushNamed(context, AppRoutes.dashboard);
+                      if (ModalRoute.of(context)?.settings.name != target) {
+                        Navigator.pushNamed(context, target);
                       }
                     },
                   ),
@@ -312,7 +311,7 @@ class AppDrawer extends ConsumerWidget {
                     ),
                     _DrawerItem(
                       icon: Icons.admin_panel_settings_rounded,
-                      title: 'Advance Operation Control',
+                      title: 'Advanced Operations Control',
                       iconColor: Colors.blueAccent,
                       onTap: () {
                         Navigator.pop(context);
@@ -410,7 +409,7 @@ class AppDrawer extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                'v1.0.0 • FreshFlow',
+                'v1.0.0 • OrderKart',
                 style: TextStyle(
                   color: isDark ? Colors.white54 : AppColors.textSecondary,
                   fontSize: 12,

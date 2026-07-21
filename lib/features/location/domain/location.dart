@@ -138,11 +138,11 @@ class Location {
       };
 
   factory Location.fromMap(Map<String, dynamic> map) => Location(
-        id: map['id'] as String,
+        id: map['id'] as String? ?? '',
         parentLocationId: map['parent_location_id'] as String?,
-        name: map['name'] as String,
+        name: map['name'] as String? ?? '',
         description: map['description'] as String? ?? '',
-        locationKind: LocationKind.fromString(map['location_kind'] as String),
+        locationKind: LocationKind.fromString(map['location_kind'] as String? ?? 'area'),
         sequenceKey: map['sequence_key'] as String? ?? '',
         depth: map['depth'] as int? ?? 0,
         materializedPath: map['materialized_path'] as String? ?? '',
@@ -157,8 +157,8 @@ class Location {
         latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
         longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
         iconName: map['icon_name'] as String? ?? '',
-        createdAt: DateTime.parse(map['created_at'] as String),
-        updatedAt: DateTime.parse(map['updated_at'] as String),
+        createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(map['updated_at']?.toString() ?? '') ?? DateTime.now(),
         childCount: map['child_count'] as int? ?? 0,
         customerCount: map['customer_count'] as int? ?? 0,
         orderCount: map['order_count'] as int? ?? 0,

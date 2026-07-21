@@ -56,14 +56,14 @@ class AppNotification {
 
   factory AppNotification.fromMap(Map<String, dynamic> map) {
     return AppNotification(
-      id: map['id'] as String,
-      title: map['title'] as String,
-      body: map['body'] as String,
-      category: map['category'] as String,
+      id: map['id'] as String? ?? '',
+      title: map['title'] as String? ?? '',
+      body: map['body'] as String? ?? '',
+      category: map['category'] as String? ?? 'general',
       relatedId: map['related_id'] as String? ?? '',
-      isRead: (map['is_read'] as int?) == 1,
+      isRead: (map['is_read'] as int? ?? 0) == 1,
       priority: map['priority'] as int? ?? 0,
-      createdAt: DateTime.parse(map['created_at'] as String),
+      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 }

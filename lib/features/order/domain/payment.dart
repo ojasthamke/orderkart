@@ -31,12 +31,12 @@ class Payment {
       };
 
   factory Payment.fromMap(Map<String, dynamic> map) => Payment(
-        id:         map['id']          as String,
-        orderId:    map['order_id']    as String,
-        customerId: map['customer_id'] as String,
-        amount:     (map['amount']     as num).toDouble(),
-        method:     map['method']      as String,
+        id:         map['id']          as String? ?? '',
+        orderId:    map['order_id']    as String? ?? '',
+        customerId: map['customer_id'] as String? ?? '',
+        amount:     (map['amount']     as num?)?.toDouble() ?? 0.0,
+        method:     map['method']      as String? ?? 'cash',
         notes:      map['notes']       as String? ?? '',
-        createdAt:  DateTime.parse(map['created_at'] as String),
+        createdAt:  DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
       );
 }

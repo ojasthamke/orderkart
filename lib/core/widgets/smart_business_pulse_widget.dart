@@ -17,6 +17,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
   final double monthlySales;
   final double cashReceived;
   final double onlineReceived;
+  final String currency;
   final VoidCallback? onCreateOrder;
   final VoidCallback? onViewInventory;
 
@@ -37,6 +38,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
     required this.monthlySales,
     required this.cashReceived,
     required this.onlineReceived,
+    this.currency = '₹',
     this.onCreateOrder,
     this.onViewInventory,
   });
@@ -143,7 +145,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
 
                 // ── Today's Sales Counter ────────────────────────────────
                 Text(
-                  '₹${todaySales.toStringAsFixed(2)}',
+                  '$currency${todaySales.toStringAsFixed(2)}',
                   style: TextStyle(
                     color: titleColor,
                     fontSize: 32,
@@ -234,7 +236,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '${(collectionPct * 100).toStringAsFixed(0)}% Realized (₹${pendingDues.toStringAsFixed(0)} Pending)',
+                          '${(collectionPct * 100).toStringAsFixed(0)}% Realized ($currency${pendingDues.toStringAsFixed(0)} Pending)',
                           style: TextStyle(
                             color: pendingDues > 0 ? const Color(0xFFF87171) : const Color(0xFF4ADE80),
                             fontSize: 11,
@@ -281,7 +283,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                     Expanded(
                       child: _buildMetricTile(
                         title: 'Monthly Volume',
-                        value: '₹${monthlySales.toStringAsFixed(0)}',
+                        value: '$currency${monthlySales.toStringAsFixed(0)}',
                         subtitle: 'This Month\'s Sales',
                         icon: Icons.calendar_month_outlined,
                         iconColor: const Color(0xFFF59E0B),
@@ -301,8 +303,8 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                       child: _buildMetricTile(
                         title: 'Avg Order Value',
                         value: todayOrdersCount > 0
-                            ? '₹${(todaySales / todayOrdersCount).toStringAsFixed(1)}'
-                            : '₹0.0',
+                            ? '$currency${(todaySales / todayOrdersCount).toStringAsFixed(1)}'
+                            : '${currency}0.0',
                         subtitle: '$todayOrdersCount Orders Today',
                         icon: Icons.shopping_bag_outlined,
                         iconColor: const Color(0xFF38BDF8),
@@ -317,7 +319,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                     Expanded(
                       child: _buildMetricTile(
                         title: 'Today\'s Expenses',
-                        value: '₹${todayExpenses.toStringAsFixed(1)}',
+                        value: '$currency${todayExpenses.toStringAsFixed(1)}',
                         subtitle: 'Total Outflow',
                         icon: Icons.payments_outlined,
                         iconColor: const Color(0xFFEF4444),
@@ -336,7 +338,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                     Expanded(
                       child: _buildMetricTile(
                         title: 'Cash / Online Ratio',
-                        value: '₹${cashReceived.toStringAsFixed(0)} / ₹${onlineReceived.toStringAsFixed(0)}',
+                        value: '$currency${cashReceived.toStringAsFixed(0)} / $currency${onlineReceived.toStringAsFixed(0)}',
                         subtitle: 'Payment Breakup',
                         icon: Icons.account_balance_wallet_outlined,
                         iconColor: const Color(0xFFA855F7),

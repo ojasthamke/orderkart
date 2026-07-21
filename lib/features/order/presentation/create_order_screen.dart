@@ -576,12 +576,28 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 setState(() => _cart[e.key] = cartItem.copyWith(quantity: 0.25));
                 return;
               }
-              if (qty > dbItem.stock) {
+              final conversion = dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
+              double maxStock = dbItem.stock;
+              if (dbItem.unit == 'kg') {
+                if (cartItem.unit == 'gram') {
+                  maxStock = dbItem.stock * 1000.0;
+                } else if (cartItem.unit == 'piece') {
+                  maxStock = dbItem.stock / conversion;
+                }
+              } else if (dbItem.unit == 'piece') {
+                if (cartItem.unit == 'dozen') {
+                  maxStock = dbItem.stock / 12.0;
+                } else if (cartItem.unit == 'kg') {
+                  maxStock = dbItem.stock * conversion;
+                }
+              }
+
+              if (qty > maxStock) {
                 SnackbarHelper.showError(
                   context,
-                  'Cannot exceed stock limit of ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit} for "${cartItem.name}"',
+                  'Cannot exceed stock limit of ${AppFormatters.quantity(maxStock)} ${cartItem.unit} for "${cartItem.name}"',
                 );
-                setState(() => _cart[e.key] = cartItem.copyWith(quantity: dbItem.stock));
+                setState(() => _cart[e.key] = cartItem.copyWith(quantity: maxStock));
                 return;
               }
               setState(() => _cart[e.key] = cartItem.copyWith(quantity: qty));

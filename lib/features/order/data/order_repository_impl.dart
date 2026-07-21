@@ -5,6 +5,7 @@ import '../domain/payment.dart';
 import '../domain/order_repository.dart';
 import '../../customer/data/customer_dao.dart';
 import '../../inventory/data/item_dao.dart';
+import '../../inventory/domain/item.dart';
 import '../../inventory/domain/stock_history.dart';
 import '../../../core/database/database_helper.dart';
 import 'order_dao.dart';
@@ -44,6 +45,24 @@ class OrderRepositoryImpl implements OrderRepository {
   Future<List<Payment>> getOrderPayments(String orderId) =>
       _orderDao.getOrderPayments(orderId);
 
+  double _convertQtyToBaseUnit(double qty, String itemUnit, Item dbItem) {
+    if (itemUnit.isEmpty || itemUnit.toLowerCase() == dbItem.unit.toLowerCase()) {
+      return qty;
+    }
+    final conversion = dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
+    final dbUnit = dbItem.unit.toLowerCase();
+    final cartUnit = itemUnit.toLowerCase();
+
+    if (dbUnit == 'kg') {
+      if (cartUnit == 'gram') return qty / 1000.0;
+      if (cartUnit == 'piece') return qty * conversion;
+    } else if (dbUnit == 'piece') {
+      if (cartUnit == 'dozen') return qty * 12.0;
+      if (cartUnit == 'kg') return qty / conversion;
+    }
+    return qty;
+  }
+
   @override
   Future<String> createOrder(AppOrder order, List<OrderItem> items) async {
     final db = await DatabaseHelper.instance.database;
@@ -55,12 +74,13 @@ class OrderRepositoryImpl implements OrderRepository {
           if (oldItem.itemId.isNotEmpty) {
             final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
             if (dbItem != null) {
-              await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
+              final baseQty = _convertQtyToBaseUnit(oldItem.quantity, oldItem.itemUnit, dbItem);
+              await _itemDao.adjustStock(oldItem.itemId, baseQty, executor: txn);
               await _itemDao.insertStockHistory(StockHistory(
                 id:           _uuid.v4(),
                 itemId:       oldItem.itemId,
                 itemName:     oldItem.itemName,
-                changeAmount: oldItem.quantity,
+                changeAmount: baseQty,
                 reason:       'order_edit_restore',
                 orderId:      order.id,
                 createdAt:    DateTime.now(),
@@ -82,12 +102,13 @@ class OrderRepositoryImpl implements OrderRepository {
         if (item.itemId.isNotEmpty && order.deliveryStatus != 'cancelled') {
           final dbItem = await _itemDao.getItemById(item.itemId, executor: txn);
           if (dbItem != null) {
-            await _itemDao.adjustStock(item.itemId, -item.quantity, executor: txn);
+            final baseQty = _convertQtyToBaseUnit(item.quantity, item.itemUnit, dbItem);
+            await _itemDao.adjustStock(item.itemId, -baseQty, executor: txn);
             await _itemDao.insertStockHistory(StockHistory(
               id:           _uuid.v4(),
               itemId:       item.itemId,
               itemName:     item.itemName,
-              changeAmount: -item.quantity,
+              changeAmount: -baseQty,
               reason:       'order',
               orderId:      orderId,
               createdAt:    DateTime.now(),
@@ -121,12 +142,13 @@ class OrderRepositoryImpl implements OrderRepository {
           if (oldItem.itemId.isNotEmpty) {
             final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
             if (dbItem != null) {
-              await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
+              final baseQty = _convertQtyToBaseUnit(oldItem.quantity, oldItem.itemUnit, dbItem);
+              await _itemDao.adjustStock(oldItem.itemId, baseQty, executor: txn);
               await _itemDao.insertStockHistory(StockHistory(
                 id:           _uuid.v4(),
                 itemId:       oldItem.itemId,
                 itemName:     oldItem.itemName,
-                changeAmount: oldItem.quantity,
+                changeAmount: baseQty,
                 reason:       'order_delete',
                 orderId:      id,
                 createdAt:    DateTime.now(),
@@ -156,12 +178,13 @@ class OrderRepositoryImpl implements OrderRepository {
           if (oldItem.itemId.isNotEmpty) {
             final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
             if (dbItem != null) {
-              await _itemDao.adjustStock(oldItem.itemId, oldItem.quantity, executor: txn);
+              final baseQty = _convertQtyToBaseUnit(oldItem.quantity, oldItem.itemUnit, dbItem);
+              await _itemDao.adjustStock(oldItem.itemId, baseQty, executor: txn);
               await _itemDao.insertStockHistory(StockHistory(
                 id:           _uuid.v4(),
                 itemId:       oldItem.itemId,
                 itemName:     oldItem.itemName,
-                changeAmount: oldItem.quantity,
+                changeAmount: baseQty,
                 reason:       'order_cancelled',
                 orderId:      orderId,
                 createdAt:    DateTime.now(),
@@ -185,12 +208,13 @@ class OrderRepositoryImpl implements OrderRepository {
           if (oldItem.itemId.isNotEmpty) {
             final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
             if (dbItem != null) {
-              await _itemDao.adjustStock(oldItem.itemId, -oldItem.quantity, executor: txn);
+              final baseQty = _convertQtyToBaseUnit(oldItem.quantity, oldItem.itemUnit, dbItem);
+              await _itemDao.adjustStock(oldItem.itemId, -baseQty, executor: txn);
               await _itemDao.insertStockHistory(StockHistory(
                 id:           _uuid.v4(),
                 itemId:       oldItem.itemId,
                 itemName:     oldItem.itemName,
-                changeAmount: -oldItem.quantity,
+                changeAmount: -baseQty,
                 reason:       'order_uncancelled',
                 orderId:      orderId,
                 createdAt:    DateTime.now(),

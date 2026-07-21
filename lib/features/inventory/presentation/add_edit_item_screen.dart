@@ -331,8 +331,13 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                           children: [
                             if (cost > 0) ...[
                               ActionChip(
-                                avatar: const Icon(Icons.trending_up_rounded, size: 14),
-                                label: Text('65% Markup ($currency${markupPrice.toStringAsFixed(2)})'),
+                                backgroundColor: AppColors.primary.withOpacity(0.18),
+                                side: const BorderSide(color: AppColors.primary),
+                                avatar: const Icon(Icons.trending_up_rounded, size: 14, color: AppColors.primary),
+                                label: Text(
+                                  '⭐ 65% Markup ($currency${markupPrice.toStringAsFixed(2)})',
+                                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary),
+                                ),
                                 onPressed: () {
                                   _sellCon.text = markupPrice.toStringAsFixed(2);
                                 },

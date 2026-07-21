@@ -66,15 +66,15 @@ class Expense {
       };
 
   factory Expense.fromMap(Map<String, dynamic> map) => Expense(
-        id:            map['id']             as String,
-        name:          map['name']           as String,
-        category:      map['category']       as String,
-        amount:        (map['amount']        as num).toDouble(),
-        date:          DateTime.parse(map['date'] as String),
+        id:            map['id']             as String? ?? '',
+        name:          map['name']           as String? ?? '',
+        category:      map['category']       as String? ?? 'General',
+        amount:        (map['amount']        as num?)?.toDouble() ?? 0.0,
+        date:          DateTime.tryParse(map['date']?.toString() ?? '') ?? DateTime.now(),
         notes:         map['notes']          as String? ?? '',
         paymentMethod: map['payment_method'] as String? ?? 'cash',
-        createdAt:     DateTime.parse(map['created_at'] as String),
-        updatedAt:     DateTime.parse(map['updated_at'] as String),
+        createdAt:     DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
+        updatedAt:     DateTime.tryParse(map['updated_at']?.toString() ?? '') ?? DateTime.now(),
         receiptPhotoPath: map['receipt_photo_path'] as String? ?? '',
       );
 

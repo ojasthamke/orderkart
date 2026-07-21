@@ -115,10 +115,10 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const AreaScreen());
 
       case AppRoutes.streets:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = (settings.arguments as Map<String, dynamic>?) ?? {};
         return _slide(LocationDetailScreen(
-          locationId: args['areaId'] as String,
-          locationName: args['areaName'] as String,
+          locationId: args['areaId'] as String? ?? '',
+          locationName: args['areaName'] as String? ?? 'Location Details',
         ));
 
       case AppRoutes.customers:
@@ -129,9 +129,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         ));
 
       case AppRoutes.customerProfile:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = (settings.arguments as Map<String, dynamic>?) ?? {};
         return _slide(CustomerProfileScreen(
-          customerId: args['customerId'] as String,
+          customerId: args['customerId'] as String? ?? '',
         ));
 
       case AppRoutes.addEditCustomer:
@@ -154,9 +154,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const OrderManagementScreen());
 
       case AppRoutes.orderDetail:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = (settings.arguments as Map<String, dynamic>?) ?? {};
         return _slide(OrderDetailScreen(
-          orderId: args['orderId'] as String,
+          orderId: args['orderId'] as String? ?? '',
         ));
 
       case AppRoutes.paymentDetails:
@@ -181,10 +181,10 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         ));
 
       case AppRoutes.stockAdjustment:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = (settings.arguments as Map<String, dynamic>?) ?? {};
         return _slide(StockAdjustmentScreen(
-          itemId: args['itemId'] as String,
-          itemName: args['itemName'] as String,
+          itemId: args['itemId'] as String? ?? '',
+          itemName: args['itemName'] as String? ?? 'Item',
         ));
 
       case AppRoutes.expenses:
@@ -283,10 +283,10 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const CallLogsScreen());
 
       case AppRoutes.workerPasscodeLock:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = (settings.arguments as Map<String, dynamic>?) ?? {};
         return _slide(WorkerPasscodeLockScreen(
-          workerId: args['workerId'] as String,
-          workerName: args['workerName'] as String,
+          workerId: args['workerId'] as String? ?? '',
+          workerName: args['workerName'] as String? ?? 'Worker',
           forceLogoutOnCancel: args['forceLogoutOnCancel'] as bool? ?? false,
         ));
 
