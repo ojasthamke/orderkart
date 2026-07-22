@@ -37,6 +37,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currency = ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
     final summaryAsync = ref.watch(analyticsSummaryProvider);
     final params = DashboardOrdersParams(
       filter: _selectedFilter == 'custom' ? null : _selectedFilter,
@@ -59,7 +60,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(child: Text('Dashboard error: $e')),
         data: (summary) {
-          final double pendingPayments = summary['pending_payments'] ?? 0;
+          final double pendingPayments = (summary['pending_payments'] as num?)?.toDouble() ?? 0.0;
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -73,6 +74,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ref.invalidate(notificationListProvider);
               ref.invalidate(areaProvider);
               ref.invalidate(allCustomersProvider);
+              await Future.wait([
+                ref.read(analyticsSummaryProvider.future),
+                ref.read(dashboardOrdersProvider(params).future),
+              ]);
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -127,7 +132,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              "Today: ${summary['today_orders_count'] ?? 0} orders • ${AppFormatters.currency(summary['today_sales'] ?? 0)}",
+                              "Today: ${summary['today_orders_count'] ?? 0} orders • ${AppFormatters.currency((summary['today_sales'] as num?)?.toDouble() ?? 0.0, symbol: currency)}",
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -513,7 +518,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          AppFormatters.currency(pendingPayments),
+                          AppFormatters.currency(pendingPayments, symbol: currency),
                           style: const TextStyle(
                             color: Color(0xFFD97706),
                             fontSize: 28,
@@ -955,7 +960,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                            crossAxisAlignment: CrossAxisAlignment.end,
                            children: [
                              Text(
-                               AppFormatters.currency(c.outstandingBalance),
+                               AppFormatters.currency(c.outstandingBalance, symbol: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹'),
                                style: Theme.of(context)
                                    .textTheme
                                    .titleSmall
@@ -1093,7 +1098,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              AppFormatters.currency(returnAmount),
+                              AppFormatters.currency(returnAmount, symbol: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹'),
                               style: const TextStyle(
                                 color: Color(0xFF0284C7),
                                 fontWeight: FontWeight.w900,
@@ -1189,7 +1194,11 @@ class _RecentOrderTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currency = ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
     final customerAsync = ref.watch(customerDetailProvider(order.customerId));
+    final displayName = (order.customerName != null && order.customerName!.trim().isNotEmpty)
+        ? order.customerName!.trim()
+        : 'Unknown Customer';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1217,7 +1226,7 @@ class _RecentOrderTile extends ConsumerWidget {
           error: (_, __) => const CustomerAvatar(photoPath: '', radius: 20),
         ),
         title: Text(
-          '${order.orderNoLabel} · ${order.customerName ?? 'Unknown Customer'}',
+          '${order.orderNoLabel} · $displayName',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         ),
         subtitle: Text(
@@ -1229,7 +1238,7 @@ class _RecentOrderTile extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              AppFormatters.currency(order.grandTotal),
+              AppFormatters.currency(order.grandTotal, symbol: currency),
               style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 13,

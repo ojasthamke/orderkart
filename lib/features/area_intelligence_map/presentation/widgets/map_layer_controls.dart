@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../area_map_provider.dart';
@@ -17,29 +18,94 @@ class MapLayerControls extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final vis = ref.watch(mapLayerVisibilityProvider(areaId));
     final notifier = ref.read(mapLayerVisibilityProvider(areaId).notifier);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // 1. Recenter GPS FAB
-        FloatingActionButton.small(
-          heroTag: 'map_recenter_gps',
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.blueAccent,
-          onPressed: onRecenterGps,
-          child: const Icon(Icons.my_location_rounded),
+        // 1. Recenter GPS Glass Button
+        _buildGlassActionButton(
+          context: context,
+          icon: Icons.my_location_rounded,
+          gradient: const [Color(0xFF0284C7), Color(0xFF38BDF8)],
+          shadowColor: const Color(0xFF38BDF8).withOpacity(0.4),
+          tooltip: 'Recenter My Location',
+          onTap: onRecenterGps,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
 
-        // 2. Map Layers Toggle Control FAB
-        FloatingActionButton.small(
-          heroTag: 'map_layer_menu',
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          onPressed: () => _showLayersBottomSheet(context, vis, notifier),
-          child: const Icon(Icons.layers_rounded),
+        // 2. Map Layers Toggle Glass Button
+        _buildGlassActionButton(
+          context: context,
+          icon: Icons.layers_rounded,
+          gradient: isDark
+              ? [const Color(0xFF6366F1), Color(0xFFA855F7)]
+              : [const Color(0xFF4F46E5), const Color(0xFF7C3AED)],
+          shadowColor: const Color(0xFF8B5CF6).withOpacity(0.4),
+          tooltip: 'Map Layer Controls',
+          onTap: () => _showLayersBottomSheet(context, vis, notifier),
         ),
       ],
+    );
+  }
+
+  Widget _buildGlassActionButton({
+    required BuildContext context,
+    required IconData icon,
+    required List<Color> gradient,
+    required Color shadowColor,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: gradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.35),
+                    width: 1.2,
+                  ),
+                ),
+                child: Tooltip(
+                  message: tooltip,
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
