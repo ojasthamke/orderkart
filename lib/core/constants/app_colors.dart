@@ -132,10 +132,10 @@ class AppColors {
       Theme.of(context).brightness == Brightness.dark ? Colors.white38 : textHint;
 
   static Color borderColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1A1A1A) : gray200;
+      Theme.of(context).brightness == Brightness.dark ? const Color(0xFF334155) : gray200;
 
   static Color cardColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0A0A0A) : white;
+      Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : white;
 
   static Decoration tabDecoration(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

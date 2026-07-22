@@ -167,6 +167,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       ],
       bottom: TabBar(
         controller: _tabController,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
         indicatorColor: Colors.transparent,
         indicator: AppColors.tabDecoration(context),
         labelColor: AppColors.primary,

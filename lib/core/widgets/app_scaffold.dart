@@ -247,14 +247,16 @@ class AppScaffold extends ConsumerWidget {
                     icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                     onPressed: onBack ?? () => Navigator.of(context).pop(),
                   )
-                : drawer != null
-                    ? Builder(
-                        builder: (ctx) => IconButton(
-                          icon: const Icon(Icons.menu_rounded),
-                          onPressed: () => Scaffold.of(ctx).openDrawer(),
-                        ),
-                      )
-                    : null,
+                : Builder(
+                    builder: (ctx) => IconButton(
+                      icon: const Icon(Icons.menu_rounded),
+                      onPressed: () {
+                        try {
+                          Scaffold.of(ctx).openDrawer();
+                        } catch (_) {}
+                      },
+                    ),
+                  ),
             actions: actions,
             bottom: bottom,
           ),

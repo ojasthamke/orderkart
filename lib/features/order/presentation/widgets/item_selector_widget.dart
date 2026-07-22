@@ -33,10 +33,10 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
     with SingleTickerProviderStateMixin {
   String _search   = '';
   String _category = 'All';
-  double _qty = 1.0;
-  final _qtyController = TextEditingController(text: '1');
+  double _qty = 0.25;
+  final _qtyController = TextEditingController(text: '0.25');
   final _priceController = TextEditingController();
-  double _customPrice = 0.0;
+  double _customUnitPrice = 0.0;
   Item?  _selected;
 
   final _categories = ['All', ...AppConstants.itemCategories];
@@ -209,7 +209,7 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                           }
                           setState(() {
                             _selected = item;
-                            _qty = 1.0.clamp(0.1, item.stock);
+                            _qty = 0.25.clamp(0.01, item.stock);
                             _qtyController.text = AppFormatters.quantity(_qty);
                           });
                           _loadCustomPrice(item.id, item.sellingPrice);
@@ -343,6 +343,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                   setState(() {
                                     _qty = q;
                                     _qtyController.text = AppFormatters.quantity(q);
+                                    final calcPrice = _customUnitPrice * _qty;
+                                    _priceController.text = calcPrice.toStringAsFixed(calcPrice == calcPrice.roundToDouble() ? 0 : 2);
                                   });
                                 },
                         );
@@ -373,7 +375,11 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                   ),
                                 );
                               }
-                              setState(() => _qty = p);
+                              setState(() {
+                                _qty = p;
+                                final calcPrice = _customUnitPrice * _qty;
+                                _priceController.text = calcPrice.toStringAsFixed(calcPrice == calcPrice.roundToDouble() ? 0 : 2);
+                              });
                             },
                           ),
                         ),
@@ -388,8 +394,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                              ),
                             onChanged: (v) {
                               final p = double.tryParse(v);
-                              if (p != null && p >= 0) {
-                                _customPrice = p;
+                              if (p != null && p >= 0 && _qty > 0) {
+                                _customUnitPrice = p / _qty;
                               }
                             },
                           ),
@@ -413,31 +419,31 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                               : () async {
                                   AppHaptics.itemAdded();
 
-                                  final double enteredPrice = double.tryParse(_priceController.text) ?? _selected!.sellingPrice;
-                                  double finalPriceToUse = enteredPrice;
+                                  final double enteredPriceForQty = double.tryParse(_priceController.text) ?? (_customUnitPrice * _qty);
+                                  final double finalUnitPriceToUse = _qty > 0 ? (enteredPriceForQty / _qty) : enteredPriceForQty;
 
                                   // Check if the user changed the price from the loaded custom price
                                   final customPrice = await DatabaseHelper.instance.getCustomerCustomPrice(widget.customerId, _selected!.id);
                                   final currentPriceToCompare = customPrice ?? _selected!.sellingPrice;
 
-                                  if (enteredPrice != currentPriceToCompare) {
+                                  if ((finalUnitPriceToUse - currentPriceToCompare).abs() > 0.01) {
                                     if (context.mounted) {
                                       final choice = await _showPriceScopeDialog(context, _selected!.name);
                                       if (choice == null) return; // user cancelled
 
                                       if (choice == 1) {
                                         // This Customer Only
-                                        await DatabaseHelper.instance.setCustomerCustomPrice(widget.customerId, _selected!.id, enteredPrice);
+                                        await DatabaseHelper.instance.setCustomerCustomPrice(widget.customerId, _selected!.id, finalUnitPriceToUse);
                                         ref.invalidate(inventoryProvider);
                                       } else if (choice == 2) {
                                         // General
-                                        await DatabaseHelper.instance.updateItemSellingPrice(_selected!.id, enteredPrice);
+                                        await DatabaseHelper.instance.updateItemSellingPrice(_selected!.id, finalUnitPriceToUse);
                                         ref.invalidate(inventoryProvider);
                                       }
                                     }
                                   }
 
-                                  widget.onItemSelected(_selected!, _qty, finalPriceToUse);
+                                  widget.onItemSelected(_selected!, _qty, finalUnitPriceToUse);
 
                                   // Success SnackBar
                                   final addedItemName = _selected!.name;
@@ -456,8 +462,8 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
 
                                   setState(() {
                                     _selected = null;
-                                    _qty = 1.0;
-                                    _qtyController.text = '1';
+                                    _qty = 0.25;
+                                    _qtyController.text = '0.25';
                                     _priceController.clear();
                                   });
                                 },
@@ -527,8 +533,9 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
     final customPrice = await DatabaseHelper.instance.getCustomerCustomPrice(widget.customerId, itemId);
     if (mounted) {
       setState(() {
-        _customPrice = customPrice ?? defaultPrice;
-        _priceController.text = _customPrice.toStringAsFixed(2);
+        _customUnitPrice = customPrice ?? defaultPrice;
+        final calcPrice = _customUnitPrice * _qty;
+        _priceController.text = calcPrice.toStringAsFixed(calcPrice == calcPrice.roundToDouble() ? 0 : 2);
       });
     }
   }
