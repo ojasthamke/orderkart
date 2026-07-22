@@ -314,47 +314,42 @@ class CustomerDao {
     );
   }
 
-  /// Recalculates customer totals from orders table
+  /// Recalculates customer totals from orders and payments tables
   Future<void> recalcCustomerTotals(String customerId, {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
-    final mode = await AppModeService.getAppMode();
-    String? workerId;
-    if (mode == AppMode.worker) {
-      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
-      if (workerId == null || workerId.isEmpty) {
-        final workerRows = await db.query('workers', limit: 1);
-        if (workerRows.isNotEmpty) {
-          workerId = workerRows.first['id'] as String;
-        }
-      }
-    }
 
-    const query = '''
-          SELECT
-            COUNT(*)            AS total_orders,
-            COALESCE(SUM(grand_total),     0) AS total_amount,
-            COALESCE(SUM(paid_amount),     0) AS total_paid,
-            COALESCE(SUM(remaining_amount),0) AS total_pending,
-            MAX(created_at)     AS last_order
-          FROM orders
-          WHERE customer_id = ? AND delivery_status != 'cancelled'
-          ''';
+    final ordersResult = await db.rawQuery('''
+      SELECT
+        COUNT(*)                       AS total_orders,
+        COALESCE(SUM(grand_total), 0)  AS total_amount,
+        COALESCE(MAX(created_at), '')  AS last_order
+      FROM orders
+      WHERE customer_id = ? AND delivery_status != 'cancelled'
+    ''', [customerId]);
 
-    final queryArgs = [customerId];
+    final paymentsResult = await db.rawQuery('''
+      SELECT COALESCE(SUM(amount), 0) AS total_paid
+      FROM payments
+      WHERE customer_id = ?
+    ''', [customerId]);
 
-    final result = await db.rawQuery(query, queryArgs);
+    if (ordersResult.isNotEmpty) {
+      final orderRow = ordersResult.first;
+      final double totalAmount = (orderRow['total_amount'] as num?)?.toDouble() ?? 0.0;
+      final int totalOrders = (orderRow['total_orders'] as num?)?.toInt() ?? 0;
+      final String lastOrder = orderRow['last_order']?.toString() ?? '';
+      
+      final double totalPaid = (paymentsResult.isNotEmpty ? (paymentsResult.first['total_paid'] as num?)?.toDouble() : 0.0) ?? 0.0;
+      final double outstanding = double.parse((totalAmount - totalPaid).toStringAsFixed(2));
 
-    if (result.isNotEmpty) {
-      final row = result.first;
       await db.update(
         'customers',
         {
-          'total_orders':        row['total_orders'] ?? 0,
-          'total_paid':          row['total_paid']   ?? 0.0,
-          'total_pending':       row['total_pending']?? 0.0,
-          'outstanding_balance': row['total_pending']?? 0.0,
-          'last_order_date':     row['last_order']   ?? '',
+          'total_orders':        totalOrders,
+          'total_paid':          totalPaid,
+          'total_pending':       outstanding > 0 ? outstanding : 0.0,
+          'outstanding_balance': outstanding,
+          'last_order_date':     lastOrder,
           'updated_at':          DateTime.now().toIso8601String(),
         },
         where: 'id = ?',

@@ -586,7 +586,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               final date = await showDatePicker(
                 context: context,
                 initialDate: _expiryCon.text.isNotEmpty
-                    ? DateTime.parse(_expiryCon.text)
+                    ? (DateTime.tryParse(_expiryCon.text) ?? DateTime.now())
                     : DateTime.now(),
                 firstDate: DateTime(2000),
                 lastDate: DateTime(2100),
@@ -631,7 +631,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               final date = await showDatePicker(
                 context: context,
                 initialDate: _packCon.text.isNotEmpty
-                    ? DateTime.parse(_packCon.text)
+                    ? (DateTime.tryParse(_packCon.text) ?? DateTime.now())
                     : DateTime.now(),
                 firstDate: DateTime(2000),
                 lastDate: DateTime(2100),
@@ -653,7 +653,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               final date = await showDatePicker(
                 context: context,
                 initialDate: _bestBeforeCon.text.isNotEmpty
-                    ? DateTime.parse(_bestBeforeCon.text)
+                    ? (DateTime.tryParse(_bestBeforeCon.text) ?? DateTime.now().add(const Duration(days: 30)))
                     : DateTime.now().add(const Duration(days: 30)),
                 firstDate: DateTime(2000),
                 lastDate: DateTime(2100),

@@ -258,7 +258,7 @@ class CustomerMarkerPopup extends ConsumerWidget {
     );
     final uri = Uri.parse('https://wa.me/$formatted?text=$msg');
     if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -275,18 +275,18 @@ class CustomerMarkerPopup extends ConsumerWidget {
     );
     final uri = Uri.parse('https://wa.me/?text=$dispatchMsg');
     if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
   Future<void> _navigateToGps(double lat, double lng) async {
     final uri = Uri.parse('google.navigation:q=$lat,$lng');
     if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       final webUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
       if (await canLaunchUrl(webUri)) {
-        await launchUrl(webUri);
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
       }
     }
   }

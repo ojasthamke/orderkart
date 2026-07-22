@@ -14,6 +14,7 @@ import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../domain/expense.dart';
 import 'expense_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 
 class ExpenseScreen extends ConsumerWidget {
   final bool showBack;
@@ -23,6 +24,8 @@ class ExpenseScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final expensesAsync = ref.watch(expenseProvider);
     final summaryAsync  = ref.watch(monthlySummaryProvider);
+    final settingsVal   = ref.watch(settingsProvider).valueOrNull;
+    final currency      = settingsVal?.currency ?? '₹';
 
     return AppScaffold(
       title: 'Expenses',
@@ -50,7 +53,7 @@ class ExpenseScreen extends ConsumerWidget {
           summaryAsync.when(
             data: (summary) => summary.isEmpty
                 ? const SizedBox.shrink()
-                : _MonthlySummaryCard(summary: summary),
+                : _MonthlySummaryCard(summary: summary, currency: currency),
             loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),
           ),
@@ -73,6 +76,7 @@ class ExpenseScreen extends ConsumerWidget {
                       itemCount: expenses.length,
                       itemBuilder: (ctx, i) => _ExpenseCard(
                         expense: expenses[i],
+                        currency: currency,
                         onEdit: () => Navigator.of(ctx)
                             .pushNamed(AppRoutes.addEditExpense,
                                 arguments: {'expenseId': expenses[i].id})
@@ -102,7 +106,8 @@ class ExpenseScreen extends ConsumerWidget {
 
 class _MonthlySummaryCard extends StatelessWidget {
   final List<Map<String, dynamic>> summary;
-  const _MonthlySummaryCard({required this.summary});
+  final String currency;
+  const _MonthlySummaryCard({required this.summary, required this.currency});
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +140,7 @@ class _MonthlySummaryCard extends StatelessWidget {
                 Text('This Month ($month)',
                     style: TextStyle(
                         color: secTextColor, fontSize: 12)),
-                Text(AppFormatters.currency(total),
+                Text(AppFormatters.currency(total, symbol: currency),
                     style: TextStyle(
                         color: textColor,
                         fontSize: 22,
@@ -154,11 +159,13 @@ class _MonthlySummaryCard extends StatelessWidget {
 
 class _ExpenseCard extends StatelessWidget {
   final Expense expense;
+  final String currency;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _ExpenseCard({
     required this.expense,
+    required this.currency,
     required this.onEdit,
     required this.onDelete,
   });
@@ -179,7 +186,9 @@ class _ExpenseCard extends StatelessWidget {
                     context: context,
                     builder: (context) => Dialog(
                       child: InteractiveViewer(
-                        child: Image.file(File(expense.receiptPhotoPath)),
+                        child: expense.receiptPhotoPath.startsWith('http')
+                            ? Image.network(expense.receiptPhotoPath)
+                            : Image.file(File(expense.receiptPhotoPath)),
                       ),
                     ),
                   );
@@ -195,12 +204,17 @@ class _ExpenseCard extends StatelessWidget {
             child: expense.receiptPhotoPath.isNotEmpty
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      File(expense.receiptPhotoPath),
-                      fit: BoxFit.cover,
-                      width: 44,
-                      height: 44,
-                    ),
+                    child: expense.receiptPhotoPath.startsWith('http')
+                        ? Image.network(
+                            expense.receiptPhotoPath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.receipt_long_rounded, color: AppColors.error),
+                          )
+                        : Image.file(
+                            File(expense.receiptPhotoPath),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.receipt_long_rounded, color: AppColors.error),
+                          ),
                   )
                 : const Icon(Icons.receipt_rounded, color: AppColors.error),
           ),
@@ -233,7 +247,7 @@ class _ExpenseCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              AppFormatters.currency(expense.amount),
+              AppFormatters.currency(expense.amount, symbol: currency),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppColors.error,
                     fontWeight: FontWeight.w700,

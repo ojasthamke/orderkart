@@ -361,21 +361,19 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                               errorText: _qty > _selected!.stock ? 'Exceeds stock (${_selected!.stock})' : null,
                             ),
                             onChanged: (v) {
-                              final p = double.tryParse(v);
-                              if (p != null && p > 0) {
-                                if (p > _selected!.stock) {
-                                  ScaffoldMessenger.of(context).clearSnackBars();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Cannot exceed available stock (${_selected!.stock} ${_selected!.unit})'),
-                                      backgroundColor: AppColors.error,
-                                      duration: const Duration(seconds: 1),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                }
-                                setState(() => _qty = p);
+                              final p = double.tryParse(v) ?? 0.0;
+                              if (p > _selected!.stock) {
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Cannot exceed available stock (${_selected!.stock} ${_selected!.unit})'),
+                                    backgroundColor: AppColors.error,
+                                    duration: const Duration(seconds: 1),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
                               }
+                              setState(() => _qty = p);
                             },
                           ),
                         ),
@@ -398,12 +396,14 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
-                          onPressed: _qty > _selected!.stock || _selected!.stock < 0.001
+                          onPressed: (_qty <= 0 || _qty > _selected!.stock || _selected!.stock < 0.001)
                               ? () {
                                   ScaffoldMessenger.of(context).clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Quantity ($_qty) exceeds available stock (${_selected!.stock})'),
+                                      content: Text(_qty <= 0
+                                          ? 'Quantity must be greater than 0'
+                                          : 'Quantity ($_qty) exceeds available stock (${_selected!.stock})'),
                                       backgroundColor: AppColors.error,
                                       duration: const Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,

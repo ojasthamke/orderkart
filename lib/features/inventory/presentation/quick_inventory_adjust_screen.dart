@@ -31,7 +31,7 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
 
   final List<String> _categories = ['All', ...AppConstants.itemCategories];
 
-  String get _currency => ref.read(settingsProvider).valueOrNull?.currency ?? '₹';
+  String get _currency => ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
 
   void _onFieldChanged(Item baseItem, String field, String value) {
     final parsedVal = double.tryParse(value) ?? 0.0;

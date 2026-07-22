@@ -203,22 +203,22 @@ class ItemDao {
   Future<List<Map<String, dynamic>>> getPriceHistoryByDate(String date) async {
     final db = await _db;
     return await db.rawQuery('''
-      SELECT h.*, i.name, i.unit, i.category
+      SELECT h.*, COALESCE(i.name, 'Archived Item') AS name, COALESCE(i.unit, '') AS unit, COALESCE(i.category, '') AS category
       FROM item_price_history h
-      JOIN items i ON h.item_id = i.id
+      LEFT JOIN items i ON h.item_id = i.id
       WHERE h.date = ?
-      ORDER BY i.name ASC
+      ORDER BY name ASC
     ''', [date]);
   }
 
   Future<List<Map<String, dynamic>>> getPriceHistoryDateRange(String startDate, String endDate) async {
     final db = await _db;
     return await db.rawQuery('''
-      SELECT h.*, i.name, i.unit, i.category
+      SELECT h.*, COALESCE(i.name, 'Archived Item') AS name, COALESCE(i.unit, '') AS unit, COALESCE(i.category, '') AS category
       FROM item_price_history h
-      JOIN items i ON h.item_id = i.id
+      LEFT JOIN items i ON h.item_id = i.id
       WHERE h.date >= ? AND h.date <= ?
-      ORDER BY h.date DESC, i.name ASC
+      ORDER BY h.date DESC, name ASC
     ''', [startDate, endDate]);
   }
 
@@ -230,6 +230,8 @@ class ItemDao {
 
   Future<void> deleteItem(String id) async {
     final db = await _db;
+    await db.delete('stock_history', where: 'item_id = ?', whereArgs: [id]);
+    await db.delete('item_price_history', where: 'item_id = ?', whereArgs: [id]);
     await db.delete('items', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -314,18 +316,18 @@ class ItemDao {
     return await db.rawQuery(
       '''
       SELECT 
-        i.name AS item_name,
-        i.unit AS item_unit,
-        i.cost_price AS cost_price,
+        COALESCE(i.name, oi.item_name) AS item_name,
+        COALESCE(i.unit, oi.item_unit) AS item_unit,
+        COALESCE(i.cost_price, 0) AS cost_price,
         SUM(oi.quantity) AS total_quantity,
-        SUM(oi.quantity) * i.cost_price AS total_cost_price,
+        SUM(oi.quantity) * COALESCE(i.cost_price, 0) AS total_cost_price,
         SUM(oi.total_price) AS total_selling_price,
-        SUM(oi.total_price) - (SUM(oi.quantity) * i.cost_price) AS total_profit
+        SUM(oi.total_price) - (SUM(oi.quantity) * COALESCE(i.cost_price, 0)) AS total_profit
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
-      JOIN items i ON oi.item_id = i.id
+      LEFT JOIN items i ON oi.item_id = i.id
       WHERE o.delivery_status != 'cancelled'
-      GROUP BY oi.item_id, i.name, i.unit, i.cost_price
+      GROUP BY oi.item_id, item_name, item_unit, cost_price
       ORDER BY total_profit DESC, total_quantity DESC
       '''
     );

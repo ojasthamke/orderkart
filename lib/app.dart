@@ -163,8 +163,8 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         final args = settings.arguments as Map<String, dynamic>? ?? {};
         return _slide(PaymentDetailsScreen(
           customerId: args['customerId'] as String? ?? '',
-          remainingAmount: args['remainingAmount'] as double? ?? 0.0,
-          grandTotal: args['grandTotal'] as double? ?? 0.0,
+          remainingAmount: (args['remainingAmount'] as num?)?.toDouble() ?? 0.0,
+          grandTotal: (args['grandTotal'] as num?)?.toDouble() ?? 0.0,
           currency: args['currency'] as String? ?? '₹',
         ));
 

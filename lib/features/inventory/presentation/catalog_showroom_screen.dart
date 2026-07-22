@@ -38,6 +38,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
 
     final settingsVal = ref.read(settingsProvider).valueOrNull;
     final currency = settingsVal?.currency ?? '₹';
+    final safeCurrency = currency == '₹' ? 'Rs.' : currency;
 
     final pdf = pw.Document();
 
@@ -70,7 +71,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                       return [
                         i.name,
                         i.category,
-                        '$currency ${i.sellingPrice.toStringAsFixed(2)}',
+                        '$safeCurrency ${i.sellingPrice.toStringAsFixed(2)}',
                         i.unit,
                         i.stock > 0 ? 'In Stock (${i.stock})' : 'Out of Stock'
                       ];

@@ -89,7 +89,7 @@ class AnalyticsDao {
     final salesRes = await db.rawQuery('''
       SELECT 
         (SELECT COALESCE(SUM(grand_total), 0) FROM orders WHERE delivery_status != 'cancelled') AS total_sales,
-        (SELECT COALESCE(SUM(oi.quantity * i.cost_price), 0) 
+        (SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0.0)), 0) 
          FROM order_items oi
          JOIN orders o ON oi.order_id = o.id
          LEFT JOIN items i ON oi.item_id = i.id

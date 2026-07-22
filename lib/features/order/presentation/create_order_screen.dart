@@ -927,13 +927,21 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          File(settings.qrCustomImage),
-                          width: 160,
-                          height: 160,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
-                        ),
+                        child: settings.qrCustomImage.startsWith('http')
+                            ? Image.network(
+                                settings.qrCustomImage,
+                                width: 160,
+                                height: 160,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                              )
+                            : Image.file(
+                                File(settings.qrCustomImage),
+                                width: 160,
+                                height: 160,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                              ),
                       ),
                     )
                   else if (settings.qrContent.isNotEmpty)
@@ -1309,7 +1317,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
                             child: ListTile(
-                              title: Text('Order ${o.orderNoLabel} — ${AppFormatters.currency(o.grandTotal)}'),
+                              title: Text('Order ${o.orderNoLabel} — ${AppFormatters.currency(o.grandTotal, symbol: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹')}'),
                               subtitle: Text(
                                 '${AppFormatters.date(o.createdAt)} • ${o.items.length} items (${o.items.map((it) => it.itemName).join(', ')})',
                                 maxLines: 2,

@@ -231,7 +231,7 @@ class _StockAdjustmentScreenState
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).scaffoldBackgroundColor,
         child: ElevatedButton.icon(
           onPressed: _change > 0 ? _adjust : null,
           icon: Icon(_mode == 'add' ? Icons.add_rounded : (_mode == 'wastage' ? Icons.delete_outline_rounded : Icons.remove_rounded)),

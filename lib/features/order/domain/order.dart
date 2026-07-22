@@ -33,7 +33,14 @@ class AppOrder {
   final String commissionType;
 
   String get orderNoLabel {
-    return id;
+    if (orderNumber != null && orderNumber! > 0) {
+      return '#ORD-${orderNumber.toString().padLeft(4, '0')}';
+    }
+    if (id.startsWith('#')) return id;
+    if (id.length > 8) {
+      return '#ORD-${id.substring(0, 8).toUpperCase()}';
+    }
+    return '#$id';
   }
 
   const AppOrder({

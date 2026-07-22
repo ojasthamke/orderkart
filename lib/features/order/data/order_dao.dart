@@ -241,6 +241,9 @@ class OrderDao {
 
   Future<void> deleteOrder(String id, {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
+    await db.delete('order_items', where: 'order_id = ?', whereArgs: [id]);
+    await db.delete('payments', where: 'order_id = ?', whereArgs: [id]);
+    await db.delete('order_question_answers', where: 'order_id = ?', whereArgs: [id]);
     await db.delete('orders', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -783,53 +786,58 @@ class OrderDao {
   }
 
   /// Compute customer savings: order-level discounts + market-price savings
-  /// Returns {'total': double, 'monthly': double, 'order_count': int}
+  /// Fixes 1-to-N join multiplication bug by calculating discounts and item market savings separately.
   Future<Map<String, double>> getCustomerSavings(String customerId) async {
     final db   = await _db;
     final now  = DateTime.now();
     final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
-    // ── All-time: sum of discounts + (market_price - unit_price) × qty ─────
-    final allTimeResult = await db.rawQuery('''
-      SELECT
-        COALESCE(SUM(o.discount), 0) AS discount_savings,
-        COALESCE(SUM(
-          CASE
-            WHEN oi.item_id != '' AND i.market_price > oi.unit_price
-            THEN (i.market_price - oi.unit_price) * oi.quantity
-            ELSE 0
-          END
-        ), 0) AS market_savings
-      FROM orders o
-      LEFT JOIN order_items oi ON oi.order_id = o.id
-      LEFT JOIN items i ON i.id = oi.item_id
-      WHERE o.customer_id = ?
-        AND o.delivery_status != 'cancelled'
+    // 1. Order discounts (all time & monthly)
+    final allDiscRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(discount), 0) AS v
+      FROM orders
+      WHERE customer_id = ? AND delivery_status != 'cancelled'
     ''', [customerId]);
 
-    // ── This month ──────────────────────────────────────────────────────────
-    final monthlyResult = await db.rawQuery('''
-      SELECT
-        COALESCE(SUM(o.discount), 0) AS discount_savings,
-        COALESCE(SUM(
-          CASE
-            WHEN oi.item_id != '' AND i.market_price > oi.unit_price
-            THEN (i.market_price - oi.unit_price) * oi.quantity
-            ELSE 0
-          END
-        ), 0) AS market_savings
-      FROM orders o
-      LEFT JOIN order_items oi ON oi.order_id = o.id
-      LEFT JOIN items i ON i.id = oi.item_id
-      WHERE o.customer_id = ?
-        AND o.delivery_status != 'cancelled'
-        AND strftime('%Y-%m', o.created_at) = ?
+    final monDiscRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(discount), 0) AS v
+      FROM orders
+      WHERE customer_id = ? AND delivery_status != 'cancelled' AND strftime('%Y-%m', created_at) = ?
     ''', [customerId, month]);
 
-    final allDisc   = (allTimeResult.first['discount_savings'] as num?)?.toDouble() ?? 0;
-    final allMarket = (allTimeResult.first['market_savings']   as num?)?.toDouble() ?? 0;
-    final monDisc   = (monthlyResult.first['discount_savings'] as num?)?.toDouble() ?? 0;
-    final monMarket = (monthlyResult.first['market_savings']   as num?)?.toDouble() ?? 0;
+    // 2. Market savings from line items (all time & monthly)
+    final allMarketRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(
+        CASE
+          WHEN oi.item_id != '' AND i.market_price > oi.unit_price
+          THEN (i.market_price - oi.unit_price) * oi.quantity
+          ELSE 0
+        END
+      ), 0) AS v
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      JOIN items i ON i.id = oi.item_id
+      WHERE o.customer_id = ? AND o.delivery_status != 'cancelled'
+    ''', [customerId]);
+
+    final monMarketRes = await db.rawQuery('''
+      SELECT COALESCE(SUM(
+        CASE
+          WHEN oi.item_id != '' AND i.market_price > oi.unit_price
+          THEN (i.market_price - oi.unit_price) * oi.quantity
+          ELSE 0
+        END
+      ), 0) AS v
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      JOIN items i ON i.id = oi.item_id
+      WHERE o.customer_id = ? AND o.delivery_status != 'cancelled' AND strftime('%Y-%m', o.created_at) = ?
+    ''', [customerId, month]);
+
+    final allDisc   = (allDiscRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final monDisc   = (monDiscRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final allMarket = (allMarketRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final monMarket = (monMarketRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     return {
       'total':   allDisc + allMarket,

@@ -77,7 +77,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     AppRoutes.createOrder,
                     arguments: {
                       'customerId':   order.customerId,
-                      'customerName': order.customerName ?? '',
+                      'customerName': (order.customerName != null && order.customerName!.trim().isNotEmpty) ? order.customerName!.trim() : '',
                       'orderId':      order.id,
                     },
                   ).then((_) => ref.refresh(orderDetailProvider(widget.orderId)));
@@ -225,7 +225,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  order.customerName ?? 'Unknown Customer',
+                  (order.customerName != null && order.customerName!.trim().isNotEmpty) ? order.customerName!.trim() : 'Unknown Customer',
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
                 if (order.customerPhone != null) ...[

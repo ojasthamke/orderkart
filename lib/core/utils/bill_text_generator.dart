@@ -60,11 +60,11 @@ class BillTextGenerator {
     buf.writeln(sep);
 
     for (final item in items) {
-      final name  = item['item_name']  as String;
-      final qty   = item['quantity']   as double;
-      final unit  = item['item_unit']  as String;
-      final price = item['unit_price'] as double;
-      final total = item['total_price'] as double;
+      final name  = item['item_name']?.toString() ?? 'Item';
+      final qty   = (item['quantity'] as num?)?.toDouble() ?? 0.0;
+      final unit  = item['item_unit']?.toString() ?? '';
+      final price = (item['unit_price'] as num?)?.toDouble() ?? 0.0;
+      final total = (item['total_price'] as num?)?.toDouble() ?? (qty * price);
       buf.writeln('🔹 *$name* (${AppFormatters.quantity(qty, unit: unit)})');
       buf.writeln('  Rate: $currency${price.toStringAsFixed(2)}  |  Total: *$currency${total.toStringAsFixed(2)}*');
       buf.writeln('');

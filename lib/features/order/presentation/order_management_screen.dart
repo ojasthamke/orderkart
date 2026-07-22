@@ -446,7 +446,7 @@ class _OrderCard extends ConsumerWidget {
                           );
                         },
                         child: Text(
-                          '${order.orderNoLabel} · ${order.customerName ?? 'Unknown'}',
+                          '${order.orderNoLabel} · ${(order.customerName != null && order.customerName!.trim().isNotEmpty) ? order.customerName!.trim() : 'Unknown'}',
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
                         ),

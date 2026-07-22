@@ -239,13 +239,21 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
-                                    child: Image.file(
-                                      File(settings.qrCustomImage),
-                                      width: 200,
-                                      height: 200,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
-                                    ),
+                                    child: settings.qrCustomImage.startsWith('http')
+                                        ? Image.network(
+                                            settings.qrCustomImage,
+                                            width: 200,
+                                            height: 200,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                                          )
+                                        : Image.file(
+                                            File(settings.qrCustomImage),
+                                            width: 200,
+                                            height: 200,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                                          ),
                                   ),
                                 );
                               } else if (settings.qrContent.isNotEmpty) {

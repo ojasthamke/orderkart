@@ -9,26 +9,7 @@ class SmartRounding {
   /// Returns the original amount if already a clean number.
   static double round(double amount) {
     if (amount <= 0) return amount;
-
-    final intPart = amount.truncate();
-    final units   = intPart % 10;
-
-    // Already a round number
-    if (units == 0 || units == 5) return amount.roundToDouble();
-
-    // Round up to next 5 or 10
-    double rounded;
-    if (units < 5) {
-      rounded = (intPart - units + 5).toDouble();
-    } else {
-      rounded = (intPart - units + 10).toDouble();
-    }
-
-    // If close to a round hundred, snap to it
-    final nextHundred = ((intPart ~/ 100) + 1) * 100.0;
-    if ((nextHundred - amount) <= 5) return nextHundred;
-
-    return rounded;
+    return (amount / 5.0).ceil() * 5.0;
   }
 
   /// Returns true if rounding would change the amount
