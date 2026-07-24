@@ -10,22 +10,25 @@ class NotificationCenterScreen extends ConsumerStatefulWidget {
   const NotificationCenterScreen({super.key});
 
   @override
-  ConsumerState<NotificationCenterScreen> createState() => _NotificationCenterScreenState();
+  ConsumerState<NotificationCenterScreen> createState() =>
+      _NotificationCenterScreenState();
 }
 
-class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScreen> {
+class _NotificationCenterScreenState
+    extends ConsumerState<NotificationCenterScreen> {
   bool _showSimulator = false;
 
   void _triggerSimulatedAlert(String type) {
     AppHaptics.selection();
     final notifier = ref.read(notificationListProvider.notifier);
-    
+
     switch (type) {
       case 'low_stock':
         notifier.triggerNotification(
           context,
           title: '⚠️ Low Stock Alert: Fresh Apples',
-          body: 'Inventory for "Fresh Apples" is down to 2 kgs. Reorder immediately to avoid stockouts.',
+          body:
+              'Inventory for "Fresh Apples" is down to 2 kgs. Reorder immediately to avoid stockouts.',
           category: 'low_stock',
           relatedId: '',
         );
@@ -34,7 +37,8 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
         notifier.triggerNotification(
           context,
           title: '💰 Payment Pending: Rajesh Sharma',
-          body: 'Rajesh Sharma has a pending balance of Rs. 1,450.00 outstanding for over 15 days.',
+          body:
+              'Rajesh Sharma has a pending balance of Rs. 1,450.00 outstanding for over 15 days.',
           category: 'payment_due',
           relatedId: '',
         );
@@ -43,7 +47,8 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
         notifier.triggerNotification(
           context,
           title: '🚚 Order #1084 Dispatched',
-          body: 'Delivery package for "Subhash Stores" has been dispatched with worker Aman Kumar.',
+          body:
+              'Delivery package for "Subhash Stores" has been dispatched with worker Aman Kumar.',
           category: 'order_update',
           relatedId: '',
         );
@@ -52,7 +57,8 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
         notifier.triggerNotification(
           context,
           title: '🔄 P2P Hotspot Sync Complete',
-          body: 'Successfully synchronized 24 new order records with field device "Worker-Tablet-A".',
+          body:
+              'Successfully synchronized 24 new order records with field device "Worker-Tablet-A".',
           category: 'sync',
           relatedId: '',
         );
@@ -66,12 +72,16 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      backgroundColor:
+          isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Notification Hub', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('Notification Hub',
+            style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           IconButton(
-            icon: Icon(_showSimulator ? Icons.bug_report_rounded : Icons.bug_report_outlined),
+            icon: Icon(_showSimulator
+                ? Icons.bug_report_rounded
+                : Icons.bug_report_outlined),
             tooltip: 'Simulate Alerts',
             color: _showSimulator ? AppColors.primary : null,
             onPressed: () {
@@ -110,7 +120,8 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
+                border: Border.all(
+                    color: AppColors.primary.withOpacity(0.3), width: 1.5),
                 boxShadow: AppColors.cardShadow,
               ),
               child: Column(
@@ -118,7 +129,8 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.bolt_rounded, color: Colors.amberAccent, size: 24),
+                      const Icon(Icons.bolt_rounded,
+                          color: Colors.amberAccent, size: 24),
                       const SizedBox(width: 8),
                       const Text(
                         'LIVE ALERTS SIMULATOR',
@@ -131,7 +143,8 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Colors.white60, size: 18),
+                        icon: const Icon(Icons.close_rounded,
+                            color: Colors.white60, size: 18),
                         onPressed: () => setState(() => _showSimulator = false),
                       ),
                     ],
@@ -146,17 +159,23 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _simulatorButton('Low Stock', Icons.inventory_2_rounded, Colors.orangeAccent, 'low_stock'),
-                      _simulatorButton('Payment Due', Icons.payment_rounded, Colors.redAccent, 'payment_due'),
-                      _simulatorButton('Dispatch', Icons.local_shipping_rounded, Colors.greenAccent, 'order_update'),
-                      _simulatorButton('P2P Sync', Icons.sync_rounded, Colors.blueAccent, 'sync'),
+                      _simulatorButton('Low Stock', Icons.inventory_2_rounded,
+                          Colors.orangeAccent, 'low_stock'),
+                      _simulatorButton('Payment Due', Icons.payment_rounded,
+                          Colors.redAccent, 'payment_due'),
+                      _simulatorButton('Dispatch', Icons.local_shipping_rounded,
+                          Colors.greenAccent, 'order_update'),
+                      _simulatorButton('P2P Sync', Icons.sync_rounded,
+                          Colors.blueAccent, 'sync'),
                     ],
                   ),
                 ],
               ),
             ),
             secondChild: const SizedBox.shrink(),
-            crossFadeState: _showSimulator ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+            crossFadeState: _showSimulator
+                ? CrossFadeState.showFirst
+                : CrossFadeState.showSecond,
             duration: const Duration(milliseconds: 300),
           ),
 
@@ -177,22 +196,26 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
                               color: AppColors.primary.withOpacity(0.08),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.notifications_none_rounded, size: 64, color: AppColors.primary),
+                            child: const Icon(Icons.notifications_none_rounded,
+                                size: 64, color: AppColors.primary),
                           ),
                           const SizedBox(height: 16),
                           const Text(
                             'Your Notification Hub is Quiet',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 16),
                           ),
                           const SizedBox(height: 8),
                           const Text(
                             'Critical low stock alerts, pending payment reminders, and worker updates will appear here.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            style: TextStyle(
+                                color: AppColors.textSecondary, fontSize: 13),
                           ),
                           const SizedBox(height: 20),
                           ElevatedButton.icon(
-                            onPressed: () => setState(() => _showSimulator = true),
+                            onPressed: () =>
+                                setState(() => _showSimulator = true),
                             icon: const Icon(Icons.bolt_rounded),
                             label: const Text('Open Simulator & Test'),
                           ),
@@ -203,7 +226,8 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: notifications.length,
                   itemBuilder: (context, index) {
                     final notification = notifications[index];
@@ -220,11 +244,16 @@ class _NotificationCenterScreenState extends ConsumerState<NotificationCenterScr
     );
   }
 
-  Widget _simulatorButton(String label, IconData icon, Color color, String type) {
+  Widget _simulatorButton(
+      String label, IconData icon, Color color, String type) {
     return ElevatedButton.icon(
       onPressed: () => _triggerSimulatedAlert(type),
       icon: Icon(icon, size: 14, color: Colors.black87),
-      label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87)),
+      label: Text(label,
+          style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87)),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -274,18 +303,19 @@ class _NotificationCard extends ConsumerWidget {
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: notification.isRead
-              ? AppColors.gray200
-              : color.withOpacity(0.4),
+          color:
+              notification.isRead ? AppColors.gray200 : color.withOpacity(0.4),
           width: notification.isRead ? 1.0 : 1.5,
         ),
-        boxShadow: notification.isRead ? null : [
-          BoxShadow(
-            color: color.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: notification.isRead
+            ? null
+            : [
+                BoxShadow(
+                  color: color.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),
@@ -310,7 +340,9 @@ class _NotificationCard extends ConsumerWidget {
                         child: Text(
                           notification.title,
                           style: TextStyle(
-                            fontWeight: notification.isRead ? FontWeight.normal : FontWeight.w800,
+                            fontWeight: notification.isRead
+                                ? FontWeight.normal
+                                : FontWeight.w800,
                             fontSize: 13,
                           ),
                         ),
@@ -334,20 +366,25 @@ class _NotificationCard extends ConsumerWidget {
                         notification.body,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark ? Colors.white70 : AppColors.textSecondary,
+                          color:
+                              isDark ? Colors.white70 : AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(Icons.access_time_rounded, size: 12, color: isDark ? Colors.white38 : AppColors.textHint),
+                          Icon(Icons.access_time_rounded,
+                              size: 12,
+                              color:
+                                  isDark ? Colors.white38 : AppColors.textHint),
                           const SizedBox(width: 4),
                           Text(
                             _formatRelativeTime(notification.createdAt),
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white38 : AppColors.textHint,
+                              color:
+                                  isDark ? Colors.white38 : AppColors.textHint,
                             ),
                           ),
                           const Spacer(),
@@ -355,14 +392,20 @@ class _NotificationCard extends ConsumerWidget {
                             TextButton(
                               onPressed: () {
                                 AppHaptics.selection();
-                                ref.read(notificationListProvider.notifier).markAsRead(notification.id);
+                                ref
+                                    .read(notificationListProvider.notifier)
+                                    .markAsRead(notification.id);
                               },
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              child: const Text('Mark Read', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              child: const Text('Mark Read',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold)),
                             ),
                         ],
                       ),
@@ -372,13 +415,17 @@ class _NotificationCard extends ConsumerWidget {
                     icon: const Icon(Icons.delete_outline_rounded, size: 20),
                     onPressed: () {
                       AppHaptics.warning();
-                      ref.read(notificationListProvider.notifier).deleteNotification(notification.id);
+                      ref
+                          .read(notificationListProvider.notifier)
+                          .deleteNotification(notification.id);
                     },
                   ),
                   onTap: () {
                     AppHaptics.selection();
-                    ref.read(notificationListProvider.notifier).markAsRead(notification.id);
-                    
+                    ref
+                        .read(notificationListProvider.notifier)
+                        .markAsRead(notification.id);
+
                     String? route;
                     Object? routeArgs;
                     switch (notification.category) {
@@ -394,9 +441,10 @@ class _NotificationCard extends ConsumerWidget {
                         routeArgs = {'orderId': notification.relatedId};
                         break;
                     }
-                    
+
                     if (route != null) {
-                      Navigator.of(context).pushNamed(route, arguments: routeArgs);
+                      Navigator.of(context)
+                          .pushNamed(route, arguments: routeArgs);
                     }
                   },
                 ),

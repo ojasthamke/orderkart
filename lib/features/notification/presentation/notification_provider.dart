@@ -7,11 +7,13 @@ import '../../settings/presentation/settings_provider.dart';
 import '../../../core/constants/app_routes.dart';
 import 'in_app_notification_banner.dart';
 
-final notificationListProvider = StateNotifierProvider<NotificationListNotifier, AsyncValue<List<AppNotification>>>((ref) {
+final notificationListProvider = StateNotifierProvider<NotificationListNotifier,
+    AsyncValue<List<AppNotification>>>((ref) {
   return NotificationListNotifier(ref);
 });
 
-class NotificationListNotifier extends StateNotifier<AsyncValue<List<AppNotification>>> {
+class NotificationListNotifier
+    extends StateNotifier<AsyncValue<List<AppNotification>>> {
   final Ref _ref;
   final NotificationDao _dao = NotificationDao();
 

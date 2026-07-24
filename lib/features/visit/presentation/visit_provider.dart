@@ -49,7 +49,7 @@ class VisitListNotifier extends StateNotifier<AsyncValue<List<AppVisit>>> {
   Future<void> markStatus(String id, String status) async {
     final currentState = state.valueOrNull;
     if (currentState == null) return;
-    
+
     final visitIndex = currentState.indexWhere((v) => v.id == id);
     if (visitIndex == -1) return;
 

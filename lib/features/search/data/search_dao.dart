@@ -7,14 +7,15 @@ class SearchDao {
 
     final db = await DatabaseHelper.instance.database;
     final q = '%${query.trim()}%';
-    
+
     // Support parsing order numbers like #007 or 007 or 7
     String cleanNumStr = query.trim();
     if (cleanNumStr.startsWith('#')) {
       cleanNumStr = cleanNumStr.substring(1);
     }
     cleanNumStr = cleanNumStr.replaceFirst(RegExp(r'^0+'), '');
-    final int? searchInt = int.tryParse(cleanNumStr.isNotEmpty ? cleanNumStr : query.trim());
+    final int? searchInt =
+        int.tryParse(cleanNumStr.isNotEmpty ? cleanNumStr : query.trim());
 
     final List<SearchResult> results = [];
 
@@ -32,12 +33,13 @@ class SearchDao {
     for (final c in customers) {
       final street = c['street_name'] as String? ?? '';
       final area = c['area_name'] as String? ?? '';
-      final loc = [if (street.isNotEmpty) street, if (area.isNotEmpty) area].join(', ');
+      final loc =
+          [if (street.isNotEmpty) street, if (area.isNotEmpty) area].join(', ');
       results.add(SearchResult(
-        id:       c['id'] as String,
-        title:    c['name'] as String,
+        id: c['id'] as String,
+        title: c['name'] as String,
         subtitle: 'Customer • ${c['phone1']} ${loc.isNotEmpty ? "($loc)" : ""}',
-        type:     SearchResultType.customer,
+        type: SearchResultType.customer,
       ));
     }
 
@@ -50,42 +52,45 @@ class SearchDao {
     );
     for (final item in items) {
       results.add(SearchResult(
-        id:       item['id'] as String,
-        title:    item['name'] as String,
-        subtitle: 'Item • Category: ${item['category']} • Rate: ${item['selling_price']}',
-        type:     SearchResultType.item,
+        id: item['id'] as String,
+        title: item['name'] as String,
+        subtitle:
+            'Item • Category: ${item['category']} • Rate: ${item['selling_price']}',
+        type: SearchResultType.item,
       ));
     }
 
     // 3. Search Locations (Areas)
     final areas = await db.query(
       'locations',
-      where: "location_kind = 'area' AND is_archived = 0 AND (name LIKE ? OR description LIKE ?)",
+      where:
+          "location_kind = 'area' AND is_archived = 0 AND (name LIKE ? OR description LIKE ?)",
       whereArgs: [q, q],
       limit: 5,
     );
     for (final a in areas) {
       results.add(SearchResult(
-        id:       a['id'] as String,
-        title:    a['name'] as String,
+        id: a['id'] as String,
+        title: a['name'] as String,
         subtitle: 'Area • ${a['description']}',
-        type:     SearchResultType.area,
+        type: SearchResultType.area,
       ));
     }
 
     // 4. Search Locations (Streets/Roads)
     final streets = await db.query(
       'locations',
-      where: "location_kind = 'road' AND is_archived = 0 AND (name LIKE ? OR description LIKE ?)",
+      where:
+          "location_kind = 'road' AND is_archived = 0 AND (name LIKE ? OR description LIKE ?)",
       whereArgs: [q, q],
       limit: 5,
     );
     for (final s in streets) {
       results.add(SearchResult(
-        id:       s['id'] as String,
-        title:    s['name'] as String,
+        id: s['id'] as String,
+        title: s['name'] as String,
         subtitle: 'Street • ${s['description']}',
-        type:     SearchResultType.street,
+        type: SearchResultType.street,
       ));
     }
 
@@ -100,10 +105,11 @@ class SearchDao {
     for (final o in orders) {
       final orderId = o['id'] as String;
       results.add(SearchResult(
-        id:       orderId,
-        title:    'Order $orderId',
-        subtitle: 'Order • Customer: ${o['customer_name']} • Total: ${o['grand_total']} (${o['delivery_status']})',
-        type:     SearchResultType.order,
+        id: orderId,
+        title: 'Order $orderId',
+        subtitle:
+            'Order • Customer: ${o['customer_name']} • Total: ${o['grand_total']} (${o['delivery_status']})',
+        type: SearchResultType.order,
       ));
     }
 

@@ -9,7 +9,9 @@ void main() {
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
-  test('Seed 30 Vegetables, 10 Fruits, 10 Areas, 50 Streets, 500 Customers, 200 VIPs', () async {
+  test(
+      'Seed 30 Vegetables, 10 Fruits, 10 Areas, 50 Streets, 500 Customers, 200 VIPs',
+      () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     DatabaseHelper.dbNameOverride = 'orderkart_seeded.db';
 
@@ -31,10 +33,12 @@ void main() {
     expect(results['fruits'], equals(10));
     expect(results['total_items'], equals(40));
 
-    final vegRes = await db.query('items', where: 'category = ?', whereArgs: ['Vegetables']);
+    final vegRes = await db
+        .query('items', where: 'category = ?', whereArgs: ['Vegetables']);
     expect(vegRes.length, equals(30));
 
-    final fruitRes = await db.query('items', where: 'category = ?', whereArgs: ['Fruits']);
+    final fruitRes =
+        await db.query('items', where: 'category = ?', whereArgs: ['Fruits']);
     expect(fruitRes.length, equals(10));
 
     final areaRes = await db.query('areas');

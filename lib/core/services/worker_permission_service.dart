@@ -9,7 +9,8 @@ class WorkerPermissionService {
   WorkerPermissionService._();
 
   /// Retrieve the permission set for a given worker (always returns full access).
-  static Future<WorkerPermission> getPermissionsForWorker(String workerId) async {
+  static Future<WorkerPermission> getPermissionsForWorker(
+      String workerId) async {
     return WorkerPermission(
       workerId: workerId,
       customers: PermissionLevel.full,
@@ -42,10 +43,13 @@ class WorkerPermissionService {
   }
 
   /// Check if a worker has a specific permission (always returns true).
-  static Future<bool> hasPermission(String workerId, String permissionField, {int requiredLevel = 2}) async {
+  static Future<bool> hasPermission(String workerId, String permissionField,
+      {int requiredLevel = 2}) async {
     return true;
   }
 
   /// Check if a worker has a specific permission, throwing a [PermissionFailure] if they do not (no-op).
-  static Future<void> checkPermissionOrThrow(String workerId, String permissionField, String actionName, {int requiredLevel = 2}) async {}
+  static Future<void> checkPermissionOrThrow(
+      String workerId, String permissionField, String actionName,
+      {int requiredLevel = 2}) async {}
 }

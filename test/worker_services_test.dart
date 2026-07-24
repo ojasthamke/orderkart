@@ -20,7 +20,7 @@ void main() {
 
   group('Worker Database Services Tests', () {
     const workerId = 'worker-test-123';
-    
+
     setUp(() async {
       await DatabaseHelper.instance.close();
       final dbPath = await databaseFactory.getDatabasesPath();
@@ -77,7 +77,8 @@ void main() {
       await WorkerService.createWorker(worker);
 
       // Fetch default permissions (which inserts them)
-      final perms = await WorkerPermissionService.getPermissionsForWorker(workerId);
+      final perms =
+          await WorkerPermissionService.getPermissionsForWorker(workerId);
       expect(perms, isNotNull);
       expect(perms.workerId, equals(workerId));
       expect(perms.orders, equals(PermissionLevel.full));
@@ -92,22 +93,30 @@ void main() {
       );
       await WorkerPermissionService.savePermissions(updatedPerms);
 
-      final retrievedPerms = await WorkerPermissionService.getPermissionsForWorker(workerId);
+      final retrievedPerms =
+          await WorkerPermissionService.getPermissionsForWorker(workerId);
       expect(retrievedPerms.orders, equals(PermissionLevel.full));
       expect(retrievedPerms.analytics, equals(PermissionLevel.full));
 
       // Checks using hasPermission (always returns true)
-      expect(await WorkerPermissionService.hasPermission(workerId, 'delete_customer'), isTrue);
-      expect(await WorkerPermissionService.hasPermission(workerId, 'create_order'), isTrue);
+      expect(
+          await WorkerPermissionService.hasPermission(
+              workerId, 'delete_customer'),
+          isTrue);
+      expect(
+          await WorkerPermissionService.hasPermission(workerId, 'create_order'),
+          isTrue);
 
       // checkPermissionOrThrow success (never throws)
       expect(
-        () async => await WorkerPermissionService.checkPermissionOrThrow(workerId, 'delete_customer', 'delete customer'),
+        () async => await WorkerPermissionService.checkPermissionOrThrow(
+            workerId, 'delete_customer', 'delete customer'),
         returnsNormally,
       );
 
       expect(
-        () async => await WorkerPermissionService.checkPermissionOrThrow(workerId, 'create_order', 'create order'),
+        () async => await WorkerPermissionService.checkPermissionOrThrow(
+            workerId, 'create_order', 'create order'),
         returnsNormally,
       );
     });
@@ -130,17 +139,27 @@ void main() {
       expect(assignId, isNotEmpty);
 
       // Check assignment
-      expect(await WorkerAssignmentService.isEntityAssigned(workerId, 'area', 'area-1'), isTrue);
-      expect(await WorkerAssignmentService.isEntityAssigned(workerId, 'area', 'area-2'), isFalse);
+      expect(
+          await WorkerAssignmentService.isEntityAssigned(
+              workerId, 'area', 'area-1'),
+          isTrue);
+      expect(
+          await WorkerAssignmentService.isEntityAssigned(
+              workerId, 'area', 'area-2'),
+          isFalse);
 
       // Get assigned list
-      final list = await WorkerAssignmentService.getAssignedEntityIds(workerId, 'area');
+      final list =
+          await WorkerAssignmentService.getAssignedEntityIds(workerId, 'area');
       expect(list, contains('area-1'));
       expect(list.length, equals(1));
 
       // Revoke assignment
       await WorkerAssignmentService.revokeAssignment(assignId);
-      expect(await WorkerAssignmentService.isEntityAssigned(workerId, 'area', 'area-1'), isFalse);
+      expect(
+          await WorkerAssignmentService.isEntityAssigned(
+              workerId, 'area', 'area-1'),
+          isFalse);
     });
   });
 }

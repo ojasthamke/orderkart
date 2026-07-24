@@ -24,19 +24,23 @@ class LocationRepositoryImpl implements LocationRepository {
   Future<Location?> getLocationById(String id) => _dao.getLocationById(id);
 
   @override
-  Future<String> addLocation(Location location) => _dao.insertLocation(location);
+  Future<String> addLocation(Location location) =>
+      _dao.insertLocation(location);
 
   @override
-  Future<void> updateLocation(Location location) => _dao.updateLocation(location);
+  Future<void> updateLocation(Location location) =>
+      _dao.updateLocation(location);
 
   @override
   Future<void> deleteLocation(String id) => _dao.deleteLocation(id);
 
   @override
-  Future<List<Location>> getBreadcrumbs(String locationId) => _dao.getBreadcrumbs(locationId);
+  Future<List<Location>> getBreadcrumbs(String locationId) =>
+      _dao.getBreadcrumbs(locationId);
 
   @override
-  Future<String> getNextSequenceKey(String? parentId, {String? afterId, String? beforeId}) =>
+  Future<String> getNextSequenceKey(String? parentId,
+          {String? afterId, String? beforeId}) =>
       _dao.getNextSequenceKey(parentId, afterId: afterId, beforeId: beforeId);
 
   @override

@@ -42,7 +42,8 @@ class WorkerProfileData {
   });
 }
 
-final currentWorkerProfileProvider = FutureProvider<WorkerProfileData?>((ref) async {
+final currentWorkerProfileProvider =
+    FutureProvider<WorkerProfileData?>((ref) async {
   final db = await DatabaseHelper.instance.database;
   final workerId = WorkerSession.instance.currentWorkerId;
   final List<Map<String, dynamic>> workers;
@@ -54,16 +55,30 @@ final currentWorkerProfileProvider = FutureProvider<WorkerProfileData?>((ref) as
   if (workers.isEmpty) return null;
 
   final w = Worker.fromMap(workers.first);
-  
-  final custRes = await db.rawQuery('SELECT COUNT(*) as v FROM customers WHERE assigned_worker_id = ?', [w.id]);
-  final areaRes = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "area"', [w.id]);
-  final streetRes = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"', [w.id]);
-  final collRes = await db.rawQuery('SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?', [w.id]);
 
-  final orderRes = await db.rawQuery('SELECT COUNT(*) as v FROM orders WHERE assigned_worker_id = ?', [w.id]);
-  final salesRes = await db.rawQuery('SELECT COALESCE(SUM(grand_total), 0) as v FROM orders WHERE assigned_worker_id = ?', [w.id]);
-  final duesRes = await db.rawQuery('SELECT COALESCE(SUM(remaining_amount), 0) as v FROM orders WHERE assigned_worker_id = ?', [w.id]);
-  final noteRes = await db.rawQuery('SELECT COUNT(*) as v FROM notes WHERE worker_id = ?', [w.id]);
+  final custRes = await db.rawQuery(
+      'SELECT COUNT(*) as v FROM customers WHERE assigned_worker_id = ?',
+      [w.id]);
+  final areaRes = await db.rawQuery(
+      'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "area"',
+      [w.id]);
+  final streetRes = await db.rawQuery(
+      'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"',
+      [w.id]);
+  final collRes = await db.rawQuery(
+      'SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?',
+      [w.id]);
+
+  final orderRes = await db.rawQuery(
+      'SELECT COUNT(*) as v FROM orders WHERE assigned_worker_id = ?', [w.id]);
+  final salesRes = await db.rawQuery(
+      'SELECT COALESCE(SUM(grand_total), 0) as v FROM orders WHERE assigned_worker_id = ?',
+      [w.id]);
+  final duesRes = await db.rawQuery(
+      'SELECT COALESCE(SUM(remaining_amount), 0) as v FROM orders WHERE assigned_worker_id = ?',
+      [w.id]);
+  final noteRes = await db
+      .rawQuery('SELECT COUNT(*) as v FROM notes WHERE worker_id = ?', [w.id]);
 
   final workerWithCounts = w.copyWith(
     assignedCustomersCount: (custRes.first['v'] as num?)?.toInt() ?? 0,
@@ -85,11 +100,12 @@ class WorkerSelfProfileScreen extends ConsumerStatefulWidget {
   const WorkerSelfProfileScreen({super.key});
 
   @override
-  ConsumerState<WorkerSelfProfileScreen> createState() => _WorkerSelfProfileScreenState();
+  ConsumerState<WorkerSelfProfileScreen> createState() =>
+      _WorkerSelfProfileScreenState();
 }
 
-class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScreen> {
-
+class _WorkerSelfProfileScreenState
+    extends ConsumerState<WorkerSelfProfileScreen> {
   void _invalidateAllProviders() {
     ref.invalidate(currentWorkerProfileProvider);
     ref.invalidate(areaProvider);
@@ -128,7 +144,7 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
     if (profileData != null) {
       final worker = profileData.worker;
       await _ensureWorkerSecurity(worker.id);
-      
+
       // Start Wi-Fi automatic connection sync listener
       HotspotSyncService.startAutoSyncListener(
         workerId: worker.id,
@@ -153,7 +169,8 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
 
   Future<void> _ensureWorkerSecurity(String workerId) async {
     final db = await DatabaseHelper.instance.database;
-    final res = await db.query('worker_security', where: 'worker_id = ?', whereArgs: [workerId]);
+    final res = await db.query('worker_security',
+        where: 'worker_id = ?', whereArgs: [workerId]);
     if (res.isEmpty || (res.first['worker_secret']?.toString() ?? '').isEmpty) {
       final secret = DateTime.now().millisecondsSinceEpoch.toString();
       final nowStr = DateTime.now().toIso8601String();
@@ -177,7 +194,8 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
     return AppScaffold(
       title: 'My Worker Profile',
       body: workerAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
         error: (err, _) => Center(child: Text('Error loading profile: $err')),
         data: (profileData) {
           if (profileData == null) {
@@ -219,8 +237,13 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                         radius: 34,
                         backgroundColor: AppColors.primarySurface,
                         child: Text(
-                          worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.primary),
+                          worker.name.isNotEmpty
+                              ? worker.name[0].toUpperCase()
+                              : 'W',
+                          style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.primary),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -232,28 +255,42 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                               children: [
                                 Text(
                                   worker.name,
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900),
                                 ),
                                 const SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: AppColors.successSurface,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: const Text(
                                     'ACTIVE WORKER',
-                                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.success),
+                                    style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.success),
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 4),
                             if (worker.employeeId.isNotEmpty)
-                              Text('Employee ID: ${worker.employeeId}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                              Text('Employee ID: ${worker.employeeId}',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary)),
                             if (worker.phone.isNotEmpty)
-                              Text('Phone: ${worker.phone}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                            Text('Device: ${Platform.localHostname}', style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
+                              Text('Phone: ${worker.phone}',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary)),
+                            Text('Device: ${Platform.localHostname}',
+                                style: const TextStyle(
+                                    fontSize: 11, color: AppColors.textHint)),
                           ],
                         ),
                       ),
@@ -282,14 +319,22 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                         children: [
                           const Row(
                             children: [
-                              Icon(Icons.flag_rounded, color: Colors.white, size: 22),
+                              Icon(Icons.flag_rounded,
+                                  color: Colors.white, size: 22),
                               SizedBox(width: 8),
-                              Text('MONTHLY SALES TARGET', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+                              Text('MONTHLY SALES TARGET',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900)),
                             ],
                           ),
                           Text(
                             '${(targetPct * 100).toStringAsFixed(0)}% Achieved',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13),
                           ),
                         ],
                       ),
@@ -310,15 +355,29 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Target Amount', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                              Text(AppFormatters.currency(worker.monthlyTarget), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                              const Text('Target Amount',
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 11)),
+                              Text(AppFormatters.currency(worker.monthlyTarget),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16)),
                             ],
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              const Text('Total Collection', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                              Text(AppFormatters.currency(worker.totalCollection), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                              const Text('Total Collection',
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 11)),
+                              Text(
+                                  AppFormatters.currency(
+                                      worker.totalCollection),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16)),
                             ],
                           ),
                         ],
@@ -329,91 +388,144 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                 const SizedBox(height: 20),
 
                 // --- TERRITORIES & METRICS GRID ---
-                const Text('Assigned Territory & Route', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const Text('Assigned Territory & Route',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 10),
 
                 Row(
                   children: [
-                    Expanded(child: _metricTile('Assigned Areas', '${worker.assignedAreasCount}', Icons.map_rounded, AppColors.primary)),
+                    Expanded(
+                        child: _metricTile(
+                            'Assigned Areas',
+                            '${worker.assignedAreasCount}',
+                            Icons.map_rounded,
+                            AppColors.primary)),
                     const SizedBox(width: 10),
-                    Expanded(child: _metricTile('Assigned Streets', '${worker.assignedStreetsCount}', Icons.alt_route_rounded, Colors.indigo)),
+                    Expanded(
+                        child: _metricTile(
+                            'Assigned Streets',
+                            '${worker.assignedStreetsCount}',
+                            Icons.alt_route_rounded,
+                            Colors.indigo)),
                     const SizedBox(width: 10),
-                    Expanded(child: _metricTile('My Customers', '${worker.assignedCustomersCount}', Icons.people_rounded, Colors.orange)),
+                    Expanded(
+                        child: _metricTile(
+                            'My Customers',
+                            '${worker.assignedCustomersCount}',
+                            Icons.people_rounded,
+                            Colors.orange)),
                   ],
                 ),
                 const SizedBox(height: 24),
 
-                const Text('Sales & Visit Performance', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const Text('Sales & Visit Performance',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 10),
 
                 Row(
                   children: [
-                    Expanded(child: _metricTile('Total Orders', '${profileData.totalOrders}', Icons.receipt_long_rounded, Colors.purple)),
+                    Expanded(
+                        child: _metricTile(
+                            'Total Orders',
+                            '${profileData.totalOrders}',
+                            Icons.receipt_long_rounded,
+                            Colors.purple)),
                     const SizedBox(width: 10),
-                    Expanded(child: _metricTile('Total Sales', AppFormatters.currency(profileData.totalSales), Icons.shopping_cart_checkout_rounded, AppColors.success)),
+                    Expanded(
+                        child: _metricTile(
+                            'Total Sales',
+                            AppFormatters.currency(profileData.totalSales),
+                            Icons.shopping_cart_checkout_rounded,
+                            AppColors.success)),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(child: _metricTile('Pending Dues', AppFormatters.currency(profileData.pendingDues), Icons.hourglass_empty_rounded, Colors.red)),
+                    Expanded(
+                        child: _metricTile(
+                            'Pending Dues',
+                            AppFormatters.currency(profileData.pendingDues),
+                            Icons.hourglass_empty_rounded,
+                            Colors.red)),
                     const SizedBox(width: 10),
-                    Expanded(child: _metricTile('Logged Notes', '${profileData.totalNotes}', Icons.note_alt_rounded, Colors.teal)),
+                    Expanded(
+                        child: _metricTile(
+                            'Logged Notes',
+                            '${profileData.totalNotes}',
+                            Icons.note_alt_rounded,
+                            Colors.teal)),
                   ],
                 ),
                 const SizedBox(height: 24),
 
+                HotspotSyncControlCard(
+                  workerId: worker.id,
+                  workerName: worker.name,
+                  onSyncCompleted: () {
+                    _invalidateAllProviders();
+                  },
+                ),
+                const SizedBox(height: 24),
 
+                // --- WORKER IMPORT & EXPORT SECTION ---
+                const Text('Worker Data Import & Export',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const SizedBox(height: 4),
+                const Text(
+                    'Import packages from Owner or export work updates with custom file names:',
+                    style: TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 12),
 
-          HotspotSyncControlCard(
-            workerId: worker.id,
-            workerName: worker.name,
-            onSyncCompleted: () {
-              _invalidateAllProviders();
-            },
-          ),
-          const SizedBox(height: 24),
-
-                 // --- WORKER IMPORT & EXPORT SECTION ---
-                 const Text('Worker Data Import & Export', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                 const SizedBox(height: 4),
-                 const Text('Import packages from Owner or export work updates with custom file names:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                 const SizedBox(height: 12),
-
-                 // 1. Import Button
-                 SizedBox(
-                   width: double.infinity,
-                   child: ElevatedButton.icon(
-                     onPressed: () async {
-                       AppHaptics.buttonClick();
-                       try {
-                         final result = await FilePicker.platform.pickFiles(type: FileType.any);
-                         if (result == null) return;
-                         final path = result.files.single.path;
-                         if (path == null) return;
-                         final val = await PackageValidator.validatePackage(path);
-                         if (!val.isValid) {
-                           if (context.mounted) SnackbarHelper.showError(context, 'Invalid Package: ${val.errorMessage}');
-                           return;
-                         }
-                         await DatabaseHelper.instance.mergeDatabaseFromPath(val.dbPath, selectedModules: ['entire_db']);
-                         _invalidateAllProviders();
-                         if (context.mounted) SnackbarHelper.showSuccess(context, '✅ Owner package imported successfully!');
-                       } catch (e) {
-                         if (context.mounted) SnackbarHelper.showError(context, 'Import failed: $e');
-                       }
-                     },
-                     icon: const Icon(Icons.file_download_rounded),
-                     label: const Text('Import Package from Owner'),
-                     style: ElevatedButton.styleFrom(
-                       backgroundColor: Colors.teal,
-                       foregroundColor: Colors.white,
-                       padding: const EdgeInsets.symmetric(vertical: 14),
-                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                     ),
-                   ),
-                 ),
-                 const SizedBox(height: 12),
+                // 1. Import Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      AppHaptics.buttonClick();
+                      try {
+                        final result = await FilePicker.platform
+                            .pickFiles(type: FileType.any);
+                        if (result == null) return;
+                        final path = result.files.single.path;
+                        if (path == null) return;
+                        final val =
+                            await PackageValidator.validatePackage(path);
+                        if (!val.isValid) {
+                          if (context.mounted)
+                            SnackbarHelper.showError(context,
+                                'Invalid Package: ${val.errorMessage}');
+                          return;
+                        }
+                        await DatabaseHelper.instance.mergeDatabaseFromPath(
+                            val.dbPath,
+                            selectedModules: ['entire_db']);
+                        _invalidateAllProviders();
+                        if (context.mounted)
+                          SnackbarHelper.showSuccess(context,
+                              '✅ Owner package imported successfully!');
+                      } catch (e) {
+                        if (context.mounted)
+                          SnackbarHelper.showError(
+                              context, 'Import failed: $e');
+                      }
+                    },
+                    icon: const Icon(Icons.file_download_rounded),
+                    label: const Text('Import Package from Owner'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
 
                 // 2 Export Buttons Side-by-Side
                 Row(
@@ -424,7 +536,8 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                         onPressed: () async {
                           AppHaptics.buttonClick();
                           await _ensureWorkerSecurity(worker.id);
-                          final defaultName = 'Worker_FullBackup_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
+                          final defaultName =
+                              'Worker_FullBackup_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
                           final customName = await ExportFilenameDialog.show(
                             context,
                             defaultName: defaultName,
@@ -435,25 +548,37 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
 
                           try {
                             await PackageExporter.exportPackage(
-                              selectedModules: ['entire_db', 'photos', 'settings'],
+                              selectedModules: [
+                                'entire_db',
+                                'photos',
+                                'settings'
+                              ],
                               workerId: worker.id,
                               workerName: worker.name,
                               customFileName: customName,
                             );
                             if (context.mounted) {
-                              SnackbarHelper.showSuccess(context, '✅ Full Backup "$customName" exported!');
+                              SnackbarHelper.showSuccess(context,
+                                  '✅ Full Backup "$customName" exported!');
                             }
                           } catch (e) {
-                            if (context.mounted) SnackbarHelper.showError(context, 'Export failed: $e');
+                            if (context.mounted)
+                              SnackbarHelper.showError(
+                                  context, 'Export failed: $e');
                           }
                         },
                         icon: const Icon(Icons.inventory_2_rounded),
-                        label: const Text('Export Entire Backup', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                        label: const Text('Export Entire Backup',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w800)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.indigo,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
                     ),
@@ -465,7 +590,8 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                         onPressed: () async {
                           AppHaptics.buttonClick();
                           await _ensureWorkerSecurity(worker.id);
-                          final defaultName = 'Update_Owner_Data_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
+                          final defaultName =
+                              'Update_Owner_Data_${worker.name.replaceAll(' ', '_')}_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
                           final customName = await ExportFilenameDialog.show(
                             context,
                             defaultName: defaultName,
@@ -475,26 +601,35 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
                           if (customName == null) return;
 
                           try {
-                            await WorkerPackageService.generateWorkerReportPackage(
+                            await WorkerPackageService
+                                .generateWorkerReportPackage(
                               workerId: worker.id,
                               workerName: worker.name,
                               customFileName: customName,
                               isIncremental: true,
                             );
                             if (context.mounted) {
-                              SnackbarHelper.showSuccess(context, '✅ Data update "$customName" shared with Owner!');
+                              SnackbarHelper.showSuccess(context,
+                                  '✅ Data update "$customName" shared with Owner!');
                             }
                           } catch (e) {
-                            if (context.mounted) SnackbarHelper.showError(context, 'Export failed: $e');
+                            if (context.mounted)
+                              SnackbarHelper.showError(
+                                  context, 'Export failed: $e');
                           }
                         },
                         icon: const Icon(Icons.sync_alt_rounded),
-                        label: const Text('Share Data to Update Owner', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                        label: const Text('Share Data to Update Owner',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w800)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
                     ),
@@ -522,12 +657,16 @@ class _WorkerSelfProfileScreenState extends ConsumerState<WorkerSelfProfileScree
         children: [
           Icon(icon, size: 20, color: color),
           const SizedBox(height: 6),
-          Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: color)),
-          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          Text(value,
+              style: TextStyle(
+                  fontWeight: FontWeight.w800, fontSize: 16, color: color)),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
   }
-
-
 }

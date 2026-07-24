@@ -24,7 +24,8 @@ class InstantLedgerSheet extends ConsumerStatefulWidget {
   ConsumerState<InstantLedgerSheet> createState() => _InstantLedgerSheetState();
 }
 
-class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with SingleTickerProviderStateMixin {
+class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<OrderItem> _boughtItems = [];
   bool _loading = true;
@@ -48,15 +49,16 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
   Future<void> _loadData() async {
     try {
       final orders = await ref.read(orderRepositoryProvider).getAllOrders(
-        customerId: widget.customer.id,
-      );
+            customerId: widget.customer.id,
+          );
       final sortedOrders = List<AppOrder>.from(orders)
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       final last5 = sortedOrders.take(5).toList();
 
       List<OrderItem> items = [];
       for (final order in last5) {
-        final orderItems = await ref.read(orderRepositoryProvider).getOrderItems(order.id);
+        final orderItems =
+            await ref.read(orderRepositoryProvider).getOrderItems(order.id);
         items.addAll(orderItems);
       }
 
@@ -120,7 +122,8 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                   CircleAvatar(
                     radius: 22,
                     backgroundColor: AppColors.primary.withOpacity(0.1),
-                    child: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary),
+                    child: const Icon(Icons.account_balance_wallet_rounded,
+                        color: AppColors.primary),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -138,7 +141,8 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                         const SizedBox(height: 4),
                         Text(
                           'Phone: ${widget.customer.phone1.isNotEmpty ? widget.customer.phone1 : "N/A"}',
-                          style: const TextStyle(color: Colors.grey, fontSize: 13),
+                          style:
+                              const TextStyle(color: Colors.grey, fontSize: 13),
                         ),
                       ],
                     ),
@@ -170,7 +174,8 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                     widget.customer.outstandingBalance >= 0
                         ? 'Outstanding Balance Dues:'
                         : 'Credit / Advance Balance:',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   Text(
                     '$currency${widget.customer.outstandingBalance.abs().toStringAsFixed(2)}',
@@ -205,130 +210,153 @@ class _InstantLedgerSheetState extends ConsumerState<InstantLedgerSheet> with Si
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                          // Tab 1: Past 5 Orders
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: ordersAsync.when(
-                              loading: () => const Center(
-                                child: CircularProgressIndicator(color: AppColors.primary),
-                              ),
-                              error: (e, _) => Center(child: Text('Error: $e')),
-                              data: (ordersList) {
-                                final sorted = List<AppOrder>.from(ordersList)
-                                  ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-                                final past5 = sorted.take(5).toList();
-                                if (past5.isEmpty) {
-                                  return const Center(
-                                    child: Text('No orders recorded for this customer yet.'),
-                                  );
-                                }
-                                return ListView.builder(
-                                  controller: _tabController.index == 0 ? controller : null,
-                                  itemCount: past5.length,
-                                  itemBuilder: (context, index) {
-                                    final order = past5[index];
-                                    final isPending = order.remainingAmount > 0;
-
-                                    return Card(
-                                      margin: const EdgeInsets.only(bottom: 10),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: ListTile(
-                                        title: Text(
-                                          'Order #${order.orderNoLabel}',
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                        subtitle: Text(
-                                          'Date: ${order.createdAt.toIso8601String().substring(0, 10)}',
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        trailing: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            Text(
-                                              '$currency${order.grandTotal.toStringAsFixed(1)}',
-                                              style: const TextStyle(fontWeight: FontWeight.bold),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: (isPending ? errorColor : successColor).withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                isPending
-                                                    ? 'Due: $currency${order.remainingAmount.toStringAsFixed(1)}'
-                                                    : 'Paid',
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isPending
-                                                      ? errorColor
-                                                      : successColor,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
+                        // Tab 1: Past 5 Orders
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: ordersAsync.when(
+                            loading: () => const Center(
+                              child: CircularProgressIndicator(
+                                  color: AppColors.primary),
                             ),
-                          ),
+                            error: (e, _) => Center(child: Text('Error: $e')),
+                            data: (ordersList) {
+                              final sorted = List<AppOrder>.from(ordersList)
+                                ..sort((a, b) =>
+                                    b.createdAt.compareTo(a.createdAt));
+                              final past5 = sorted.take(5).toList();
+                              if (past5.isEmpty) {
+                                return const Center(
+                                  child: Text(
+                                      'No orders recorded for this customer yet.'),
+                                );
+                              }
+                              return ListView.builder(
+                                controller: _tabController.index == 0
+                                    ? controller
+                                    : null,
+                                itemCount: past5.length,
+                                itemBuilder: (context, index) {
+                                  final order = past5[index];
+                                  final isPending = order.remainingAmount > 0;
 
-                          // Tab 2: Items Purchased
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: _loading
-                                ? const Center(
-                                    child: CircularProgressIndicator(color: AppColors.primary),
-                                  )
-                                : _boughtItems.isEmpty
-                                    ? const Center(
-                                        child: Text('No purchased items found.'),
-                                      )
-                                    : ListView.builder(
-                                        controller: _tabController.index == 1 ? controller : null,
-                                        itemCount: _boughtItems.length,
-                                        itemBuilder: (context, index) {
-                                          final item = _boughtItems[index];
-                                          return Card(
-                                            margin: const EdgeInsets.only(bottom: 8),
-                                            child: ListTile(
-                                              leading: CircleAvatar(
-                                                backgroundColor: AppColors.primary.withOpacity(0.1),
-                                                child: const Icon(Icons.shopping_bag_rounded,
-                                                    color: AppColors.primary, size: 20),
-                                              ),
-                                              title: Text(
-                                                item.itemName,
-                                                style: const TextStyle(fontWeight: FontWeight.bold),
-                                              ),
-                                              subtitle: Text('Qty: ${item.quantity} ${item.itemUnit}'),
-                                              trailing: Text(
-                                                '$currency${item.unitPrice.toStringAsFixed(1)}',
-                                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 10),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: ListTile(
+                                      title: Text(
+                                        'Order #${order.orderNoLabel}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      subtitle: Text(
+                                        'Date: ${order.createdAt.toIso8601String().substring(0, 10)}',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      trailing: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            '$currency${order.grandTotal.toStringAsFixed(1)}',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: (isPending
+                                                      ? errorColor
+                                                      : successColor)
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              isPending
+                                                  ? 'Due: $currency${order.remainingAmount.toStringAsFixed(1)}'
+                                                  : 'Paid',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: isPending
+                                                    ? errorColor
+                                                    : successColor,
                                               ),
                                             ),
-                                          );
-                                        },
+                                          ),
+                                        ],
                                       ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
                           ),
-                        ],
-                      ),
+                        ),
+
+                        // Tab 2: Items Purchased
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _loading
+                              ? const Center(
+                                  child: CircularProgressIndicator(
+                                      color: AppColors.primary),
+                                )
+                              : _boughtItems.isEmpty
+                                  ? const Center(
+                                      child: Text('No purchased items found.'),
+                                    )
+                                  : ListView.builder(
+                                      controller: _tabController.index == 1
+                                          ? controller
+                                          : null,
+                                      itemCount: _boughtItems.length,
+                                      itemBuilder: (context, index) {
+                                        final item = _boughtItems[index];
+                                        return Card(
+                                          margin:
+                                              const EdgeInsets.only(bottom: 8),
+                                          child: ListTile(
+                                            leading: CircleAvatar(
+                                              backgroundColor: AppColors.primary
+                                                  .withOpacity(0.1),
+                                              child: const Icon(
+                                                  Icons.shopping_bag_rounded,
+                                                  color: AppColors.primary,
+                                                  size: 20),
+                                            ),
+                                            title: Text(
+                                              item.itemName,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                            subtitle: Text(
+                                                'Qty: ${item.quantity} ${item.itemUnit}'),
+                                            trailing: Text(
+                                              '$currency${item.unitPrice.toStringAsFixed(1)}',
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }

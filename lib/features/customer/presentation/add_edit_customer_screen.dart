@@ -34,23 +34,23 @@ class AddEditCustomerScreen extends ConsumerStatefulWidget {
 }
 
 class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
-  final _formKey     = GlobalKey<FormState>();
-  final _nameCon     = TextEditingController();
-  final _phone1Con   = TextEditingController();
-  final _phone2Con   = TextEditingController();
-  final _waCon        = TextEditingController();
-  final _serialNoCon = TextEditingController();  // replaces main house number
-  final _houseCon    = TextEditingController();  // house/flat number
-  final _addressCon  = TextEditingController();
-  final _notesCon    = TextEditingController();
-  final _mapsCon     = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _nameCon = TextEditingController();
+  final _phone1Con = TextEditingController();
+  final _phone2Con = TextEditingController();
+  final _waCon = TextEditingController();
+  final _serialNoCon = TextEditingController(); // replaces main house number
+  final _houseCon = TextEditingController(); // house/flat number
+  final _addressCon = TextEditingController();
+  final _notesCon = TextEditingController();
+  final _mapsCon = TextEditingController();
 
   String? _streetId;
   String _photoPath = '';
-  bool   _loading   = false;
-  bool   _isEdit    = false;
+  bool _loading = false;
+  bool _isEdit = false;
   String _dietaryPreference = '';
-  bool   _isGhostHouse = false;
+  bool _isGhostHouse = false;
 
   // Custom Fields state
   List<Map<String, dynamic>> _customFields = [];
@@ -70,8 +70,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   Future<void> _loadCustomFields() async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final fields = await db.query('custom_fields', where: 'entity_type = ?', whereArgs: ['customer']);
-      
+      final fields = await db.query('custom_fields',
+          where: 'entity_type = ?', whereArgs: ['customer']);
+
       final Map<String, String> values = {};
       if (widget.customerId != null) {
         final existingValues = await db.query(
@@ -89,7 +90,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           _customFields = fields;
           for (final f in fields) {
             final fid = f['id'] as String;
-            _customFieldControllers[fid] = TextEditingController(text: values[fid] ?? '');
+            _customFieldControllers[fid] =
+                TextEditingController(text: values[fid] ?? '');
           }
         });
       }
@@ -103,18 +105,18 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     if (customer != null && mounted) {
       final ghost = customer.isGhostHouse;
       setState(() {
-        _streetId          = customer.streetId;
-        _isGhostHouse      = ghost;
-        _nameCon.text      = ghost ? '' : customer.name;
-        _phone1Con.text    = ghost ? '' : customer.phone1;
-        _phone2Con.text    = customer.phone2;
-        _waCon.text        = customer.whatsapp;
-        _serialNoCon.text  = customer.serialNo > 0 ? '${customer.serialNo}' : '';
-        _houseCon.text     = customer.houseNumber;
-        _addressCon.text   = customer.address;
-        _notesCon.text     = customer.notes;
-        _mapsCon.text      = customer.mapsLocation;
-        _photoPath         = customer.photoPath;
+        _streetId = customer.streetId;
+        _isGhostHouse = ghost;
+        _nameCon.text = ghost ? '' : customer.name;
+        _phone1Con.text = ghost ? '' : customer.phone1;
+        _phone2Con.text = customer.phone2;
+        _waCon.text = customer.whatsapp;
+        _serialNoCon.text = customer.serialNo > 0 ? '${customer.serialNo}' : '';
+        _houseCon.text = customer.houseNumber;
+        _addressCon.text = customer.address;
+        _notesCon.text = customer.notes;
+        _mapsCon.text = customer.mapsLocation;
+        _photoPath = customer.photoPath;
         _dietaryPreference = customer.dietaryPreference;
       });
     }
@@ -122,9 +124,15 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
   @override
   void dispose() {
-    _nameCon.dispose(); _phone1Con.dispose(); _phone2Con.dispose();
-    _waCon.dispose(); _serialNoCon.dispose(); _houseCon.dispose();
-    _addressCon.dispose(); _notesCon.dispose(); _mapsCon.dispose();
+    _nameCon.dispose();
+    _phone1Con.dispose();
+    _phone2Con.dispose();
+    _waCon.dispose();
+    _serialNoCon.dispose();
+    _houseCon.dispose();
+    _addressCon.dispose();
+    _notesCon.dispose();
+    _mapsCon.dispose();
     for (final controller in _customFieldControllers.values) {
       controller.dispose();
     }
@@ -170,10 +178,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               const SizedBox(height: 8),
               Text(
                 _photoPath.isEmpty ? 'Add Photo' : 'Change Photo',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.primary, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 24),
 
@@ -198,7 +204,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                     setState(() {
                       _isGhostHouse = val;
                       if (val) {
-                        _nameCon.text   = '';
+                        _nameCon.text = '';
                         _phone1Con.text = '';
                       }
                     });
@@ -224,30 +230,33 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 ),
               ),
 
-              if (!_isGhostHouse) ...[ // Hide photo & contact fields for ghost houses
-              // Name
-              TextFormField(
-                controller: _nameCon,
-                decoration: const InputDecoration(
-                  labelText: 'Full Name *',
-                  prefixIcon: Icon(Icons.person_rounded),
+              if (!_isGhostHouse) ...[
+                // Hide photo & contact fields for ghost houses
+                // Name
+                TextFormField(
+                  controller: _nameCon,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name *',
+                    prefixIcon: Icon(Icons.person_rounded),
+                  ),
+                  validator: _isGhostHouse
+                      ? null
+                      : (v) => AppValidators.nameField(v, field: 'Name'),
+                  textCapitalization: TextCapitalization.words,
                 ),
-                validator: _isGhostHouse ? null : (v) => AppValidators.nameField(v, field: 'Name'),
-                textCapitalization: TextCapitalization.words,
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Phone 1
-              TextFormField(
-                controller: _phone1Con,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Primary Phone *',
-                  prefixIcon: Icon(Icons.phone_rounded),
+                // Phone 1
+                TextFormField(
+                  controller: _phone1Con,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Primary Phone *',
+                    prefixIcon: Icon(Icons.phone_rounded),
+                  ),
+                  validator: _isGhostHouse ? null : AppValidators.phoneRequired,
                 ),
-                validator: _isGhostHouse ? null : AppValidators.phoneRequired,
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
               ], // end !_isGhostHouse block
 
               // Phone 2
@@ -289,7 +298,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                       ),
                       validator: (v) {
                         if (v != null && v.trim().isNotEmpty) {
-                          if (int.tryParse(v.trim()) == null || int.parse(v.trim()) < 1) {
+                          if (int.tryParse(v.trim()) == null ||
+                              int.parse(v.trim()) < 1) {
                             return 'Must be ≥ 1';
                           }
                         }
@@ -334,7 +344,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                         prefixIcon: const Icon(Icons.location_on_rounded),
                         suffixIcon: _mapsCon.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, color: AppColors.error),
+                                icon: const Icon(Icons.clear_rounded,
+                                    color: AppColors.error),
                                 onPressed: () {
                                   setState(() {
                                     _mapsCon.clear();
@@ -377,7 +388,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                       ) as LatLng?;
                       if (picked != null && mounted) {
                         setState(() {
-                          _mapsCon.text = '${picked.latitude},${picked.longitude}';
+                          _mapsCon.text =
+                              '${picked.latitude},${picked.longitude}';
                         });
                       }
                     },
@@ -402,7 +414,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Dietary Preference (Optional)',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: AppColors.primary),
                 ),
               ),
               const SizedBox(height: 8),
@@ -410,12 +425,18 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 children: [
                   Expanded(
                     child: Builder(builder: (ctx) {
-                      final isDark = Theme.of(ctx).brightness == Brightness.dark;
-                      final unselectedBorder = isDark ? Colors.white24 : Colors.grey.shade300;
-                      final unselectedText = isDark ? Colors.white60 : Colors.grey.shade700;
+                      final isDark =
+                          Theme.of(ctx).brightness == Brightness.dark;
+                      final unselectedBorder =
+                          isDark ? Colors.white24 : Colors.grey.shade300;
+                      final unselectedText =
+                          isDark ? Colors.white60 : Colors.grey.shade700;
                       final isSelected = _dietaryPreference == 'veg';
-                      final activeColor = isDark ? const Color(0xFF4ADE80) : Colors.green.shade700;
-                      final activeBorder = isDark ? const Color(0xFF4ADE80) : Colors.green;
+                      final activeColor = isDark
+                          ? const Color(0xFF4ADE80)
+                          : Colors.green.shade700;
+                      final activeBorder =
+                          isDark ? const Color(0xFF4ADE80) : Colors.green;
 
                       return OutlinedButton.icon(
                         onPressed: () {
@@ -424,7 +445,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                           });
                         },
                         icon: Icon(
-                          isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                          isSelected
+                              ? Icons.check_circle_rounded
+                              : Icons.circle_outlined,
                           color: isSelected ? activeBorder : unselectedText,
                         ),
                         label: const Text('Veg'),
@@ -433,7 +456,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                             color: isSelected ? activeBorder : unselectedBorder,
                             width: isSelected ? 2 : 1,
                           ),
-                          foregroundColor: isSelected ? activeColor : unselectedText,
+                          foregroundColor:
+                              isSelected ? activeColor : unselectedText,
                         ),
                       );
                     }),
@@ -441,12 +465,18 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Builder(builder: (ctx) {
-                      final isDark = Theme.of(ctx).brightness == Brightness.dark;
-                      final unselectedBorder = isDark ? Colors.white24 : Colors.grey.shade300;
-                      final unselectedText = isDark ? Colors.white60 : Colors.grey.shade700;
+                      final isDark =
+                          Theme.of(ctx).brightness == Brightness.dark;
+                      final unselectedBorder =
+                          isDark ? Colors.white24 : Colors.grey.shade300;
+                      final unselectedText =
+                          isDark ? Colors.white60 : Colors.grey.shade700;
                       final isSelected = _dietaryPreference == 'non_veg';
-                      final activeColor = isDark ? const Color(0xFFF87171) : Colors.red.shade700;
-                      final activeBorder = isDark ? const Color(0xFFF87171) : Colors.red;
+                      final activeColor = isDark
+                          ? const Color(0xFFF87171)
+                          : Colors.red.shade700;
+                      final activeBorder =
+                          isDark ? const Color(0xFFF87171) : Colors.red;
 
                       return OutlinedButton.icon(
                         onPressed: () {
@@ -455,7 +485,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                           });
                         },
                         icon: Icon(
-                          isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                          isSelected
+                              ? Icons.check_circle_rounded
+                              : Icons.circle_outlined,
                           color: isSelected ? activeBorder : unselectedText,
                         ),
                         label: const Text('Non-Veg'),
@@ -464,7 +496,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                             color: isSelected ? activeBorder : unselectedBorder,
                             width: isSelected ? 2 : 1,
                           ),
-                          foregroundColor: isSelected ? activeColor : unselectedText,
+                          foregroundColor:
+                              isSelected ? activeColor : unselectedText,
                         ),
                       );
                     }),
@@ -479,7 +512,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Additional Custom Attributes',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppColors.primary),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -557,7 +593,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   void _showCoordinatesDialog() {
     final latCon = TextEditingController();
     final lngCon = TextEditingController();
-    
+
     final current = _mapsCon.text.trim();
     if (current.isNotEmpty && !current.startsWith('http')) {
       final parts = current.split(',');
@@ -576,7 +612,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           children: [
             TextField(
               controller: latCon,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true, signed: true),
               decoration: const InputDecoration(
                 labelText: 'Latitude (e.g. 18.5204)',
                 isDense: true,
@@ -585,7 +622,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: lngCon,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true, signed: true),
               decoration: const InputDecoration(
                 labelText: 'Longitude (e.g. 73.8567)',
                 isDense: true,
@@ -631,8 +669,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       final customerId = widget.customerId ?? const Uuid().v4();
 
       // For ghost houses: auto-fill placeholder name and phone so DB constraints are satisfied
-      final String finalName  = _isGhostHouse ? '[Ghost House]' : _nameCon.text.trim();
-      final String finalPhone = _isGhostHouse ? '0000000000'    : _phone1Con.text.trim();
+      final String finalName =
+          _isGhostHouse ? '[Ghost House]' : _nameCon.text.trim();
+      final String finalPhone =
+          _isGhostHouse ? '0000000000' : _phone1Con.text.trim();
 
       final db = await DatabaseHelper.instance.database;
       // Skip duplicate-phone check for ghost houses (they all share the same placeholder phone)
@@ -644,7 +684,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           whereArgs: [finalPhone, customerId],
         );
         if (duplicateCheck.isNotEmpty) {
-          throw Exception('A customer named "${duplicateCheck.first['name']}" already has this phone number ($finalPhone).');
+          throw Exception(
+              'A customer named "${duplicateCheck.first['name']}" already has this phone number ($finalPhone).');
         }
       }
 
@@ -664,7 +705,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       double longitude = 0.0;
       final text = _mapsCon.text.trim();
       if (text.isNotEmpty) {
-        final regExp = RegExp(r'(?:q=|@|^|/|params=)(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)');
+        final regExp =
+            RegExp(r'(?:q=|@|^|/|params=)(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)');
         final match = regExp.firstMatch(text);
         if (match != null) {
           latitude = double.tryParse(match.group(1) ?? '') ?? 0.0;
@@ -673,57 +715,65 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       }
 
       final existing = _isEdit
-          ? await ref.read(customerRepositoryProvider).getCustomerById(customerId)
+          ? await ref
+              .read(customerRepositoryProvider)
+              .getCustomerById(customerId)
           : null;
 
       final customer = existing != null
           ? existing.copyWith(
-              name:               finalName,
-              phone1:             finalPhone,
-              phone2:             _phone2Con.text.trim(),
-              whatsapp:           _waCon.text.trim(),
-              houseNumber:        _houseCon.text.trim(),
-              serialNo:           int.tryParse(_serialNoCon.text.trim()) ?? 0,
-              address:            _addressCon.text.trim(),
-              notes:              _notesCon.text.trim(),
-              mapsLocation:       _mapsCon.text.trim(),
-              photoPath:          finalPhotoPath,
-              dietaryPreference:  _dietaryPreference,
-              latitude:           latitude,
-              longitude:          longitude,
-              updatedAt:          now,
+              name: finalName,
+              phone1: finalPhone,
+              phone2: _phone2Con.text.trim(),
+              whatsapp: _waCon.text.trim(),
+              houseNumber: _houseCon.text.trim(),
+              serialNo: int.tryParse(_serialNoCon.text.trim()) ?? 0,
+              address: _addressCon.text.trim(),
+              notes: _notesCon.text.trim(),
+              mapsLocation: _mapsCon.text.trim(),
+              photoPath: finalPhotoPath,
+              dietaryPreference: _dietaryPreference,
+              latitude: latitude,
+              longitude: longitude,
+              updatedAt: now,
             )
           : Customer(
-              id:                 customerId,
-              streetId:           _streetId!,
-              name:               finalName,
-              phone1:             finalPhone,
-              phone2:             _phone2Con.text.trim(),
-              whatsapp:           _waCon.text.trim(),
-              houseNumber:        _houseCon.text.trim(),
-              serialNo:           int.tryParse(_serialNoCon.text.trim()) ?? 0,
-              address:            _addressCon.text.trim(),
-              notes:              _notesCon.text.trim(),
-              mapsLocation:       _mapsCon.text.trim(),
-              photoPath:          finalPhotoPath,
-              dietaryPreference:  _dietaryPreference,
-              latitude:           latitude,
-              longitude:          longitude,
-              customerSince:      now,
-              createdAt:          now,
-              updatedAt:          now,
+              id: customerId,
+              streetId: _streetId!,
+              name: finalName,
+              phone1: finalPhone,
+              phone2: _phone2Con.text.trim(),
+              whatsapp: _waCon.text.trim(),
+              houseNumber: _houseCon.text.trim(),
+              serialNo: int.tryParse(_serialNoCon.text.trim()) ?? 0,
+              address: _addressCon.text.trim(),
+              notes: _notesCon.text.trim(),
+              mapsLocation: _mapsCon.text.trim(),
+              photoPath: finalPhotoPath,
+              dietaryPreference: _dietaryPreference,
+              latitude: latitude,
+              longitude: longitude,
+              customerSince: now,
+              createdAt: now,
+              updatedAt: now,
             );
 
       final notifier = ref.read(customerListProvider(_streetId!).notifier);
       if (_isEdit) {
-        if (existing != null && existing.photoPath.isNotEmpty && existing.photoPath != finalPhotoPath) {
+        if (existing != null &&
+            existing.photoPath.isNotEmpty &&
+            existing.photoPath != finalPhotoPath) {
           final oldFile = File(existing.photoPath);
           if (oldFile.existsSync()) {
-            try { oldFile.deleteSync(); } catch (_) {}
+            try {
+              oldFile.deleteSync();
+            } catch (_) {}
           }
           final fallbackOld = AppConstants.resolveFile(existing.photoPath);
           if (fallbackOld.existsSync()) {
-            try { fallbackOld.deleteSync(); } catch (_) {}
+            try {
+              fallbackOld.deleteSync();
+            } catch (_) {}
           }
         }
         await notifier.update(customer);
@@ -736,11 +786,14 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         final fieldId = entry.key;
         final val = entry.value.text.trim();
         if (val.isNotEmpty) {
-          await db.insert('custom_field_values', {
-            'entity_id': customerId,
-            'field_id': fieldId,
-            'value': val,
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
+          await db.insert(
+              'custom_field_values',
+              {
+                'entity_id': customerId,
+                'field_id': fieldId,
+                'value': val,
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace);
         } else {
           await db.delete('custom_field_values',
               where: 'entity_id = ? AND field_id = ?',
@@ -760,12 +813,16 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         final dialContact = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(
               children: [
-                Icon(Icons.phone_enabled_rounded, color: AppColors.primary, size: 26),
+                Icon(Icons.phone_enabled_rounded,
+                    color: AppColors.primary, size: 26),
                 SizedBox(width: 10),
-                Text('Copy Name & Dial?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                Text('Copy Name & Dial?',
+                    style:
+                        TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               ],
             ),
             content: Text(
@@ -816,12 +873,16 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         final upgradeToVip = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(
               children: [
-                Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700), size: 28),
+                Icon(Icons.workspace_premium_rounded,
+                    color: Color(0xFFFFD700), size: 28),
                 SizedBox(width: 10),
-                Text('Upgrade to VIP?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                Text('Upgrade to VIP?',
+                    style:
+                        TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               ],
             ),
             content: Text(
@@ -840,7 +901,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFD700),
                   foregroundColor: const Color(0xFF0F172A),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],

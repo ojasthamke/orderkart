@@ -49,7 +49,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // Crucial: lets body content extend under the floating bottom bar
+      extendBody:
+          true, // Crucial: lets body content extend under the floating bottom bar
       body: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) async {
@@ -65,8 +66,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           }
 
           final now = DateTime.now();
-          if (_lastBackPressTime == null || 
-              now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          if (_lastBackPressTime == null ||
+              now.difference(_lastBackPressTime!) >
+                  const Duration(seconds: 2)) {
             _lastBackPressTime = now;
             ScaffoldMessenger.of(context).clearSnackBars();
             ScaffoldMessenger.of(context).showSnackBar(
@@ -160,9 +162,11 @@ class FloatingGlassBottomBar extends StatelessWidget {
               height: 72,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(32),
-                color: (isDark ? const Color(0xFF1E293B) : Colors.white).withOpacity(isDark ? 0.72 : 0.85),
+                color: (isDark ? const Color(0xFF1E293B) : Colors.white)
+                    .withOpacity(isDark ? 0.72 : 0.85),
                 border: Border.all(
-                  color: isDark ? Colors.white12 : Colors.black.withOpacity(0.08),
+                  color:
+                      isDark ? Colors.white12 : Colors.black.withOpacity(0.08),
                   width: 1.2,
                 ),
                 boxShadow: [
@@ -179,7 +183,8 @@ class FloatingGlassBottomBar extends StatelessWidget {
                   final isSelected = selectedIndex == index;
                   final item = destinations[index];
                   final activeColor = theme.colorScheme.primary;
-                  final inactiveColor = isDark ? Colors.white54 : Colors.black45;
+                  final inactiveColor =
+                      isDark ? Colors.white54 : Colors.black45;
 
                   return InkWell(
                     onTap: () => onDestinationSelected(index),
@@ -187,7 +192,8 @@ class FloatingGlassBottomBar extends StatelessWidget {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(24),
                         color: isSelected
@@ -207,7 +213,9 @@ class FloatingGlassBottomBar extends StatelessWidget {
                             item.label,
                             style: TextStyle(
                               fontSize: 10,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               color: isSelected ? activeColor : inactiveColor,
                             ),
                           ),

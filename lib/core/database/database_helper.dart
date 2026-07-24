@@ -17,11 +17,15 @@ class DatabaseHelper {
 
   static final Map<String, List<String>> _tableColumnCache = {};
 
-  static Future<List<String>> _getTableColumns(DatabaseExecutor db, String table) async {
+  static Future<List<String>> _getTableColumns(
+      DatabaseExecutor db, String table) async {
     if (_tableColumnCache.containsKey(table)) return _tableColumnCache[table]!;
     try {
       final info = await db.rawQuery('PRAGMA table_info("$table")');
-      final cols = info.map((r) => r['name']?.toString() ?? '').where((c) => c.isNotEmpty).toList();
+      final cols = info
+          .map((r) => r['name']?.toString() ?? '')
+          .where((c) => c.isNotEmpty)
+          .toList();
       _tableColumnCache[table] = cols;
       return cols;
     } catch (_) {
@@ -29,9 +33,11 @@ class DatabaseHelper {
     }
   }
 
-  static Map<String, dynamic> _filterColumns(Map<String, dynamic> row, List<String> validColumns) {
+  static Map<String, dynamic> _filterColumns(
+      Map<String, dynamic> row, List<String> validColumns) {
     if (validColumns.isEmpty) return row;
-    return Map.fromEntries(row.entries.where((e) => validColumns.contains(e.key)));
+    return Map.fromEntries(
+        row.entries.where((e) => validColumns.contains(e.key)));
   }
 
   static String? dbNameOverride;
@@ -59,13 +65,16 @@ class DatabaseHelper {
     await _createV6Tables(db);
     await _createV7Tables(db);
     try {
-      await db.execute('ALTER TABLE items ADD COLUMN weight_per_piece REAL DEFAULT 0.25');
+      await db.execute(
+          'ALTER TABLE items ADD COLUMN weight_per_piece REAL DEFAULT 0.25');
     } catch (_) {}
     try {
-      await db.execute("ALTER TABLE customers ADD COLUMN dietary_preference TEXT DEFAULT ''");
+      await db.execute(
+          "ALTER TABLE customers ADD COLUMN dietary_preference TEXT DEFAULT ''");
     } catch (_) {}
     try {
-      await db.execute('ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
     } catch (_) {}
     await _ensureGeoMapTables(db);
   }
@@ -96,7 +105,8 @@ class DatabaseHelper {
         await _createV6Tables(db);
         await _createV7Tables(db);
         try {
-          await db.execute('ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
+          await db.execute(
+              'ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
         } catch (_) {}
         await _ensureGeoMapTables(db);
         await _runStartupHealthCheck(db);
@@ -135,11 +145,13 @@ class DatabaseHelper {
       await _createV7Tables(db);
     }
     if (oldVersion < 8) {
-      await db.execute('ALTER TABLE items ADD COLUMN weight_per_piece REAL DEFAULT 0.25');
+      await db.execute(
+          'ALTER TABLE items ADD COLUMN weight_per_piece REAL DEFAULT 0.25');
     }
     if (oldVersion < 9) {
       try {
-        await db.execute("ALTER TABLE customers ADD COLUMN dietary_preference TEXT DEFAULT ''");
+        await db.execute(
+            "ALTER TABLE customers ADD COLUMN dietary_preference TEXT DEFAULT ''");
       } catch (_) {}
     }
     if (oldVersion < 10) {
@@ -193,11 +205,14 @@ class DatabaseHelper {
         created_at   TEXT NOT NULL
       )
     ''');
-    
+
     // V3 Indexes
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_notes_created ON notes(created_at)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_visits_date ON visits(date)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_notes_created ON notes(created_at)');
+    await db
+        .execute('CREATE INDEX IF NOT EXISTS idx_visits_date ON visits(date)');
   }
 
   Future<void> createTablesForDatabase(Database db) async {
@@ -373,47 +388,63 @@ class DatabaseHelper {
 
   Future<void> _createIndexes(Database db) async {
     // Performance indexes for large datasets (10k+ customers, 50k+ orders)
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_orders_created  ON orders(created_at)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_orders_status   ON orders(delivery_status)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_street ON customers(street_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_streets_area    ON streets(area_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_payments_order  ON payments(order_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_payments_customer ON payments(customer_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_item      ON stock_history(item_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_expenses_date   ON expenses(date)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_items_category  ON items(category)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_orders_customer_created ON orders(customer_id, created_at)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_serial ON customers(serial_no)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_outstanding ON customers(outstanding_balance)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_path ON locations(materialized_path)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_location ON customers(location_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_orders_created  ON orders(created_at)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_orders_status   ON orders(delivery_status)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_customers_street ON customers(street_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_streets_area    ON streets(area_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_payments_order  ON payments(order_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_payments_customer ON payments(customer_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_stock_item      ON stock_history(item_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_expenses_date   ON expenses(date)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_items_category  ON items(category)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_orders_customer_created ON orders(customer_id, created_at)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_customers_serial ON customers(serial_no)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_customers_outstanding ON customers(outstanding_balance)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_locations_path ON locations(materialized_path)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_customers_location ON customers(location_id)');
   }
 
   /// Seeds default settings on fresh install
   Future<void> _seedDefaultSettings(Database db) async {
     final defaults = {
-      AppConstants.keyBusinessName:   'My Business',
-      AppConstants.keyOwnerName:      'Owner',
-      AppConstants.keyPhone:          '',
-      AppConstants.keyWhatsApp:       '',
+      AppConstants.keyBusinessName: 'My Business',
+      AppConstants.keyOwnerName: 'Owner',
+      AppConstants.keyPhone: '',
+      AppConstants.keyWhatsApp: '',
       AppConstants.keyDeliveryCharge: '10.0',
-      AppConstants.keySmartRounding:  'true',
-      AppConstants.keyCurrency:       '₹',
-      AppConstants.keyThemeMode:      'system',
-      AppConstants.keyNotifications:  'true',
-      AppConstants.keyDailySummary:   'true',
-      AppConstants.keyLowStockAlert:  'true',
-      AppConstants.keyPendingAlert:   'true',
-      AppConstants.keyVisitAlert:     'true',
-      AppConstants.keyNoteReminders:  'true',
-      AppConstants.keyNotifTime:      '06:00',
-      AppConstants.keyNotifSound:     'true',
+      AppConstants.keySmartRounding: 'true',
+      AppConstants.keyCurrency: '₹',
+      AppConstants.keyThemeMode: 'system',
+      AppConstants.keyNotifications: 'true',
+      AppConstants.keyDailySummary: 'true',
+      AppConstants.keyLowStockAlert: 'true',
+      AppConstants.keyPendingAlert: 'true',
+      AppConstants.keyVisitAlert: 'true',
+      AppConstants.keyNoteReminders: 'true',
+      AppConstants.keyNotifTime: '06:00',
+      AppConstants.keyNotifSound: 'true',
       AppConstants.keyNotifVibration: 'true',
       AppConstants.keyBackupReminder: 'true',
-      AppConstants.keyQrContent:      '',
-      AppConstants.keyStaffWhatsApp:  '',
+      AppConstants.keyQrContent: '',
+      AppConstants.keyStaffWhatsApp: '',
       AppConstants.keyLastDeliveryCharge: '10.0',
       AppConstants.keyEnableDeliveryCharges: 'true',
       AppConstants.keyMeshTheme: 'sunset',
@@ -493,7 +524,8 @@ class DatabaseHelper {
 
   Future<void> _ensureItemPhotoColumn(Database db) async {
     try {
-      await db.execute("ALTER TABLE items ADD COLUMN photo_path TEXT DEFAULT ''");
+      await db
+          .execute("ALTER TABLE items ADD COLUMN photo_path TEXT DEFAULT ''");
     } catch (_) {
       // Column already exists, ignore
     }
@@ -523,7 +555,8 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<double?> getCustomerCustomPrice(String customerId, String itemId) async {
+  Future<double?> getCustomerCustomPrice(
+      String customerId, String itemId) async {
     final db = await database;
     final res = await db.query(
       'customer_item_prices',
@@ -537,7 +570,8 @@ class DatabaseHelper {
     return null;
   }
 
-  Future<void> setCustomerCustomPrice(String customerId, String itemId, double price) async {
+  Future<void> setCustomerCustomPrice(
+      String customerId, String itemId, double price) async {
     final db = await database;
     await db.insert(
       'customer_item_prices',
@@ -591,11 +625,13 @@ class DatabaseHelper {
 
   Future<void> _ensurePriceHistoryTables(Database db) async {
     try {
-      await db.execute('ALTER TABLE items ADD COLUMN market_price REAL DEFAULT 0');
+      await db
+          .execute('ALTER TABLE items ADD COLUMN market_price REAL DEFAULT 0');
     } catch (_) {}
 
     try {
-      await db.execute('ALTER TABLE item_price_history ADD COLUMN cost_price REAL DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE item_price_history ADD COLUMN cost_price REAL DEFAULT 0');
     } catch (_) {}
 
     await db.execute('''
@@ -610,23 +646,56 @@ class DatabaseHelper {
         FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_price_hist_date ON item_price_history(date)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_price_hist_item ON item_price_history(item_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_price_hist_date ON item_price_history(date)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_price_hist_item ON item_price_history(item_id)');
   }
 
   Future<void> _ensureAreaAndStreetColumns(Database db) async {
     try {
-      await db.execute("ALTER TABLE areas ADD COLUMN photo_path TEXT DEFAULT ''");
+      await db
+          .execute("ALTER TABLE areas ADD COLUMN photo_path TEXT DEFAULT ''");
     } catch (_) {}
     try {
-      await db.execute("ALTER TABLE areas ADD COLUMN maps_location TEXT DEFAULT ''");
+      await db.execute(
+          "ALTER TABLE areas ADD COLUMN maps_location TEXT DEFAULT ''");
     } catch (_) {}
     try {
-      await db.execute("ALTER TABLE streets ADD COLUMN photo_path TEXT DEFAULT ''");
+      await db
+          .execute("ALTER TABLE streets ADD COLUMN photo_path TEXT DEFAULT ''");
     } catch (_) {}
     try {
-      await db.execute("ALTER TABLE streets ADD COLUMN maps_location TEXT DEFAULT ''");
+      await db.execute(
+          "ALTER TABLE streets ADD COLUMN maps_location TEXT DEFAULT ''");
     } catch (_) {}
+  }
+
+  /// Helper to update a row in database merge targeting standard or composite keys
+  Future<void> _updateMergedRow(DatabaseExecutor dbExecutor, String table,
+      Map<String, dynamic> filteredRow, String id) async {
+    if (table == 'settings') {
+      await dbExecutor
+          .update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
+    } else if (table == 'worker_permissions') {
+      await dbExecutor
+          .update(table, filteredRow, where: 'worker_id = ?', whereArgs: [id]);
+    } else if (table == 'customer_item_prices') {
+      await dbExecutor.update(table, filteredRow,
+          where: 'customer_id = ? AND item_id = ?',
+          whereArgs: [filteredRow['customer_id'], filteredRow['item_id']]);
+    } else if (table == 'customer_question_answers') {
+      await dbExecutor.update(table, filteredRow,
+          where: 'customer_id = ? AND question_id = ?',
+          whereArgs: [filteredRow['customer_id'], filteredRow['question_id']]);
+    } else if (table == 'order_question_answers') {
+      await dbExecutor.update(table, filteredRow,
+          where: 'order_id = ? AND question_id = ?',
+          whereArgs: [filteredRow['order_id'], filteredRow['question_id']]);
+    } else {
+      await dbExecutor
+          .update(table, filteredRow, where: 'id = ?', whereArgs: [id]);
+    }
   }
 
   /// Helper to check if a table is selected for modular import
@@ -636,74 +705,100 @@ class DatabaseHelper {
 
     switch (table) {
       case 'locations':
-        return selectedModules.contains('areas') || selectedModules.contains('streets') || selectedModules.contains('entire_db');
+        return selectedModules.contains('areas') ||
+            selectedModules.contains('streets') ||
+            selectedModules.contains('entire_db');
       case 'areas':
-        return selectedModules.contains('areas') || selectedModules.contains('entire_db');
+        return selectedModules.contains('areas') ||
+            selectedModules.contains('entire_db');
       case 'streets':
-        return selectedModules.contains('streets') || selectedModules.contains('entire_db');
+        return selectedModules.contains('streets') ||
+            selectedModules.contains('entire_db');
       case 'customers':
       case 'vip_membership':
-        return selectedModules.contains('customers') || selectedModules.contains('entire_db');
+        return selectedModules.contains('customers') ||
+            selectedModules.contains('entire_db');
       case 'items':
       case 'item_price_history':
-        return selectedModules.contains('items') || selectedModules.contains('entire_db');
+      case 'customer_item_prices':
+        return selectedModules.contains('items') ||
+            selectedModules.contains('customers') ||
+            selectedModules.contains('entire_db');
       case 'orders':
       case 'order_items':
       case 'payments':
       case 'order_questions':
       case 'order_question_answers':
-        return selectedModules.contains('orders') || selectedModules.contains('entire_db');
+        return selectedModules.contains('orders') ||
+            selectedModules.contains('entire_db');
       case 'customer_question_answers':
-        return selectedModules.contains('customers') || selectedModules.contains('entire_db');
+        return selectedModules.contains('customers') ||
+            selectedModules.contains('entire_db');
       case 'expenses':
-        return selectedModules.contains('expenses') || selectedModules.contains('entire_db');
+        return selectedModules.contains('expenses') ||
+            selectedModules.contains('entire_db');
       case 'notes':
-        return selectedModules.contains('notes') || selectedModules.contains('entire_db');
+        return selectedModules.contains('notes') ||
+            selectedModules.contains('entire_db');
       case 'visits':
-        return selectedModules.contains('visits') || selectedModules.contains('streets') || selectedModules.contains('entire_db');
+        return selectedModules.contains('visits') ||
+            selectedModules.contains('streets') ||
+            selectedModules.contains('entire_db');
       case 'notifications':
-        return selectedModules.contains('notifications') || selectedModules.contains('entire_db');
+        return selectedModules.contains('notifications') ||
+            selectedModules.contains('entire_db');
       case 'workers':
       case 'worker_assignments':
       case 'worker_permissions':
       case 'worker_reports':
       case 'commission_history':
-        return selectedModules.contains('workers') || selectedModules.contains('entire_db');
+        return selectedModules.contains('workers') ||
+            selectedModules.contains('entire_db');
       case 'business_profile':
       case 'settings':
-        return selectedModules.contains('settings') || selectedModules.contains('entire_db');
+        return selectedModules.contains('settings') ||
+            selectedModules.contains('entire_db');
       default:
         return false;
     }
   }
 
   /// Ensures that a street and its parent area exist in the legacy tables, JIT creating them from locations if missing.
-  Future<void> ensureLegacyStreetAndAreaExists(DatabaseExecutor db, String locationId) async {
+  Future<void> ensureLegacyStreetAndAreaExists(
+      DatabaseExecutor db, String locationId) async {
     if (locationId.isEmpty) return;
 
     try {
-      final streetCheck = await db.query('streets', columns: ['id'], where: 'id = ?', whereArgs: [locationId]);
+      final streetCheck = await db.query('streets',
+          columns: ['id'], where: 'id = ?', whereArgs: [locationId]);
       if (streetCheck.isNotEmpty) return;
 
-      final locRows = await db.query('locations', where: 'id = ?', whereArgs: [locationId], limit: 1);
+      final locRows = await db.query('locations',
+          where: 'id = ?', whereArgs: [locationId], limit: 1);
       if (locRows.isEmpty) {
         final nowStr = DateTime.now().toIso8601String();
-        await db.insert('areas', {
-          'id': locationId,
-          'name': 'Legacy Location',
-          'description': 'Auto-created fallback area',
-          'color': 0xFF1565C0,
-          'created_at': nowStr,
-          'updated_at': nowStr,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        await db.insert(
+            'areas',
+            {
+              'id': locationId,
+              'name': 'Legacy Location',
+              'description': 'Auto-created fallback area',
+              'color': 0xFF1565C0,
+              'created_at': nowStr,
+              'updated_at': nowStr,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
 
-        await db.insert('streets', {
-          'id': locationId,
-          'area_id': locationId,
-          'name': 'Legacy Location',
-          'description': 'Auto-created fallback street',
-          'created_at': nowStr,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        await db.insert(
+            'streets',
+            {
+              'id': locationId,
+              'area_id': locationId,
+              'name': 'Legacy Location',
+              'description': 'Auto-created fallback street',
+              'created_at': nowStr,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
         return;
       }
 
@@ -715,47 +810,60 @@ class DatabaseHelper {
       final maps = loc['maps_location'] as String? ?? '';
       final color = loc['color'] as int? ?? 0xFF1565C0;
       final createdBy = loc['created_by'] as String? ?? 'owner';
-      final workerId = (loc['assigned_worker_id'] ?? loc['worker_id']) as String? ?? '';
+      final workerId =
+          (loc['assigned_worker_id'] ?? loc['worker_id']) as String? ?? '';
       final workerName = loc['worker_name'] as String? ?? '';
       final deviceName = loc['device_name'] as String? ?? '';
-      final createdAt = loc['created_at'] as String? ?? DateTime.now().toIso8601String();
-      final updatedAt = loc['updated_at'] as String? ?? DateTime.now().toIso8601String();
+      final createdAt =
+          loc['created_at'] as String? ?? DateTime.now().toIso8601String();
+      final updatedAt =
+          loc['updated_at'] as String? ?? DateTime.now().toIso8601String();
 
       if (parentId == null) {
-        await db.insert('areas', {
-          'id': locationId,
-          'name': name,
-          'description': desc,
-          'photo_path': photo,
-          'maps_location': maps,
-          'color': color,
-          'created_by': createdBy,
-          'assigned_worker_id': workerId,
-          'worker_name': workerName,
-          'device_name': deviceName,
-          'created_at': createdAt,
-          'updated_at': updatedAt,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        await db.insert(
+            'areas',
+            {
+              'id': locationId,
+              'name': name,
+              'description': desc,
+              'photo_path': photo,
+              'maps_location': maps,
+              'color': color,
+              'created_by': createdBy,
+              'assigned_worker_id': workerId,
+              'worker_name': workerName,
+              'device_name': deviceName,
+              'created_at': createdAt,
+              'updated_at': updatedAt,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
 
-        await db.insert('streets', {
-          'id': locationId,
-          'area_id': locationId,
-          'name': name,
-          'description': desc,
-          'photo_path': photo,
-          'maps_location': maps,
-          'created_by': createdBy,
-          'assigned_worker_id': workerId,
-          'worker_name': workerName,
-          'device_name': deviceName,
-          'created_at': createdAt,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        await db.insert(
+            'streets',
+            {
+              'id': locationId,
+              'area_id': locationId,
+              'name': name,
+              'description': desc,
+              'photo_path': photo,
+              'maps_location': maps,
+              'created_by': createdBy,
+              'assigned_worker_id': workerId,
+              'worker_name': workerName,
+              'device_name': deviceName,
+              'created_at': createdAt,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       } else {
         String rootAreaId = parentId;
         String? currentParentId = rootAreaId;
         int maxDepth = 20;
         while (currentParentId != null && maxDepth-- > 0) {
-          final parentRows = await db.query('locations', columns: ['id', 'parent_location_id'], where: 'id = ?', whereArgs: [currentParentId], limit: 1);
+          final parentRows = await db.query('locations',
+              columns: ['id', 'parent_location_id'],
+              where: 'id = ?',
+              whereArgs: [currentParentId],
+              limit: 1);
           if (parentRows.isEmpty) break;
           final nextParent = parentRows.first['parent_location_id'] as String?;
           if (nextParent == null) {
@@ -765,50 +873,63 @@ class DatabaseHelper {
           currentParentId = nextParent;
         }
 
-        final areaCheck = await db.query('areas', columns: ['id'], where: 'id = ?', whereArgs: [rootAreaId]);
+        final areaCheck = await db.query('areas',
+            columns: ['id'], where: 'id = ?', whereArgs: [rootAreaId]);
         if (areaCheck.isEmpty) {
-          final rootLocRows = await db.query('locations', where: 'id = ?', whereArgs: [rootAreaId], limit: 1);
+          final rootLocRows = await db.query('locations',
+              where: 'id = ?', whereArgs: [rootAreaId], limit: 1);
           if (rootLocRows.isNotEmpty) {
             final rl = rootLocRows.first;
-            await db.insert('areas', {
-              'id': rootAreaId,
-              'name': rl['name'] as String? ?? 'Root Area',
-              'description': rl['description'] as String? ?? '',
-              'photo_path': rl['photo_path'] as String? ?? '',
-              'maps_location': rl['maps_location'] as String? ?? '',
-              'color': rl['color'] as int? ?? 0xFF1565C0,
-              'created_by': rl['created_by'] as String? ?? 'owner',
-              'assigned_worker_id': (rl['assigned_worker_id'] ?? rl['worker_id']) as String? ?? '',
-              'worker_name': rl['worker_name'] as String? ?? '',
-              'device_name': rl['device_name'] as String? ?? '',
-              'created_at': rl['created_at'] as String? ?? createdAt,
-              'updated_at': rl['updated_at'] as String? ?? updatedAt,
-            }, conflictAlgorithm: ConflictAlgorithm.ignore);
+            await db.insert(
+                'areas',
+                {
+                  'id': rootAreaId,
+                  'name': rl['name'] as String? ?? 'Root Area',
+                  'description': rl['description'] as String? ?? '',
+                  'photo_path': rl['photo_path'] as String? ?? '',
+                  'maps_location': rl['maps_location'] as String? ?? '',
+                  'color': rl['color'] as int? ?? 0xFF1565C0,
+                  'created_by': rl['created_by'] as String? ?? 'owner',
+                  'assigned_worker_id': (rl['assigned_worker_id'] ??
+                          rl['worker_id']) as String? ??
+                      '',
+                  'worker_name': rl['worker_name'] as String? ?? '',
+                  'device_name': rl['device_name'] as String? ?? '',
+                  'created_at': rl['created_at'] as String? ?? createdAt,
+                  'updated_at': rl['updated_at'] as String? ?? updatedAt,
+                },
+                conflictAlgorithm: ConflictAlgorithm.ignore);
           } else {
-            await db.insert('areas', {
-              'id': rootAreaId,
-              'name': 'Fallback Area',
-              'description': 'Auto-created fallback area',
-              'color': 0xFF1565C0,
-              'created_at': createdAt,
-              'updated_at': updatedAt,
-            }, conflictAlgorithm: ConflictAlgorithm.ignore);
+            await db.insert(
+                'areas',
+                {
+                  'id': rootAreaId,
+                  'name': 'Fallback Area',
+                  'description': 'Auto-created fallback area',
+                  'color': 0xFF1565C0,
+                  'created_at': createdAt,
+                  'updated_at': updatedAt,
+                },
+                conflictAlgorithm: ConflictAlgorithm.ignore);
           }
         }
 
-        await db.insert('streets', {
-          'id': locationId,
-          'area_id': rootAreaId,
-          'name': name,
-          'description': desc,
-          'photo_path': photo,
-          'maps_location': maps,
-          'created_by': createdBy,
-          'assigned_worker_id': workerId,
-          'worker_name': workerName,
-          'device_name': deviceName,
-          'created_at': createdAt,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        await db.insert(
+            'streets',
+            {
+              'id': locationId,
+              'area_id': rootAreaId,
+              'name': name,
+              'description': desc,
+              'photo_path': photo,
+              'maps_location': maps,
+              'created_by': createdBy,
+              'assigned_worker_id': workerId,
+              'worker_name': workerName,
+              'device_name': deviceName,
+              'created_at': createdAt,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       }
     } catch (_) {}
   }
@@ -823,15 +944,21 @@ class DatabaseHelper {
     final targetDb = await database;
 
     // Strict prevention of worker-to-worker sharing
-    final settingsRows = await targetDb.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
-    final currentAppModeStr = settingsRows.isNotEmpty ? settingsRows.first['value']?.toString() : '';
+    final settingsRows = await targetDb
+        .query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+    final currentAppModeStr =
+        settingsRows.isNotEmpty ? settingsRows.first['value']?.toString() : '';
     final isLocalWorker = currentAppModeStr == 'worker';
 
     final manifest = incomingData['manifest'] ?? {};
-    final generatedByWorkerId = manifest['generated_by_worker_id']?.toString() ?? '';
+    final generatedByWorkerId =
+        manifest['generated_by_worker_id']?.toString() ?? '';
 
-    if (isLocalWorker && generatedByWorkerId.isNotEmpty && generatedByWorkerId != 'owner') {
-      throw Exception('Worker-to-worker sync is strictly prohibited. Imports are only allowed from Owner.');
+    if (isLocalWorker &&
+        generatedByWorkerId.isNotEmpty &&
+        generatedByWorkerId != 'owner') {
+      throw Exception(
+          'Worker-to-worker sync is strictly prohibited. Imports are only allowed from Owner.');
     }
 
     final tables = [
@@ -841,6 +968,7 @@ class DatabaseHelper {
       'customers',
       'vip_membership',
       'items',
+      'customer_item_prices',
       'item_price_history',
       'stock_history',
       'orders',
@@ -891,15 +1019,32 @@ class DatabaseHelper {
 
         final rawList = incomingData[table];
         final List<Map<String, dynamic>> incomingRows = rawList is List
-            ? List<Map<String, dynamic>>.from(rawList.map((item) => Map<String, dynamic>.from(item)))
+            ? List<Map<String, dynamic>>.from(
+                rawList.map((item) => Map<String, dynamic>.from(item)))
             : [];
 
         final validCols = await _getTableColumns(dbExecutor, table);
 
         for (final row in incomingRows) {
-          final id = row['id']?.toString() ?? 
-                     row['key']?.toString() ?? 
-                     row['worker_id']?.toString() ?? '';
+          String id = row['id']?.toString() ??
+              row['key']?.toString() ??
+              row['worker_id']?.toString() ??
+              '';
+          if (id.isEmpty) {
+            if (table == 'customer_item_prices' &&
+                row['customer_id'] != null &&
+                row['item_id'] != null) {
+              id = '${row['customer_id']}_${row['item_id']}';
+            } else if (table == 'customer_question_answers' &&
+                row['customer_id'] != null &&
+                row['question_id'] != null) {
+              id = '${row['customer_id']}_${row['question_id']}';
+            } else if (table == 'order_question_answers' &&
+                row['order_id'] != null &&
+                row['question_id'] != null) {
+              id = '${row['order_id']}_${row['question_id']}';
+            }
+          }
           if (id.isEmpty) {
             skipped++;
             continue;
@@ -933,25 +1078,52 @@ class DatabaseHelper {
               skipped++;
               continue;
             }
-            existing = await dbExecutor.query(table, where: 'key = ?', whereArgs: [id]);
+            existing = await dbExecutor
+                .query(table, where: 'key = ?', whereArgs: [id]);
           } else if (table == 'worker_permissions') {
-            existing = await dbExecutor.query(table, where: 'worker_id = ?', whereArgs: [id]);
+            existing = await dbExecutor
+                .query(table, where: 'worker_id = ?', whereArgs: [id]);
+          } else if (table == 'customer_item_prices') {
+            existing = await dbExecutor.query(table,
+                where: 'customer_id = ? AND item_id = ?',
+                whereArgs: [
+                  filteredRow['customer_id'],
+                  filteredRow['item_id']
+                ]);
+          } else if (table == 'customer_question_answers') {
+            existing = await dbExecutor.query(table,
+                where: 'customer_id = ? AND question_id = ?',
+                whereArgs: [
+                  filteredRow['customer_id'],
+                  filteredRow['question_id']
+                ]);
+          } else if (table == 'order_question_answers') {
+            existing = await dbExecutor.query(table,
+                where: 'order_id = ? AND question_id = ?',
+                whereArgs: [
+                  filteredRow['order_id'],
+                  filteredRow['question_id']
+                ]);
           } else {
-            existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
+            existing =
+                await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
           }
 
           // If the worker exists and we are in Owner mode, ignore.
           if (!isLocalWorker) {
             if (table == 'workers') {
-              final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [id]);
+              final localWorker = await dbExecutor
+                  .query('workers', where: 'id = ?', whereArgs: [id]);
               if (localWorker.isNotEmpty) {
                 skipped++;
                 continue;
               }
-            } else if (table == 'worker_assignments' || table == 'worker_permissions') {
+            } else if (table == 'worker_assignments' ||
+                table == 'worker_permissions') {
               final wId = filteredRow['worker_id']?.toString() ?? '';
               if (wId.isNotEmpty) {
-                final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [wId]);
+                final localWorker = await dbExecutor
+                    .query('workers', where: 'id = ?', whereArgs: [wId]);
                 if (localWorker.isNotEmpty) {
                   skipped++;
                   continue;
@@ -963,18 +1135,23 @@ class DatabaseHelper {
           if (existing.isEmpty) {
             try {
               if (!dryRun) {
-                await dbExecutor.insert(table, filteredRow, conflictAlgorithm: ConflictAlgorithm.replace);
-                if (table == 'order_items' && !incomingData.containsKey('items')) {
+                await dbExecutor.insert(table, filteredRow,
+                    conflictAlgorithm: ConflictAlgorithm.replace);
+                if (table == 'order_items' &&
+                    !incomingData.containsKey('items')) {
                   final orderId = filteredRow['order_id']?.toString() ?? '';
                   bool isCancelled = false;
                   if (incomingData.containsKey('orders')) {
-                    final incomingOrders = incomingData['orders'] as List<dynamic>? ?? [];
+                    final incomingOrders =
+                        incomingData['orders'] as List<dynamic>? ?? [];
                     final matchedOrder = incomingOrders.firstWhere(
                       (o) => o['id']?.toString() == orderId,
                       orElse: () => null,
                     );
                     if (matchedOrder != null) {
-                      isCancelled = matchedOrder['delivery_status']?.toString() == 'cancelled';
+                      isCancelled =
+                          matchedOrder['delivery_status']?.toString() ==
+                              'cancelled';
                     }
                   }
                   if (!isCancelled && orderId.isNotEmpty) {
@@ -985,13 +1162,16 @@ class DatabaseHelper {
                       whereArgs: [orderId],
                     );
                     if (localOrder.isNotEmpty) {
-                      isCancelled = localOrder.first['delivery_status']?.toString() == 'cancelled';
+                      isCancelled =
+                          localOrder.first['delivery_status']?.toString() ==
+                              'cancelled';
                     }
                   }
 
                   if (!isCancelled) {
                     final itemId = filteredRow['item_id']?.toString() ?? '';
-                    final qty = (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
+                    final qty =
+                        (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
                     if (itemId.isNotEmpty && qty > 0) {
                       await dbExecutor.execute(
                         'UPDATE items SET stock = stock - ? WHERE id = ?',
@@ -1022,7 +1202,8 @@ class DatabaseHelper {
               // This strictly prevents older imports from downgrading newer settings.
               if (existingVal.isEmpty && incomingVal.isNotEmpty) {
                 if (!dryRun) {
-                  await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
+                  await dbExecutor.update(table, filteredRow,
+                      where: 'key = ?', whereArgs: [id]);
                 }
                 updated++;
               } else {
@@ -1031,22 +1212,20 @@ class DatabaseHelper {
               continue;
             }
 
-            final existingUpdated = existing.first['updated_at']?.toString() ?? existing.first['created_at']?.toString() ?? '';
-            final incomingUpdated = filteredRow['updated_at']?.toString() ?? filteredRow['created_at']?.toString() ?? '';
+            final existingUpdated = existing.first['updated_at']?.toString() ??
+                existing.first['created_at']?.toString() ??
+                '';
+            final incomingUpdated = filteredRow['updated_at']?.toString() ??
+                filteredRow['created_at']?.toString() ??
+                '';
 
             if (incomingUpdated.isNotEmpty && existingUpdated.isNotEmpty) {
               final incDt = DateTime.tryParse(incomingUpdated);
-              final exDt  = DateTime.tryParse(existingUpdated);
+              final exDt = DateTime.tryParse(existingUpdated);
 
               if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
                 if (!dryRun) {
-                  if (table == 'settings') {
-                    await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
-                  } else if (table == 'worker_permissions') {
-                    await dbExecutor.update(table, filteredRow, where: 'worker_id = ?', whereArgs: [id]);
-                  } else {
-                    await dbExecutor.update(table, filteredRow, where: 'id = ?', whereArgs: [id]);
-                  }
+                  await _updateMergedRow(dbExecutor, table, filteredRow, id);
                 }
                 updated++;
               } else {
@@ -1070,13 +1249,7 @@ class DatabaseHelper {
               }
               if (hasChanged) {
                 if (!dryRun) {
-                  if (table == 'settings') {
-                    await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
-                  } else if (table == 'worker_permissions') {
-                    await dbExecutor.update(table, filteredRow, where: 'worker_id = ?', whereArgs: [id]);
-                  } else {
-                    await dbExecutor.update(table, filteredRow, where: 'id = ?', whereArgs: [id]);
-                  }
+                  await _updateMergedRow(dbExecutor, table, filteredRow, id);
                 }
                 updated++;
               } else {
@@ -1093,7 +1266,6 @@ class DatabaseHelper {
           'conflicted': conflicted,
         };
       }
-
     }
 
     if (dryRun) {
@@ -1121,24 +1293,32 @@ class DatabaseHelper {
     final targetDb = await database;
 
     // Strict prevention of worker-to-worker sharing for path imports
-    final settingsRows = await targetDb.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
-    final currentAppModeStr = settingsRows.isNotEmpty ? settingsRows.first['value']?.toString() : '';
+    final settingsRows = await targetDb
+        .query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+    final currentAppModeStr =
+        settingsRows.isNotEmpty ? settingsRows.first['value']?.toString() : '';
     final isLocalWorker = currentAppModeStr == 'worker';
 
     if (isLocalWorker) {
       final checkDb = await openDatabase(incomingDbPath, readOnly: true);
       try {
-        final incomingSettings = await checkDb.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
-        final incomingModeStr = incomingSettings.isNotEmpty ? incomingSettings.first['value']?.toString() : '';
-        
+        final incomingSettings = await checkDb
+            .query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+        final incomingModeStr = incomingSettings.isNotEmpty
+            ? incomingSettings.first['value']?.toString()
+            : '';
+
         if (incomingModeStr == 'worker') {
           await checkDb.close();
-          throw Exception('Worker-to-worker database import is prohibited. Imports are only allowed from Owner.');
+          throw Exception(
+              'Worker-to-worker database import is prohibited. Imports are only allowed from Owner.');
         }
       } catch (_) {
         // Safe to ignore if tables/keys don't exist
       } finally {
-        try { await checkDb.close(); } catch (_) {}
+        try {
+          await checkDb.close();
+        } catch (_) {}
       }
     }
 
@@ -1147,11 +1327,13 @@ class DatabaseHelper {
     try {
       // Topological dependency order: Parents before Children
       final tables = [
+        'locations',
         'areas',
         'streets',
         'customers',
         'vip_membership',
         'items',
+        'customer_item_prices',
         'item_price_history',
         'stock_history',
         'orders',
@@ -1219,13 +1401,30 @@ class DatabaseHelper {
           final validCols = await _getTableColumns(dbExecutor, table);
 
           for (final row in incomingRows) {
-            final id = row['id']?.toString() ?? 
-                       row['key']?.toString() ?? 
-                       row['worker_id']?.toString() ?? '';
+            String id = row['id']?.toString() ??
+                row['key']?.toString() ??
+                row['worker_id']?.toString() ??
+                '';
+            if (id.isEmpty) {
+              if (table == 'customer_item_prices' &&
+                  row['customer_id'] != null &&
+                  row['item_id'] != null) {
+                id = '${row['customer_id']}_${row['item_id']}';
+              } else if (table == 'customer_question_answers' &&
+                  row['customer_id'] != null &&
+                  row['question_id'] != null) {
+                id = '${row['customer_id']}_${row['question_id']}';
+              } else if (table == 'order_question_answers' &&
+                  row['order_id'] != null &&
+                  row['question_id'] != null) {
+                id = '${row['order_id']}_${row['question_id']}';
+              }
+            }
             if (id.isEmpty) {
               skipped++;
               processedRows++;
-              onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+              onProgress?.call(
+                  processedRows / safeTotalRows, processedRows, totalRows);
               continue;
             }
 
@@ -1256,34 +1455,64 @@ class DatabaseHelper {
               if (protectedKeys.contains(key)) {
                 skipped++;
                 processedRows++;
-                onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+                onProgress?.call(
+                    processedRows / safeTotalRows, processedRows, totalRows);
                 continue; // Protect local session keys from being overwritten!
               }
-              existing = await dbExecutor.query(table, where: 'key = ?', whereArgs: [id]);
+              existing = await dbExecutor
+                  .query(table, where: 'key = ?', whereArgs: [id]);
             } else if (table == 'worker_permissions') {
-              existing = await dbExecutor.query(table, where: 'worker_id = ?', whereArgs: [id]);
+              existing = await dbExecutor
+                  .query(table, where: 'worker_id = ?', whereArgs: [id]);
+            } else if (table == 'customer_item_prices') {
+              existing = await dbExecutor.query(table,
+                  where: 'customer_id = ? AND item_id = ?',
+                  whereArgs: [
+                    filteredRow['customer_id'],
+                    filteredRow['item_id']
+                  ]);
+            } else if (table == 'customer_question_answers') {
+              existing = await dbExecutor.query(table,
+                  where: 'customer_id = ? AND question_id = ?',
+                  whereArgs: [
+                    filteredRow['customer_id'],
+                    filteredRow['question_id']
+                  ]);
+            } else if (table == 'order_question_answers') {
+              existing = await dbExecutor.query(table,
+                  where: 'order_id = ? AND question_id = ?',
+                  whereArgs: [
+                    filteredRow['order_id'],
+                    filteredRow['question_id']
+                  ]);
             } else {
-              existing = await dbExecutor.query(table, where: 'id = ?', whereArgs: [id]);
+              existing = await dbExecutor
+                  .query(table, where: 'id = ?', whereArgs: [id]);
             }
 
             // If the worker exists and we are in Owner mode, ignore.
             if (!isLocalWorker) {
               if (table == 'workers') {
-                final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [id]);
+                final localWorker = await dbExecutor
+                    .query('workers', where: 'id = ?', whereArgs: [id]);
                 if (localWorker.isNotEmpty) {
                   skipped++;
                   processedRows++;
-                  onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+                  onProgress?.call(
+                      processedRows / safeTotalRows, processedRows, totalRows);
                   continue;
                 }
-              } else if (table == 'worker_assignments' || table == 'worker_permissions') {
+              } else if (table == 'worker_assignments' ||
+                  table == 'worker_permissions') {
                 final wId = filteredRow['worker_id']?.toString() ?? '';
                 if (wId.isNotEmpty) {
-                  final localWorker = await dbExecutor.query('workers', where: 'id = ?', whereArgs: [wId]);
+                  final localWorker = await dbExecutor
+                      .query('workers', where: 'id = ?', whereArgs: [wId]);
                   if (localWorker.isNotEmpty) {
                     skipped++;
                     processedRows++;
-                    onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+                    onProgress?.call(processedRows / safeTotalRows,
+                        processedRows, totalRows);
                     continue;
                   }
                 }
@@ -1293,18 +1522,23 @@ class DatabaseHelper {
             if (existing.isEmpty) {
               try {
                 if (!dryRun) {
-                  await dbExecutor.insert(table, filteredRow, conflictAlgorithm: ConflictAlgorithm.replace);
-                  if (table == 'order_items' && !incomingData.containsKey('items')) {
+                  await dbExecutor.insert(table, filteredRow,
+                      conflictAlgorithm: ConflictAlgorithm.replace);
+                  if (table == 'order_items' &&
+                      !incomingData.containsKey('items')) {
                     final orderId = filteredRow['order_id']?.toString() ?? '';
                     bool isCancelled = false;
                     if (incomingData.containsKey('orders')) {
-                      final incomingOrders = incomingData['orders'] as List<dynamic>? ?? [];
+                      final incomingOrders =
+                          incomingData['orders'] as List<dynamic>? ?? [];
                       final matchedOrder = incomingOrders.firstWhere(
                         (o) => o['id']?.toString() == orderId,
                         orElse: () => null,
                       );
                       if (matchedOrder != null) {
-                        isCancelled = matchedOrder['delivery_status']?.toString() == 'cancelled';
+                        isCancelled =
+                            matchedOrder['delivery_status']?.toString() ==
+                                'cancelled';
                       }
                     }
                     if (!isCancelled && orderId.isNotEmpty) {
@@ -1315,13 +1549,16 @@ class DatabaseHelper {
                         whereArgs: [orderId],
                       );
                       if (localOrder.isNotEmpty) {
-                        isCancelled = localOrder.first['delivery_status']?.toString() == 'cancelled';
+                        isCancelled =
+                            localOrder.first['delivery_status']?.toString() ==
+                                'cancelled';
                       }
                     }
 
                     if (!isCancelled) {
                       final itemId = filteredRow['item_id']?.toString() ?? '';
-                      final qty = (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
+                      final qty =
+                          (filteredRow['quantity'] as num?)?.toDouble() ?? 0.0;
                       if (itemId.isNotEmpty && qty > 0) {
                         await dbExecutor.execute(
                           'UPDATE items SET stock = stock - ? WHERE id = ?',
@@ -1330,7 +1567,8 @@ class DatabaseHelper {
                         await dbExecutor.insert('stock_history', {
                           'id': const Uuid().v4(),
                           'item_id': itemId,
-                          'item_name': filteredRow['item_name']?.toString() ?? '',
+                          'item_name':
+                              filteredRow['item_name']?.toString() ?? '',
                           'change_amount': -qty,
                           'reason': 'Imported Order Line (Zip)',
                           'created_at': DateTime.now().toIso8601String(),
@@ -1351,33 +1589,34 @@ class DatabaseHelper {
                 final incomingVal = filteredRow['value']?.toString() ?? '';
                 if (existingVal.isEmpty && incomingVal.isNotEmpty) {
                   if (!dryRun) {
-                    await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
+                    await dbExecutor.update(table, filteredRow,
+                        where: 'key = ?', whereArgs: [id]);
                   }
                   updated++;
                 } else {
                   skipped++;
                 }
                 processedRows++;
-                onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+                onProgress?.call(
+                    processedRows / safeTotalRows, processedRows, totalRows);
                 continue;
               }
 
-              final existingUpdated = existing.first['updated_at']?.toString() ?? existing.first['created_at']?.toString() ?? '';
-              final incomingUpdated = filteredRow['updated_at']?.toString() ?? filteredRow['created_at']?.toString() ?? '';
+              final existingUpdated =
+                  existing.first['updated_at']?.toString() ??
+                      existing.first['created_at']?.toString() ??
+                      '';
+              final incomingUpdated = filteredRow['updated_at']?.toString() ??
+                  filteredRow['created_at']?.toString() ??
+                  '';
 
               if (incomingUpdated.isNotEmpty && existingUpdated.isNotEmpty) {
                 final incDt = DateTime.tryParse(incomingUpdated);
-                final exDt  = DateTime.tryParse(existingUpdated);
+                final exDt = DateTime.tryParse(existingUpdated);
 
                 if (incDt != null && exDt != null && incDt.isAfter(exDt)) {
                   if (!dryRun) {
-                    if (table == 'settings') {
-                      await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
-                    } else if (table == 'worker_permissions') {
-                      await dbExecutor.update(table, filteredRow, where: 'worker_id = ?', whereArgs: [id]);
-                    } else {
-                      await dbExecutor.update(table, filteredRow, where: 'id = ?', whereArgs: [id]);
-                    }
+                    await _updateMergedRow(dbExecutor, table, filteredRow, id);
                   }
                   updated++;
                 } else {
@@ -1390,7 +1629,8 @@ class DatabaseHelper {
                 for (final entry in filteredRow.entries) {
                   final key = entry.key;
                   if (existingMap.containsKey(key)) {
-                    if (existingMap[key]?.toString() != entry.value?.toString()) {
+                    if (existingMap[key]?.toString() !=
+                        entry.value?.toString()) {
                       hasChanged = true;
                       break;
                     }
@@ -1401,13 +1641,7 @@ class DatabaseHelper {
                 }
                 if (hasChanged) {
                   if (!dryRun) {
-                    if (table == 'settings') {
-                      await dbExecutor.update(table, filteredRow, where: 'key = ?', whereArgs: [id]);
-                    } else if (table == 'worker_permissions') {
-                      await dbExecutor.update(table, filteredRow, where: 'worker_id = ?', whereArgs: [id]);
-                    } else {
-                      await dbExecutor.update(table, filteredRow, where: 'id = ?', whereArgs: [id]);
-                    }
+                    await _updateMergedRow(dbExecutor, table, filteredRow, id);
                   }
                   updated++;
                 } else {
@@ -1416,7 +1650,8 @@ class DatabaseHelper {
               }
             }
             processedRows++;
-            onProgress?.call(processedRows / safeTotalRows, processedRows, totalRows);
+            onProgress?.call(
+                processedRows / safeTotalRows, processedRows, totalRows);
           }
 
           resultStats[table] = {
@@ -1426,7 +1661,6 @@ class DatabaseHelper {
             'conflicted': conflicted,
           };
         }
-
       }
 
       if (dryRun) {
@@ -1509,11 +1743,16 @@ class DatabaseHelper {
         ''', [workerId, dateStr]);
 
         final ordersCount = (ordersRes.first['count'] as num?)?.toInt() ?? 0;
-        final salesTotal = (ordersRes.first['sales'] as num?)?.toDouble() ?? 0.0;
-        final collectionTotal = (paymentsRes.first['collected'] as num?)?.toDouble() ?? 0.0;
-        final pendingTotal = (ordersRes.first['pending'] as num?)?.toDouble() ?? 0.0;
-        final expensesTotal = (expensesRes.first['expenses'] as num?)?.toDouble() ?? 0.0;
-        final customersAdded = (customersRes.first['count'] as num?)?.toInt() ?? 0;
+        final salesTotal =
+            (ordersRes.first['sales'] as num?)?.toDouble() ?? 0.0;
+        final collectionTotal =
+            (paymentsRes.first['collected'] as num?)?.toDouble() ?? 0.0;
+        final pendingTotal =
+            (ordersRes.first['pending'] as num?)?.toDouble() ?? 0.0;
+        final expensesTotal =
+            (expensesRes.first['expenses'] as num?)?.toDouble() ?? 0.0;
+        final customersAdded =
+            (customersRes.first['count'] as num?)?.toInt() ?? 0;
 
         double commissionEarned = 0.0;
         if (commTypeStr == 'fixed') {
@@ -1525,19 +1764,22 @@ class DatabaseHelper {
         }
 
         final reportId = '${workerId}_$dateStr';
-        await db.insert('worker_reports', {
-          'id': reportId,
-          'worker_id': workerId,
-          'report_date': dateStr,
-          'orders_count': ordersCount,
-          'sales_total': salesTotal,
-          'collection_total': collectionTotal,
-          'pending_total': pendingTotal,
-          'commission_earned': commissionEarned,
-          'expenses_total': expensesTotal,
-          'customers_added': customersAdded,
-          'created_at': DateTime.now().toIso8601String(),
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert(
+            'worker_reports',
+            {
+              'id': reportId,
+              'worker_id': workerId,
+              'report_date': dateStr,
+              'orders_count': ordersCount,
+              'sales_total': salesTotal,
+              'collection_total': collectionTotal,
+              'pending_total': pendingTotal,
+              'commission_earned': commissionEarned,
+              'expenses_total': expensesTotal,
+              'customers_added': customersAdded,
+              'created_at': DateTime.now().toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
     }
   }
@@ -1800,10 +2042,14 @@ class DatabaseHelper {
     ''');
 
     // Indexes for V4 performance
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_worker_assign_wid ON worker_assignments(worker_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_worker_rep_wid ON worker_reports(worker_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_pending_sync_status ON pending_sync(status)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_worker_assign_wid ON worker_assignments(worker_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_worker_rep_wid ON worker_reports(worker_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_pending_sync_status ON pending_sync(status)');
   }
 
   Future<void> _ensureV4Columns(Database db) async {
@@ -1815,7 +2061,9 @@ class DatabaseHelper {
       "ALTER TABLE customers ADD COLUMN is_archived INTEGER DEFAULT 0",
     ];
     for (final col in customerCols) {
-      try { await db.execute(col); } catch (_) {}
+      try {
+        await db.execute(col);
+      } catch (_) {}
     }
 
     final orderCols = [
@@ -1828,7 +2076,9 @@ class DatabaseHelper {
       "ALTER TABLE orders ADD COLUMN is_archived INTEGER DEFAULT 0",
     ];
     for (final col in orderCols) {
-      try { await db.execute(col); } catch (_) {}
+      try {
+        await db.execute(col);
+      } catch (_) {}
     }
 
     final itemCols = [
@@ -1837,7 +2087,9 @@ class DatabaseHelper {
       "ALTER TABLE items ADD COLUMN is_archived INTEGER DEFAULT 0",
     ];
     for (final col in itemCols) {
-      try { await db.execute(col); } catch (_) {}
+      try {
+        await db.execute(col);
+      } catch (_) {}
     }
 
     final expenseCols = [
@@ -1846,7 +2098,9 @@ class DatabaseHelper {
       "ALTER TABLE expenses ADD COLUMN is_archived INTEGER DEFAULT 0",
     ];
     for (final col in expenseCols) {
-      try { await db.execute(col); } catch (_) {}
+      try {
+        await db.execute(col);
+      } catch (_) {}
     }
 
     final otherCols = [
@@ -1854,7 +2108,9 @@ class DatabaseHelper {
       "ALTER TABLE streets ADD COLUMN is_archived INTEGER DEFAULT 0",
     ];
     for (final col in otherCols) {
-      try { await db.execute(col); } catch (_) {}
+      try {
+        await db.execute(col);
+      } catch (_) {}
     }
 
     final workerCols = [
@@ -1871,7 +2127,9 @@ class DatabaseHelper {
       "ALTER TABLE workers ADD COLUMN is_package_outdated INTEGER DEFAULT 1",
     ];
     for (final col in workerCols) {
-      try { await db.execute(col); } catch (_) {}
+      try {
+        await db.execute(col);
+      } catch (_) {}
     }
 
     try {
@@ -1894,7 +2152,9 @@ class DatabaseHelper {
       "ALTER TABLE worker_permissions ADD COLUMN delete_item INTEGER DEFAULT 0",
     ];
     for (final col in permissionCols) {
-      try { await db.execute(col); } catch (_) {}
+      try {
+        await db.execute(col);
+      } catch (_) {}
     }
 
     final businessProfileCols = [
@@ -1903,52 +2163,73 @@ class DatabaseHelper {
       "ALTER TABLE business_profile ADD COLUMN terms_conditions TEXT DEFAULT ''",
     ];
     for (final col in businessProfileCols) {
-      try { await db.execute(col); } catch (_) {}
+      try {
+        await db.execute(col);
+      } catch (_) {}
     }
 
     await _ensureOwnershipColumns(db);
   }
 
   Future<void> _ensureOwnershipColumns(Database db) async {
-    final tables = ['areas', 'streets', 'customers', 'orders', 'payments', 'expenses', 'notes', 'visits', 'items'];
+    final tables = [
+      'areas',
+      'streets',
+      'customers',
+      'orders',
+      'payments',
+      'expenses',
+      'notes',
+      'visits',
+      'items'
+    ];
     for (final table in tables) {
       try {
-        await db.execute("ALTER TABLE $table ADD COLUMN created_by TEXT DEFAULT 'owner'");
+        await db.execute(
+            "ALTER TABLE $table ADD COLUMN created_by TEXT DEFAULT 'owner'");
       } catch (_) {}
       try {
-        await db.execute("ALTER TABLE $table ADD COLUMN assigned_worker_id TEXT DEFAULT ''");
+        await db.execute(
+            "ALTER TABLE $table ADD COLUMN assigned_worker_id TEXT DEFAULT ''");
       } catch (_) {}
       try {
-        await db.execute("ALTER TABLE $table ADD COLUMN worker_id TEXT DEFAULT ''");
+        await db
+            .execute("ALTER TABLE $table ADD COLUMN worker_id TEXT DEFAULT ''");
       } catch (_) {}
       try {
-        await db.execute("ALTER TABLE $table ADD COLUMN worker_name TEXT DEFAULT ''");
+        await db.execute(
+            "ALTER TABLE $table ADD COLUMN worker_name TEXT DEFAULT ''");
       } catch (_) {}
       try {
-        await db.execute("ALTER TABLE $table ADD COLUMN device_name TEXT DEFAULT ''");
+        await db.execute(
+            "ALTER TABLE $table ADD COLUMN device_name TEXT DEFAULT ''");
       } catch (_) {}
     }
 
     try {
-      await db.execute("ALTER TABLE import_history ADD COLUMN worker_id TEXT DEFAULT ''");
+      await db.execute(
+          "ALTER TABLE import_history ADD COLUMN worker_id TEXT DEFAULT ''");
     } catch (_) {}
     try {
-      await db.execute("ALTER TABLE import_history ADD COLUMN summary_json TEXT DEFAULT ''");
+      await db.execute(
+          "ALTER TABLE import_history ADD COLUMN summary_json TEXT DEFAULT ''");
     } catch (_) {}
   }
 
   Future<void> _runStartupHealthCheck(Database db) async {
     try {
       // 1. Check integrity
-      final List<Map<String, dynamic>> integrityRes = await db.rawQuery('PRAGMA integrity_check(10)');
+      final List<Map<String, dynamic>> integrityRes =
+          await db.rawQuery('PRAGMA integrity_check(10)');
       String integrityStatus = 'ok';
       if (integrityRes.isNotEmpty) {
         final firstVal = integrityRes.first.values.first?.toString() ?? '';
         if (firstVal.toLowerCase() != 'ok') {
-          integrityStatus = integrityRes.map((r) => r.values.join(',')).join('; ');
+          integrityStatus =
+              integrityRes.map((r) => r.values.join(',')).join('; ');
         }
       }
-      
+
       if (integrityStatus != 'ok') {
         final id = DateTime.now().millisecondsSinceEpoch.toString();
         await db.insert('repair_logs', {
@@ -1961,9 +2242,13 @@ class DatabaseHelper {
       }
 
       // 2. Check foreign keys
-      final List<Map<String, dynamic>> fkRes = await db.rawQuery('PRAGMA foreign_key_check');
+      final List<Map<String, dynamic>> fkRes =
+          await db.rawQuery('PRAGMA foreign_key_check');
       if (fkRes.isNotEmpty) {
-        final details = fkRes.map((r) => 'Table: ${r['table']}, Rowid: ${r['rowid']}, Parent: ${r['parent']}, Fkid: ${r['fkid']}').join('; ');
+        final details = fkRes
+            .map((r) =>
+                'Table: ${r['table']}, Rowid: ${r['rowid']}, Parent: ${r['parent']}, Fkid: ${r['fkid']}')
+            .join('; ');
         final id = DateTime.now().millisecondsSinceEpoch.toString();
         await db.insert('repair_logs', {
           'id': 'fk_$id',
@@ -1984,62 +2269,73 @@ class DatabaseHelper {
   Future<void> _selfHealLocations(Database db) async {
     try {
       // 1. Fetch root locations
-      final rootLocations = await db.query('locations', where: 'parent_location_id IS NULL');
+      final rootLocations =
+          await db.query('locations', where: 'parent_location_id IS NULL');
       for (final loc in rootLocations) {
         final id = loc['id'] as String;
         // Ensure in areas
-        await db.insert('areas', {
-          'id': id,
-          'name': loc['name'],
-          'description': loc['description'],
-          'photo_path': loc['photo_path'],
-          'maps_location': loc['maps_location'],
-          'color': loc['color'],
-          'created_by': loc['created_by'],
-          'assigned_worker_id': loc['assigned_worker_id'],
-          'worker_name': loc['worker_name'],
-          'device_name': loc['device_name'],
-          'created_at': loc['created_at'],
-          'updated_at': loc['updated_at'],
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        await db.insert(
+            'areas',
+            {
+              'id': id,
+              'name': loc['name'],
+              'description': loc['description'],
+              'photo_path': loc['photo_path'],
+              'maps_location': loc['maps_location'],
+              'color': loc['color'],
+              'created_by': loc['created_by'],
+              'assigned_worker_id': loc['assigned_worker_id'],
+              'worker_name': loc['worker_name'],
+              'device_name': loc['device_name'],
+              'created_at': loc['created_at'],
+              'updated_at': loc['updated_at'],
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
 
         // Ensure in streets fallback record
-        await db.insert('streets', {
-          'id': id,
-          'area_id': id,
-          'name': loc['name'],
-          'description': loc['description'],
-          'photo_path': loc['photo_path'],
-          'maps_location': loc['maps_location'],
-          'created_by': loc['created_by'],
-          'assigned_worker_id': loc['assigned_worker_id'],
-          'worker_name': loc['worker_name'],
-          'device_name': loc['device_name'],
-          'created_at': loc['created_at'],
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        await db.insert(
+            'streets',
+            {
+              'id': id,
+              'area_id': id,
+              'name': loc['name'],
+              'description': loc['description'],
+              'photo_path': loc['photo_path'],
+              'maps_location': loc['maps_location'],
+              'created_by': loc['created_by'],
+              'assigned_worker_id': loc['assigned_worker_id'],
+              'worker_name': loc['worker_name'],
+              'device_name': loc['device_name'],
+              'created_at': loc['created_at'],
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore);
       }
 
       // 2. Fetch nested child locations
-      final childLocations = await db.query('locations', where: 'parent_location_id IS NOT NULL');
+      final childLocations =
+          await db.query('locations', where: 'parent_location_id IS NOT NULL');
       for (final loc in childLocations) {
         final id = loc['id'] as String;
         final mPath = loc['materialized_path'] as String? ?? '';
         final segments = mPath.split('/').where((s) => s.isNotEmpty).toList();
         if (segments.isNotEmpty) {
           final rootAreaId = segments.first;
-          await db.insert('streets', {
-            'id': id,
-            'area_id': rootAreaId,
-            'name': loc['name'],
-            'description': loc['description'],
-            'photo_path': loc['photo_path'],
-            'maps_location': loc['maps_location'],
-            'created_by': loc['created_by'],
-            'assigned_worker_id': loc['assigned_worker_id'],
-            'worker_name': loc['worker_name'],
-            'device_name': loc['device_name'],
-            'created_at': loc['created_at'],
-          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+          await db.insert(
+              'streets',
+              {
+                'id': id,
+                'area_id': rootAreaId,
+                'name': loc['name'],
+                'description': loc['description'],
+                'photo_path': loc['photo_path'],
+                'maps_location': loc['maps_location'],
+                'created_by': loc['created_by'],
+                'assigned_worker_id': loc['assigned_worker_id'],
+                'worker_name': loc['worker_name'],
+                'device_name': loc['device_name'],
+                'created_at': loc['created_at'],
+              },
+              conflictAlgorithm: ConflictAlgorithm.ignore);
         }
       }
     } catch (_) {
@@ -2049,24 +2345,30 @@ class DatabaseHelper {
 
   Future<void> _runAutoCleanup(Database db) async {
     try {
-      final cutoffDate = DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
-      
+      final cutoffDate =
+          DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
+
       // Clean old audit logs
-      await db.delete('audit_logs', where: 'created_at < ?', whereArgs: [cutoffDate]);
-      
+      await db.delete('audit_logs',
+          where: 'created_at < ?', whereArgs: [cutoffDate]);
+
       // Clean old sync history
-      await db.delete('sync_history', where: 'sync_date < ?', whereArgs: [cutoffDate]);
-      
+      await db.delete('sync_history',
+          where: 'sync_date < ?', whereArgs: [cutoffDate]);
+
       // Clean old repair logs
-      await db.delete('repair_logs', where: 'date < ?', whereArgs: [cutoffDate]);
-      
+      await db
+          .delete('repair_logs', where: 'date < ?', whereArgs: [cutoffDate]);
+
       // Clean temporary ZIP files in getTemporaryDirectory
       try {
         final tempDir = await getTemporaryDirectory();
         if (tempDir.existsSync()) {
           final List<FileSystemEntity> files = tempDir.listSync();
           for (final file in files) {
-            if (file is File && file.path.endsWith('.zip') && basename(file.path).toLowerCase().startsWith('orderkart')) {
+            if (file is File &&
+                file.path.endsWith('.zip') &&
+                basename(file.path).toLowerCase().startsWith('orderkart')) {
               // Delete old zip files (older than 1 day)
               final lastMod = file.lastModifiedSync();
               if (DateTime.now().difference(lastMod).inDays >= 1) {
@@ -2085,10 +2387,12 @@ class DatabaseHelper {
 
   Future<void> _ensureSavingsColumn(Database db) async {
     try {
-      final List<Map<String, dynamic>> columns = await db.rawQuery('PRAGMA table_info(orders)');
+      final List<Map<String, dynamic>> columns =
+          await db.rawQuery('PRAGMA table_info(orders)');
       final hasSavings = columns.any((col) => col['name'] == 'savings');
       if (!hasSavings) {
-        await db.execute('ALTER TABLE orders ADD COLUMN savings REAL DEFAULT 0');
+        await db
+            .execute('ALTER TABLE orders ADD COLUMN savings REAL DEFAULT 0');
       }
     } catch (_) {}
   }
@@ -2142,7 +2446,8 @@ class DatabaseHelper {
 
     for (final col in itemCols) {
       try {
-        await db.execute("ALTER TABLE items ADD COLUMN ${col['name']} ${col['type']}");
+        await db.execute(
+            "ALTER TABLE items ADD COLUMN ${col['name']} ${col['type']}");
       } catch (_) {}
     }
 
@@ -2251,7 +2556,8 @@ class DatabaseHelper {
 
   Future<void> _createV7Tables(Database db) async {
     try {
-      await db.execute("ALTER TABLE expenses ADD COLUMN receipt_photo_path TEXT DEFAULT ''");
+      await db.execute(
+          "ALTER TABLE expenses ADD COLUMN receipt_photo_path TEXT DEFAULT ''");
     } catch (_) {}
   }
 
@@ -2279,34 +2585,43 @@ class DatabaseHelper {
         FOREIGN KEY(parent_location_id) REFERENCES locations(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_location_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_seq ON locations(parent_location_id, sequence_key)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_location_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_locations_seq ON locations(parent_location_id, sequence_key)');
   }
 
   Future<void> _ensureGeoMapTables(Database db) async {
     // 1. Add coordinates and icon_name columns if not existing
     try {
-      await db.execute('ALTER TABLE locations ADD COLUMN latitude REAL DEFAULT 0.0');
+      await db.execute(
+          'ALTER TABLE locations ADD COLUMN latitude REAL DEFAULT 0.0');
     } catch (_) {}
     try {
-      await db.execute('ALTER TABLE locations ADD COLUMN longitude REAL DEFAULT 0.0');
+      await db.execute(
+          'ALTER TABLE locations ADD COLUMN longitude REAL DEFAULT 0.0');
     } catch (_) {}
     try {
-      await db.execute("ALTER TABLE locations ADD COLUMN icon_name TEXT DEFAULT ''");
-    } catch (_) {}
-
-    try {
-      await db.execute('ALTER TABLE customers ADD COLUMN latitude REAL DEFAULT 0.0');
-    } catch (_) {}
-    try {
-      await db.execute('ALTER TABLE customers ADD COLUMN longitude REAL DEFAULT 0.0');
+      await db.execute(
+          "ALTER TABLE locations ADD COLUMN icon_name TEXT DEFAULT ''");
     } catch (_) {}
 
     try {
-      await db.execute('ALTER TABLE areas ADD COLUMN latitude REAL DEFAULT 0.0');
+      await db.execute(
+          'ALTER TABLE customers ADD COLUMN latitude REAL DEFAULT 0.0');
     } catch (_) {}
     try {
-      await db.execute('ALTER TABLE areas ADD COLUMN longitude REAL DEFAULT 0.0');
+      await db.execute(
+          'ALTER TABLE customers ADD COLUMN longitude REAL DEFAULT 0.0');
+    } catch (_) {}
+
+    try {
+      await db
+          .execute('ALTER TABLE areas ADD COLUMN latitude REAL DEFAULT 0.0');
+    } catch (_) {}
+    try {
+      await db
+          .execute('ALTER TABLE areas ADD COLUMN longitude REAL DEFAULT 0.0');
     } catch (_) {}
 
     // 2. Create geo_boundaries and geo_boundary_points tables
@@ -2336,28 +2651,34 @@ class DatabaseHelper {
       )
     ''');
 
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_geo_bp_boundary ON geo_boundary_points(boundary_id, sequence)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_path ON locations(materialized_path)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_customers_location ON customers(location_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_geo_bp_boundary ON geo_boundary_points(boundary_id, sequence)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_locations_path ON locations(materialized_path)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_customers_location ON customers(location_id)');
 
     // 3. Extract coordinates from existing maps_location Google Maps URLs
     await _migrateCoordinatesFromUrls(db);
 
     // 4. Ensure custom_welcome_message column exists
     try {
-      await db.execute('ALTER TABLE customers ADD COLUMN custom_welcome_message TEXT DEFAULT ""');
+      await db.execute(
+          'ALTER TABLE customers ADD COLUMN custom_welcome_message TEXT DEFAULT ""');
     } catch (_) {}
   }
 
   Future<void> _migrateCoordinatesFromUrls(Database db) async {
-    final regExp = RegExp(r'(?:q=|@|^|/|params=)(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)');
+    final regExp =
+        RegExp(r'(?:q=|@|^|/|params=)(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)');
 
     // Migrate customers
     try {
       final customers = await db.query(
         'customers',
         columns: ['id', 'maps_location', 'latitude', 'longitude'],
-        where: "(latitude = 0.0 OR latitude IS NULL) AND maps_location IS NOT NULL AND maps_location != ''",
+        where:
+            "(latitude = 0.0 OR latitude IS NULL) AND maps_location IS NOT NULL AND maps_location != ''",
       );
       for (final c in customers) {
         final id = c['id'] as String;
@@ -2388,7 +2709,8 @@ class DatabaseHelper {
       final locations = await db.query(
         'locations',
         columns: ['id', 'maps_location', 'latitude', 'longitude'],
-        where: "(latitude = 0.0 OR latitude IS NULL) AND maps_location IS NOT NULL AND maps_location != ''",
+        where:
+            "(latitude = 0.0 OR latitude IS NULL) AND maps_location IS NOT NULL AND maps_location != ''",
       );
       for (final l in locations) {
         final id = l['id'] as String;
@@ -2419,7 +2741,8 @@ class DatabaseHelper {
       final areas = await db.query(
         'areas',
         columns: ['id', 'maps_location', 'latitude', 'longitude'],
-        where: "(latitude = 0.0 OR latitude IS NULL) AND maps_location IS NOT NULL AND maps_location != ''",
+        where:
+            "(latitude = 0.0 OR latitude IS NULL) AND maps_location IS NOT NULL AND maps_location != ''",
       );
       for (final a in areas) {
         final id = a['id'] as String;
@@ -2453,10 +2776,10 @@ class DatabaseHelper {
     await db.transaction((txn) async {
       // 1. Fetch old Areas
       final List<Map<String, dynamic>> oldAreas = await txn.query('areas');
-      
+
       // 2. Fetch old Streets
       final List<Map<String, dynamic>> oldStreets = await txn.query('streets');
-      
+
       // 3. Migrate Areas as root locations (kind: area, parent: null)
       int areaSeq = 1000;
       for (final a in oldAreas) {
@@ -2467,7 +2790,8 @@ class DatabaseHelper {
         final maps = a['maps_location'] as String? ?? '';
         final color = a['color'] as int? ?? 0xFF1565C0;
         final createdBy = a['created_by'] as String? ?? 'owner';
-        final workerId = (a['assigned_worker_id'] ?? a['worker_id']) as String? ?? '';
+        final workerId =
+            (a['assigned_worker_id'] ?? a['worker_id']) as String? ?? '';
         final workerName = a['worker_name'] as String? ?? '';
         final deviceName = a['device_name'] as String? ?? '';
         final createdAt = a['created_at'] as String;
@@ -2495,19 +2819,22 @@ class DatabaseHelper {
         });
 
         // Synchronize root area into legacy streets table so that direct customer registration passes FK checks
-        await txn.insert('streets', {
-          'id': id,
-          'area_id': id,
-          'name': name,
-          'description': desc,
-          'photo_path': photo,
-          'maps_location': maps,
-          'created_by': createdBy,
-          'assigned_worker_id': workerId,
-          'worker_name': workerName,
-          'device_name': deviceName,
-          'created_at': createdAt,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+            'streets',
+            {
+              'id': id,
+              'area_id': id,
+              'name': name,
+              'description': desc,
+              'photo_path': photo,
+              'maps_location': maps,
+              'created_by': createdBy,
+              'assigned_worker_id': workerId,
+              'worker_name': workerName,
+              'device_name': deviceName,
+              'created_at': createdAt,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
 
         areaSeq += 1000;
       }
@@ -2522,7 +2849,8 @@ class DatabaseHelper {
         final photo = s['photo_path'] as String? ?? '';
         final maps = s['maps_location'] as String? ?? '';
         final createdBy = s['created_by'] as String? ?? 'owner';
-        final workerId = (s['assigned_worker_id'] ?? s['worker_id']) as String? ?? '';
+        final workerId =
+            (s['assigned_worker_id'] ?? s['worker_id']) as String? ?? '';
         final workerName = s['worker_name'] as String? ?? '';
         final deviceName = s['device_name'] as String? ?? '';
         final createdAt = s['created_at'] as String;
@@ -2554,103 +2882,123 @@ class DatabaseHelper {
       // 5. Add location_id column to customers and visits tables (if they don't have it)
       final customerCols = await _getTableColumns(txn, 'customers');
       if (!customerCols.contains('location_id')) {
-        await txn.execute("ALTER TABLE customers ADD COLUMN location_id TEXT DEFAULT ''");
+        await txn.execute(
+            "ALTER TABLE customers ADD COLUMN location_id TEXT DEFAULT ''");
       }
-      
+
       final visitCols = await _getTableColumns(txn, 'visits');
       if (!visitCols.contains('location_id')) {
-        await txn.execute("ALTER TABLE visits ADD COLUMN location_id TEXT DEFAULT ''");
+        await txn.execute(
+            "ALTER TABLE visits ADD COLUMN location_id TEXT DEFAULT ''");
       }
 
       // Backfill from street_id/area_id
-      await txn.execute("UPDATE customers SET location_id = street_id WHERE street_id IS NOT NULL AND street_id != ''");
-      await txn.execute("UPDATE visits SET location_id = street_id WHERE street_id IS NOT NULL AND street_id != ''");
-      await txn.execute("UPDATE visits SET location_id = area_id WHERE (street_id IS NULL OR street_id = '') AND area_id IS NOT NULL AND area_id != ''");
+      await txn.execute(
+          "UPDATE customers SET location_id = street_id WHERE street_id IS NOT NULL AND street_id != ''");
+      await txn.execute(
+          "UPDATE visits SET location_id = street_id WHERE street_id IS NOT NULL AND street_id != ''");
+      await txn.execute(
+          "UPDATE visits SET location_id = area_id WHERE (street_id IS NULL OR street_id = '') AND area_id IS NOT NULL AND area_id != ''");
 
       // 6. Strict Migration Validation
       // ✓ Total Areas == Root Locations
-      final rootLocCountRes = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE parent_location_id IS NULL");
+      final rootLocCountRes = await txn.rawQuery(
+          "SELECT COUNT(*) as count FROM locations WHERE parent_location_id IS NULL");
       final rootLocCount = Sqflite.firstIntValue(rootLocCountRes) ?? 0;
       if (rootLocCount != oldAreas.length) {
-        throw Exception("Migration Validation Failed: Root locations count ($rootLocCount) does not match legacy areas count (${oldAreas.length})");
+        throw Exception(
+            "Migration Validation Failed: Root locations count ($rootLocCount) does not match legacy areas count (${oldAreas.length})");
       }
 
       // ✓ Total Streets == Child Locations
-      final childLocCountRes = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE parent_location_id IS NOT NULL");
+      final childLocCountRes = await txn.rawQuery(
+          "SELECT COUNT(*) as count FROM locations WHERE parent_location_id IS NOT NULL");
       final childLocCount = Sqflite.firstIntValue(childLocCountRes) ?? 0;
       if (childLocCount != oldStreets.length) {
-        throw Exception("Migration Validation Failed: Child locations count ($childLocCount) does not match legacy streets count (${oldStreets.length})");
+        throw Exception(
+            "Migration Validation Failed: Child locations count ($childLocCount) does not match legacy streets count (${oldStreets.length})");
       }
 
       // ✓ Every Customer has a valid location_id
-      final customersRes = await txn.rawQuery("SELECT id, location_id FROM customers WHERE location_id IS NOT NULL AND location_id != ''");
+      final customersRes = await txn.rawQuery(
+          "SELECT id, location_id FROM customers WHERE location_id IS NOT NULL AND location_id != ''");
       for (final cust in customersRes) {
         final locId = cust['location_id'] as String;
-        final locCheck = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE id = ?", [locId]);
+        final locCheck = await txn.rawQuery(
+            "SELECT COUNT(*) as count FROM locations WHERE id = ?", [locId]);
         final exists = (Sqflite.firstIntValue(locCheck) ?? 0) > 0;
         if (!exists) {
-          throw Exception("Migration Validation Failed: Customer ${cust['id']} has invalid location_id '$locId'");
+          throw Exception(
+              "Migration Validation Failed: Customer ${cust['id']} has invalid location_id '$locId'");
         }
       }
 
       // ✓ Every Visit has a valid location_id
-      final visitsRes = await txn.rawQuery("SELECT id, location_id FROM visits WHERE location_id IS NOT NULL AND location_id != ''");
+      final visitsRes = await txn.rawQuery(
+          "SELECT id, location_id FROM visits WHERE location_id IS NOT NULL AND location_id != ''");
       for (final vis in visitsRes) {
         final locId = vis['location_id'] as String;
-        final locCheck = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE id = ?", [locId]);
+        final locCheck = await txn.rawQuery(
+            "SELECT COUNT(*) as count FROM locations WHERE id = ?", [locId]);
         final exists = (Sqflite.firstIntValue(locCheck) ?? 0) > 0;
         if (!exists) {
-          throw Exception("Migration Validation Failed: Visit ${vis['id']} has invalid location_id '$locId'");
+          throw Exception(
+              "Migration Validation Failed: Visit ${vis['id']} has invalid location_id '$locId'");
         }
       }
 
       // ✓ No orphan locations exist
-      final orphansRes = await txn.rawQuery("SELECT id, parent_location_id FROM locations WHERE parent_location_id IS NOT NULL");
+      final orphansRes = await txn.rawQuery(
+          "SELECT id, parent_location_id FROM locations WHERE parent_location_id IS NOT NULL");
       for (final loc in orphansRes) {
         final parentId = loc['parent_location_id'] as String;
-        final parentCheck = await txn.rawQuery("SELECT COUNT(*) as count FROM locations WHERE id = ?", [parentId]);
+        final parentCheck = await txn.rawQuery(
+            "SELECT COUNT(*) as count FROM locations WHERE id = ?", [parentId]);
         final exists = (Sqflite.firstIntValue(parentCheck) ?? 0) > 0;
         if (!exists) {
-          throw Exception("Migration Validation Failed: Location ${loc['id']} has non-existent parent_location_id '$parentId'");
+          throw Exception(
+              "Migration Validation Failed: Location ${loc['id']} has non-existent parent_location_id '$parentId'");
         }
       }
 
       // ✓ No duplicate IDs exist in locations
-      final duplicatesCheck = await txn.rawQuery("SELECT id, COUNT(id) as count FROM locations GROUP BY id HAVING count > 1");
+      final duplicatesCheck = await txn.rawQuery(
+          "SELECT id, COUNT(id) as count FROM locations GROUP BY id HAVING count > 1");
       if (duplicatesCheck.isNotEmpty) {
-        throw Exception("Migration Validation Failed: Duplicate IDs detected in locations table: ${duplicatesCheck.map((r) => r['id']).join(', ')}");
+        throw Exception(
+            "Migration Validation Failed: Duplicate IDs detected in locations table: ${duplicatesCheck.map((r) => r['id']).join(', ')}");
       }
 
       // ✓ Materialized paths are valid
-      final pathsRes = await txn.rawQuery("SELECT id, parent_location_id, materialized_path FROM locations");
+      final pathsRes = await txn.rawQuery(
+          "SELECT id, parent_location_id, materialized_path FROM locations");
       for (final loc in pathsRes) {
         final path = loc['materialized_path'] as String;
         final id = loc['id'] as String;
         final parentId = loc['parent_location_id'] as String?;
         if (parentId == null) {
           if (path != '/$id/') {
-            throw Exception("Migration Validation Failed: Root location $id has invalid path '$path'");
+            throw Exception(
+                "Migration Validation Failed: Root location $id has invalid path '$path'");
           }
         } else {
           if (!path.endsWith('/$parentId/$id/')) {
-            throw Exception("Migration Validation Failed: Child location $id has invalid path '$path' relative to parent '$parentId'");
+            throw Exception(
+                "Migration Validation Failed: Child location $id has invalid path '$path' relative to parent '$parentId'");
           }
         }
       }
 
       // ✓ Sequence keys are unique among siblings
       final duplicateSeqRes = await txn.rawQuery(
-        "SELECT parent_location_id, sequence_key, COUNT(*) as count "
-        "FROM locations "
-        "GROUP BY parent_location_id, sequence_key "
-        "HAVING count > 1"
-      );
+          "SELECT parent_location_id, sequence_key, COUNT(*) as count "
+          "FROM locations "
+          "GROUP BY parent_location_id, sequence_key "
+          "HAVING count > 1");
       if (duplicateSeqRes.isNotEmpty) {
-        throw Exception("Migration Validation Failed: Duplicate sequence keys detected among siblings: ${duplicateSeqRes.first}");
+        throw Exception(
+            "Migration Validation Failed: Duplicate sequence keys detected among siblings: ${duplicateSeqRes.first}");
       }
     });
   }
 }
-
-
-

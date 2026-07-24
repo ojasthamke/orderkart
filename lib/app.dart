@@ -69,7 +69,8 @@ import 'package:latlong2/latlong.dart';
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
 
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   @override
   ConsumerState<OrderKartApp> createState() => _OrderKartAppState();
@@ -229,7 +230,8 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.addEditNote:
         final args = settings.arguments as Map<String, dynamic>?;
-        return _slide(AddEditNoteScreen(existingNote: args?['note'] as AppNote?));
+        return _slide(
+            AddEditNoteScreen(existingNote: args?['note'] as AppNote?));
 
       case AppRoutes.visits:
         return _slide(const VisitListScreen());
@@ -246,7 +248,10 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const PinLockScreen());
 
       case AppRoutes.welcome:
-        final args = settings.arguments as WelcomeSplashScreenArgs;
+        final args = settings.arguments is WelcomeSplashScreenArgs
+            ? settings.arguments as WelcomeSplashScreenArgs
+            : WelcomeSplashScreenArgs(
+                name: 'Owner', nextRoute: AppRoutes.dashboard);
         return _slide(WelcomeSplashScreen(args: args));
 
       case AppRoutes.workers:
@@ -313,8 +318,8 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
       case AppRoutes.areaIntelligenceMap:
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};
         return _slide(AreaIntelligenceMapScreen(
-          areaId: (args['areaId'] ?? '') as String,
-          areaName: (args['areaName'] ?? 'Area Map') as String,
+          areaId: args['areaId']?.toString() ?? '',
+          areaName: args['areaName']?.toString() ?? 'Area Map',
         ));
 
       case AppRoutes.mapPinPicker:
@@ -344,8 +349,8 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         const curve = Curves.fastOutSlowIn;
         final slideTween =
             Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-        final scaleTween =
-            Tween<double>(begin: 0.97, end: 1.0).chain(CurveTween(curve: curve));
+        final scaleTween = Tween<double>(begin: 0.97, end: 1.0)
+            .chain(CurveTween(curve: curve));
         final fadeTween =
             Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
 
@@ -360,7 +365,8 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
           ),
         );
       },
-      transitionDuration: instant ? Duration.zero : const Duration(milliseconds: 250),
+      transitionDuration:
+          instant ? Duration.zero : const Duration(milliseconds: 250),
     );
   }
 }
@@ -381,7 +387,8 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
   @override
   Widget build(BuildContext context) {
     // If Owner is already logged in for this run, bypass splash and show MainScreen directly
-    if (AppModeService.isOwnerSessionActive && (AppStartupScreen.welcomeShown || _unlockedSession)) {
+    if (AppModeService.isOwnerSessionActive &&
+        (AppStartupScreen.welcomeShown || _unlockedSession)) {
       return const MainScreen();
     }
 
@@ -415,7 +422,8 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
           workerId = WorkerSession.instance.currentWorkerId ?? '';
           workerName = WorkerSession.instance.currentWorkerName ?? 'Worker';
           if (workerId.isNotEmpty) {
-            final lastWorkerUnlock = prefs.getInt('last_worker_verification_time_$workerId');
+            final lastWorkerUnlock =
+                prefs.getInt('last_worker_verification_time_$workerId');
             if (lastWorkerUnlock == null) {
               isWorker10DayLocked = true;
             } else {
@@ -446,16 +454,18 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
           );
         }
 
-        final data = snapshot.data ?? {
-          'initialized': false,
-          'mode': AppMode.owner,
-          'is10DayLocked': false,
-          'isWorker10DayLocked': false,
-          'workerId': '',
-          'workerName': '',
-        };
+        final data = snapshot.data ??
+            {
+              'initialized': false,
+              'mode': AppMode.owner,
+              'is10DayLocked': false,
+              'isWorker10DayLocked': false,
+              'workerId': '',
+              'workerName': '',
+            };
 
-        final bool isWorker10DayLocked = data['isWorker10DayLocked'] as bool? ?? false;
+        final bool isWorker10DayLocked =
+            data['isWorker10DayLocked'] as bool? ?? false;
         if (isWorker10DayLocked && !_unlockedSession) {
           return WorkerPasscodeLockScreen(
             workerId: data['workerId'] as String? ?? '',
@@ -487,8 +497,12 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
           return const ModeSelectionScreen();
         }
 
-        final nextRoute = (mode == AppMode.worker) ? AppRoutes.workerDashboard : AppRoutes.dashboard;
-        final name = (mode == AppMode.owner) ? 'Nayan' : (WorkerSession.instance.currentWorkerName ?? 'Worker');
+        final nextRoute = (mode == AppMode.worker)
+            ? AppRoutes.workerDashboard
+            : AppRoutes.dashboard;
+        final name = (mode == AppMode.owner)
+            ? 'Nayan'
+            : (WorkerSession.instance.currentWorkerName ?? 'Worker');
 
         if (mode == AppMode.owner) {
           AppModeService.loginOwnerSuccess();

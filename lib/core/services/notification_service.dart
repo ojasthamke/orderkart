@@ -8,7 +8,8 @@ class NotificationService {
   static final NotificationService _instance = NotificationService._();
   static NotificationService get instance => _instance;
 
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   NotificationService._();
 
@@ -21,9 +22,11 @@ class NotificationService {
       // Fallback
     }
 
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-    
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: _onSelectNotification,
@@ -46,7 +49,8 @@ class NotificationService {
     bool playSound = true,
     bool enableVibration = true,
   }) async {
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    final AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'orderkart_channel',
       'OrderKart Alerts',
       channelDescription: 'Notifications for OrderKart',
@@ -54,11 +58,15 @@ class NotificationService {
       priority: Priority.high,
       playSound: playSound,
       enableVibration: enableVibration,
-      vibrationPattern: enableVibration ? Int64List.fromList([0, 3000]) : null, // 3 seconds vibrate
+      vibrationPattern: enableVibration
+          ? Int64List.fromList([0, 3000])
+          : null, // 3 seconds vibrate
     );
-    final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    final NotificationDetails platformDetails =
+        NotificationDetails(android: androidDetails);
 
-    await flutterLocalNotificationsPlugin.show(id, title, body, platformDetails, payload: payload);
+    await flutterLocalNotificationsPlugin.show(id, title, body, platformDetails,
+        payload: payload);
   }
 
   Future<void> scheduleNotification({
@@ -70,7 +78,8 @@ class NotificationService {
     bool playSound = true,
     bool enableVibration = true,
   }) async {
-    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    final AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'orderkart_scheduled_channel',
       'OrderKart Reminders',
       channelDescription: 'Scheduled reminders for notes and visits',
@@ -80,7 +89,8 @@ class NotificationService {
       enableVibration: enableVibration,
       vibrationPattern: enableVibration ? Int64List.fromList([0, 3000]) : null,
     );
-    final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    final NotificationDetails platformDetails =
+        NotificationDetails(android: androidDetails);
 
     await flutterLocalNotificationsPlugin.zonedSchedule(
       id,
@@ -89,7 +99,8 @@ class NotificationService {
       tz.TZDateTime.from(scheduledDate, tz.local),
       platformDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload,
     );
   }
@@ -104,7 +115,8 @@ class NotificationService {
 
   Future<void> schedulePeriodicReminder() async {
     const int periodicId = 8888;
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       'orderkart_periodic_channel',
       'OrderKart Periodic Updates',
       channelDescription: 'Periodic reminders every 5 hours',
@@ -113,7 +125,8 @@ class NotificationService {
       playSound: true,
       enableVibration: true,
     );
-    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    const NotificationDetails platformDetails =
+        NotificationDetails(android: androidDetails);
 
     await flutterLocalNotificationsPlugin.periodicallyShowWithDuration(
       periodicId,

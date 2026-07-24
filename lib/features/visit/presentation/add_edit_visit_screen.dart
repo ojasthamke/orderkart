@@ -20,7 +20,7 @@ class AddEditVisitScreen extends ConsumerStatefulWidget {
 class _AddEditVisitScreenState extends ConsumerState<AddEditVisitScreen> {
   final _formKey = GlobalKey<FormState>();
   final _notesController = TextEditingController();
-  
+
   String _areaId = '';
   String _streetId = '';
   DateTime _selectedDate = DateTime.now();
@@ -126,8 +126,8 @@ class _AddEditVisitScreenState extends ConsumerState<AddEditVisitScreen> {
                 ),
                 child: ListTile(
                   title: const Text('Visit Date'),
-                  subtitle: Text(AppFormatters.date(_selectedDate), 
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(AppFormatters.date(_selectedDate),
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                   trailing: const Icon(Icons.calendar_today_rounded),
                   onTap: _pickDate,
                 ),
@@ -135,77 +135,89 @@ class _AddEditVisitScreenState extends ConsumerState<AddEditVisitScreen> {
               const SizedBox(height: 24),
               // Area Dropdown
               ref.watch(areaProvider).when(
-                loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                error: (e, _) => Text('Error loading areas: $e', style: const TextStyle(color: AppColors.error)),
-                data: (areas) {
-                  final areaExists = areas.any((a) => a.id == _areaId);
-                  return DropdownButtonFormField<String>(
-                    value: areaExists ? _areaId : null,
-                    decoration: InputDecoration(
-                      labelText: 'Select Area *',
-                      filled: true,
-                      fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    items: areas.map((area) {
-                      return DropdownMenuItem<String>(
-                        value: area.id,
-                        child: Text(area.name),
+                    loading: () => const Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.primary)),
+                    error: (e, _) => Text('Error loading areas: $e',
+                        style: const TextStyle(color: AppColors.error)),
+                    data: (areas) {
+                      final areaExists = areas.any((a) => a.id == _areaId);
+                      return DropdownButtonFormField<String>(
+                        value: areaExists ? _areaId : null,
+                        decoration: InputDecoration(
+                          labelText: 'Select Area *',
+                          filled: true,
+                          fillColor:
+                              Theme.of(context).inputDecorationTheme.fillColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        items: areas.map((area) {
+                          return DropdownMenuItem<String>(
+                            value: area.id,
+                            child: Text(area.name),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _areaId = val ?? '';
+                            _streetId = ''; // Reset street on area change
+                          });
+                        },
+                        validator: (val) => val == null || val.isEmpty
+                            ? 'Please select an Area'
+                            : null,
                       );
-                    }).toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _areaId = val ?? '';
-                        _streetId = ''; // Reset street on area change
-                      });
                     },
-                    validator: (val) => val == null || val.isEmpty ? 'Please select an Area' : null,
-                  );
-                },
-              ),
+                  ),
               const SizedBox(height: 16),
 
               // Street Dropdown (dependent on selected Area)
               if (_areaId.isNotEmpty) ...[
                 ref.watch(streetProviderFamily(_areaId)).when(
-                  loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                  error: (e, _) => Text('Error loading streets: $e', style: const TextStyle(color: AppColors.error)),
-                  data: (streets) {
-                    final streetExists = streets.any((s) => s.id == _streetId);
-                    return DropdownButtonFormField<String>(
-                      value: streetExists ? _streetId : null,
-                      decoration: InputDecoration(
-                        labelText: 'Select Street (Optional)',
-                        filled: true,
-                        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: '',
-                          child: Text('None (Entire Area)'),
-                        ),
-                        ...streets.map((street) {
-                          return DropdownMenuItem<String>(
-                            value: street.id,
-                            child: Text(street.name),
-                          );
-                        }),
-                      ],
-                      onChanged: (val) {
-                        setState(() {
-                          _streetId = val ?? '';
-                        });
+                      loading: () => const Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.primary)),
+                      error: (e, _) => Text('Error loading streets: $e',
+                          style: const TextStyle(color: AppColors.error)),
+                      data: (streets) {
+                        final streetExists =
+                            streets.any((s) => s.id == _streetId);
+                        return DropdownButtonFormField<String>(
+                          value: streetExists ? _streetId : null,
+                          decoration: InputDecoration(
+                            labelText: 'Select Street (Optional)',
+                            filled: true,
+                            fillColor: Theme.of(context)
+                                .inputDecorationTheme
+                                .fillColor,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: '',
+                              child: Text('None (Entire Area)'),
+                            ),
+                            ...streets.map((street) {
+                              return DropdownMenuItem<String>(
+                                value: street.id,
+                                child: Text(street.name),
+                              );
+                            }),
+                          ],
+                          onChanged: (val) {
+                            setState(() {
+                              _streetId = val ?? '';
+                            });
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
+                    ),
                 const SizedBox(height: 16),
               ],
               TextFormField(
@@ -227,9 +239,11 @@ class _AddEditVisitScreenState extends ConsumerState<AddEditVisitScreen> {
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('Save Schedule', style: TextStyle(fontSize: 16)),
+                child:
+                    const Text('Save Schedule', style: TextStyle(fontSize: 16)),
               ),
             ],
           ),

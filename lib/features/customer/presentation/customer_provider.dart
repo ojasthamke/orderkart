@@ -75,11 +75,15 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     if (customer != null && customer.photoPath.isNotEmpty) {
       final file = File(customer.photoPath);
       if (file.existsSync()) {
-        try { file.deleteSync(); } catch (_) {}
+        try {
+          file.deleteSync();
+        } catch (_) {}
       }
       final fallback = AppConstants.resolveFile(customer.photoPath);
       if (fallback.existsSync()) {
-        try { fallback.deleteSync(); } catch (_) {}
+        try {
+          fallback.deleteSync();
+        } catch (_) {}
       }
     }
     await _repo.deleteCustomer(id);
@@ -107,7 +111,8 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     _invalidateAll();
   }
 
-  Future<void> moveCustomers(List<String> customerIds, String newStreetId) async {
+  Future<void> moveCustomers(
+      List<String> customerIds, String newStreetId) async {
     await _repo.moveCustomers(customerIds, newStreetId);
     await load();
     _invalidateAll();
@@ -115,9 +120,10 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
   }
 }
 
-final customerListProvider = StateNotifierProvider.family<
-    CustomerListNotifier, AsyncValue<List<Customer>>, String>((ref, streetId) {
-  return CustomerListNotifier(ref, ref.read(customerRepositoryProvider), streetId);
+final customerListProvider = StateNotifierProvider.family<CustomerListNotifier,
+    AsyncValue<List<Customer>>, String>((ref, streetId) {
+  return CustomerListNotifier(
+      ref, ref.read(customerRepositoryProvider), streetId);
 });
 
 // Single customer provider
@@ -145,7 +151,8 @@ final allCustomersProvider = FutureProvider<List<Customer>>((ref) async {
 });
 
 // Location info provider (Street and Area name / Breadcrumbs path)
-final customerLocationProvider = FutureProvider.family<Map<String, String>, String>((ref, locationId) async {
+final customerLocationProvider =
+    FutureProvider.family<Map<String, String>, String>((ref, locationId) async {
   if (locationId.isEmpty) return {'street': '', 'area': ''};
   try {
     final db = await DatabaseHelper.instance.database;
@@ -154,7 +161,11 @@ final customerLocationProvider = FutureProvider.family<Map<String, String>, Stri
     String? currentId = locationId;
 
     while (currentId != null) {
-      final rows = await db.query('locations', columns: ['id', 'parent_location_id', 'name'], where: 'id = ?', whereArgs: [currentId], limit: 1);
+      final rows = await db.query('locations',
+          columns: ['id', 'parent_location_id', 'name'],
+          where: 'id = ?',
+          whereArgs: [currentId],
+          limit: 1);
       if (rows.isEmpty) break;
       list.insert(0, rows.first);
       currentId = rows.first['parent_location_id'] as String?;
@@ -162,13 +173,15 @@ final customerLocationProvider = FutureProvider.family<Map<String, String>, Stri
 
     if (list.isEmpty) {
       // Fallback to legacy tables
-      final streetRows = await db.query('streets', where: 'id = ?', whereArgs: [locationId], limit: 1);
+      final streetRows = await db.query('streets',
+          where: 'id = ?', whereArgs: [locationId], limit: 1);
       if (streetRows.isEmpty) return {'street': '', 'area': ''};
       final streetName = streetRows.first['name']?.toString() ?? '';
       final areaId = streetRows.first['area_id']?.toString() ?? '';
       String areaName = '';
       if (areaId.isNotEmpty) {
-        final areaRows = await db.query('areas', where: 'id = ?', whereArgs: [areaId], limit: 1);
+        final areaRows = await db.query('areas',
+            where: 'id = ?', whereArgs: [areaId], limit: 1);
         if (areaRows.isNotEmpty) {
           areaName = areaRows.first['name']?.toString() ?? '';
         }
@@ -180,18 +193,23 @@ final customerLocationProvider = FutureProvider.family<Map<String, String>, Stri
     if (list.length == 1) {
       return {'street': leafName, 'area': ''};
     }
-    final parentPath = list.take(list.length - 1).map((l) => l['name']?.toString() ?? '').join(' > ');
+    final parentPath = list
+        .take(list.length - 1)
+        .map((l) => l['name']?.toString() ?? '')
+        .join(' > ');
     return {'street': leafName, 'area': parentPath};
   } catch (_) {
     return {'street': '', 'area': ''};
   }
 });
 
-final areaDescendantLocationsProvider = FutureProvider.family<List<Location>, String>((ref, areaId) async {
+final areaDescendantLocationsProvider =
+    FutureProvider.family<List<Location>, String>((ref, areaId) async {
   final db = await DatabaseHelper.instance.database;
   final res = await db.query(
     'locations',
-    where: '(parent_location_id = ? OR materialized_path LIKE ?) AND location_kind != ? AND is_archived = 0',
+    where:
+        '(parent_location_id = ? OR materialized_path LIKE ?) AND location_kind != ? AND is_archived = 0',
     whereArgs: [areaId, '/$areaId/%', 'area'],
     orderBy: 'materialized_path ASC, name ASC',
   );

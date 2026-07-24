@@ -25,9 +25,10 @@ class WelcomeSplashScreen extends StatefulWidget {
   State<WelcomeSplashScreen> createState() => _WelcomeSplashScreenState();
 }
 
-class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTickerProviderStateMixin {
+class _WelcomeSplashScreenState extends State<WelcomeSplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  
+
   // Animations
   late Animation<double> _logoScale;
   late Animation<double> _logoOpacity;
@@ -38,7 +39,7 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
   void initState() {
     super.initState();
     AppHaptics.buttonClick(); // Play a premium confirmation click/buzz
-    
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 10),
@@ -92,12 +93,13 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     // Resolve target screen to overlay
     Widget targetScreen = const SizedBox.shrink();
     if (widget.args.nextRoute == AppRoutes.workerDashboard) {
       targetScreen = const WorkerDashboardScreen();
-    } else if (widget.args.nextRoute == AppRoutes.dashboard || widget.args.nextRoute == '/') {
+    } else if (widget.args.nextRoute == AppRoutes.dashboard ||
+        widget.args.nextRoute == '/') {
       targetScreen = const MainScreen();
     }
 
@@ -136,7 +138,8 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
     );
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF030712) : const Color(0xFFF9FAFB),
+      backgroundColor:
+          isDark ? const Color(0xFF030712) : const Color(0xFFF9FAFB),
       body: Stack(
         children: [
           // ── BOTTOM LAYER: TARGET SCREEN (SLIDES UP) ──
@@ -173,14 +176,25 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
                     height: 300,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primary.withOpacity(isDark ? 0.04 : 0.03),
+                      color:
+                          AppColors.primary.withOpacity(isDark ? 0.04 : 0.03),
                     ),
                   )
-                      .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                      .moveY(begin: -20, end: 20, duration: 4.seconds, curve: Curves.easeInOut)
-                      .moveX(begin: -10, end: 10, duration: 3.seconds, curve: Curves.easeInOut),
+                      .animate(
+                          onPlay: (controller) =>
+                              controller.repeat(reverse: true))
+                      .moveY(
+                          begin: -20,
+                          end: 20,
+                          duration: 4.seconds,
+                          curve: Curves.easeInOut)
+                      .moveX(
+                          begin: -10,
+                          end: 10,
+                          duration: 3.seconds,
+                          curve: Curves.easeInOut),
                 ),
-                
+
                 // Blob 2
                 Positioned(
                   bottom: -150,
@@ -190,12 +204,23 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
                     height: 400,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primaryLight.withOpacity(isDark ? 0.03 : 0.02),
+                      color: AppColors.primaryLight
+                          .withOpacity(isDark ? 0.03 : 0.02),
                     ),
                   )
-                      .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                      .moveY(begin: 30, end: -30, duration: 5.seconds, curve: Curves.easeInOut)
-                      .moveX(begin: 15, end: -15, duration: 4.seconds, curve: Curves.easeInOut),
+                      .animate(
+                          onPlay: (controller) =>
+                              controller.repeat(reverse: true))
+                      .moveY(
+                          begin: 30,
+                          end: -30,
+                          duration: 5.seconds,
+                          curve: Curves.easeInOut)
+                      .moveX(
+                          begin: 15,
+                          end: -15,
+                          duration: 4.seconds,
+                          curve: Curves.easeInOut),
                 ),
 
                 // Welcome Greeting Card and Progress dots
@@ -218,15 +243,21 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
                             ClipRRect(
                               borderRadius: BorderRadius.circular(28),
                               child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                                filter:
+                                    ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                                 child: Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 32, horizontal: 24),
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                                    color: isDark
+                                        ? Colors.white.withOpacity(0.03)
+                                        : Colors.black.withOpacity(0.02),
                                     borderRadius: BorderRadius.circular(28),
                                     border: Border.all(
-                                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                                      color: isDark
+                                          ? Colors.white.withOpacity(0.08)
+                                          : Colors.black.withOpacity(0.05),
                                     ),
                                   ),
                                   child: Column(
@@ -254,7 +285,8 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: List.generate(3, (index) {
                                 return Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 5),
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 5),
                                   width: 10,
                                   height: 10,
                                   decoration: BoxDecoration(
@@ -272,7 +304,9 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
                                     ),
                                   ),
                                 )
-                                    .animate(onPlay: (controller) => controller.repeat())
+                                    .animate(
+                                        onPlay: (controller) =>
+                                            controller.repeat())
                                     .scale(
                                       begin: const Offset(1.0, 1.0),
                                       end: const Offset(1.4, 1.4),
@@ -338,10 +372,14 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
                             color: AppColors.primary.withOpacity(0.04),
                           ),
                         )
-                            .animate(onPlay: (controller) => controller.repeat())
-                            .scale(begin: const Offset(0.7, 0.7), end: const Offset(1.5, 1.5), duration: 2.2.seconds, curve: Curves.easeOut)
+                            .animate(
+                                onPlay: (controller) => controller.repeat())
+                            .scale(
+                                begin: const Offset(0.7, 0.7),
+                                end: const Offset(1.5, 1.5),
+                                duration: 2.2.seconds,
+                                curve: Curves.easeOut)
                             .fadeOut(duration: 2.2.seconds),
-                        
                         Container(
                           width: 160,
                           height: 160,
@@ -350,10 +388,15 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
                             color: AppColors.primary.withOpacity(0.02),
                           ),
                         )
-                            .animate(onPlay: (controller) => controller.repeat())
-                            .scale(begin: const Offset(0.7, 0.7), end: const Offset(1.5, 1.5), delay: 1.1.seconds, duration: 2.2.seconds, curve: Curves.easeOut)
+                            .animate(
+                                onPlay: (controller) => controller.repeat())
+                            .scale(
+                                begin: const Offset(0.7, 0.7),
+                                end: const Offset(1.5, 1.5),
+                                delay: 1.1.seconds,
+                                duration: 2.2.seconds,
+                                curve: Curves.easeOut)
                             .fadeOut(duration: 2.2.seconds),
-
                         Container(
                           width: 110,
                           height: 110,
@@ -365,7 +408,8 @@ class _WelcomeSplashScreenState extends State<WelcomeSplashScreen> with SingleTi
                             ),
                           ),
                         )
-                            .animate(onPlay: (controller) => controller.repeat())
+                            .animate(
+                                onPlay: (controller) => controller.repeat())
                             .rotate(end: 1, duration: 8.seconds),
                       ],
                     );

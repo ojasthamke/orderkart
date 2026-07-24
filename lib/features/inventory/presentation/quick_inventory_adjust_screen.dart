@@ -20,10 +20,12 @@ class QuickInventoryAdjustScreen extends ConsumerStatefulWidget {
   const QuickInventoryAdjustScreen({super.key});
 
   @override
-  ConsumerState<QuickInventoryAdjustScreen> createState() => _QuickInventoryAdjustScreenState();
+  ConsumerState<QuickInventoryAdjustScreen> createState() =>
+      _QuickInventoryAdjustScreenState();
 }
 
-class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjustScreen> {
+class _QuickInventoryAdjustScreenState
+    extends ConsumerState<QuickInventoryAdjustScreen> {
   String _selectedCategory = 'All';
   String _searchQuery = '';
   final Map<String, Item> _modifiedItems = {};
@@ -31,14 +33,15 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
 
   final List<String> _categories = ['All', ...AppConstants.itemCategories];
 
-  String get _currency => ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
+  String get _currency =>
+      ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
 
   void _onFieldChanged(Item baseItem, String field, String value) {
     final parsedVal = double.tryParse(value) ?? 0.0;
-    
+
     // Retrieve modified item if exists, else start from baseItem
     final currentModified = _modifiedItems[baseItem.id] ?? baseItem;
-    
+
     Item updatedItem;
     switch (field) {
       case 'stock':
@@ -91,9 +94,10 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
     try {
       final itemsToUpdate = _modifiedItems.values.toList();
       await ref.read(inventoryProvider.notifier).updateItems(itemsToUpdate);
-      
+
       if (mounted) {
-        SnackbarHelper.showSuccess(context, '✅ Inventory successfully updated!');
+        SnackbarHelper.showSuccess(
+            context, '✅ Inventory successfully updated!');
         setState(() {
           _modifiedItems.clear();
         });
@@ -118,7 +122,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Unsaved Changes'),
-        content: Text('You have ${_modifiedItems.length} unsaved updates. Do you want to discard them and exit?'),
+        content: Text(
+            'You have ${_modifiedItems.length} unsaved updates. Do you want to discard them and exit?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -143,19 +148,27 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+        Text(title,
+            style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
-        Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+        Text(val,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
       ],
     );
   }
 
-  Widget _buildProfitAdvisorCard(List<Item> allItems, List<Expense> expenses, double multiplier, BuildContext context) {
+  Widget _buildProfitAdvisorCard(List<Item> allItems, List<Expense> expenses,
+      double multiplier, BuildContext context) {
     final now = DateTime.now();
-    final currentMonthStr = "${now.year}-${now.month.toString().padLeft(2, '0')}";
+    final currentMonthStr =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}";
     double monthlyExpenses = 0.0;
     for (final exp in expenses) {
-      final expMonth = "${exp.date.year}-${exp.date.month.toString().padLeft(2, '0')}";
+      final expMonth =
+          "${exp.date.year}-${exp.date.month.toString().padLeft(2, '0')}";
       if (expMonth == currentMonthStr) {
         monthlyExpenses += exp.amount;
       }
@@ -170,7 +183,10 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
       totalInventoryCost += (item.costPrice * qty);
     }
 
-    final safeMultiplier = (multiplier.isNaN || multiplier.isInfinite || multiplier < 1.0) ? 1.43 : multiplier;
+    final safeMultiplier =
+        (multiplier.isNaN || multiplier.isInfinite || multiplier < 1.0)
+            ? 1.43
+            : multiplier;
     final markupPct = ((safeMultiplier - 1.0) * 100).round();
 
     return GlassContainer(
@@ -187,7 +203,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                   color: AppColors.success.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.auto_awesome_rounded, color: AppColors.success, size: 18),
+                child: const Icon(Icons.auto_awesome_rounded,
+                    color: AppColors.success, size: 18),
               ),
               const SizedBox(width: 10),
               const Expanded(
@@ -196,11 +213,13 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                   children: [
                     Text(
                       '30% Net Profit & Expense Advisor',
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                     ),
                     Text(
                       'Covers shop expenses + guarantees 30% net profit',
-                      style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 10, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -226,9 +245,18 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStatMini('Monthly Expenses', AppFormatters.currency(monthlyExpenses, symbol: _currency), context),
-              _buildStatMini('Est. Stock Cost', AppFormatters.currency(totalInventoryCost, symbol: _currency), context),
-              _buildStatMini('Req. Selling Multiplier', '${safeMultiplier.toStringAsFixed(2)}x (+$markupPct%)', context),
+              _buildStatMini(
+                  'Monthly Expenses',
+                  AppFormatters.currency(monthlyExpenses, symbol: _currency),
+                  context),
+              _buildStatMini(
+                  'Est. Stock Cost',
+                  AppFormatters.currency(totalInventoryCost, symbol: _currency),
+                  context),
+              _buildStatMini(
+                  'Req. Selling Multiplier',
+                  '${safeMultiplier.toStringAsFixed(2)}x (+$markupPct%)',
+                  context),
             ],
           ),
           const SizedBox(height: 10),
@@ -240,7 +268,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                 int updatedCount = 0;
                 for (final item in allItems) {
                   if (item.costPrice > 0) {
-                    final targetPrice = (item.costPrice * safeMultiplier).toStringAsFixed(2);
+                    final targetPrice =
+                        (item.costPrice * safeMultiplier).toStringAsFixed(2);
                     _onFieldChanged(item, 'sellingPrice', targetPrice);
                     updatedCount++;
                   }
@@ -253,13 +282,15 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
               icon: const Icon(Icons.bolt_rounded, size: 16),
               label: Text(
                 'Auto-Apply 30% Profit Target to All Items (${safeMultiplier.toStringAsFixed(2)}x)',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
             ),
           ),
@@ -278,10 +309,12 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
     final expenses = expensesAsync.valueOrNull ?? [];
 
     final now = DateTime.now();
-    final currentMonthStr = "${now.year}-${now.month.toString().padLeft(2, '0')}";
+    final currentMonthStr =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}";
     double monthlyExpenses = 0.0;
     for (final exp in expenses) {
-      final expMonth = "${exp.date.year}-${exp.date.month.toString().padLeft(2, '0')}";
+      final expMonth =
+          "${exp.date.year}-${exp.date.month.toString().padLeft(2, '0')}";
       if (expMonth == currentMonthStr) {
         monthlyExpenses += exp.amount;
       }
@@ -354,12 +387,15 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
                       alignment: Alignment.center,
                       decoration: isSelected
                           ? AppColors.tabDecoration(context)
                           : BoxDecoration(
-                              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04),
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.05)
+                                  : Colors.black.withOpacity(0.04),
                               borderRadius: BorderRadius.circular(20),
                             ),
                       child: Text(
@@ -368,7 +404,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                           color: isSelected
                               ? AppColors.primary
                               : (isDark ? Colors.white70 : Colors.black87),
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight:
+                              isSelected ? FontWeight.w800 : FontWeight.w600,
                           fontSize: 12,
                         ),
                       ),
@@ -383,13 +420,17 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
             Expanded(
               child: itemsAsync.when(
                 loading: () => LoadingShimmer.cardList(count: 6, height: 160),
-                error: (e, st) => Center(child: Text('Error loading inventory: $e')),
+                error: (e, st) =>
+                    Center(child: Text('Error loading inventory: $e')),
                 data: (items) {
                   // Apply local filters
                   final filteredItems = items.where((item) {
-                    final matchesCategory = _selectedCategory == 'All' || item.category == _selectedCategory;
+                    final matchesCategory = _selectedCategory == 'All' ||
+                        item.category == _selectedCategory;
                     final matchesSearch = _searchQuery.isEmpty ||
-                        item.name.toLowerCase().contains(_searchQuery.toLowerCase());
+                        item.name
+                            .toLowerCase()
+                            .contains(_searchQuery.toLowerCase());
                     return matchesCategory && matchesSearch;
                   }).toList();
 
@@ -399,7 +440,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                         padding: const EdgeInsets.all(32.0),
                         child: Text(
                           'No items found matching the filters',
-                          style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+                          style: TextStyle(
+                              color: isDark ? Colors.white60 : Colors.black54),
                         ),
                       ),
                     );
@@ -407,7 +449,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
 
                   return ListView.builder(
                     itemCount: filteredItems.length,
-                    padding: const EdgeInsets.only(bottom: 120, left: 16, right: 16),
+                    padding:
+                        const EdgeInsets.only(bottom: 120, left: 16, right: 16),
                     itemBuilder: (ctx, i) {
                       final item = filteredItems[i];
                       final isModified = _modifiedItems.containsKey(item.id);
@@ -443,11 +486,13 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                               children: [
                                 // Item header details
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             item.name,
@@ -469,10 +514,12 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                                     ),
                                     if (isModified)
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
                                           color: Colors.amber.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                         ),
                                         child: const Text(
                                           'MODIFIED',
@@ -494,19 +541,24 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                                       child: _buildInputField(
                                         key: ValueKey('${item.id}_stock'),
                                         label: 'Stock',
-                                        initialValue: workingItem.stock.toString(),
+                                        initialValue:
+                                            workingItem.stock.toString(),
                                         suffix: item.unit,
-                                        onChanged: (val) => _onFieldChanged(item, 'stock', val),
+                                        onChanged: (val) =>
+                                            _onFieldChanged(item, 'stock', val),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: _buildInputField(
-                                        key: ValueKey('${item.id}_sellingPrice'),
+                                        key:
+                                            ValueKey('${item.id}_sellingPrice'),
                                         label: 'Selling Price (Rate)',
-                                        initialValue: workingItem.sellingPrice.toString(),
+                                        initialValue:
+                                            workingItem.sellingPrice.toString(),
                                         prefix: _currency,
-                                        onChanged: (val) => _onFieldChanged(item, 'sellingPrice', val),
+                                        onChanged: (val) => _onFieldChanged(
+                                            item, 'sellingPrice', val),
                                       ),
                                     ),
                                   ],
@@ -518,9 +570,11 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                                       child: _buildInputField(
                                         key: ValueKey('${item.id}_costPrice'),
                                         label: 'Cost Price',
-                                        initialValue: workingItem.costPrice.toString(),
+                                        initialValue:
+                                            workingItem.costPrice.toString(),
                                         prefix: _currency,
-                                        onChanged: (val) => _onFieldChanged(item, 'costPrice', val),
+                                        onChanged: (val) => _onFieldChanged(
+                                            item, 'costPrice', val),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -528,9 +582,11 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                                       child: _buildInputField(
                                         key: ValueKey('${item.id}_marketPrice'),
                                         label: 'MRP (Market Price)',
-                                        initialValue: workingItem.marketPrice.toString(),
+                                        initialValue:
+                                            workingItem.marketPrice.toString(),
                                         prefix: _currency,
-                                        onChanged: (val) => _onFieldChanged(item, 'marketPrice', val),
+                                        onChanged: (val) => _onFieldChanged(
+                                            item, 'marketPrice', val),
                                       ),
                                     ),
                                   ],
@@ -544,22 +600,36 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                                       InkWell(
                                         onTap: () {
                                           AppHaptics.buttonClick();
-                                          final mult = (multiplier.isNaN || multiplier.isInfinite || multiplier < 1.0) ? 1.43 : multiplier;
-                                          final target30 = (workingItem.costPrice * mult).toStringAsFixed(2);
-                                          _onFieldChanged(item, 'sellingPrice', target30);
+                                          final mult = (multiplier.isNaN ||
+                                                  multiplier.isInfinite ||
+                                                  multiplier < 1.0)
+                                              ? 1.43
+                                              : multiplier;
+                                          final target30 =
+                                              (workingItem.costPrice * mult)
+                                                  .toStringAsFixed(2);
+                                          _onFieldChanged(
+                                              item, 'sellingPrice', target30);
                                         },
                                         borderRadius: BorderRadius.circular(8),
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 6),
                                           decoration: BoxDecoration(
-                                            color: AppColors.success.withOpacity(0.12),
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: AppColors.success.withOpacity(0.4)),
+                                            color: AppColors.success
+                                                .withOpacity(0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: AppColors.success
+                                                    .withOpacity(0.4)),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(Icons.verified_rounded, size: 14, color: AppColors.success),
+                                              const Icon(Icons.verified_rounded,
+                                                  size: 14,
+                                                  color: AppColors.success),
                                               const SizedBox(width: 6),
                                               Text(
                                                 '🎯 30% Profit Target: $_currency${(workingItem.costPrice * ((multiplier.isNaN || multiplier.isInfinite || multiplier < 1.0) ? 1.43 : multiplier)).toStringAsFixed(2)}',
@@ -576,21 +646,32 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                                       InkWell(
                                         onTap: () {
                                           AppHaptics.buttonClick();
-                                          final markup65 = (workingItem.costPrice * 1.65).toStringAsFixed(2);
-                                          _onFieldChanged(item, 'sellingPrice', markup65);
+                                          final markup65 =
+                                              (workingItem.costPrice * 1.65)
+                                                  .toStringAsFixed(2);
+                                          _onFieldChanged(
+                                              item, 'sellingPrice', markup65);
                                         },
                                         borderRadius: BorderRadius.circular(8),
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 6),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primary.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                                            color: AppColors.primary
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: AppColors.primary
+                                                    .withOpacity(0.3)),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(Icons.trending_up_rounded, size: 14, color: AppColors.primary),
+                                              const Icon(
+                                                  Icons.trending_up_rounded,
+                                                  size: 14,
+                                                  color: AppColors.primary),
                                               const SizedBox(width: 6),
                                               Text(
                                                 '⭐ 65% Markup: $_currency${(workingItem.costPrice * 1.65).toStringAsFixed(2)}',
@@ -623,7 +704,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
         // Persistent bottom banner for saving
         bottomSheet: _modifiedItems.isNotEmpty
             ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: isDark ? Colors.grey[900] : Colors.white,
                   boxShadow: [
@@ -660,7 +742,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                     ),
                     TextButton(
                       onPressed: _isSaving ? null : _resetChanges,
-                      child: const Text('Reset', style: TextStyle(color: AppColors.error)),
+                      child: const Text('Reset',
+                          style: TextStyle(color: AppColors.error)),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
@@ -668,7 +751,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -682,11 +766,15 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w800)),
+                          : const Text('Save Changes',
+                              style: TextStyle(fontWeight: FontWeight.w800)),
                     ),
                   ],
                 ),
-              ).animate().slide(begin: const Offset(0, 1), end: const Offset(0, 0), duration: 250.ms)
+              ).animate().slide(
+                begin: const Offset(0, 1),
+                end: const Offset(0, 0),
+                duration: 250.ms)
             : null,
       ),
     );
@@ -721,7 +809,8 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             prefixText: prefix,
             prefixStyle: TextStyle(
               color: isDark ? Colors.white70 : Colors.black87,
@@ -733,16 +822,21 @@ class _QuickInventoryAdjustScreenState extends ConsumerState<QuickInventoryAdjus
               color: AppColors.textSecondary,
             ),
             filled: true,
-            fillColor: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03),
+            fillColor: isDark
+                ? Colors.white.withOpacity(0.04)
+                : Colors.black.withOpacity(0.03),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.1),
+                color: isDark
+                    ? Colors.white.withOpacity(0.12)
+                    : Colors.black.withOpacity(0.1),
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide:
+                  const BorderSide(color: AppColors.primary, width: 1.5),
             ),
           ),
           onChanged: onChanged,

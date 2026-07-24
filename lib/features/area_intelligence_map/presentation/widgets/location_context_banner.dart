@@ -14,7 +14,8 @@ class LocationContextBanner extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<LocationContextBanner> createState() => _LocationContextBannerState();
+  ConsumerState<LocationContextBanner> createState() =>
+      _LocationContextBannerState();
 }
 
 class _LocationContextBannerState extends ConsumerState<LocationContextBanner> {
@@ -29,12 +30,14 @@ class _LocationContextBannerState extends ConsumerState<LocationContextBanner> {
     }
 
     final loc = sectionState.currentLocation!;
-    final breadcrumbStr = sectionState.breadcrumbs.map((b) => b.name).join(' → ');
+    final breadcrumbStr =
+        sectionState.breadcrumbs.map((b) => b.name).join(' → ');
 
     return AnimatedCrossFade(
       firstChild: _buildCollapsedBanner(loc, sectionState),
       secondChild: _buildExpandedBanner(loc, breadcrumbStr, sectionState),
-      crossFadeState: _isCollapsed ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+      crossFadeState:
+          _isCollapsed ? CrossFadeState.showFirst : CrossFadeState.showSecond,
       duration: const Duration(milliseconds: 250),
     );
   }
@@ -56,7 +59,8 @@ class _LocationContextBannerState extends ConsumerState<LocationContextBanner> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.location_on_rounded, color: Colors.blueAccent, size: 18),
+                const Icon(Icons.location_on_rounded,
+                    color: Colors.blueAccent, size: 18),
                 const SizedBox(width: 8),
                 Text(
                   loc.name,
@@ -85,7 +89,8 @@ class _LocationContextBannerState extends ConsumerState<LocationContextBanner> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white54, size: 16),
+                const Icon(Icons.keyboard_arrow_down_rounded,
+                    color: Colors.white54, size: 16),
               ],
             ),
           ),
@@ -94,7 +99,8 @@ class _LocationContextBannerState extends ConsumerState<LocationContextBanner> {
     );
   }
 
-  Widget _buildExpandedBanner(Location loc, String breadcrumbStr, CurrentSectionState state) {
+  Widget _buildExpandedBanner(
+      Location loc, String breadcrumbStr, CurrentSectionState state) {
     return GestureDetector(
       onTap: () => setState(() => _isCollapsed = true),
       child: ClipRRect(
@@ -119,7 +125,8 @@ class _LocationContextBannerState extends ConsumerState<LocationContextBanner> {
                     Expanded(
                       child: Row(
                         children: [
-                          const Icon(Icons.pin_drop_rounded, color: Colors.blueAccent, size: 20),
+                          const Icon(Icons.pin_drop_rounded,
+                              color: Colors.blueAccent, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -136,7 +143,8 @@ class _LocationContextBannerState extends ConsumerState<LocationContextBanner> {
                         ],
                       ),
                     ),
-                    const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white70, size: 18),
+                    const Icon(Icons.keyboard_arrow_up_rounded,
+                        color: Colors.white70, size: 18),
                   ],
                 ),
                 if (breadcrumbStr.isNotEmpty) ...[

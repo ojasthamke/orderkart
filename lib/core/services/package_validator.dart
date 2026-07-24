@@ -147,15 +147,19 @@ class PackageValidator {
       // 2. Validate manifest.json signature using checksum.sha256
       final actualManifestHash = sha256.convert(manifestData).toString();
       if (actualManifestHash != checksumHash) {
-        return _fail('Package signature verification failed (Manifest hash mismatch). File might be corrupted or tampered.');
+        return _fail(
+            'Package signature verification failed (Manifest hash mismatch). File might be corrupted or tampered.');
       }
 
       // 3. Parse manifest JSON
-      final Map<String, dynamic> manifest = jsonDecode(utf8.decode(manifestData));
-      final String packageType = manifest['package_type']?.toString() ?? 'backup';
+      final Map<String, dynamic> manifest =
+          jsonDecode(utf8.decode(manifestData));
+      final String packageType =
+          manifest['package_type']?.toString() ?? 'backup';
 
       // Verify that the required files for the package type exist
-      if ((packageType == 'backup' || packageType == 'modular') && dbEncData == null) {
+      if ((packageType == 'backup' || packageType == 'modular') &&
+          dbEncData == null) {
         return _fail('Missing database.enc file inside package.');
       }
 
@@ -174,50 +178,68 @@ class PackageValidator {
       }
 
       // 3c. Check Version Compatibility
-      final minSuppVer = manifest['minimum_supported_version']?.toString() ?? '1.0.0';
+      final minSuppVer =
+          manifest['minimum_supported_version']?.toString() ?? '1.0.0';
       if (!isVersionCompatible(AppConstants.appVersion, minSuppVer)) {
-        return _fail('Your app version (${AppConstants.appVersion}) is too old. Please update to at least $minSuppVer.');
+        return _fail(
+            'Your app version (${AppConstants.appVersion}) is too old. Please update to at least $minSuppVer.');
       }
 
       final schemaVer = manifest['schema_version']?.toString() ?? '';
       final schemaInt = int.tryParse(schemaVer) ?? 0;
       if (schemaInt < 1 || schemaInt > 5) {
-        return _fail('Incompatible database schema version: $schemaVer. Expected 1-5.');
+        return _fail(
+            'Incompatible database schema version: $schemaVer. Expected 1-5.');
       }
 
       final db = await DatabaseHelper.instance.database;
 
       // 3d. Check if package has already been imported (skip for full DB restores)
       final packageId = manifest['package_id']?.toString() ?? '';
-      final isFullRestore = (manifest['package_type']?.toString() == 'backup') ||
-          ((manifest['selected_modules'] as List<dynamic>?)?.contains('entire_db') ?? false);
+      final isFullRestore =
+          (manifest['package_type']?.toString() == 'backup') ||
+              ((manifest['selected_modules'] as List<dynamic>?)
+                      ?.contains('entire_db') ??
+                  false);
       if (packageId.isNotEmpty && !isFullRestore) {
-        final List<Map<String, dynamic>> existingImport = await db.query('import_history', where: 'package_id = ?', whereArgs: [packageId]);
+        final List<Map<String, dynamic>> existingImport = await db.query(
+            'import_history',
+            where: 'package_id = ?',
+            whereArgs: [packageId]);
         if (existingImport.isNotEmpty) {
-          return _fail('This package has already been imported on ${existingImport.first['imported_at']}. Re-importing is blocked to prevent duplicate transactions.');
+          return _fail(
+              'This package has already been imported on ${existingImport.first['imported_at']}. Re-importing is blocked to prevent duplicate transactions.');
         }
       }
 
       // 3e. Check Device Binding for Worker Mode
       final currentMode = await AppModeService.getAppMode();
       if (currentMode == AppMode.worker) {
-        final localDeviceId = 'mock_device_id_${Platform.operatingSystem.hashCode.abs()}';
-        final packageDeviceId = manifest['device_id']?.toString() ?? manifest['android_id']?.toString() ?? '';
+        final localDeviceId =
+            'mock_device_id_${Platform.operatingSystem.hashCode.abs()}';
+        final packageDeviceId = manifest['device_id']?.toString() ??
+            manifest['android_id']?.toString() ??
+            '';
         if (packageDeviceId.isNotEmpty && packageDeviceId != localDeviceId) {
-          return _fail('This package belongs to another device. Owner approval is required to re-bind.');
+          return _fail(
+              'This package belongs to another device. Owner approval is required to re-bind.');
         }
       }
 
       // 3f. Retrieve Secret Key for Decryption and HMAC validation
-      final generatedByWorkerId = manifest['generated_by_worker_id']?.toString() ?? '';
-      final isWorkerProvisioning = manifest['is_worker_provisioning_package'] as bool? ?? false;
+      final generatedByWorkerId =
+          manifest['generated_by_worker_id']?.toString() ?? '';
+      final isWorkerProvisioning =
+          manifest['is_worker_provisioning_package'] as bool? ?? false;
       final packageKeyVersion = manifest['key_version']?.toString() ?? '1';
-      
+
       String secretKey = '';
 
       if (isWorkerProvisioning && manifest.containsKey('worker_secret')) {
-        secretKey = SecurityHelper.deobfuscateSecret(manifest['worker_secret']?.toString() ?? '');
-      } else if (generatedByWorkerId.isNotEmpty && generatedByWorkerId != 'owner') {
+        secretKey = SecurityHelper.deobfuscateSecret(
+            manifest['worker_secret']?.toString() ?? '');
+      } else if (generatedByWorkerId.isNotEmpty &&
+          generatedByWorkerId != 'owner') {
         final List<Map<String, dynamic>> localWorker = await db.query(
           'worker_security',
           columns: ['worker_secret'],
@@ -238,7 +260,7 @@ class PackageValidator {
         if (res.isNotEmpty) {
           secretKey = res.first['value']?.toString() ?? '';
         }
-        
+
         // Fallback to default owner_secret if the versioned key isn't stored separately yet
         if (secretKey.isEmpty) {
           final List<Map<String, dynamic>> fallbackRes = await db.query(
@@ -255,9 +277,12 @@ class PackageValidator {
 
       // If no key found for an owner backup, the app was likely freshly reinstalled.
       // Auto-initialize the owner secret so the restore can proceed without blocking.
-      if (secretKey.isEmpty && !isWorkerProvisioning && generatedByWorkerId.isEmpty) {
+      if (secretKey.isEmpty &&
+          !isWorkerProvisioning &&
+          generatedByWorkerId.isEmpty) {
         // Check if manifest carries an inline secret for self-restores
-        final inlineSecret = SecurityHelper.deobfuscateSecret(manifest['owner_secret']?.toString() ?? '');
+        final inlineSecret = SecurityHelper.deobfuscateSecret(
+            manifest['owner_secret']?.toString() ?? '');
         if (inlineSecret.isNotEmpty) {
           secretKey = inlineSecret;
           // Persist it so future validations succeed
@@ -276,17 +301,21 @@ class PackageValidator {
 
       // Validate HMAC signature
       if (secretKey.isEmpty) {
-        return _fail('Package signature could not be verified — no matching secret key found. Register this worker or set up owner credentials first.');
+        return _fail(
+            'Package signature could not be verified — no matching secret key found. Register this worker or set up owner credentials first.');
       }
       final signature = manifest['signature']?.toString() ?? '';
-      final isValidSig = SecurityHelper.verifyManifest(manifest, signature, secretKey);
+      final isValidSig =
+          SecurityHelper.verifyManifest(manifest, signature, secretKey);
       if (!isValidSig) {
-        return _fail('Package authenticity check failed (HMAC signature mismatch). File might be from an unauthorized owner or tampered.');
+        return _fail(
+            'Package authenticity check failed (HMAC signature mismatch). File might be from an unauthorized owner or tampered.');
       }
 
       // 3g. Check if the worker is active locally
       if (generatedByWorkerId.isNotEmpty) {
-        final List<Map<String, dynamic>> workerRes = await db.query('workers', where: 'id = ?', whereArgs: [generatedByWorkerId]);
+        final List<Map<String, dynamic>> workerRes = await db.query('workers',
+            where: 'id = ?', whereArgs: [generatedByWorkerId]);
         if (workerRes.isNotEmpty) {
           final status = workerRes.first['status']?.toString() ?? '';
           if (status == 'inactive') {
@@ -303,7 +332,8 @@ class PackageValidator {
         final expectedHash = fileHashes[p] ?? '';
         final actualHash = sha256.convert(photoFiles[p]!).toString();
         if (actualHash != expectedHash) {
-          return _fail('Photo file integrity check failed for $p (SHA-256 mismatch).');
+          return _fail(
+              'Photo file integrity check failed for $p (SHA-256 mismatch).');
         }
       }
 
@@ -312,7 +342,8 @@ class PackageValidator {
         final expectedHash = fileHashes[l] ?? '';
         final actualHash = sha256.convert(logoFiles[l]!).toString();
         if (actualHash != expectedHash) {
-          return _fail('Logo file integrity check failed for $l (SHA-256 mismatch).');
+          return _fail(
+              'Logo file integrity check failed for $l (SHA-256 mismatch).');
         }
       }
 
@@ -321,7 +352,8 @@ class PackageValidator {
         final expectedHash = fileHashes[q] ?? '';
         final actualHash = sha256.convert(qrFiles[q]!).toString();
         if (actualHash != expectedHash) {
-          return _fail('QR file integrity check failed for $q (SHA-256 mismatch).');
+          return _fail(
+              'QR file integrity check failed for $q (SHA-256 mismatch).');
         }
       }
 
@@ -333,9 +365,11 @@ class PackageValidator {
         if (packageType == 'backup' || packageType == 'modular') {
           // Verify database.enc hash
           final actualDbEncHash = sha256.convert(dbEncData!).toString();
-          final expectedDbEncHash = fileHashes['database.enc']?.toString() ?? '';
+          final expectedDbEncHash =
+              fileHashes['database.enc']?.toString() ?? '';
           if (actualDbEncHash != expectedDbEncHash) {
-            throw Exception('Database integrity check failed (SHA-256 mismatch). File might be corrupted.');
+            throw Exception(
+                'Database integrity check failed (SHA-256 mismatch). File might be corrupted.');
           }
 
           // 5. Decrypt database.enc to database.db
@@ -343,12 +377,16 @@ class PackageValidator {
           try {
             dbData = SecurityHelper.decryptBytes(dbEncData, secretKey);
           } catch (e) {
-            throw Exception('Failed to decrypt database: key mismatch or corrupted file. ($e)');
+            throw Exception(
+                'Failed to decrypt database: key mismatch or corrupted file. ($e)');
           }
 
           // Validate SQLite header
-          if (dbData.length < 16 || utf8.decode(dbData.sublist(0, 15), allowMalformed: true) != 'SQLite format 3') {
-            throw Exception('Decryption produced invalid database — wrong key or corrupted package.');
+          if (dbData.length < 16 ||
+              utf8.decode(dbData.sublist(0, 15), allowMalformed: true) !=
+                  'SQLite format 3') {
+            throw Exception(
+                'Decryption produced invalid database — wrong key or corrupted package.');
           }
 
           await tempDbFile.writeAsBytes(dbData);
@@ -367,15 +405,18 @@ class PackageValidator {
               final actualHash = sha256.convert(fileData).toString();
               final expectedHash = fileHashes[filename]?.toString() ?? '';
               if (actualHash != expectedHash) {
-                throw Exception('File integrity check failed for $filename (SHA-256 mismatch).');
+                throw Exception(
+                    'File integrity check failed for $filename (SHA-256 mismatch).');
               }
 
               // Decrypt file
               List<int> decryptedBytes;
               try {
-                decryptedBytes = SecurityHelper.decryptBytes(fileData, secretKey);
+                decryptedBytes =
+                    SecurityHelper.decryptBytes(fileData, secretKey);
               } catch (e) {
-                throw Exception('Failed to decrypt $filename: key mismatch or corrupted file. ($e)');
+                throw Exception(
+                    'Failed to decrypt $filename: key mismatch or corrupted file. ($e)');
               }
 
               final jsonStr = utf8.decode(decryptedBytes);
@@ -385,7 +426,8 @@ class PackageValidator {
               if (decodedData is List) {
                 for (final row in decodedData) {
                   if (row is Map<String, dynamic>) {
-                    await tempDb.insert(tableName, row, conflictAlgorithm: ConflictAlgorithm.replace);
+                    await tempDb.insert(tableName, row,
+                        conflictAlgorithm: ConflictAlgorithm.replace);
                   }
                 }
               }
@@ -397,7 +439,9 @@ class PackageValidator {
         }
       } catch (e) {
         if (tempDbFile.existsSync()) {
-          try { tempDbFile.deleteSync(); } catch (_) {}
+          try {
+            tempDbFile.deleteSync();
+          } catch (_) {}
         }
         return _fail(e.toString().replaceAll('Exception: ', ''));
       }
@@ -409,7 +453,6 @@ class PackageValidator {
         dbPath: tempDbFile.path,
         photosCount: photoFiles.length,
       );
-
     } catch (e) {
       return PackageValidationResult(
         isValid: false,
@@ -490,12 +533,21 @@ class PackageValidator {
     );
   }
 
-  static List<String> photoList(Archive archive) =>
-      archive.files.where((e) => e.isFile).map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('photos/')).toList();
+  static List<String> photoList(Archive archive) => archive.files
+      .where((e) => e.isFile)
+      .map((e) => e.name.replaceAll('\\', '/'))
+      .where((e) => e.startsWith('photos/'))
+      .toList();
 
-  static List<String> logoList(Archive archive) =>
-      archive.files.where((e) => e.isFile).map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('logo/')).toList();
+  static List<String> logoList(Archive archive) => archive.files
+      .where((e) => e.isFile)
+      .map((e) => e.name.replaceAll('\\', '/'))
+      .where((e) => e.startsWith('logo/'))
+      .toList();
 
-  static List<String> qrList(Archive archive) =>
-      archive.files.where((e) => e.isFile).map((e) => e.name.replaceAll('\\', '/')).where((e) => e.startsWith('qr/')).toList();
+  static List<String> qrList(Archive archive) => archive.files
+      .where((e) => e.isFile)
+      .map((e) => e.name.replaceAll('\\', '/'))
+      .where((e) => e.startsWith('qr/'))
+      .toList();
 }

@@ -25,46 +25,54 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _bizNameCon = TextEditingController();
-  final _ownerCon   = TextEditingController();
-  final _phoneCon   = TextEditingController();
-  final _waCon      = TextEditingController();
+  final _ownerCon = TextEditingController();
+  final _phoneCon = TextEditingController();
+  final _waCon = TextEditingController();
   final _staffWaCon = TextEditingController();
-  final _qrCon      = TextEditingController();
+  final _qrCon = TextEditingController();
   final _deliveryChargeCon = TextEditingController();
   final _workerDiscountCapCon = TextEditingController();
+  final _disclaimerCon = TextEditingController();
   bool _initialized = false;
 
   @override
   void dispose() {
-    _bizNameCon.dispose(); _ownerCon.dispose(); _phoneCon.dispose();
-    _waCon.dispose(); _staffWaCon.dispose(); _qrCon.dispose();
+    _bizNameCon.dispose();
+    _ownerCon.dispose();
+    _phoneCon.dispose();
+    _waCon.dispose();
+    _staffWaCon.dispose();
+    _qrCon.dispose();
     _deliveryChargeCon.dispose();
     _workerDiscountCapCon.dispose();
+    _disclaimerCon.dispose();
     super.dispose();
   }
 
   void _init(AppSettings s) {
     if (_initialized) return;
     _bizNameCon.text = s.businessName;
-    _ownerCon.text   = s.ownerName;
-    _phoneCon.text   = s.phone;
-    _waCon.text      = s.whatsApp;
+    _ownerCon.text = s.ownerName;
+    _phoneCon.text = s.phone;
+    _waCon.text = s.whatsApp;
     _staffWaCon.text = s.staffWhatsApp;
-    _qrCon.text      = s.qrContent;
+    _qrCon.text = s.qrContent;
     _deliveryChargeCon.text = s.deliveryCharge.toStringAsFixed(0);
     _workerDiscountCapCon.text = s.workerDiscountCap.toStringAsFixed(0);
-    _initialized     = true;
+    _disclaimerCon.text = s.invoiceDisclaimer;
+    _initialized = true;
   }
 
   Future<void> _save(AppSettings current) async {
     await ref.read(settingsProvider.notifier).update(
           current.copyWith(
             businessName: _bizNameCon.text.trim(),
-            ownerName:    _ownerCon.text.trim(),
-            phone:        _phoneCon.text.trim(),
-            whatsApp:     _waCon.text.trim(),
-            staffWhatsApp:_staffWaCon.text.trim(),
-            qrContent:    _qrCon.text.trim(),
+            ownerName: _ownerCon.text.trim(),
+            phone: _phoneCon.text.trim(),
+            whatsApp: _waCon.text.trim(),
+            staffWhatsApp: _staffWaCon.text.trim(),
+            qrContent: _qrCon.text.trim(),
+            invoiceDisclaimer: _disclaimerCon.text.trim(),
           ),
         );
     if (mounted) SnackbarHelper.showSuccess(context, 'Settings saved');
@@ -77,7 +85,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (current.qrCustomImage.isNotEmpty) {
         final oldFile = File(current.qrCustomImage);
         if (oldFile.existsSync()) {
-          try { oldFile.deleteSync(); } catch (_) {}
+          try {
+            oldFile.deleteSync();
+          } catch (_) {}
         }
       }
 
@@ -91,7 +101,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         await ref.read(settingsProvider.notifier).update(
               current.copyWith(qrCustomImage: savedPath),
             );
-        if (mounted) SnackbarHelper.showSuccess(context, 'QR Code image uploaded');
+        if (mounted)
+          SnackbarHelper.showSuccess(context, 'QR Code image uploaded');
       }
     }
   }
@@ -107,7 +118,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (current.qrCustomImage.isNotEmpty) {
       final file = AppConstants.resolveFile(current.qrCustomImage);
       if (file.existsSync()) {
-        try { file.deleteSync(); } catch (_) {}
+        try {
+          file.deleteSync();
+        } catch (_) {}
       }
     }
 
@@ -127,8 +140,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           showBack: true,
           body: Center(child: CircularProgressIndicator())),
       error: (e, _) => AppScaffold(
-          title: 'Settings',
-          body: Center(child: Text('Error: $e'))),
+          title: 'Settings', body: Center(child: Text('Error: $e'))),
       data: (settings) {
         _init(settings);
         final isWorker = WorkerSession.instance.isWorker;
@@ -140,11 +152,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ── Business Info ───────────────────────────────────────
               _sectionHeader('Business Info', Icons.business_rounded),
               _card([
-                _textTile('Business Name', _bizNameCon, Icons.storefront_rounded),
+                _textTile(
+                    'Business Name', _bizNameCon, Icons.storefront_rounded),
                 _textTile('Owner Name', _ownerCon, Icons.person_rounded),
-                _textTile('Phone', _phoneCon, Icons.phone_rounded, keyboardType: TextInputType.phone),
-                _textTile('WhatsApp', _waCon, Icons.chat_rounded, keyboardType: TextInputType.phone),
-                _textTile('Staff Telegram Link / Username', _staffWaCon, Icons.send_rounded, keyboardType: TextInputType.text),
+                _textTile('Phone', _phoneCon, Icons.phone_rounded,
+                    keyboardType: TextInputType.phone),
+                _textTile('WhatsApp', _waCon, Icons.chat_rounded,
+                    keyboardType: TextInputType.phone),
+                _textTile('Staff Telegram Link / Username', _staffWaCon,
+                    Icons.send_rounded,
+                    keyboardType: TextInputType.text),
+                _textTile('Invoice & WhatsApp Bill Terms / Disclaimer',
+                    _disclaimerCon, Icons.gavel_rounded,
+                    maxLines: 3),
               ]),
               const SizedBox(height: 8),
               SizedBox(
@@ -165,33 +185,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   secondary: const Icon(Icons.delivery_dining_rounded),
                   title: const Text('Enable Delivery Charges'),
                   value: settings.enableDeliveryCharges,
-                  onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(enableDeliveryCharges: v)),
+                  onChanged: (v) => ref
+                      .read(settingsProvider.notifier)
+                      .update(settings.copyWith(enableDeliveryCharges: v)),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   enabled: settings.enableDeliveryCharges,
-                  leading: Icon(Icons.payments_rounded, color: settings.enableDeliveryCharges ? null : Colors.grey),
+                  leading: Icon(Icons.payments_rounded,
+                      color:
+                          settings.enableDeliveryCharges ? null : Colors.grey),
                   title: Text(
                     'Default Delivery Charge',
-                    style: TextStyle(color: settings.enableDeliveryCharges ? null : Colors.grey),
+                    style: TextStyle(
+                        color: settings.enableDeliveryCharges
+                            ? null
+                            : Colors.grey),
                   ),
                   trailing: SizedBox(
                     width: 80,
                     child: TextField(
                       enabled: settings.enableDeliveryCharges,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       textAlign: TextAlign.right,
                       controller: _deliveryChargeCon,
                       onChanged: (v) {
                         final d = double.tryParse(v);
                         if (d != null) {
-                          ref.read(settingsProvider.notifier).update(settings.copyWith(deliveryCharge: d));
+                          ref
+                              .read(settingsProvider.notifier)
+                              .update(settings.copyWith(deliveryCharge: d));
                         }
                       },
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         hintText: '0.0',
-                        prefixText: settings.enableDeliveryCharges ? settings.currency : '',
+                        prefixText: settings.enableDeliveryCharges
+                            ? settings.currency
+                            : '',
                       ),
                     ),
                   ),
@@ -201,7 +233,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   secondary: const Icon(Icons.calculate_rounded),
                   title: const Text('Smart Rounding'),
                   value: settings.smartRounding,
-                  onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(smartRounding: v)),
+                  onChanged: (v) => ref
+                      .read(settingsProvider.notifier)
+                      .update(settings.copyWith(smartRounding: v)),
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -218,7 +252,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                     onChanged: (v) {
                       if (v != null) {
-                        ref.read(settingsProvider.notifier).update(settings.copyWith(currency: v));
+                        ref
+                            .read(settingsProvider.notifier)
+                            .update(settings.copyWith(currency: v));
                       }
                     },
                   ),
@@ -228,7 +264,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   secondary: const Icon(Icons.trending_up_rounded),
                   title: const Text('Enable VIP Price Markup (10%)'),
                   value: settings.enableVipPriceMarkup,
-                  onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(enableVipPriceMarkup: v)),
+                  onChanged: (v) => ref
+                      .read(settingsProvider.notifier)
+                      .update(settings.copyWith(enableVipPriceMarkup: v)),
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -237,13 +275,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   trailing: SizedBox(
                     width: 80,
                     child: TextField(
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       textAlign: TextAlign.right,
                       controller: _workerDiscountCapCon,
                       onChanged: (v) {
                         final val = double.tryParse(v);
                         if (val != null) {
-                          ref.read(settingsProvider.notifier).update(settings.copyWith(workerDiscountCap: val));
+                          ref.read(settingsProvider.notifier).update(
+                              settings.copyWith(workerDiscountCap: val));
                         }
                       },
                       decoration: const InputDecoration(
@@ -270,7 +310,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _card([
                 ListTile(
                   leading: Icon(
-                    settings.themeMode == 'dark' ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                    settings.themeMode == 'dark'
+                        ? Icons.dark_mode_rounded
+                        : Icons.light_mode_rounded,
                     color: AppColors.primary,
                   ),
                   title: const Text('App Theme'),
@@ -285,13 +327,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     value: settings.themeMode,
                     underline: const SizedBox.shrink(),
                     items: const [
-                      DropdownMenuItem(value: 'light', child: Text('Light Mode')),
+                      DropdownMenuItem(
+                          value: 'light', child: Text('Light Mode')),
                       DropdownMenuItem(value: 'dark', child: Text('Dark Mode')),
-                      DropdownMenuItem(value: 'system', child: Text('System Default')),
+                      DropdownMenuItem(
+                          value: 'system', child: Text('System Default')),
                     ],
                     onChanged: (v) {
                       if (v != null) {
-                        ref.read(settingsProvider.notifier).update(settings.copyWith(themeMode: v));
+                        ref
+                            .read(settingsProvider.notifier)
+                            .update(settings.copyWith(themeMode: v));
                       }
                     },
                   ),
@@ -314,13 +360,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     value: settings.meshTheme,
                     underline: const SizedBox.shrink(),
                     items: const [
-                      DropdownMenuItem(value: 'sunset', child: Text('Sunset Glow')),
-                      DropdownMenuItem(value: 'forest', child: Text('Emerald Forest')),
-                      DropdownMenuItem(value: 'abyss', child: Text('Midnight Abyss')),
+                      DropdownMenuItem(
+                          value: 'sunset', child: Text('Sunset Glow')),
+                      DropdownMenuItem(
+                          value: 'forest', child: Text('Emerald Forest')),
+                      DropdownMenuItem(
+                          value: 'abyss', child: Text('Midnight Abyss')),
                     ],
                     onChanged: (v) {
                       if (v != null) {
-                        ref.read(settingsProvider.notifier).update(settings.copyWith(meshTheme: v));
+                        ref
+                            .read(settingsProvider.notifier)
+                            .update(settings.copyWith(meshTheme: v));
                       }
                     },
                   ),
@@ -354,7 +405,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     leading: const Icon(Icons.image_rounded),
                     title: const Text('Custom QR Image Uploaded'),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete_rounded, color: AppColors.error),
+                      icon: const Icon(Icons.delete_rounded,
+                          color: AppColors.error),
                       onPressed: () => _deleteQrImage(settings),
                     ),
                   ),
@@ -380,7 +432,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             width: 150,
                             height: 150,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                            errorBuilder: (_, __, ___) =>
+                                const Text('Broken Custom QR Image'),
                           ),
                         ),
                       ),
@@ -397,7 +450,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 16),
                   if (settings.qrContent.isNotEmpty) ...[
                     const Center(
-                      child: Text('Generated UPI QR Code:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      child: Text('Generated UPI QR Code:',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     const SizedBox(height: 8),
                     Center(
@@ -439,54 +494,79 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 20),
 
               // ── Notifications ────────────────────────────────────────
-              _sectionHeader(AppLocalization.translate(ref, 'notifications', 'Notifications'), Icons.notifications_rounded),
+              _sectionHeader(
+                  AppLocalization.translate(
+                      ref, 'notifications', 'Notifications'),
+                  Icons.notifications_rounded),
               _card([
                 SwitchListTile(
                   secondary: const Icon(Icons.notifications_active_rounded),
-                  title: Text(AppLocalization.translate(ref, 'enable_notifications', 'Enable Notifications')),
+                  title: Text(AppLocalization.translate(
+                      ref, 'enable_notifications', 'Enable Notifications')),
                   value: settings.notificationsEnabled,
-                  onChanged: (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(notificationsEnabled: v)),
+                  onChanged: (v) => ref
+                      .read(settingsProvider.notifier)
+                      .update(settings.copyWith(notificationsEnabled: v)),
                 ),
                 SwitchListTile(
                   secondary: const Icon(Icons.warning_amber_rounded),
-                  title: Text(AppLocalization.translate(ref, 'low_stock_alert', 'Low Stock Alert')),
+                  title: Text(AppLocalization.translate(
+                      ref, 'low_stock_alert', 'Low Stock Alert')),
                   value: settings.lowStockAlert,
                   onChanged: settings.notificationsEnabled
-                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(lowStockAlert: v))
+                      ? (v) => ref
+                          .read(settingsProvider.notifier)
+                          .update(settings.copyWith(lowStockAlert: v))
                       : null,
                 ),
                 SwitchListTile(
                   secondary: const Icon(Icons.payments_rounded),
-                  title: Text(AppLocalization.translate(ref, 'pending_alert', 'Pending Payment Alert')),
+                  title: Text(AppLocalization.translate(
+                      ref, 'pending_alert', 'Pending Payment Alert')),
                   value: settings.pendingAlert,
                   onChanged: settings.notificationsEnabled
-                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(pendingAlert: v))
+                      ? (v) => ref
+                          .read(settingsProvider.notifier)
+                          .update(settings.copyWith(pendingAlert: v))
                       : null,
                 ),
                 SwitchListTile(
                   secondary: const Icon(Icons.backup_rounded),
-                  title: Text(AppLocalization.translate(ref, 'backup_reminder', 'Daily Backup Reminder')),
+                  title: Text(AppLocalization.translate(
+                      ref, 'backup_reminder', 'Daily Backup Reminder')),
                   value: settings.backupReminder,
                   onChanged: settings.notificationsEnabled
-                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(backupReminder: v))
+                      ? (v) => ref
+                          .read(settingsProvider.notifier)
+                          .update(settings.copyWith(backupReminder: v))
                       : null,
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.volume_up_rounded),
-                  title: Text(AppLocalization.translate(ref, 'notification_sound', 'Notification Sound (Preview Tone)')),
+                  title: Text(AppLocalization.translate(
+                      ref,
+                      'notification_sound',
+                      'Notification Sound (Preview Tone)')),
                   value: settings.notificationSound,
                   onChanged: settings.notificationsEnabled
-                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(notificationSound: v))
+                      ? (v) => ref
+                          .read(settingsProvider.notifier)
+                          .update(settings.copyWith(notificationSound: v))
                       : null,
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.vibration_rounded),
-                  title: Text(AppLocalization.translate(ref, 'notification_vibration', 'Notification Vibration (Tactile Feel)')),
+                  title: Text(AppLocalization.translate(
+                      ref,
+                      'notification_vibration',
+                      'Notification Vibration (Tactile Feel)')),
                   value: settings.notificationVibration,
                   onChanged: settings.notificationsEnabled
-                      ? (v) => ref.read(settingsProvider.notifier).update(settings.copyWith(notificationVibration: v))
+                      ? (v) => ref
+                          .read(settingsProvider.notifier)
+                          .update(settings.copyWith(notificationVibration: v))
                       : null,
                 ),
               ]),
@@ -499,26 +579,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ListTile(
                   leading: const Icon(Icons.backup_rounded),
                   title: const Text('Backup & Restore'),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                  onTap: () => Navigator.of(context).pushNamed(AppRoutes.backupRestore),
+                  trailing:
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.backupRestore),
                 ),
               ]),
 
               const SizedBox(height: 20),
 
               // ── Cloud Sync (coming soon) ─────────────────────────
-              _sectionHeader('Cloud Sync (Coming Soon)', Icons.cloud_sync_rounded),
+              _sectionHeader(
+                  'Cloud Sync (Coming Soon)', Icons.cloud_sync_rounded),
               _card([
-                _comingSoonTile('Enable Cloud Backup', Icons.cloud_upload_rounded),
-                _comingSoonTile('Google Drive Backup', Icons.add_to_drive_rounded),
-                _comingSoonTile('GitHub JSON Backup',  Icons.code_rounded),
-                _comingSoonTile('Sync to Server',      Icons.sync_rounded),
+                _comingSoonTile(
+                    'Enable Cloud Backup', Icons.cloud_upload_rounded),
+                _comingSoonTile(
+                    'Google Drive Backup', Icons.add_to_drive_rounded),
+                _comingSoonTile('GitHub JSON Backup', Icons.code_rounded),
+                _comingSoonTile('Sync to Server', Icons.sync_rounded),
               ]),
 
               const SizedBox(height: 20),
 
               // ── Account (coming soon) ────────────────────────────
-              _sectionHeader('Account (Coming Soon)', Icons.account_circle_rounded),
+              _sectionHeader(
+                  'Account (Coming Soon)', Icons.account_circle_rounded),
               _card([
                 _comingSoonTile('Login / Sign Up', Icons.login_rounded),
                 _comingSoonTile('Multi-Device Sync', Icons.devices_rounded),
@@ -530,25 +616,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _sectionHeader('Storage & Cache', Icons.storage_rounded),
               _card([
                 ListTile(
-                  leading: const Icon(Icons.cleaning_services_rounded, color: Colors.orange),
+                  leading: const Icon(Icons.cleaning_services_rounded,
+                      color: Colors.orange),
                   title: const Text('Clean Image Cache'),
-                  subtitle: const Text('Free up local cache from temporary pick files'),
-                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  subtitle: const Text(
+                      'Free up local cache from temporary pick files'),
+                  trailing:
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   onTap: () async {
                     await ImageUtils.clearImagePickerCache();
                     if (mounted) {
-                      SnackbarHelper.showSuccess(context, 'Image picker cache cleaned successfully.');
+                      SnackbarHelper.showSuccess(
+                          context, 'Image picker cache cleaned successfully.');
                     }
                   },
                 ),
               ]),
 
-
-
               const SizedBox(height: 20),
 
               // ── Danger Zone ────────────────────────────────────────
-              _sectionHeader('Danger Zone', Icons.warning_rounded, color: AppColors.error),
+              _sectionHeader('Danger Zone', Icons.warning_rounded,
+                  color: AppColors.error),
               Container(
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardTheme.color,
@@ -556,20 +645,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   border: Border.all(color: AppColors.error.withOpacity(0.3)),
                 ),
                 child: ListTile(
-                  leading: const Icon(Icons.delete_forever_rounded, color: AppColors.error),
-                  title: const Text('Reset App', style: TextStyle(color: AppColors.error)),
+                  leading: const Icon(Icons.delete_forever_rounded,
+                      color: AppColors.error),
+                  title: const Text('Reset App',
+                      style: TextStyle(color: AppColors.error)),
                   subtitle: const Text('Delete all data permanently'),
                   onTap: () async {
                     final ok = await ConfirmDeleteDialog.show(
                       context,
                       title: 'Reset App',
-                      message: 'This will permanently delete ALL data (areas, streets, customers, orders, inventory, expenses). This cannot be undone!',
+                      message:
+                          'This will permanently delete ALL data (areas, streets, customers, orders, inventory, expenses). This cannot be undone!',
                       confirmLabel: 'Yes, Reset Everything',
                     );
                     if (!ok || !mounted) return;
                     await ref.read(settingsProvider.notifier).resetApp();
                     if (mounted) {
-                      SnackbarHelper.showSuccess(context, 'App data reset successfully');
+                      SnackbarHelper.showSuccess(
+                          context, 'App data reset successfully');
                     }
                   },
                 ),
@@ -579,31 +672,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               // ── Data Export & Exit Session (Worker only) ─────────
               if (isWorker) ...[
-                _sectionHeader(AppLocalization.translate(ref, 'data_export', 'Data Export'), Icons.cloud_upload_rounded),
+                _sectionHeader(
+                    AppLocalization.translate(
+                        ref, 'data_export', 'Data Export'),
+                    Icons.cloud_upload_rounded),
                 _card([
                   ListTile(
-                    leading: const Icon(Icons.backup_rounded, color: AppColors.primary),
-                    title: Text(AppLocalization.translate(ref, 'backup_report', 'Backup Report')),
-                    subtitle: Text(AppLocalization.translate(ref, 'backup_desc', 'Export Daily WorkerReport.orderkart')),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                    leading: const Icon(Icons.backup_rounded,
+                        color: AppColors.primary),
+                    title: Text(AppLocalization.translate(
+                        ref, 'backup_report', 'Backup Report')),
+                    subtitle: Text(AppLocalization.translate(ref, 'backup_desc',
+                        'Export Daily WorkerReport.orderkart')),
+                    trailing:
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                     onTap: () async {
                       Navigator.pushNamed(context, AppRoutes.workerSelfProfile);
                     },
                   ),
                 ]),
                 const SizedBox(height: 20),
-
-                _sectionHeader(AppLocalization.translate(ref, 'exit_session', 'Exit Session'), Icons.exit_to_app_rounded),
+                _sectionHeader(
+                    AppLocalization.translate(
+                        ref, 'exit_session', 'Exit Session'),
+                    Icons.exit_to_app_rounded),
                 _card([
                   ListTile(
-                    leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-                    title: Text(AppLocalization.translate(ref, 'logout', 'Logout Worker Session')),
-                    subtitle: Text(AppLocalization.translate(ref, 'logout_desc', 'End worker session and return to mode selection')),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                    leading: const Icon(Icons.logout_rounded,
+                        color: AppColors.error),
+                    title: Text(AppLocalization.translate(
+                        ref, 'logout', 'Logout Worker Session')),
+                    subtitle: Text(AppLocalization.translate(ref, 'logout_desc',
+                        'End worker session and return to mode selection')),
+                    trailing:
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                     onTap: () {
                       WorkerSession.instance.clear();
                       SnackbarHelper.showInfo(context, 'Worker logged out.');
-                      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.modeSelection, (r) => false);
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                          AppRoutes.modeSelection, (r) => false);
                     },
                   ),
                 ]),
@@ -621,7 +728,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: AppColors.cardShadow,
-                        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                        border: Border.all(
+                            color: AppColors.primary.withOpacity(0.2)),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(19),
@@ -690,12 +798,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _textTile(String label, TextEditingController con, IconData icon,
-      {TextInputType? keyboardType}) {
+      {TextInputType? keyboardType, int maxLines = 1}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: TextField(
         controller: con,
         keyboardType: keyboardType,
+        maxLines: maxLines,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),

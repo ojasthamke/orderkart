@@ -20,7 +20,7 @@ void main() {
         'export_timestamp': '2026-07-05T12:00:00Z',
       };
       const secret = 'test-owner-secret-key-1234567890';
-      
+
       final signature = SecurityHelper.signManifest(manifest, secret);
       expect(signature, isNotEmpty);
       expect(signature.length, equals(64)); // SHA-256 hex is 64 characters
@@ -32,14 +32,17 @@ void main() {
         'db_version': '4',
         'schema_version': '4',
         'export_timestamp': '2026-07-05T12:00:00Z',
-        'signature': '', // signature field exists but will be stripped during signing
+        'signature':
+            '', // signature field exists but will be stripped during signing
       };
       const secret = 'test-owner-secret-key-1234567890';
-      
-      final signature = SecurityHelper.signManifest(manifest, secret);
-      final manifestWithSig = Map<String, dynamic>.from(manifest)..['signature'] = signature;
 
-      final isValid = SecurityHelper.verifyManifest(manifestWithSig, signature, secret);
+      final signature = SecurityHelper.signManifest(manifest, secret);
+      final manifestWithSig = Map<String, dynamic>.from(manifest)
+        ..['signature'] = signature;
+
+      final isValid =
+          SecurityHelper.verifyManifest(manifestWithSig, signature, secret);
       expect(isValid, isTrue);
     });
 
@@ -51,11 +54,13 @@ void main() {
         'export_timestamp': '2026-07-05T12:00:00Z',
       };
       const secret = 'test-owner-secret-key-1234567890';
-      
-      final signature = SecurityHelper.signManifest(manifest, secret);
-      final tamperedManifest = Map<String, dynamic>.from(manifest)..['db_version'] = '5';
 
-      final isValid = SecurityHelper.verifyManifest(tamperedManifest, signature, secret);
+      final signature = SecurityHelper.signManifest(manifest, secret);
+      final tamperedManifest = Map<String, dynamic>.from(manifest)
+        ..['db_version'] = '5';
+
+      final isValid =
+          SecurityHelper.verifyManifest(tamperedManifest, signature, secret);
       expect(isValid, isFalse);
     });
 
@@ -67,9 +72,10 @@ void main() {
       };
       const secret = 'test-owner-secret-key-1234567890';
       const wrongSecret = 'wrong-secret-key';
-      
+
       final signature = SecurityHelper.signManifest(manifest, secret);
-      final isValid = SecurityHelper.verifyManifest(manifest, signature, wrongSecret);
+      final isValid =
+          SecurityHelper.verifyManifest(manifest, signature, wrongSecret);
       expect(isValid, isFalse);
     });
   });

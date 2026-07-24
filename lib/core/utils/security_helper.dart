@@ -49,17 +49,19 @@ class SecurityHelper {
 
   /// Signs a package manifest by calculating the HMAC-SHA256 signature of its JSON representation
   /// (excluding the signature field itself).
-  static String signManifest(Map<String, dynamic> manifestMap, String secretKey) {
+  static String signManifest(
+      Map<String, dynamic> manifestMap, String secretKey) {
     // Exclude 'signature' field if it exists
-    final cleanMap = Map<String, dynamic>.from(manifestMap)..remove('signature');
-    
+    final cleanMap = Map<String, dynamic>.from(manifestMap)
+      ..remove('signature');
+
     // Sort keys to ensure stable serialization order
     final sortedKeys = cleanMap.keys.toList()..sort();
     final sortedMap = {for (var k in sortedKeys) k: cleanMap[k]};
-    
+
     // Convert to canonical JSON string
     final canonicalJson = json.encode(sortedMap);
-    
+
     // Compute HMAC-SHA256
     final hmac = Hmac(sha256, utf8.encode(secretKey));
     final digest = hmac.convert(utf8.encode(canonicalJson));
@@ -68,7 +70,8 @@ class SecurityHelper {
 
   /// Verifies if a manifest's signature matches the re-computed HMAC-SHA256 signature
   /// using the provided secret key.
-  static bool verifyManifest(Map<String, dynamic> manifestMap, String signature, String secretKey) {
+  static bool verifyManifest(
+      Map<String, dynamic> manifestMap, String signature, String secretKey) {
     if (signature.isEmpty || secretKey.isEmpty) return false;
     final expectedSignature = signManifest(manifestMap, secretKey);
     // Constant-time comparison to prevent timing attacks
@@ -95,7 +98,7 @@ class SecurityHelper {
     final iv = enc.IV.fromSecureRandom(16);
     final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
     final encrypted = encrypter.encryptBytes(plainBytes, iv: iv);
-    
+
     final result = <int>[];
     result.addAll(iv.bytes);
     result.addAll(encrypted.bytes);
@@ -110,21 +113,24 @@ class SecurityHelper {
     }
     final keyBytes = sha256.convert(utf8.encode(secret)).bytes;
     final key = enc.Key(Uint8List.fromList(keyBytes));
-    
+
     final ivBytes = cipherBytes.sublist(0, 16);
     final encryptedDataBytes = cipherBytes.sublist(16);
-    
+
     final iv = enc.IV(Uint8List.fromList(ivBytes));
     final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
-    
-    return encrypter.decryptBytes(enc.Encrypted(Uint8List.fromList(encryptedDataBytes)), iv: iv);
+
+    return encrypter.decryptBytes(
+        enc.Encrypted(Uint8List.fromList(encryptedDataBytes)),
+        iv: iv);
   }
 
   /// Obfuscates a secret key to prevent plaintext storage in JSON/manifest files.
   static String obfuscateSecret(String secret) {
     if (secret.isEmpty) return '';
     try {
-      final keyBytes = sha256.convert(utf8.encode('orderkart_obfuscator_salt_12345')).bytes;
+      final keyBytes =
+          sha256.convert(utf8.encode('orderkart_obfuscator_salt_12345')).bytes;
       final key = enc.Key(Uint8List.fromList(keyBytes));
       final iv = enc.IV(Uint8List(16)); // Fixed IV for stable obfuscation
       final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));
@@ -138,7 +144,8 @@ class SecurityHelper {
   static String deobfuscateSecret(String obfuscated) {
     if (obfuscated.isEmpty) return '';
     try {
-      final keyBytes = sha256.convert(utf8.encode('orderkart_obfuscator_salt_12345')).bytes;
+      final keyBytes =
+          sha256.convert(utf8.encode('orderkart_obfuscator_salt_12345')).bytes;
       final key = enc.Key(Uint8List.fromList(keyBytes));
       final iv = enc.IV(Uint8List(16)); // Fixed IV for stable obfuscation
       final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc));

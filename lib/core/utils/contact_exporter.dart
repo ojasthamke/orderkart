@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../widgets/snackbar_helper.dart';
 import '../utils/haptics.dart';
 
-
 class ContactExporter {
   ContactExporter._();
 
@@ -20,7 +19,8 @@ class ContactExporter {
     final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
 
     if (cleanPhone.isEmpty) {
-      SnackbarHelper.showError(context, 'No valid phone number to save for $name');
+      SnackbarHelper.showError(
+          context, 'No valid phone number to save for $name');
       return;
     }
 

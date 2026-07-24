@@ -25,31 +25,31 @@ class AddEditItemScreen extends ConsumerStatefulWidget {
 }
 
 class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
-  final _formKey      = GlobalKey<FormState>();
-  final _nameCon      = TextEditingController();
-  final _costCon      = TextEditingController();
-  final _sellCon      = TextEditingController();
-  final _marketCon    = TextEditingController();
-  final _stockCon     = TextEditingController();
-  final _minStockCon  = TextEditingController();
-  final _barcodeCon   = TextEditingController();
-  final _sequenceCon  = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _nameCon = TextEditingController();
+  final _costCon = TextEditingController();
+  final _sellCon = TextEditingController();
+  final _marketCon = TextEditingController();
+  final _stockCon = TextEditingController();
+  final _minStockCon = TextEditingController();
+  final _barcodeCon = TextEditingController();
+  final _sequenceCon = TextEditingController();
 
   // New V6 fields
-  final _expiryCon     = TextEditingController();
-  final _batchCon      = TextEditingController();
-  final _dosageCon     = TextEditingController();
+  final _expiryCon = TextEditingController();
+  final _batchCon = TextEditingController();
+  final _dosageCon = TextEditingController();
   final _bestBeforeCon = TextEditingController();
-  final _packCon       = TextEditingController();
+  final _packCon = TextEditingController();
   final _weightPerPieceCon = TextEditingController(text: '0.25');
-  bool  _rxRequired    = false;
+  bool _rxRequired = false;
   String _photoPath = '';
   DateTime _createdAt = DateTime.now();
 
   String _category = AppConstants.catVegetables;
-  String _unit     = AppConstants.unitKg;
-  bool   _loading  = false;
-  bool   _isEdit   = false;
+  String _unit = AppConstants.unitKg;
+  bool _loading = false;
+  bool _isEdit = false;
 
   @override
   void initState() {
@@ -57,7 +57,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final mode = ref.read(appModeProvider).value;
       if (mode == AppMode.worker) {
-        SnackbarHelper.showError(context, 'Access Denied: Workers cannot manage items.');
+        SnackbarHelper.showError(
+            context, 'Access Denied: Workers cannot manage items.');
         Navigator.pop(context);
       }
     });
@@ -68,38 +69,48 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   }
 
   Future<void> _loadItem() async {
-    final item = await ref.read(inventoryRepositoryProvider).getItemById(widget.itemId!);
+    final item =
+        await ref.read(inventoryRepositoryProvider).getItemById(widget.itemId!);
     if (item != null && mounted) {
       setState(() {
-        _nameCon.text     = item.name;
-        _costCon.text     = item.costPrice.toString();
-        _sellCon.text     = item.sellingPrice.toString();
-        _marketCon.text   = item.marketPrice.toString();
-        _stockCon.text    = item.stock.toString();
+        _nameCon.text = item.name;
+        _costCon.text = item.costPrice.toString();
+        _sellCon.text = item.sellingPrice.toString();
+        _marketCon.text = item.marketPrice.toString();
+        _stockCon.text = item.stock.toString();
         _minStockCon.text = item.minStock.toString();
-        _barcodeCon.text  = item.barcode;
+        _barcodeCon.text = item.barcode;
         _sequenceCon.text = item.sequenceNo > 0 ? '${item.sequenceNo}' : '';
-        _category         = item.category;
-        _unit             = item.unit;
-        _expiryCon.text   = item.expiryDate;
-        _batchCon.text    = item.batchNumber;
-        _dosageCon.text   = item.dosageInfo;
+        _category = item.category;
+        _unit = item.unit;
+        _expiryCon.text = item.expiryDate;
+        _batchCon.text = item.batchNumber;
+        _dosageCon.text = item.dosageInfo;
         _bestBeforeCon.text = item.bestBefore;
-        _packCon.text     = item.packDate;
-        _rxRequired       = item.prescriptionRequired;
+        _packCon.text = item.packDate;
+        _rxRequired = item.prescriptionRequired;
         _weightPerPieceCon.text = item.weightPerPiece.toString();
-        _photoPath        = item.photoPath;
-        _createdAt        = item.createdAt;
+        _photoPath = item.photoPath;
+        _createdAt = item.createdAt;
       });
     }
   }
 
   @override
   void dispose() {
-    _nameCon.dispose(); _costCon.dispose(); _sellCon.dispose(); _marketCon.dispose();
-    _stockCon.dispose(); _minStockCon.dispose(); _barcodeCon.dispose(); _sequenceCon.dispose();
-    _expiryCon.dispose(); _batchCon.dispose(); _dosageCon.dispose();
-    _bestBeforeCon.dispose(); _packCon.dispose();
+    _nameCon.dispose();
+    _costCon.dispose();
+    _sellCon.dispose();
+    _marketCon.dispose();
+    _stockCon.dispose();
+    _minStockCon.dispose();
+    _barcodeCon.dispose();
+    _sequenceCon.dispose();
+    _expiryCon.dispose();
+    _batchCon.dispose();
+    _dosageCon.dispose();
+    _bestBeforeCon.dispose();
+    _packCon.dispose();
     _weightPerPieceCon.dispose();
     super.dispose();
   }
@@ -130,11 +141,13 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.primarySurface,
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.primaryLight, width: 2),
+                          border: Border.all(
+                              color: AppColors.primaryLight, width: 2),
                           image: _photoPath.isNotEmpty
                               ? DecorationImage(
                                   image: _photoPath.startsWith('http')
-                                      ? NetworkImage(_photoPath) as ImageProvider
+                                      ? NetworkImage(_photoPath)
+                                          as ImageProvider
                                       : FileImage(File(_photoPath)),
                                   fit: BoxFit.cover,
                                 )
@@ -149,10 +162,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                     const SizedBox(height: 8),
                     Text(
                       _photoPath.isEmpty ? 'Add Photo' : 'Change Photo',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -165,7 +177,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   labelText: 'Item Name *',
                   prefixIcon: Icon(Icons.inventory_2_rounded),
                 ),
-                validator: (v) => AppValidators.nameField(v, field: 'Item name'),
+                validator: (v) =>
+                    AppValidators.nameField(v, field: 'Item name'),
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 16),
@@ -176,12 +189,14 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Serial No. / Sequence No.',
                   prefixIcon: Icon(Icons.format_list_numbered_rounded),
-                  helperText: 'Used to arrange items in custom display order (1, 2, 3...)',
+                  helperText:
+                      'Used to arrange items in custom display order (1, 2, 3...)',
                 ),
                 validator: (v) {
                   if (v != null && v.trim().isNotEmpty) {
                     final val = int.tryParse(v.trim());
-                    if (val == null || val < 0) return 'Enter a valid positive integer';
+                    if (val == null || val < 0)
+                      return 'Enter a valid positive integer';
                   }
                   return null;
                 },
@@ -216,7 +231,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                           child: Text(
                             u,
                             style: TextStyle(
-                              color: Theme.of(context).brightness == Brightness.dark
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
                                   ? Colors.white
                                   : AppColors.textPrimary,
                             ),
@@ -227,19 +243,24 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               ),
               const SizedBox(height: 16),
 
-              if (_unit == AppConstants.unitKg || _unit == AppConstants.unitPiece) ...[
+              if (_unit == AppConstants.unitKg ||
+                  _unit == AppConstants.unitPiece) ...[
                 TextFormField(
                   controller: _weightPerPieceCon,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   decoration: const InputDecoration(
                     labelText: 'Weight per Piece (in kg)',
                     prefixIcon: Icon(Icons.fitness_center_rounded),
-                    helperText: 'Used to switch between kg and piece during checkout',
+                    helperText:
+                        'Used to switch between kg and piece during checkout',
                   ),
                   validator: (v) {
-                    if (v == null || v.isEmpty) return 'Enter conversion weight';
+                    if (v == null || v.isEmpty)
+                      return 'Enter conversion weight';
                     final val = double.tryParse(v);
-                    if (val == null || val <= 0) return 'Enter a valid positive number';
+                    if (val == null || val <= 0)
+                      return 'Enter a valid positive number';
                     return null;
                   },
                 ),
@@ -251,24 +272,28 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _costCon,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: 'Cost Price',
                         prefixText: '$currency ',
                       ),
-                      validator: (v) => AppValidators.positiveNumber(v, field: 'Cost price'),
+                      validator: (v) =>
+                          AppValidators.positiveNumber(v, field: 'Cost price'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
                       controller: _sellCon,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: 'Selling Price *',
                         prefixText: '$currency ',
                       ),
-                      validator: (v) => AppValidators.positiveNumber(v, field: 'Selling price'),
+                      validator: (v) => AppValidators.positiveNumber(v,
+                          field: 'Selling price'),
                     ),
                   ),
                 ],
@@ -278,12 +303,14 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               // Market Retail Price (for Customer Savings Calculation)
               TextFormField(
                 controller: _marketCon,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: 'Market Retail Price (MRP for Savings Calc)',
                   prefixText: '$currency ',
                   prefixIcon: const Icon(Icons.store_rounded),
-                  helperText: 'Used to calculate customer savings against market rates',
+                  helperText:
+                      'Used to calculate customer savings against market rates',
                 ),
               ),
               const SizedBox(height: 16),
@@ -294,7 +321,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 builder: (context, _) {
                   final cost = double.tryParse(_costCon.text.trim()) ?? 0.0;
                   final sell = double.tryParse(_sellCon.text.trim()) ?? 0.0;
-                  
+
                   if (cost <= 0 && sell <= 0) {
                     return const SizedBox.shrink();
                   }
@@ -312,7 +339,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.primary),
+                            const Icon(Icons.auto_awesome_rounded,
+                                size: 16, color: AppColors.primary),
                             const SizedBox(width: 6),
                             const Text(
                               'Smart Pricing Suggestions',
@@ -331,31 +359,43 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                           children: [
                             if (cost > 0) ...[
                               ActionChip(
-                                backgroundColor: AppColors.primary.withOpacity(0.18),
-                                side: const BorderSide(color: AppColors.primary),
-                                avatar: const Icon(Icons.trending_up_rounded, size: 14, color: AppColors.primary),
+                                backgroundColor:
+                                    AppColors.primary.withOpacity(0.18),
+                                side:
+                                    const BorderSide(color: AppColors.primary),
+                                avatar: const Icon(Icons.trending_up_rounded,
+                                    size: 14, color: AppColors.primary),
                                 label: Text(
                                   '⭐ 65% Markup ($currency${markupPrice.toStringAsFixed(2)})',
-                                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary),
                                 ),
                                 onPressed: () {
-                                  _sellCon.text = markupPrice.toStringAsFixed(2);
+                                  _sellCon.text =
+                                      markupPrice.toStringAsFixed(2);
                                 },
                               ),
                               ActionChip(
-                                avatar: const Icon(Icons.percent_rounded, size: 14),
-                                label: Text('65% Margin ($currency${marginPrice.toStringAsFixed(2)})'),
+                                avatar:
+                                    const Icon(Icons.percent_rounded, size: 14),
+                                label: Text(
+                                    '65% Margin ($currency${marginPrice.toStringAsFixed(2)})'),
                                 onPressed: () {
-                                  _sellCon.text = marginPrice.toStringAsFixed(2);
+                                  _sellCon.text =
+                                      marginPrice.toStringAsFixed(2);
                                 },
                               ),
                             ],
                             if (doubleMrpPrice > 0)
                               ActionChip(
-                                avatar: const Icon(Icons.double_arrow_rounded, size: 14),
-                                label: Text('Double MRP ($currency${doubleMrpPrice.toStringAsFixed(2)})'),
+                                avatar: const Icon(Icons.double_arrow_rounded,
+                                    size: 14),
+                                label: Text(
+                                    'Double MRP ($currency${doubleMrpPrice.toStringAsFixed(2)})'),
                                 onPressed: () {
-                                  _marketCon.text = doubleMrpPrice.toStringAsFixed(2);
+                                  _marketCon.text =
+                                      doubleMrpPrice.toStringAsFixed(2);
                                 },
                               ),
                           ],
@@ -371,7 +411,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _stockCon,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: const InputDecoration(
                         labelText: 'Current Stock',
                         prefixIcon: Icon(Icons.warehouse_rounded),
@@ -382,7 +423,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _minStockCon,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: const InputDecoration(
                         labelText: 'Min Stock (alert)',
                         prefixIcon: Icon(Icons.warning_amber_rounded),
@@ -413,7 +455,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   ),
                 ],
               ),
-              
+
               _buildCategorySpecificFields(),
               const SizedBox(height: 32),
 
@@ -487,7 +529,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     setState(() => _loading = true);
 
     try {
-      final now  = DateTime.now();
+      final now = DateTime.now();
       final itemId = widget.itemId ?? const Uuid().v4();
 
       String finalPhotoPath = _photoPath;
@@ -503,27 +545,33 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
       }
 
       final item = Item(
-        id:           itemId,
-        name:         _nameCon.text.trim(),
-        category:     _category,
-        costPrice:    double.tryParse(_costCon.text) ?? 0,
+        id: itemId,
+        name: _nameCon.text.trim(),
+        category: _category,
+        costPrice: double.tryParse(_costCon.text) ?? 0,
         sellingPrice: double.tryParse(_sellCon.text) ?? 0,
-        marketPrice:  double.tryParse(_marketCon.text) ?? 0,
-        stock:        double.tryParse(_stockCon.text) ?? 0,
-        minStock:     double.tryParse(_minStockCon.text) ?? 0,
-        unit:         _unit,
-        barcode:      _barcodeCon.text.trim(),
-        photoPath:    finalPhotoPath,
-        createdAt:    _isEdit ? _createdAt : now,
-        updatedAt:    now,
-        expiryDate:   _category == AppConstants.catMedicines ? _expiryCon.text : '',
-        batchNumber:  _category == AppConstants.catMedicines ? _batchCon.text.trim() : '',
-        prescriptionRequired: _category == AppConstants.catMedicines ? _rxRequired : false,
-        dosageInfo:   _category == AppConstants.catMedicines ? _dosageCon.text.trim() : '',
-        bestBefore:   _category == AppConstants.catGroceries ? _bestBeforeCon.text : '',
-        packDate:     _category == AppConstants.catGroceries ? _packCon.text : '',
+        marketPrice: double.tryParse(_marketCon.text) ?? 0,
+        stock: double.tryParse(_stockCon.text) ?? 0,
+        minStock: double.tryParse(_minStockCon.text) ?? 0,
+        unit: _unit,
+        barcode: _barcodeCon.text.trim(),
+        photoPath: finalPhotoPath,
+        createdAt: _isEdit ? _createdAt : now,
+        updatedAt: now,
+        expiryDate:
+            _category == AppConstants.catMedicines ? _expiryCon.text : '',
+        batchNumber:
+            _category == AppConstants.catMedicines ? _batchCon.text.trim() : '',
+        prescriptionRequired:
+            _category == AppConstants.catMedicines ? _rxRequired : false,
+        dosageInfo: _category == AppConstants.catMedicines
+            ? _dosageCon.text.trim()
+            : '',
+        bestBefore:
+            _category == AppConstants.catGroceries ? _bestBeforeCon.text : '',
+        packDate: _category == AppConstants.catGroceries ? _packCon.text : '',
         weightPerPiece: double.tryParse(_weightPerPieceCon.text) ?? 0.25,
-        sequenceNo:   int.tryParse(_sequenceCon.text.trim()) ?? 0,
+        sequenceNo: int.tryParse(_sequenceCon.text.trim()) ?? 0,
       );
 
       if (_isEdit) {
@@ -592,14 +640,16 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 lastDate: DateTime(2100),
               );
               if (date != null) {
-                setState(() => _expiryCon.text = date.toIso8601String().substring(0, 10));
+                setState(() =>
+                    _expiryCon.text = date.toIso8601String().substring(0, 10));
               }
             },
           ),
           const SizedBox(height: 16),
           SwitchListTile(
             title: const Text('Prescription Required (Rx)'),
-            subtitle: const Text('Require prescription verification at checkout'),
+            subtitle:
+                const Text('Require prescription verification at checkout'),
             value: _rxRequired,
             onChanged: (val) => setState(() => _rxRequired = val),
             activeColor: AppColors.primary,
@@ -637,7 +687,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 lastDate: DateTime(2100),
               );
               if (date != null) {
-                setState(() => _packCon.text = date.toIso8601String().substring(0, 10));
+                setState(() =>
+                    _packCon.text = date.toIso8601String().substring(0, 10));
               }
             },
           ),
@@ -653,13 +704,15 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               final date = await showDatePicker(
                 context: context,
                 initialDate: _bestBeforeCon.text.isNotEmpty
-                    ? (DateTime.tryParse(_bestBeforeCon.text) ?? DateTime.now().add(const Duration(days: 30)))
+                    ? (DateTime.tryParse(_bestBeforeCon.text) ??
+                        DateTime.now().add(const Duration(days: 30)))
                     : DateTime.now().add(const Duration(days: 30)),
                 firstDate: DateTime(2000),
                 lastDate: DateTime(2100),
               );
               if (date != null) {
-                setState(() => _bestBeforeCon.text = date.toIso8601String().substring(0, 10));
+                setState(() => _bestBeforeCon.text =
+                    date.toIso8601String().substring(0, 10));
               }
             },
           ),

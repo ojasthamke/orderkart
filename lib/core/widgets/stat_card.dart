@@ -61,7 +61,8 @@ class StatCard extends StatelessWidget {
                   children: [
                     if (trendText != null) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           color: (trendColor ?? color).withOpacity(0.12),
                           borderRadius: BorderRadius.circular(12),
@@ -110,7 +111,7 @@ class StatCard extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
             ),
-            if (subtitle != null) ...[  
+            if (subtitle != null) ...[
               const SizedBox(height: 4),
               Text(
                 subtitle!,

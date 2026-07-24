@@ -15,7 +15,7 @@ void main() {
   group('Hotspot Sync Service Tests', () {
     setUpAll(() async {
       DatabaseHelper.dbNameOverride = 'orderkart_test_hotspot.db';
-      
+
       // Clear any existing cached test database
       await DatabaseHelper.instance.close();
       final dbPath = await databaseFactory.getDatabasesPath();
@@ -23,7 +23,7 @@ void main() {
       await databaseFactory.deleteDatabase(path);
 
       final db = await DatabaseHelper.instance.database;
-      
+
       // Clean and seed a simple area
       await db.delete('areas');
       await db.insert('areas', {
@@ -40,7 +40,14 @@ void main() {
       final payload = await HotspotSyncService.compileSyncPayload(
         workerId: 'worker-1',
         workerName: 'Worker One',
-        modules: ['areas_streets', 'customers', 'orders_payments', 'products', 'expenses', 'photos'],
+        modules: [
+          'areas_streets',
+          'customers',
+          'orders_payments',
+          'products',
+          'expenses',
+          'photos'
+        ],
       );
       expect(payload, isNotEmpty);
 
@@ -67,7 +74,7 @@ void main() {
       expect(HotspotSyncService.isServerRunning, isTrue);
 
       final client = HttpClient();
-      
+
       final token = await HotspotSyncService.getSyncToken();
 
       // Test GET /handshake
@@ -83,7 +90,14 @@ void main() {
       final payload = await HotspotSyncService.compileSyncPayload(
         workerId: 'worker-1',
         workerName: 'Worker One',
-        modules: ['areas_streets', 'customers', 'orders_payments', 'products', 'expenses', 'photos'],
+        modules: [
+          'areas_streets',
+          'customers',
+          'orders_payments',
+          'products',
+          'expenses',
+          'photos'
+        ],
       );
       final syncReq = await client.post('127.0.0.1', 8292, '/sync');
       syncReq.headers.contentType = ContentType.json;

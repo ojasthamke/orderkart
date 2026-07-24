@@ -46,7 +46,8 @@ class OrderRepositoryImpl implements OrderRepository {
       _orderDao.getOrderPayments(orderId);
 
   double _convertQtyToBaseUnit(double qty, String itemUnit, Item dbItem) {
-    if (itemUnit.isEmpty || itemUnit.toLowerCase() == dbItem.unit.toLowerCase()) {
+    if (itemUnit.isEmpty ||
+        itemUnit.toLowerCase() == dbItem.unit.toLowerCase()) {
       return qty;
     }
     final conversion = dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
@@ -72,19 +73,24 @@ class OrderRepositoryImpl implements OrderRepository {
         final oldItems = await _orderDao.getOrderItems(order.id, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
-            final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
+            final dbItem =
+                await _itemDao.getItemById(oldItem.itemId, executor: txn);
             if (dbItem != null) {
-              final baseQty = _convertQtyToBaseUnit(oldItem.quantity, oldItem.itemUnit, dbItem);
-              await _itemDao.adjustStock(oldItem.itemId, baseQty, executor: txn);
-              await _itemDao.insertStockHistory(StockHistory(
-                id:           _uuid.v4(),
-                itemId:       oldItem.itemId,
-                itemName:     oldItem.itemName,
-                changeAmount: baseQty,
-                reason:       'order_edit_restore',
-                orderId:      order.id,
-                createdAt:    DateTime.now(),
-              ), executor: txn);
+              final baseQty = _convertQtyToBaseUnit(
+                  oldItem.quantity, oldItem.itemUnit, dbItem);
+              await _itemDao.adjustStock(oldItem.itemId, baseQty,
+                  executor: txn);
+              await _itemDao.insertStockHistory(
+                  StockHistory(
+                    id: _uuid.v4(),
+                    itemId: oldItem.itemId,
+                    itemName: oldItem.itemName,
+                    changeAmount: baseQty,
+                    reason: 'order_edit_restore',
+                    orderId: order.id,
+                    createdAt: DateTime.now(),
+                  ),
+                  executor: txn);
             }
           }
         }
@@ -97,22 +103,26 @@ class OrderRepositoryImpl implements OrderRepository {
       final orderId = await _orderDao.insertOrder(order, executor: txn);
 
       for (final item in items) {
-        await _orderDao.insertOrderItem(item.copyWith(orderId: orderId), executor: txn);
+        await _orderDao.insertOrderItem(item.copyWith(orderId: orderId),
+            executor: txn);
 
         if (item.itemId.isNotEmpty && order.deliveryStatus != 'cancelled') {
           final dbItem = await _itemDao.getItemById(item.itemId, executor: txn);
           if (dbItem != null) {
-            final baseQty = _convertQtyToBaseUnit(item.quantity, item.itemUnit, dbItem);
+            final baseQty =
+                _convertQtyToBaseUnit(item.quantity, item.itemUnit, dbItem);
             await _itemDao.adjustStock(item.itemId, -baseQty, executor: txn);
-            await _itemDao.insertStockHistory(StockHistory(
-              id:           _uuid.v4(),
-              itemId:       item.itemId,
-              itemName:     item.itemName,
-              changeAmount: -baseQty,
-              reason:       'order',
-              orderId:      orderId,
-              createdAt:    DateTime.now(),
-            ), executor: txn);
+            await _itemDao.insertStockHistory(
+                StockHistory(
+                  id: _uuid.v4(),
+                  itemId: item.itemId,
+                  itemName: item.itemName,
+                  changeAmount: -baseQty,
+                  reason: 'order',
+                  orderId: orderId,
+                  createdAt: DateTime.now(),
+                ),
+                executor: txn);
           }
         }
       }
@@ -140,27 +150,34 @@ class OrderRepositoryImpl implements OrderRepository {
         final oldItems = await _orderDao.getOrderItems(id, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
-            final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
+            final dbItem =
+                await _itemDao.getItemById(oldItem.itemId, executor: txn);
             if (dbItem != null) {
-              final baseQty = _convertQtyToBaseUnit(oldItem.quantity, oldItem.itemUnit, dbItem);
-              await _itemDao.adjustStock(oldItem.itemId, baseQty, executor: txn);
-              await _itemDao.insertStockHistory(StockHistory(
-                id:           _uuid.v4(),
-                itemId:       oldItem.itemId,
-                itemName:     oldItem.itemName,
-                changeAmount: baseQty,
-                reason:       'order_delete',
-                orderId:      id,
-                createdAt:    DateTime.now(),
-              ), executor: txn);
+              final baseQty = _convertQtyToBaseUnit(
+                  oldItem.quantity, oldItem.itemUnit, dbItem);
+              await _itemDao.adjustStock(oldItem.itemId, baseQty,
+                  executor: txn);
+              await _itemDao.insertStockHistory(
+                  StockHistory(
+                    id: _uuid.v4(),
+                    itemId: oldItem.itemId,
+                    itemName: oldItem.itemName,
+                    changeAmount: baseQty,
+                    reason: 'order_delete',
+                    orderId: id,
+                    createdAt: DateTime.now(),
+                  ),
+                  executor: txn);
             }
           }
         }
       }
-      await txn.delete('order_question_answers', where: 'order_id = ?', whereArgs: [id]);
+      await txn.delete('order_question_answers',
+          where: 'order_id = ?', whereArgs: [id]);
       await _orderDao.deleteOrder(id, executor: txn);
       if (order != null) {
-        await _customerDao.recalcCustomerTotals(order.customerId, executor: txn);
+        await _customerDao.recalcCustomerTotals(order.customerId,
+            executor: txn);
       }
     });
   }
@@ -176,24 +193,30 @@ class OrderRepositoryImpl implements OrderRepository {
         final oldItems = await _orderDao.getOrderItems(orderId, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
-            final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
+            final dbItem =
+                await _itemDao.getItemById(oldItem.itemId, executor: txn);
             if (dbItem != null) {
-              final baseQty = _convertQtyToBaseUnit(oldItem.quantity, oldItem.itemUnit, dbItem);
-              await _itemDao.adjustStock(oldItem.itemId, baseQty, executor: txn);
-              await _itemDao.insertStockHistory(StockHistory(
-                id:           _uuid.v4(),
-                itemId:       oldItem.itemId,
-                itemName:     oldItem.itemName,
-                changeAmount: baseQty,
-                reason:       'order_cancelled',
-                orderId:      orderId,
-                createdAt:    DateTime.now(),
-              ), executor: txn);
+              final baseQty = _convertQtyToBaseUnit(
+                  oldItem.quantity, oldItem.itemUnit, dbItem);
+              await _itemDao.adjustStock(oldItem.itemId, baseQty,
+                  executor: txn);
+              await _itemDao.insertStockHistory(
+                  StockHistory(
+                    id: _uuid.v4(),
+                    itemId: oldItem.itemId,
+                    itemName: oldItem.itemName,
+                    changeAmount: baseQty,
+                    reason: 'order_cancelled',
+                    orderId: orderId,
+                    createdAt: DateTime.now(),
+                  ),
+                  executor: txn);
             }
           }
         }
         // Void payments for the order
-        await txn.delete('payments', where: 'order_id = ?', whereArgs: [orderId]);
+        await txn
+            .delete('payments', where: 'order_id = ?', whereArgs: [orderId]);
         // Set order paid and remaining to 0
         await txn.update(
           'orders',
@@ -206,19 +229,24 @@ class OrderRepositoryImpl implements OrderRepository {
         final oldItems = await _orderDao.getOrderItems(orderId, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
-            final dbItem = await _itemDao.getItemById(oldItem.itemId, executor: txn);
+            final dbItem =
+                await _itemDao.getItemById(oldItem.itemId, executor: txn);
             if (dbItem != null) {
-              final baseQty = _convertQtyToBaseUnit(oldItem.quantity, oldItem.itemUnit, dbItem);
-              await _itemDao.adjustStock(oldItem.itemId, -baseQty, executor: txn);
-              await _itemDao.insertStockHistory(StockHistory(
-                id:           _uuid.v4(),
-                itemId:       oldItem.itemId,
-                itemName:     oldItem.itemName,
-                changeAmount: -baseQty,
-                reason:       'order_uncancelled',
-                orderId:      orderId,
-                createdAt:    DateTime.now(),
-              ), executor: txn);
+              final baseQty = _convertQtyToBaseUnit(
+                  oldItem.quantity, oldItem.itemUnit, dbItem);
+              await _itemDao.adjustStock(oldItem.itemId, -baseQty,
+                  executor: txn);
+              await _itemDao.insertStockHistory(
+                  StockHistory(
+                    id: _uuid.v4(),
+                    itemId: oldItem.itemId,
+                    itemName: oldItem.itemName,
+                    changeAmount: -baseQty,
+                    reason: 'order_uncancelled',
+                    orderId: orderId,
+                    createdAt: DateTime.now(),
+                  ),
+                  executor: txn);
             }
           }
         }
@@ -241,22 +269,32 @@ class OrderRepositoryImpl implements OrderRepository {
     final db = await DatabaseHelper.instance.database;
     await db.transaction((txn) async {
       await _orderDao.insertPayment(payment, executor: txn);
-      final allPayments = await _orderDao.getOrderPayments(payment.orderId, executor: txn);
-      final order = await _orderDao.getOrderById(payment.orderId, executor: txn);
+      final allPayments =
+          await _orderDao.getOrderPayments(payment.orderId, executor: txn);
+      final order =
+          await _orderDao.getOrderById(payment.orderId, executor: txn);
       if (order != null) {
-        final totalPaid = allPayments.fold<double>(0, (sum, p) => sum + p.amount);
-        final remaining = (order.grandTotal - totalPaid).clamp(0, double.infinity);
+        final totalPaid =
+            allPayments.fold<double>(0, (sum, p) => sum + p.amount);
+        final remaining =
+            (order.grandTotal - totalPaid).clamp(0, double.infinity);
         await _orderDao.updateOrderPayment(
-            payment.orderId, totalPaid, remaining.toDouble(), executor: txn);
-        await _customerDao.recalcCustomerTotals(payment.customerId, executor: txn);
+            payment.orderId, totalPaid, remaining.toDouble(),
+            executor: txn);
+        await _customerDao.recalcCustomerTotals(payment.customerId,
+            executor: txn);
       }
     });
   }
 
   @override
   Future<void> updateOrderPayment(
-      String orderId, double paidAmount, double remainingAmount) =>
+          String orderId, double paidAmount, double remainingAmount) =>
       _orderDao.updateOrderPayment(orderId, paidAmount, remainingAmount);
+
+  @override
+  Future<Map<String, dynamic>> updateOrderRates(String orderId) =>
+      _orderDao.updateOrderRates(orderId);
 
   @override
   Future<Map<String, dynamic>> getAnalyticsSummary() =>

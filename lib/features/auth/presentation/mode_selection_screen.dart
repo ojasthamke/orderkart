@@ -16,7 +16,8 @@ class ModeSelectionScreen extends ConsumerStatefulWidget {
   const ModeSelectionScreen({super.key});
 
   @override
-  ConsumerState<ModeSelectionScreen> createState() => _ModeSelectionScreenState();
+  ConsumerState<ModeSelectionScreen> createState() =>
+      _ModeSelectionScreenState();
 }
 
 class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
@@ -57,9 +58,11 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.verified_user_rounded, color: AppColors.primary, size: 26),
+            Icon(Icons.verified_user_rounded,
+                color: AppColors.primary, size: 26),
             SizedBox(width: 10),
-            Text('Owner Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            Text('Owner Activation',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           ],
         ),
         content: SingleChildScrollView(
@@ -76,7 +79,10 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                 controller: _activationCodeCon,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
-                style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 2, fontSize: 18),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2,
+                    fontSize: 18),
                 decoration: const InputDecoration(
                   hintText: 'Enter Code',
                   border: OutlineInputBorder(),
@@ -93,7 +99,8 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final ok = await AppModeService.validateActivationCode(_activationCodeCon.text);
+              final ok = await AppModeService.validateActivationCode(
+                  _activationCodeCon.text);
               if (ok) {
                 if (ctx.mounted) Navigator.pop(ctx);
                 _showOwnerPinCreationDialog();
@@ -123,7 +130,8 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
           children: [
             Icon(Icons.lock_rounded, color: AppColors.primary, size: 26),
             SizedBox(width: 10),
-            Text('Create Owner PIN', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            Text('Create Owner PIN',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           ],
         ),
         content: SingleChildScrollView(
@@ -141,7 +149,10 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                 keyboardType: TextInputType.number,
                 obscureText: true,
                 maxLength: 6,
-                style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 4, fontSize: 18),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 4,
+                    fontSize: 18),
                 decoration: const InputDecoration(
                   hintText: 'Enter 6-Digit PIN',
                   border: OutlineInputBorder(),
@@ -154,7 +165,10 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                 keyboardType: TextInputType.number,
                 obscureText: true,
                 maxLength: 6,
-                style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 4, fontSize: 18),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 4,
+                    fontSize: 18),
                 decoration: const InputDecoration(
                   hintText: 'Confirm PIN',
                   border: OutlineInputBorder(),
@@ -174,7 +188,8 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
               final pin = _pinCon.text.trim();
               final confirm = _confirmPinCon.text.trim();
               if (pin.length != 6 || !RegExp(r'^\d+$').hasMatch(pin)) {
-                SnackbarHelper.showError(context, 'PIN must be exactly 6 digits');
+                SnackbarHelper.showError(
+                    context, 'PIN must be exactly 6 digits');
                 return;
               }
               if (pin != confirm) {
@@ -216,8 +231,6 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
     }
   }
 
-
-
   Future<void> _importOwnerProvisioningZip() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -232,17 +245,17 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
       final validation = await PackageValidator.validatePackage(filePath);
       if (!validation.isValid) {
         if (mounted) {
-          SnackbarHelper.showError(context, 'Invalid Package: ${validation.errorMessage}');
+          SnackbarHelper.showError(
+              context, 'Invalid Package: ${validation.errorMessage}');
         }
         setState(() => _loading = false);
         return;
       }
 
-
-
       final extractedDbPath = validation.dbPath;
       if (extractedDbPath.isEmpty || !File(extractedDbPath).existsSync()) {
-        if (mounted) SnackbarHelper.showError(context, 'No database found in package');
+        if (mounted)
+          SnackbarHelper.showError(context, 'No database found in package');
         setState(() => _loading = false);
         return;
       }
@@ -253,20 +266,24 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
       );
 
       final workerId = validation.manifest['generated_by_worker_id'] as String?;
-      final workerName = validation.manifest['generated_by_worker_name'] as String? ?? 'Worker';
+      final workerName =
+          validation.manifest['generated_by_worker_name'] as String? ??
+              'Worker';
       if (workerId != null) {
-        await WorkerSession.instance.setWorker(workerId, workerName: workerName);
-        
+        await WorkerSession.instance
+            .setWorker(workerId, workerName: workerName);
+
         // Force verification of passcode on initial login/provisioning
         if (mounted) {
           final unlocked = await Navigator.of(context).pushNamed(
-            AppRoutes.workerPasscodeLock,
-            arguments: {
-              'workerId': workerId,
-              'workerName': workerName,
-              'forceLogoutOnCancel': true,
-            },
-          ) as bool? ?? false;
+                AppRoutes.workerPasscodeLock,
+                arguments: {
+                  'workerId': workerId,
+                  'workerName': workerName,
+                  'forceLogoutOnCancel': true,
+                },
+              ) as bool? ??
+              false;
 
           if (!unlocked) {
             await WorkerSession.instance.clear();
@@ -293,7 +310,8 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
         ),
       );
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Provisioning import failed: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Provisioning import failed: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -324,17 +342,22 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                             color: AppColors.primarySurface,
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 36),
+                          child: const Icon(Icons.storefront_rounded,
+                              color: AppColors.primary, size: 36),
                         ),
                         const SizedBox(height: 20),
                         const Text(
                           'Welcome to OrderKart',
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                          style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary),
                         ),
                         const SizedBox(height: 8),
                         const Text(
                           'Select Application Mode for this device:',
-                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                          style: TextStyle(
+                              fontSize: 14, color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 32),
 
@@ -342,7 +365,8 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                         _buildModeOption(
                           mode: AppMode.owner,
                           title: 'Owner Mode (Master)',
-                          subtitle: 'Full Business Access, Inventory Control, Reports, PIN Security & Worker Assignments.',
+                          subtitle:
+                              'Full Business Access, Inventory Control, Reports, PIN Security & Worker Assignments.',
                           icon: Icons.admin_panel_settings_rounded,
                           color: AppColors.primary,
                         ),
@@ -350,7 +374,8 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                         _buildModeOption(
                           mode: AppMode.worker,
                           title: 'Worker Mode (Child)',
-                          subtitle: 'Assigned Areas, Create Orders, Collect Payments, Track Earnings & Offline Sync.',
+                          subtitle:
+                              'Assigned Areas, Create Orders, Collect Payments, Track Earnings & Offline Sync.',
                           icon: Icons.badge_rounded,
                           color: const Color(0xFF0EA5E9),
                         ),
@@ -365,13 +390,19 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                             onPressed: _loading ? null : _proceed,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
                             ),
                             child: _loading
-                                ? const CircularProgressIndicator(color: Colors.white)
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white)
                                 : Text(
-                                    _selectedMode == AppMode.owner ? 'Continue as Owner' : 'Continue as Worker',
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                    _selectedMode == AppMode.owner
+                                        ? 'Continue as Owner'
+                                        : 'Continue as Worker',
+                                    style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800),
                                   ),
                           ),
                         ),
@@ -381,14 +412,20 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
-                            onPressed: _loading ? null : _importOwnerProvisioningZip,
-                            icon: const Icon(Icons.download_for_offline_rounded, color: Color(0xFF0284C7)),
-                            label: const Text('Apply Owner Provisioning ZIP (.orderkart)',
-                                style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0284C7))),
+                            onPressed:
+                                _loading ? null : _importOwnerProvisioningZip,
+                            icon: const Icon(Icons.download_for_offline_rounded,
+                                color: Color(0xFF0284C7)),
+                            label: const Text(
+                                'Apply Owner Provisioning ZIP (.orderkart)',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF0284C7))),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               side: const BorderSide(color: Color(0xFF0284C7)),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
                             ),
                           ),
                         ),
@@ -424,7 +461,12 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
-              ? [BoxShadow(color: color.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))]
+              ? [
+                  BoxShadow(
+                      color: color.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4))
+                ]
               : AppColors.cardShadow,
         ),
         child: Row(
@@ -454,13 +496,18 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.3),
                   ),
                 ],
               ),
             ),
             Icon(
-              isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+              isSelected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
               color: isSelected ? color : AppColors.gray400,
               size: 24,
             ),

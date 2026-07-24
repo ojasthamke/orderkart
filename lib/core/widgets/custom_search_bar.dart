@@ -68,7 +68,8 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
                   onPressed: _clear,
                 ),
               IconButton(
-                icon: const Icon(Icons.mic_rounded, color: AppColors.primary, size: 20),
+                icon: const Icon(Icons.mic_rounded,
+                    color: AppColors.primary, size: 20),
                 onPressed: () async {
                   final text = await VoiceSearchDialog.show(context);
                   if (text != null && text.trim().isNotEmpty) {

@@ -19,7 +19,8 @@ class ScaleOnTap extends StatefulWidget {
   State<ScaleOnTap> createState() => _ScaleOnTapState();
 }
 
-class _ScaleOnTapState extends State<ScaleOnTap> with SingleTickerProviderStateMixin {
+class _ScaleOnTapState extends State<ScaleOnTap>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -31,7 +32,8 @@ class _ScaleOnTapState extends State<ScaleOnTap> with SingleTickerProviderStateM
       duration: const Duration(milliseconds: 100),
       reverseDuration: const Duration(milliseconds: 150),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleFactor).animate(
+    _scaleAnimation =
+        Tween<double>(begin: 1.0, end: widget.scaleFactor).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
   }

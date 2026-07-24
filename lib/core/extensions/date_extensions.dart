@@ -9,7 +9,9 @@ extension DateTimeExtensions on DateTime {
 
   bool get isYesterday {
     final yesterday = DateTime.now().subtract(const Duration(days: 1));
-    return year == yesterday.year && month == yesterday.month && day == yesterday.day;
+    return year == yesterday.year &&
+        month == yesterday.month &&
+        day == yesterday.day;
   }
 
   bool get isThisWeek {
@@ -24,7 +26,8 @@ extension DateTimeExtensions on DateTime {
   }
 
   /// Returns date-only string for grouping: '2024-01-15'
-  String get dateKey => '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+  String get dateKey =>
+      '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
 
   /// Start of day
   DateTime get startOfDay => DateTime(year, month, day);

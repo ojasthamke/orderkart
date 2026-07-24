@@ -54,8 +54,9 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
         children: [
           CustomSearchBar(
             hint: 'Search streets...',
-            onChanged: (q) =>
-                ref.read(streetProviderFamily(widget.areaId).notifier).search(q),
+            onChanged: (q) => ref
+                .read(streetProviderFamily(widget.areaId).notifier)
+                .search(q),
           ),
 
           // Dynamic Material 3 Filter Chips Row
@@ -109,9 +110,19 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                 var streets = rawStreets;
                 if (!isWorker) {
                   if (_filterMode == 'owner') {
-                    streets = rawStreets.where((s) => s.createdBy.toLowerCase() == 'owner' || (s.createdBy.isEmpty && s.assignedWorkerId.isEmpty)).toList();
+                    streets = rawStreets
+                        .where((s) =>
+                            s.createdBy.toLowerCase() == 'owner' ||
+                            (s.createdBy.isEmpty && s.assignedWorkerId.isEmpty))
+                        .toList();
                   } else if (_filterMode != 'all') {
-                    streets = rawStreets.where((s) => s.assignedWorkerId == _filterMode || s.createdBy == _filterMode || s.workerName.toLowerCase() == _filterMode.toLowerCase()).toList();
+                    streets = rawStreets
+                        .where((s) =>
+                            s.assignedWorkerId == _filterMode ||
+                            s.createdBy == _filterMode ||
+                            s.workerName.toLowerCase() ==
+                                _filterMode.toLowerCase())
+                        .toList();
                   }
                 }
 
@@ -119,7 +130,9 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                   return EmptyStateWidget(
                     icon: Icons.turn_slight_right_rounded,
                     title: 'No Streets Found',
-                    subtitle: _filterMode == 'all' ? 'Add streets to organise your customers' : 'No streets match the selected filter',
+                    subtitle: _filterMode == 'all'
+                        ? 'Add streets to organise your customers'
+                        : 'No streets match the selected filter',
                     actionLabel: 'Add Street',
                     onAction: () => _showAddEdit(context, null),
                   );
@@ -135,11 +148,11 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                       onTap: () => Navigator.of(context).pushNamed(
                         AppRoutes.customers,
                         arguments: {
-                          'streetId':   st.id,
+                          'streetId': st.id,
                           'streetName': st.name,
                         },
                       ),
-                      onEdit:   () => _showAddEdit(context, st),
+                      onEdit: () => _showAddEdit(context, st),
                       onDelete: () => _confirmDelete(context, st),
                     );
                   },
@@ -153,11 +166,11 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
   }
 
   void _showAddEdit(BuildContext context, Street? street) {
-    final nameCon     = TextEditingController(text: street?.name ?? '');
-    final descCon     = TextEditingController(text: street?.description ?? '');
+    final nameCon = TextEditingController(text: street?.name ?? '');
+    final descCon = TextEditingController(text: street?.description ?? '');
     final locationCon = TextEditingController(text: street?.mapsLocation ?? '');
-    String photoPath  = street?.photoPath ?? '';
-    final formKey     = GlobalKey<FormState>();
+    String photoPath = street?.photoPath ?? '';
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -182,19 +195,23 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                               ListTile(
                                 leading: const Icon(Icons.camera_alt_rounded),
                                 title: const Text('Take a Photo'),
-                                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                                onTap: () =>
+                                    Navigator.pop(ctx, ImageSource.camera),
                               ),
                               ListTile(
-                                leading: const Icon(Icons.photo_library_rounded),
+                                leading:
+                                    const Icon(Icons.photo_library_rounded),
                                 title: const Text('Choose from Gallery'),
-                                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                                onTap: () =>
+                                    Navigator.pop(ctx, ImageSource.gallery),
                               ),
                             ],
                           ),
                         ),
                       );
                       if (source != null) {
-                        final file = await ImageUtils.pickAndCompress(source: source);
+                        final file =
+                            await ImageUtils.pickAndCompress(source: source);
                         if (file != null) {
                           setDlgState(() => photoPath = file.path);
                         }
@@ -207,20 +224,28 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
                         color: AppColors.gray100,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.gray300),
-                        image: (photoPath.isNotEmpty && File(photoPath).existsSync())
-                            ? DecorationImage(image: FileImage(File(photoPath)), fit: BoxFit.cover)
+                        image: (photoPath.isNotEmpty &&
+                                File(photoPath).existsSync())
+                            ? DecorationImage(
+                                image: FileImage(File(photoPath)),
+                                fit: BoxFit.cover)
                             : null,
                       ),
-                      child: (photoPath.isEmpty || !File(photoPath).existsSync())
-                          ? const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_a_photo_rounded, color: AppColors.gray500, size: 24),
-                                SizedBox(height: 2),
-                                Text('Photo', style: TextStyle(fontSize: 10, color: AppColors.gray600)),
-                              ],
-                            )
-                          : null,
+                      child:
+                          (photoPath.isEmpty || !File(photoPath).existsSync())
+                              ? const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_a_photo_rounded,
+                                        color: AppColors.gray500, size: 24),
+                                    SizedBox(height: 2),
+                                    Text('Photo',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: AppColors.gray600)),
+                                  ],
+                                )
+                              : null,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -289,22 +314,22 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
 
                 if (street == null) {
                   await notifier.add(Street(
-                    id:           streetId,
-                    areaId:       widget.areaId,
-                    name:         nameCon.text.trim(),
-                    description:  descCon.text.trim(),
-                    photoPath:    finalPhotoPath,
+                    id: streetId,
+                    areaId: widget.areaId,
+                    name: nameCon.text.trim(),
+                    description: descCon.text.trim(),
+                    photoPath: finalPhotoPath,
                     mapsLocation: locationCon.text.trim(),
-                    createdAt:    now,
+                    createdAt: now,
                   ));
                   if (mounted) {
                     SnackbarHelper.showSuccess(context, 'Street added');
                   }
                 } else {
                   await notifier.update(street.copyWith(
-                    name:         nameCon.text.trim(),
-                    description:  descCon.text.trim(),
-                    photoPath:    finalPhotoPath,
+                    name: nameCon.text.trim(),
+                    description: descCon.text.trim(),
+                    photoPath: finalPhotoPath,
                     mapsLocation: locationCon.text.trim(),
                   ));
                   if (mounted) {
@@ -324,10 +349,13 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
     final ok = await ConfirmDeleteDialog.show(
       context,
       title: 'Delete Street',
-      message: 'Delete "${street.name}"? This will unassign all customers inside it.',
+      message:
+          'Delete "${street.name}"? This will unassign all customers inside it.',
     );
     if (!ok || !mounted) return;
-    await ref.read(streetProviderFamily(widget.areaId).notifier).delete(street.id);
+    await ref
+        .read(streetProviderFamily(widget.areaId).notifier)
+        .delete(street.id);
     if (!mounted) return;
     SnackbarHelper.showSuccess(context, '"${street.name}" deleted');
   }
@@ -362,9 +390,12 @@ class _StreetTile extends StatelessWidget {
               // Photo or Icon Avatar
               GestureDetector(
                 onTap: () {
-                  final resolvedFile = AppConstants.resolveFile(street.photoPath);
-                  if (street.photoPath.isNotEmpty && resolvedFile.existsSync()) {
-                    FullScreenImageViewer.show(context, resolvedFile.path, title: street.name);
+                  final resolvedFile =
+                      AppConstants.resolveFile(street.photoPath);
+                  if (street.photoPath.isNotEmpty &&
+                      resolvedFile.existsSync()) {
+                    FullScreenImageViewer.show(context, resolvedFile.path,
+                        title: street.name);
                   }
                 },
                 child: Container(
@@ -373,12 +404,20 @@ class _StreetTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.primarySurface,
                     borderRadius: BorderRadius.circular(12),
-                    image: (street.photoPath.isNotEmpty && AppConstants.resolveFile(street.photoPath).existsSync())
-                        ? DecorationImage(image: FileImage(AppConstants.resolveFile(street.photoPath)), fit: BoxFit.cover)
+                    image: (street.photoPath.isNotEmpty &&
+                            AppConstants.resolveFile(street.photoPath)
+                                .existsSync())
+                        ? DecorationImage(
+                            image: FileImage(
+                                AppConstants.resolveFile(street.photoPath)),
+                            fit: BoxFit.cover)
                         : null,
                   ),
-                  child: (street.photoPath.isEmpty || !AppConstants.resolveFile(street.photoPath).existsSync())
-                      ? const Icon(Icons.turn_slight_right_rounded, color: AppColors.primary, size: 24)
+                  child: (street.photoPath.isEmpty ||
+                          !AppConstants.resolveFile(street.photoPath)
+                              .existsSync())
+                      ? const Icon(Icons.turn_slight_right_rounded,
+                          color: AppColors.primary, size: 24)
                       : null,
                 ),
               ),
@@ -393,7 +432,10 @@ class _StreetTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             street.name,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
                       ],
@@ -402,7 +444,10 @@ class _StreetTile extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         street.description,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: AppColors.textSecondary),
                       ),
                     ],
                     const SizedBox(height: 6),
@@ -411,14 +456,18 @@ class _StreetTile extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             '${street.customerCount} customers',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary),
                           ),
                         ),
                         if (street.mapsLocation.isNotEmpty)
@@ -426,17 +475,21 @@ class _StreetTile extends StatelessWidget {
                             onTap: () async {
                               final loc = street.mapsLocation.trim();
                               Uri uri;
-                              if (loc.startsWith('http://') || loc.startsWith('https://')) {
+                              if (loc.startsWith('http://') ||
+                                  loc.startsWith('https://')) {
                                 uri = Uri.parse(loc);
                               } else {
-                                uri = Uri.parse('https://maps.google.com/?q=${Uri.encodeComponent(loc)}');
+                                uri = Uri.parse(
+                                    'https://maps.google.com/?q=${Uri.encodeComponent(loc)}');
                               }
                               if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                await launchUrl(uri,
+                                    mode: LaunchMode.externalApplication);
                               }
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: Colors.deepOrange.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(6),
@@ -444,9 +497,14 @@ class _StreetTile extends StatelessWidget {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.location_on_rounded, size: 12, color: Colors.deepOrange),
+                                  Icon(Icons.location_on_rounded,
+                                      size: 12, color: Colors.deepOrange),
                                   SizedBox(width: 4),
-                                  Text('📍 Location', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.deepOrange)),
+                                  Text('📍 Location',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.deepOrange)),
                                 ],
                               ),
                             ),
@@ -457,13 +515,14 @@ class _StreetTile extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded, color: AppColors.gray500),
+                icon: const Icon(Icons.more_vert_rounded,
+                    color: AppColors.gray500),
                 onSelected: (v) {
-                  if (v == 'edit')   onEdit();
+                  if (v == 'edit') onEdit();
                   if (v == 'delete') onDelete();
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'edit',   child: Text('Edit')),
+                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
                   const PopupMenuItem(
                     value: 'delete',
                     child: Text('Delete', style: TextStyle(color: Colors.red)),

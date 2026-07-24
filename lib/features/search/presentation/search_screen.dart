@@ -23,12 +23,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   String _currentFilter = 'all';
 
   final _filters = [
-    {'label': 'All',       'value': 'all'},
+    {'label': 'All', 'value': 'all'},
     {'label': 'Customers', 'value': 'customer'},
-    {'label': 'Items',     'value': 'item'},
-    {'label': 'Orders',    'value': 'order'},
-    {'label': 'Areas',     'value': 'area'},
-    {'label': 'Streets',   'value': 'street'},
+    {'label': 'Items', 'value': 'item'},
+    {'label': 'Orders', 'value': 'order'},
+    {'label': 'Areas', 'value': 'area'},
+    {'label': 'Streets', 'value': 'street'},
   ];
 
   @override
@@ -54,37 +54,43 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               itemBuilder: (_, i) {
                 final f = _filters[i];
                 final selected = f['value'] == _currentFilter;
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
-                    return GestureDetector(
-                      onTap: () => setState(() => _currentFilter = f['value']!),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.primary.withOpacity(0.3)
-                              : (isDark ? Colors.white.withOpacity(0.08) : AppColors.gray100),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: selected
-                                ? AppColors.primary
-                                : (isDark ? Colors.white.withOpacity(0.1) : Colors.transparent),
-                          ),
-                        ),
-                        child: Text(
-                          f['label']!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: selected
-                                ? Colors.white
-                                : (isDark ? Colors.white70 : AppColors.textSecondary),
-                          ),
-                        ),
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                return GestureDetector(
+                  onTap: () => setState(() => _currentFilter = f['value']!),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: const EdgeInsets.only(right: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.primary.withOpacity(0.3)
+                          : (isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : AppColors.gray100),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primary
+                            : (isDark
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.transparent),
                       ),
-                    );
+                    ),
+                    child: Text(
+                      f['label']!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: selected
+                            ? Colors.white
+                            : (isDark
+                                ? Colors.white70
+                                : AppColors.textSecondary),
+                      ),
+                    ),
+                  ),
+                );
               },
             ),
           ),
@@ -98,7 +104,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (results) {
                 final filtered = results.where((r) {
-                  return _currentFilter == 'all' || r.type.name == _currentFilter;
+                  return _currentFilter == 'all' ||
+                      r.type.name == _currentFilter;
                 }).toList();
 
                 if (filtered.isEmpty) {
@@ -152,7 +159,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         Navigator.of(context).pushNamed(
           AppRoutes.streets,
           arguments: {
-            'areaId':   res.id,
+            'areaId': res.id,
             'areaName': res.title,
           },
         );
@@ -161,7 +168,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         Navigator.of(context).pushNamed(
           AppRoutes.customers,
           arguments: {
-            'streetId':   res.id,
+            'streetId': res.id,
             'streetName': res.title,
           },
         );
@@ -183,23 +190,35 @@ class _SearchResultTile extends ConsumerWidget {
 
   IconData get _icon {
     switch (result.type) {
-      case SearchResultType.customer: return Icons.person_rounded;
-      case SearchResultType.item:     return Icons.inventory_2_rounded;
-      case SearchResultType.order:    return Icons.receipt_long_rounded;
-      case SearchResultType.area:     return Icons.map_rounded;
-      case SearchResultType.street:   return Icons.turn_slight_right_rounded;
-      case SearchResultType.expense:  return Icons.money_off_rounded;
+      case SearchResultType.customer:
+        return Icons.person_rounded;
+      case SearchResultType.item:
+        return Icons.inventory_2_rounded;
+      case SearchResultType.order:
+        return Icons.receipt_long_rounded;
+      case SearchResultType.area:
+        return Icons.map_rounded;
+      case SearchResultType.street:
+        return Icons.turn_slight_right_rounded;
+      case SearchResultType.expense:
+        return Icons.money_off_rounded;
     }
   }
 
   Color get _color {
     switch (result.type) {
-      case SearchResultType.customer: return AppColors.primary;
-      case SearchResultType.item:     return AppColors.success;
-      case SearchResultType.order:    return AppColors.warning;
-      case SearchResultType.area:     return Colors.deepPurple;
-      case SearchResultType.street:   return Colors.teal;
-      case SearchResultType.expense:  return AppColors.error;
+      case SearchResultType.customer:
+        return AppColors.primary;
+      case SearchResultType.item:
+        return AppColors.success;
+      case SearchResultType.order:
+        return AppColors.warning;
+      case SearchResultType.area:
+        return Colors.deepPurple;
+      case SearchResultType.street:
+        return Colors.teal;
+      case SearchResultType.expense:
+        return AppColors.error;
     }
   }
 
@@ -232,7 +251,8 @@ class _SearchResultTile extends ConsumerWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        error: (_, __) => const VipGlowAvatar(photoPath: '', isVip: false, radius: 19),
+        error: (_, __) =>
+            const VipGlowAvatar(photoPath: '', isVip: false, radius: 19),
       );
     }
 
@@ -254,7 +274,8 @@ class _SearchResultTile extends ConsumerWidget {
           result.subtitle,
           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
-        trailing: const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.gray400),
+        trailing: const Icon(Icons.chevron_right_rounded,
+            size: 16, color: AppColors.gray400),
       ),
     );
   }

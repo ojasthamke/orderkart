@@ -21,7 +21,7 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   String _topCustomersSort = 'purchase'; // 'purchase', 'orders', 'pending'
-  String _chartRange = 'weekly';         // 'weekly', 'monthly'
+  String _chartRange = 'weekly'; // 'weekly', 'monthly'
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +36,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         IconButton(
           icon: const Icon(Icons.calculate_rounded),
           tooltip: 'Profit & Loss Statement',
-          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.profitLoss),
+          onPressed: () =>
+              Navigator.of(context).pushNamed(AppRoutes.profitLoss),
         ),
         IconButton(
           icon: const Icon(Icons.trending_down_rounded),
@@ -49,21 +50,23 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         error: (e, _) => Center(child: Text('Error loading stats: $e')),
         data: (summary) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          final cardColor = isDark ? const Color(0xFF1E293B).withOpacity(0.55) : Colors.white;
-          final borderColor = isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200;
+          final cardColor =
+              isDark ? const Color(0xFF1E293B).withOpacity(0.55) : Colors.white;
+          final borderColor =
+              isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200;
 
-          final double todaySales      = summary['today_sales'] ?? 0;
-          final double monthlySales    = summary['monthly_sales'] ?? 0;
+          final double todaySales = summary['today_sales'] ?? 0;
+          final double monthlySales = summary['monthly_sales'] ?? 0;
           final double pendingPayments = summary['pending_payments'] ?? 0;
-          final double totalExpenses   = summary['total_expenses'] ?? 0;
-          final double cashReceived    = summary['cash_received'] ?? 0;
-          final double onlineReceived  = summary['online_received'] ?? 0;
-          final int    orderCount      = summary['order_count'] ?? 0;
-          final int    deliveredCount  = summary['delivered_count'] ?? 0;
-          final int    pendingCount    = summary['pending_count'] ?? 0;
-          final int    cancelledCount  = summary['cancelled_count'] ?? 0;
-          final double allTimeSales    = summary['all_time_sales'] ?? 0;
-          final double deliveryFees    = summary['delivery_fees'] ?? 0;
+          final double totalExpenses = summary['total_expenses'] ?? 0;
+          final double cashReceived = summary['cash_received'] ?? 0;
+          final double onlineReceived = summary['online_received'] ?? 0;
+          final int orderCount = summary['order_count'] ?? 0;
+          final int deliveredCount = summary['delivered_count'] ?? 0;
+          final int pendingCount = summary['pending_count'] ?? 0;
+          final int cancelledCount = summary['cancelled_count'] ?? 0;
+          final double allTimeSales = summary['all_time_sales'] ?? 0;
+          final double deliveryFees = summary['delivery_fees'] ?? 0;
 
           final topItems = summary['top_items'] as List<dynamic>? ?? [];
 
@@ -84,9 +87,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: 2,
-                    childAspectRatio: MediaQuery.textScalerOf(context).scale(1.0) > 1.4
-                        ? 0.85
-                        : (MediaQuery.textScalerOf(context).scale(1.0) > 1.1 ? 1.00 : 1.15),
+                    childAspectRatio:
+                        MediaQuery.textScalerOf(context).scale(1.0) > 1.4
+                            ? 0.85
+                            : (MediaQuery.textScalerOf(context).scale(1.0) > 1.1
+                                ? 1.00
+                                : 1.15),
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                     children: [
@@ -119,8 +125,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         value: AppFormatters.currency(pendingPayments),
                         icon: Icons.pending_actions_rounded,
                         color: AppColors.warning,
-                        trendText: pendingPayments > 0 ? 'Action Needed' : 'Clear ✓',
-                        trendColor: pendingPayments > 0 ? AppColors.warning : AppColors.success,
+                        trendText:
+                            pendingPayments > 0 ? 'Action Needed' : 'Clear ✓',
+                        trendColor: pendingPayments > 0
+                            ? AppColors.warning
+                            : AppColors.success,
                       ),
                     ],
                   ),
@@ -128,10 +137,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   // ── Worker Performance Banner ────────────────────────
                   Builder(builder: (ctx) {
                     final isDark = Theme.of(ctx).brightness == Brightness.dark;
-                    final bannerColor = isDark ? AppColors.primary.withOpacity(0.20) : AppColors.primary.withOpacity(0.08);
-                    final bannerBorder = isDark ? AppColors.primary.withOpacity(0.40) : AppColors.primary.withOpacity(0.20);
+                    final bannerColor = isDark
+                        ? AppColors.primary.withOpacity(0.20)
+                        : AppColors.primary.withOpacity(0.08);
+                    final bannerBorder = isDark
+                        ? AppColors.primary.withOpacity(0.40)
+                        : AppColors.primary.withOpacity(0.20);
                     final textColor = isDark ? Colors.white : AppColors.primary;
-                    final secTextColor = isDark ? Colors.white70 : AppColors.textSecondary;
+                    final secTextColor =
+                        isDark ? Colors.white70 : AppColors.textSecondary;
 
                     return GlassContainer(
                       margin: const EdgeInsets.only(top: 16),
@@ -147,7 +161,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                               color: AppColors.primary.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Icon(Icons.badge_rounded, color: AppColors.primary, size: 28),
+                            child: Icon(Icons.badge_rounded,
+                                color: AppColors.primary, size: 28),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
@@ -155,21 +170,29 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('Worker Analytics & Leaderboard',
-                                    style: TextStyle(fontWeight: FontWeight.w800, color: textColor, fontSize: 15)),
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: textColor,
+                                        fontSize: 15)),
                                 const SizedBox(height: 2),
-                                Text('Track collections, commissions & sales per worker',
-                                    style: TextStyle(fontSize: 11, color: secTextColor)),
+                                Text(
+                                    'Track collections, commissions & sales per worker',
+                                    style: TextStyle(
+                                        fontSize: 11, color: secTextColor)),
                               ],
                             ),
                           ),
                           ElevatedButton(
-                            onPressed: () => Navigator.of(context).pushNamed(AppRoutes.workerAnalytics),
+                            onPressed: () => Navigator.of(context)
+                                .pushNamed(AppRoutes.workerAnalytics),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
-                            child: const Text('View', style: TextStyle(fontWeight: FontWeight.w800)),
+                            child: const Text('View',
+                                style: TextStyle(fontWeight: FontWeight.w800)),
                           ),
                         ],
                       ),
@@ -183,7 +206,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        _chartRange == 'weekly' ? 'Sales Trend (Last 7 Days)' : 'Sales Trend (Last 6 Months)',
+                        _chartRange == 'weekly'
+                            ? 'Sales Trend (Last 7 Days)'
+                            : 'Sales Trend (Last 6 Months)',
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
@@ -219,12 +244,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: borderColor),
                     ),
-                    child: (_chartRange == 'weekly' ? weeklySalesAsync : monthlySalesAsync).when(
-                      loading: () => const Center(child: CircularProgressIndicator()),
+                    child: (_chartRange == 'weekly'
+                            ? weeklySalesAsync
+                            : monthlySalesAsync)
+                        .when(
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
                       error: (e, _) => Center(child: Text('Chart error: $e')),
                       data: (chartData) => chartData.isEmpty
                           ? const Center(child: Text('Not enough sales data'))
-                          : _buildLineChart(chartData, isMonthly: _chartRange == 'monthly'),
+                          : _buildLineChart(chartData,
+                              isMonthly: _chartRange == 'monthly'),
                     ),
                   ),
 
@@ -287,17 +317,27 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     ),
                     child: Column(
                       children: [
-                        _detailRow('All-Time Sales', AppFormatters.currency(allTimeSales)),
+                        _detailRow('All-Time Sales',
+                            AppFormatters.currency(allTimeSales)),
                         const Divider(height: 24),
-                        _detailRow('Average Order Value (AOV)', 
-                            AppFormatters.currency(orderCount > 0 ? (allTimeSales / orderCount) : 0)),
+                        _detailRow(
+                            'Average Order Value (AOV)',
+                            AppFormatters.currency(orderCount > 0
+                                ? (allTimeSales / orderCount)
+                                : 0)),
                         const Divider(height: 24),
-                        _detailRow('Delivery Charges Collected', AppFormatters.currency(deliveryFees)),
+                        _detailRow('Delivery Charges Collected',
+                            AppFormatters.currency(deliveryFees)),
                         const Divider(height: 24),
-                        _detailRow('Net Cashflow (Payments - Expenses)', 
-                            AppFormatters.currency(cashReceived + onlineReceived - totalExpenses),
-                            valueColor: (cashReceived + onlineReceived - totalExpenses) >= 0 
-                                ? AppColors.success 
+                        _detailRow(
+                            'Net Cashflow (Payments - Expenses)',
+                            AppFormatters.currency(
+                                cashReceived + onlineReceived - totalExpenses),
+                            valueColor: (cashReceived +
+                                        onlineReceived -
+                                        totalExpenses) >=
+                                    0
+                                ? AppColors.success
                                 : AppColors.error),
                       ],
                     ),
@@ -382,12 +422,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: topItems.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
                             itemBuilder: (_, i) {
                               final it = topItems[i];
                               final String name = it['item_name'] ?? '';
-                              final double revenue = (it['revenue'] as num?)?.toDouble() ?? 0;
-                              final double qty = (it['qty'] as num?)?.toDouble() ?? 0;
+                              final double revenue =
+                                  (it['revenue'] as num?)?.toDouble() ?? 0;
+                              final double qty =
+                                  (it['qty'] as num?)?.toDouble() ?? 0;
 
                               return ListTile(
                                 leading: CircleAvatar(
@@ -429,7 +472,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         label: const Text('Purchase'),
                         selected: _topCustomersSort == 'purchase',
                         onSelected: (val) {
-                          if (val) setState(() => _topCustomersSort = 'purchase');
+                          if (val)
+                            setState(() => _topCustomersSort = 'purchase');
                         },
                       ),
                       const SizedBox(width: 8),
@@ -445,7 +489,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         label: const Text('Pending'),
                         selected: _topCustomersSort == 'pending',
                         onSelected: (val) {
-                          if (val) setState(() => _topCustomersSort = 'pending');
+                          if (val)
+                            setState(() => _topCustomersSort = 'pending');
                         },
                       ),
                     ],
@@ -465,7 +510,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       ),
                       error: (err, _) => Padding(
                         padding: const EdgeInsets.all(24),
-                        child: Center(child: Text('Error loading customers: $err')),
+                        child: Center(
+                            child: Text('Error loading customers: $err')),
                       ),
                       data: (list) {
                         if (list.isEmpty) {
@@ -476,19 +522,24 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         }
 
                         // Sort the list based on selection
-                        final sortedList = List<Map<String, dynamic>>.from(list);
+                        final sortedList =
+                            List<Map<String, dynamic>>.from(list);
                         sortedList.sort((a, b) {
                           if (_topCustomersSort == 'orders') {
                             final int valA = a['total_orders'] ?? 0;
                             final int valB = b['total_orders'] ?? 0;
                             return valB.compareTo(valA);
                           } else if (_topCustomersSort == 'pending') {
-                            final double valA = (a['pending_amount'] as num?)?.toDouble() ?? 0;
-                            final double valB = (b['pending_amount'] as num?)?.toDouble() ?? 0;
+                            final double valA =
+                                (a['pending_amount'] as num?)?.toDouble() ?? 0;
+                            final double valB =
+                                (b['pending_amount'] as num?)?.toDouble() ?? 0;
                             return valB.compareTo(valA);
                           } else {
-                            final double valA = (a['total_purchase'] as num?)?.toDouble() ?? 0;
-                            final double valB = (b['total_purchase'] as num?)?.toDouble() ?? 0;
+                            final double valA =
+                                (a['total_purchase'] as num?)?.toDouble() ?? 0;
+                            final double valB =
+                                (b['total_purchase'] as num?)?.toDouble() ?? 0;
                             return valB.compareTo(valA);
                           }
                         });
@@ -503,17 +554,25 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                             final String name = cust['name'] ?? 'Unknown';
                             final String photo = cust['photo_path'] ?? '';
                             final int orders = cust['total_orders'] ?? 0;
-                            final double purchase = (cust['total_purchase'] as num?)?.toDouble() ?? 0;
-                            final double paid = (cust['total_paid'] as num?)?.toDouble() ?? 0;
-                            final double pending = (cust['pending_amount'] as num?)?.toDouble() ?? 0;
-                            final String lastOrder = cust['last_order_date'] ?? '';
+                            final double purchase =
+                                (cust['total_purchase'] as num?)?.toDouble() ??
+                                    0;
+                            final double paid =
+                                (cust['total_paid'] as num?)?.toDouble() ?? 0;
+                            final double pending =
+                                (cust['pending_amount'] as num?)?.toDouble() ??
+                                    0;
+                            final String lastOrder =
+                                cust['last_order_date'] ?? '';
 
                             return ListTile(
                               leading: CustomerAvatar(
                                 photoPath: photo,
                                 radius: 22,
                               ),
-                              title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                              title: Text(name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700)),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -526,15 +585,22 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                     'Paid: ${AppFormatters.currency(paid)}  •  Pending: ${AppFormatters.currency(pending)}',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      fontWeight: pending > 0 ? FontWeight.w600 : FontWeight.normal,
-                                      color: pending > 0 ? AppColors.error : AppColors.textSecondaryColor(context),
+                                      fontWeight: pending > 0
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                      color: pending > 0
+                                          ? AppColors.error
+                                          : AppColors.textSecondaryColor(
+                                              context),
                                     ),
                                   ),
                                   if (lastOrder.isNotEmpty) ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       'Last Order: ${AppFormatters.dateFromString(lastOrder)}',
-                                      style: const TextStyle(fontSize: 10, color: AppColors.textHint),
+                                      style: const TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.textHint),
                                     ),
                                   ]
                                 ],
@@ -560,16 +626,25 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
                   ref.watch(stockSummaryProvider).when(
                         loading: () => const LoadingShimmer(count: 2),
-                        error: (err, _) => Text('Error loading stock report: $err'),
+                        error: (err, _) =>
+                            Text('Error loading stock report: $err'),
                         data: (stockData) {
                           final int totalItems = stockData['total_items'] ?? 0;
-                          final int outCount = stockData['out_of_stock_count'] ?? 0;
-                          final int lowCount = stockData['low_stock_count'] ?? 0;
+                          final int outCount =
+                              stockData['out_of_stock_count'] ?? 0;
+                          final int lowCount =
+                              stockData['low_stock_count'] ?? 0;
                           final double costVal = stockData['cost_value'] ?? 0.0;
-                          final double sellVal = stockData['selling_value'] ?? 0.0;
-                          final double profitVal = stockData['potential_profit'] ?? 0.0;
-                          final outList = stockData['out_of_stock_items'] as List<dynamic>? ?? [];
-                          final lowList = stockData['low_stock_items'] as List<dynamic>? ?? [];
+                          final double sellVal =
+                              stockData['selling_value'] ?? 0.0;
+                          final double profitVal =
+                              stockData['potential_profit'] ?? 0.0;
+                          final outList = stockData['out_of_stock_items']
+                                  as List<dynamic>? ??
+                              [];
+                          final lowList =
+                              stockData['low_stock_items'] as List<dynamic>? ??
+                                  [];
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -581,9 +656,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: AppColors.error.withOpacity(0.08),
+                                        color:
+                                            AppColors.error.withOpacity(0.08),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: AppColors.error.withOpacity(0.2)),
+                                        border: Border.all(
+                                            color: AppColors.error
+                                                .withOpacity(0.2)),
                                       ),
                                       child: Column(
                                         children: [
@@ -611,9 +689,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: AppColors.warning.withOpacity(0.08),
+                                        color:
+                                            AppColors.warning.withOpacity(0.08),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: AppColors.warning.withOpacity(0.2)),
+                                        border: Border.all(
+                                            color: AppColors.warning
+                                                .withOpacity(0.2)),
                                       ),
                                       child: Column(
                                         children: [
@@ -641,9 +722,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withOpacity(0.08),
+                                        color:
+                                            AppColors.primary.withOpacity(0.08),
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                                        border: Border.all(
+                                            color: AppColors.primary
+                                                .withOpacity(0.2)),
                                       ),
                                       child: Column(
                                         children: [
@@ -680,12 +764,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                 ),
                                 child: Column(
                                   children: [
-                                    _detailRow('Inventory Cost Value', AppFormatters.currency(costVal)),
+                                    _detailRow('Inventory Cost Value',
+                                        AppFormatters.currency(costVal)),
                                     const Divider(height: 20),
-                                    _detailRow('Retail Selling Value', AppFormatters.currency(sellVal),
+                                    _detailRow('Retail Selling Value',
+                                        AppFormatters.currency(sellVal),
                                         valueColor: AppColors.primary),
                                     const Divider(height: 20),
-                                    _detailRow('Potential Profit Margin', AppFormatters.currency(profitVal),
+                                    _detailRow('Potential Profit Margin',
+                                        AppFormatters.currency(profitVal),
                                         valueColor: AppColors.success),
                                   ],
                                 ),
@@ -696,40 +783,53 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                 Text(
                                   '❌ Out of Stock Items Alert (${outList.length})',
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w700, color: AppColors.error),
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.error),
                                 ),
                                 const SizedBox(height: 8),
                                 Builder(builder: (ctx) {
-                                   final isDark = Theme.of(ctx).brightness == Brightness.dark;
-                                   return GlassContainer(
-                                     borderRadius: BorderRadius.circular(12),
-                                     padding: EdgeInsets.zero,
-                                     color: isDark ? AppColors.error.withOpacity(0.12) : AppColors.error.withOpacity(0.04),
-                                     borderColor: isDark ? AppColors.error.withOpacity(0.3) : AppColors.error.withOpacity(0.2),
-                                  child: ListView.separated(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: outList.length,
-                                    separatorBuilder: (_, __) => const Divider(height: 1),
-                                    itemBuilder: (_, idx) {
-                                      final item = outList[idx];
-                                      return ListTile(
-                                        dense: true,
-                                        leading: const Icon(Icons.error_outline_rounded,
-                                            color: AppColors.error, size: 20),
-                                        title: Text(item.name,
-                                            style: const TextStyle(fontWeight: FontWeight.w700)),
-                                        subtitle: Text('${item.category} • Unit: ${item.unit}'),
-                                        trailing: const Text(
-                                          '0 in stock',
-                                          style: TextStyle(
-                                              color: AppColors.error, fontWeight: FontWeight.w800),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              }),
+                                  final isDark = Theme.of(ctx).brightness ==
+                                      Brightness.dark;
+                                  return GlassContainer(
+                                    borderRadius: BorderRadius.circular(12),
+                                    padding: EdgeInsets.zero,
+                                    color: isDark
+                                        ? AppColors.error.withOpacity(0.12)
+                                        : AppColors.error.withOpacity(0.04),
+                                    borderColor: isDark
+                                        ? AppColors.error.withOpacity(0.3)
+                                        : AppColors.error.withOpacity(0.2),
+                                    child: ListView.separated(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      itemCount: outList.length,
+                                      separatorBuilder: (_, __) =>
+                                          const Divider(height: 1),
+                                      itemBuilder: (_, idx) {
+                                        final item = outList[idx];
+                                        return ListTile(
+                                          dense: true,
+                                          leading: const Icon(
+                                              Icons.error_outline_rounded,
+                                              color: AppColors.error,
+                                              size: 20),
+                                          title: Text(item.name,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.w700)),
+                                          subtitle: Text(
+                                              '${item.category} • Unit: ${item.unit}'),
+                                          trailing: const Text(
+                                            '0 in stock',
+                                            style: TextStyle(
+                                                color: AppColors.error,
+                                                fontWeight: FontWeight.w800),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }),
                               ],
 
                               if (lowList.isNotEmpty) ...[
@@ -737,41 +837,53 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                 Text(
                                   '⚠️ Low Stock Items Warning (${lowList.length})',
                                   style: const TextStyle(
-                                      fontWeight: FontWeight.w700, color: AppColors.warning),
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.warning),
                                 ),
                                 const SizedBox(height: 8),
-                                 Builder(builder: (ctx) {
-                                   final isDark = Theme.of(ctx).brightness == Brightness.dark;
-                                   return GlassContainer(
-                                     borderRadius: BorderRadius.circular(12),
-                                     padding: EdgeInsets.zero,
-                                     color: isDark ? AppColors.warning.withOpacity(0.12) : AppColors.warning.withOpacity(0.04),
-                                     borderColor: isDark ? AppColors.warning.withOpacity(0.3) : AppColors.warning.withOpacity(0.2),
-                                  child: ListView.separated(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: lowList.length,
-                                    separatorBuilder: (_, __) => const Divider(height: 1),
-                                    itemBuilder: (_, idx) {
-                                      final item = lowList[idx];
-                                      return ListTile(
-                                        dense: true,
-                                        leading: const Icon(Icons.warning_amber_rounded,
-                                            color: AppColors.warning, size: 20),
-                                        title: Text(item.name,
-                                            style: const TextStyle(fontWeight: FontWeight.w700)),
-                                        subtitle: Text(
-                                            'Min Threshold: ${AppFormatters.quantity(item.minStock)} ${item.unit}'),
-                                        trailing: Text(
-                                          '${AppFormatters.quantity(item.stock)} left',
-                                          style: const TextStyle(
-                                              color: AppColors.warning, fontWeight: FontWeight.w800),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              }),
+                                Builder(builder: (ctx) {
+                                  final isDark = Theme.of(ctx).brightness ==
+                                      Brightness.dark;
+                                  return GlassContainer(
+                                    borderRadius: BorderRadius.circular(12),
+                                    padding: EdgeInsets.zero,
+                                    color: isDark
+                                        ? AppColors.warning.withOpacity(0.12)
+                                        : AppColors.warning.withOpacity(0.04),
+                                    borderColor: isDark
+                                        ? AppColors.warning.withOpacity(0.3)
+                                        : AppColors.warning.withOpacity(0.2),
+                                    child: ListView.separated(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      itemCount: lowList.length,
+                                      separatorBuilder: (_, __) =>
+                                          const Divider(height: 1),
+                                      itemBuilder: (_, idx) {
+                                        final item = lowList[idx];
+                                        return ListTile(
+                                          dense: true,
+                                          leading: const Icon(
+                                              Icons.warning_amber_rounded,
+                                              color: AppColors.warning,
+                                              size: 20),
+                                          title: Text(item.name,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.w700)),
+                                          subtitle: Text(
+                                              'Min Threshold: ${AppFormatters.quantity(item.minStock)} ${item.unit}'),
+                                          trailing: Text(
+                                            '${AppFormatters.quantity(item.stock)} left',
+                                            style: const TextStyle(
+                                                color: AppColors.warning,
+                                                fontWeight: FontWeight.w800),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }),
                               ],
                             ],
                           );
@@ -788,34 +900,43 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildLineChart(List<Map<String, dynamic>> data, {bool isMonthly = false}) {
+  Widget _buildLineChart(List<Map<String, dynamic>> data,
+      {bool isMonthly = false}) {
     final List<FlSpot> spots = [];
     final List<String> labels = [];
 
     for (int i = 0; i < data.length; i++) {
       final total = (data[i]['total'] as num?)?.toDouble() ?? 0.0;
-      final String day = isMonthly ? (data[i]['month'] ?? '') : (data[i]['day'] ?? '');
+      final String day =
+          isMonthly ? (data[i]['month'] ?? '') : (data[i]['day'] ?? '');
       spots.add(FlSpot(i.toDouble(), total));
-      labels.add(day.length >= 7 && !isMonthly ? day.substring(5) : day); // MM-DD or YYYY-MM
+      labels.add(day.length >= 7 && !isMonthly
+          ? day.substring(5)
+          : day); // MM-DD or YYYY-MM
     }
 
     return LineChart(
       LineChartData(
         gridData: const FlGridData(show: false),
         titlesData: FlTitlesData(
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (val, meta) {
                 final int index = val.toInt();
-                if (index < 0 || index >= labels.length) return const SizedBox.shrink();
+                if (index < 0 || index >= labels.length)
+                  return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     labels[index],
-                    style: TextStyle(fontSize: 10, color: AppColors.textSecondaryColor(context)),
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondaryColor(context)),
                   ),
                 );
               },
@@ -847,7 +968,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondaryColor(context)),
+          style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondaryColor(context)),
         ),
         Text(
           value,
@@ -874,7 +997,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             Text(
               total > 0 && amount > 0
                   ? '${label.contains('Orders') ? amount.toInt() : AppFormatters.currency(amount)} (${(pct * 100).toStringAsFixed(0)}%)'
-                  : (label.contains('Orders') ? '${amount.toInt()}' : AppFormatters.currency(amount)),
+                  : (label.contains('Orders')
+                      ? '${amount.toInt()}'
+                      : AppFormatters.currency(amount)),
               style: TextStyle(fontWeight: FontWeight.w700, color: color),
             ),
           ],

@@ -80,7 +80,8 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
       final matchesQuery = _searchQuery.isEmpty ||
           item.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           item.subtitle.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesCat = _selectedCategory == null || item.category == _selectedCategory;
+      final matchesCat =
+          _selectedCategory == null || item.category == _selectedCategory;
       return matchesQuery && matchesCat;
     }).toList();
   }
@@ -127,12 +128,14 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
                         color: AppColors.primarySurface,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.check_box_outlined, color: AppColors.primary, size: 20),
+                      child: const Icon(Icons.check_box_outlined,
+                          color: AppColors.primary, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Text(
                       widget.title,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 16),
                     ),
                   ],
                 ),
@@ -149,8 +152,10 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
                 hintText: 'Search ${widget.title.replaceAll('Assign ', '')}...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.gray500),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                prefixIcon: const Icon(Icons.search_rounded,
+                    size: 18, color: AppColors.gray500),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 filled: true,
                 fillColor: AppColors.gray100,
                 border: OutlineInputBorder(
@@ -171,7 +176,8 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
                     FilterChip(
                       selected: _selectedCategory == null,
                       label: const Text('All'),
-                      onSelected: (_) => setState(() => _selectedCategory = null),
+                      onSelected: (_) =>
+                          setState(() => _selectedCategory = null),
                       selectedColor: AppColors.primarySurface,
                       checkmarkColor: AppColors.primary,
                     ),
@@ -182,7 +188,8 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
                         child: FilterChip(
                           selected: _selectedCategory == cat,
                           label: Text(cat),
-                          onSelected: (sel) => setState(() => _selectedCategory = sel ? cat : null),
+                          onSelected: (sel) => setState(
+                              () => _selectedCategory = sel ? cat : null),
                           selectedColor: AppColors.primarySurface,
                           checkmarkColor: AppColors.primary,
                         ),
@@ -199,7 +206,8 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.primarySurface,
                     borderRadius: BorderRadius.circular(12),
@@ -218,12 +226,14 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
                     TextButton.icon(
                       onPressed: _selectAll,
                       icon: const Icon(Icons.select_all_rounded, size: 16),
-                      label: const Text('Select All', style: TextStyle(fontSize: 12)),
+                      label: const Text('Select All',
+                          style: TextStyle(fontSize: 12)),
                     ),
                     TextButton.icon(
                       onPressed: _deselectAll,
                       icon: const Icon(Icons.deselect_rounded, size: 16),
-                      label: const Text('Clear', style: TextStyle(fontSize: 12, color: Colors.red)),
+                      label: const Text('Clear',
+                          style: TextStyle(fontSize: 12, color: Colors.red)),
                     ),
                   ],
                 ),
@@ -237,12 +247,14 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
                   ? const Center(
                       child: Text(
                         'No matching records found.',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13),
                       ),
                     )
                   : ListView.separated(
                       itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, indent: 56),
                       itemBuilder: (ctx, index) {
                         final item = filtered[index];
                         final isSelected = _selectedIds.contains(item.id);
@@ -253,29 +265,37 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
                           title: Text(
                             item.title,
                             style: TextStyle(
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
                               fontSize: 14,
                             ),
                           ),
                           subtitle: item.subtitle.isNotEmpty
                               ? Text(
                                   item.subtitle,
-                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary),
                                 )
                               : null,
-                          secondary: item.category != null && item.category!.isNotEmpty
-                              ? Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.gray200,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    item.category!,
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                                  ),
-                                )
-                              : null,
+                          secondary:
+                              item.category != null && item.category!.isNotEmpty
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.gray200,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        item.category!,
+                                        style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700),
+                                      ),
+                                    )
+                                  : null,
                           onChanged: (val) {
                             AppHaptics.buttonClick();
                             setState(() {
@@ -313,9 +333,11 @@ class _WorkerAssignmentDialogState extends State<WorkerAssignmentDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: Text('Save ${widget.title.replaceAll('Assign ', '')}'),
+                    child:
+                        Text('Save ${widget.title.replaceAll('Assign ', '')}'),
                   ),
                 ),
               ],

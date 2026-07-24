@@ -87,7 +87,8 @@ class InAppNotificationBanner extends StatefulWidget {
   }
 
   @override
-  State<InAppNotificationBanner> createState() => _InAppNotificationBannerState();
+  State<InAppNotificationBanner> createState() =>
+      _InAppNotificationBannerState();
 }
 
 class _InAppNotificationBannerState extends State<InAppNotificationBanner>
@@ -222,9 +223,10 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner>
                           widget.body,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white70
-                                : AppColors.textSecondary,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white70
+                                    : AppColors.textSecondary,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

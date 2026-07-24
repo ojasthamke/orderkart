@@ -18,7 +18,8 @@ class ChurnRiskScreen extends ConsumerStatefulWidget {
   ConsumerState<ChurnRiskScreen> createState() => _ChurnRiskScreenState();
 }
 
-class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTickerProviderStateMixin {
+class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<Map<String, dynamic>> _allProfiles = [];
   bool _isLoading = true;
@@ -103,8 +104,10 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
         // Calculate a reasonable flat discount amount based on average order value
         final double ltv = (r['lifetime_value'] as num?)?.toDouble() ?? 0.0;
         final int orders = (r['order_count'] as num?)?.toInt() ?? 0;
-        final double aov = orders > 0 ? (ltv / orders) : 500.0; // fallback to 500
-        final double promoAmount = (aov * (recommendedDiscountPct / 100)).clamp(20.0, 500.0);
+        final double aov =
+            orders > 0 ? (ltv / orders) : 500.0; // fallback to 500
+        final double promoAmount =
+            (aov * (recommendedDiscountPct / 100)).clamp(20.0, 500.0);
 
         processed.add({
           'id': r['id'],
@@ -124,7 +127,8 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
       }
 
       // Sort by risk days descending
-      processed.sort((a, b) => (b['days_since'] as int).compareTo(a['days_since'] as int));
+      processed.sort(
+          (a, b) => (b['days_since'] as int).compareTo(a['days_since'] as int));
 
       if (mounted) {
         setState(() {
@@ -142,30 +146,30 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
   void _shareWhatsAppPromo(Map<String, dynamic> customer) async {
     final phone = customer['phone'] as String;
     if (phone.isEmpty) {
-      SnackbarHelper.showError(context, 'No phone number registered for this customer');
+      SnackbarHelper.showError(
+          context, 'No phone number registered for this customer');
       return;
     }
 
-    final String missingTag = customer['days_since'] == 999 
-        ? "to try our fresh products" 
+    final String missingTag = customer['days_since'] == 999
+        ? "to try our fresh products"
         : "since you last ordered (${customer['days_since']} days ago)";
 
-    final text = Uri.encodeComponent(
-      "Hello ${customer['name']}!\n\n"
-      "We miss having you around at OrderKart $missingTag. "
-      "Here is a special retention promo of ₹${(customer['promo_amount'] as double).toStringAsFixed(0)} off "
-      "on your next purchase with us!\n\n"
-      "Reply back to place your order now! 🛒"
-    );
+    final text = Uri.encodeComponent("Hello ${customer['name']}!\n\n"
+        "We miss having you around at OrderKart $missingTag. "
+        "Here is a special retention promo of ₹${(customer['promo_amount'] as double).toStringAsFixed(0)} off "
+        "on your next purchase with us!\n\n"
+        "Reply back to place your order now! 🛒");
 
     final urlStr = "https://wa.me/$phone?text=$text";
     final url = Uri.parse(urlStr);
-    
+
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
       if (mounted) {
-        SnackbarHelper.showError(context, 'Could not open WhatsApp for this link');
+        SnackbarHelper.showError(
+            context, 'Could not open WhatsApp for this link');
       }
     }
   }
@@ -179,9 +183,12 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
       );
     }
 
-    final highRiskList = _allProfiles.where((p) => p['risk_level'] == 'High').toList();
-    final mediumRiskList = _allProfiles.where((p) => p['risk_level'] == 'Medium').toList();
-    final lowRiskList = _allProfiles.where((p) => p['risk_level'] == 'Low').toList();
+    final highRiskList =
+        _allProfiles.where((p) => p['risk_level'] == 'High').toList();
+    final mediumRiskList =
+        _allProfiles.where((p) => p['risk_level'] == 'Medium').toList();
+    final lowRiskList =
+        _allProfiles.where((p) => p['risk_level'] == 'Low').toList();
 
     return AppScaffold(
       title: 'Smart Churn Analytics',
@@ -221,7 +228,8 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
       itemCount: list.length,
       itemBuilder: (context, index) {
         final p = list[index];
-        final days = p['days_since'] == 999 ? 'Never' : '${p['days_since']} days';
+        final days =
+            p['days_since'] == 999 ? 'Never' : '${p['days_since']} days';
         final isVip = p['is_vip'] as bool;
 
         return GlassContainer(
@@ -238,7 +246,8 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
                     Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor: (p['status_color'] as Color).withOpacity(0.12),
+                          backgroundColor:
+                              (p['status_color'] as Color).withOpacity(0.12),
                           child: Icon(
                             isVip ? Icons.stars_rounded : Icons.person_rounded,
                             color: p['status_color'] as Color,
@@ -250,19 +259,23 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
                           children: [
                             Text(
                               p['name'],
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               'Phone: ${p['phone']}',
-                              style: TextStyle(fontSize: 12, color: AppColors.textSecondaryColor(context)),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondaryColor(context)),
                             ),
                           ],
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: (p['status_color'] as Color).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(20),
@@ -285,30 +298,45 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Last Ordered', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context))),
+                        Text('Last Ordered',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondaryColor(context))),
                         const SizedBox(height: 2),
-                        Text(days, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(days,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13)),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('LTV', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context))),
+                        Text('LTV',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondaryColor(context))),
                         const SizedBox(height: 2),
                         Text(
                           AppFormatters.currency(p['lifetime_value']),
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Promo Discount', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context))),
+                        Text('Promo Discount',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondaryColor(context))),
                         const SizedBox(height: 2),
                         Text(
                           '₹${(p['promo_amount'] as double).toStringAsFixed(0)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.success),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppColors.success),
                         ),
                       ],
                     ),
@@ -320,19 +348,23 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
                     Expanded(
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.share_rounded, size: 16),
-                        label: const Text('WhatsApp Promotion', style: TextStyle(fontSize: 12)),
+                        label: const Text('WhatsApp Promotion',
+                            style: TextStyle(fontSize: 12)),
                         onPressed: () => _shareWhatsAppPromo(p),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
-                        icon: const Icon(Icons.shopping_basket_rounded, size: 16),
-                        label: const Text('Apply & Order', style: TextStyle(fontSize: 12)),
+                        icon:
+                            const Icon(Icons.shopping_basket_rounded, size: 16),
+                        label: const Text('Apply & Order',
+                            style: TextStyle(fontSize: 12)),
                         onPressed: () {
                           Navigator.of(context).pushNamed(
                             AppRoutes.createOrder,
@@ -348,7 +380,8 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen> with SingleTi
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                     ),

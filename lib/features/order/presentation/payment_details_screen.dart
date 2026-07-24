@@ -27,14 +27,15 @@ class PaymentDetailsScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<PaymentDetailsScreen> createState() => _PaymentDetailsScreenState();
+  ConsumerState<PaymentDetailsScreen> createState() =>
+      _PaymentDetailsScreenState();
 }
 
 class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
   final _amountCon = TextEditingController();
-  final _notesCon  = TextEditingController();
-  String _method   = AppConstants.paymentCash;
-  double _amount   = 0;
+  final _notesCon = TextEditingController();
+  String _method = AppConstants.paymentCash;
+  double _amount = 0;
 
   @override
   void initState() {
@@ -117,9 +118,9 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                   loading: () => const CircularProgressIndicator(),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Info row
             Container(
               padding: const EdgeInsets.all(20),
@@ -138,11 +139,15 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    widget.remainingAmount >= 0 ? 'Remaining Due:' : 'Credit / Advance Balance:',
+                    widget.remainingAmount >= 0
+                        ? 'Remaining Due:'
+                        : 'Credit / Advance Balance:',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: widget.remainingAmount > 0 ? AppColors.warning : Colors.teal,
+                      color: widget.remainingAmount > 0
+                          ? AppColors.warning
+                          : Colors.teal,
                     ),
                   ),
                   Text(
@@ -151,28 +156,34 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 24,
-                      color: widget.remainingAmount > 0 ? AppColors.warning : Colors.teal,
+                      color: widget.remainingAmount > 0
+                          ? AppColors.warning
+                          : Colors.teal,
                     ),
                   ),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 24),
 
             // Amount
             TextFormField(
               controller: _amountCon,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 labelText: 'Payment Amount',
                 prefixText: '$currency ',
-                prefixStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                prefixStyle:
+                    const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 prefixIcon: const Icon(Icons.payments_rounded),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              onChanged: (v) => setState(() => _amount = double.tryParse(v) ?? 0),
+              onChanged: (v) =>
+                  setState(() => _amount = double.tryParse(v) ?? 0),
             ),
 
             const SizedBox(height: 16),
@@ -194,21 +205,25 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
             // Method
             Text(
               'Payment Method',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
-                _methodChip('Cash',   AppConstants.paymentCash),
+                _methodChip('Cash', AppConstants.paymentCash),
                 _methodChip('Online', AppConstants.paymentOnline),
-                _methodChip('UPI',    AppConstants.paymentUPI),
-                _methodChip('Card',   AppConstants.paymentCard),
+                _methodChip('UPI', AppConstants.paymentUPI),
+                _methodChip('Card', AppConstants.paymentCard),
               ],
             ),
 
-            if (_method == AppConstants.paymentOnline || _method == AppConstants.paymentUPI) ...[
+            if (_method == AppConstants.paymentOnline ||
+                _method == AppConstants.paymentUPI) ...[
               const SizedBox(height: 24),
               Center(
                 child: Container(
@@ -216,43 +231,55 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.primarySurface,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                    border:
+                        Border.all(color: AppColors.primary.withOpacity(0.2)),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
                         'Scan & Pay QR Code',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: AppColors.primary),
                       ),
                       const SizedBox(height: 16),
                       ref.watch(settingsProvider).when(
                             loading: () => const CircularProgressIndicator(),
-                            error: (_, __) => const Text('Failed to load QR code'),
+                            error: (_, __) =>
+                                const Text('Failed to load QR code'),
                             data: (settings) {
                               if (settings.qrCustomImage.isNotEmpty) {
                                 return GestureDetector(
                                   onTap: () => Navigator.pushNamed(
                                     context,
                                     AppRoutes.qrPreview,
-                                    arguments: {'qrCustomImage': settings.qrCustomImage},
+                                    arguments: {
+                                      'qrCustomImage': settings.qrCustomImage
+                                    },
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
-                                    child: settings.qrCustomImage.startsWith('http')
+                                    child: settings.qrCustomImage
+                                            .startsWith('http')
                                         ? Image.network(
                                             settings.qrCustomImage,
                                             width: 200,
                                             height: 200,
                                             fit: BoxFit.contain,
-                                            errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                                            errorBuilder: (_, __, ___) =>
+                                                const Text(
+                                                    'Broken Custom QR Image'),
                                           )
                                         : Image.file(
                                             File(settings.qrCustomImage),
                                             width: 200,
                                             height: 200,
                                             fit: BoxFit.contain,
-                                            errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                                            errorBuilder: (_, __, ___) =>
+                                                const Text(
+                                                    'Broken Custom QR Image'),
                                           ),
                                   ),
                                 );
@@ -261,14 +288,17 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                                   onTap: () => Navigator.pushNamed(
                                     context,
                                     AppRoutes.qrPreview,
-                                    arguments: {'qrContent': settings.qrContent},
+                                    arguments: {
+                                      'qrContent': settings.qrContent
+                                    },
                                   ),
                                   child: Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: AppColors.gray200),
+                                      border:
+                                          Border.all(color: AppColors.gray200),
                                       boxShadow: AppColors.cardShadow,
                                     ),
                                     child: QrImageView(
@@ -281,7 +311,8 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                               } else {
                                 return const Text(
                                   'No QR Code configured in Settings',
-                                  style: TextStyle(fontSize: 14, color: AppColors.textHint),
+                                  style: TextStyle(
+                                      fontSize: 14, color: AppColors.textHint),
                                 );
                               }
                             },
@@ -305,10 +336,11 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                   padding: EdgeInsets.only(bottom: 40),
                   child: Icon(Icons.notes_rounded),
                 ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
               ),
             ),
-            
+
             const SizedBox(height: 48), // Bottom padding
           ],
         ),
@@ -329,9 +361,11 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
           onPressed: _amount > 0 ? _onRecord : null,
           style: FilledButton.styleFrom(
             minimumSize: const Size(double.infinity, 56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          child: const Text('Record Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: const Text('Record Payment',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -347,9 +381,11 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
         },
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        child: Text(label,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       ),
     );
   }

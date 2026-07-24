@@ -51,11 +51,13 @@ class CustomerMarkerPopup extends ConsumerWidget {
                       if (customer.isVip) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF59E0B).withOpacity(0.2),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
+                            border: Border.all(
+                                color: const Color(0xFFF59E0B), width: 0.8),
                           ),
                           child: Text(
                             'VIP',
@@ -80,7 +82,9 @@ class CustomerMarkerPopup extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              customer.address.isNotEmpty ? customer.address : 'House #${customer.houseNumber}',
+              customer.address.isNotEmpty
+                  ? customer.address
+                  : 'House #${customer.houseNumber}',
               style: GoogleFonts.inter(
                 fontSize: 12,
                 color: Colors.grey[600],
@@ -102,7 +106,9 @@ class CustomerMarkerPopup extends ConsumerWidget {
                   Icon(
                     Icons.account_balance_wallet_outlined,
                     size: 16,
-                    color: customer.outstandingBalance > 0 ? Colors.red[700] : Colors.teal[700],
+                    color: customer.outstandingBalance > 0
+                        ? Colors.red[700]
+                        : Colors.teal[700],
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -112,7 +118,9 @@ class CustomerMarkerPopup extends ConsumerWidget {
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: customer.outstandingBalance > 0 ? Colors.red[800] : Colors.teal[800],
+                      color: customer.outstandingBalance > 0
+                          ? Colors.red[800]
+                          : Colors.teal[800],
                     ),
                   ),
                 ],
@@ -122,7 +130,8 @@ class CustomerMarkerPopup extends ConsumerWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.history_rounded, size: 14, color: Colors.grey),
+                  const Icon(Icons.history_rounded,
+                      size: 14, color: Colors.grey),
                   const SizedBox(width: 6),
                   Text(
                     'Last Order: ${customer.lastOrderDate}',
@@ -146,7 +155,8 @@ class CustomerMarkerPopup extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    icon: const Icon(Icons.call, size: 16, color: Colors.blueAccent),
+                    icon: const Icon(Icons.call,
+                        size: 16, color: Colors.blueAccent),
                     label: const Text('Call'),
                     onPressed: () => _callNumber(customer.phone1),
                   ),
@@ -162,7 +172,8 @@ class CustomerMarkerPopup extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                    icon:
+                        const Icon(Icons.chat_bubble_outline_rounded, size: 16),
                     label: const Text('WhatsApp'),
                     onPressed: () => _openWhatsApp(customer.phone1, currency),
                   ),
@@ -203,7 +214,8 @@ class CustomerMarkerPopup extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  icon: const Icon(Icons.share_location_rounded, color: Colors.amber),
+                  icon: const Icon(Icons.share_location_rounded,
+                      color: Colors.amber),
                   onPressed: () => _dispatchToWorker(currency),
                 ),
                 const SizedBox(width: 4),
@@ -215,8 +227,10 @@ class CustomerMarkerPopup extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  icon: const Icon(Icons.navigation_rounded, color: Colors.blueAccent),
-                  onPressed: () => _navigateToGps(customer.latitude, customer.longitude),
+                  icon: const Icon(Icons.navigation_rounded,
+                      color: Colors.blueAccent),
+                  onPressed: () =>
+                      _navigateToGps(customer.latitude, customer.longitude),
                 ),
               ],
             ),
@@ -249,13 +263,13 @@ class CustomerMarkerPopup extends ConsumerWidget {
     final duesText = customer.outstandingBalance > 0
         ? 'Pending Dues: $currency${customer.outstandingBalance.toStringAsFixed(2)}'
         : 'Credit Balance: $currency${customer.outstandingBalance.abs().toStringAsFixed(2)}';
-    final addressText = customer.address.isNotEmpty ? customer.address : 'House #${customer.houseNumber}';
-    final msg = Uri.encodeComponent(
-      'Hello ${customer.name}! 👋\n'
-      'Regarding your delivery to $addressText:\n'
-      '$duesText\n'
-      'Thank you for ordering with OrderKart!'
-    );
+    final addressText = customer.address.isNotEmpty
+        ? customer.address
+        : 'House #${customer.houseNumber}';
+    final msg = Uri.encodeComponent('Hello ${customer.name}! 👋\n'
+        'Regarding your delivery to $addressText:\n'
+        '$duesText\n'
+        'Thank you for ordering with OrderKart!');
     final uri = Uri.parse('https://wa.me/$formatted?text=$msg');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -263,16 +277,17 @@ class CustomerMarkerPopup extends ConsumerWidget {
   }
 
   Future<void> _dispatchToWorker(String currency) async {
-    final addressText = customer.address.isNotEmpty ? customer.address : 'House #${customer.houseNumber}';
-    final mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${customer.latitude},${customer.longitude}';
-    final dispatchMsg = Uri.encodeComponent(
-      '🚚 *ORDERKART DELIVERY DISPATCH*\n'
-      'Customer: ${customer.name}\n'
-      'Phone: ${customer.phone1}\n'
-      'Address: $addressText\n'
-      'Dues: $currency${customer.outstandingBalance.toStringAsFixed(2)}\n'
-      'Maps Location: $mapsUrl'
-    );
+    final addressText = customer.address.isNotEmpty
+        ? customer.address
+        : 'House #${customer.houseNumber}';
+    final mapsUrl =
+        'https://www.google.com/maps/search/?api=1&query=${customer.latitude},${customer.longitude}';
+    final dispatchMsg = Uri.encodeComponent('🚚 *ORDERKART DELIVERY DISPATCH*\n'
+        'Customer: ${customer.name}\n'
+        'Phone: ${customer.phone1}\n'
+        'Address: $addressText\n'
+        'Dues: $currency${customer.outstandingBalance.toStringAsFixed(2)}\n'
+        'Maps Location: $mapsUrl');
     final uri = Uri.parse('https://wa.me/?text=$dispatchMsg');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -284,7 +299,8 @@ class CustomerMarkerPopup extends ConsumerWidget {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      final webUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+      final webUri = Uri.parse(
+          'https://www.google.com/maps/search/?api=1&query=$lat,$lng');
       if (await canLaunchUrl(webUri)) {
         await launchUrl(webUri, mode: LaunchMode.externalApplication);
       }

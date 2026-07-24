@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/settings/presentation/settings_provider.dart';
 
-class FloatingGlassAppBar extends StatelessWidget implements PreferredSizeWidget {
+class FloatingGlassAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
   final String title;
   final Widget? leading;
   final List<Widget>? actions;
@@ -31,7 +32,8 @@ class FloatingGlassAppBar extends StatelessWidget implements PreferredSizeWidget
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
-              color: (isDark ? const Color(0xFF1E293B) : Colors.white).withOpacity(isDark ? 0.72 : 0.85),
+              color: (isDark ? const Color(0xFF1E293B) : Colors.white)
+                  .withOpacity(isDark ? 0.72 : 0.85),
               border: Border.all(
                 color: isDark ? Colors.white12 : Colors.black.withOpacity(0.08),
                 width: 1.2,
@@ -59,7 +61,8 @@ class FloatingGlassAppBar extends StatelessWidget implements PreferredSizeWidget
               leading: leading,
               actions: actions,
               automaticallyImplyLeading: false,
-              primary: false, // Prevents automatic status bar padding inside the card
+              primary:
+                  false, // Prevents automatic status bar padding inside the card
               bottom: bottom,
             ),
           ),
@@ -69,7 +72,8 @@ class FloatingGlassAppBar extends StatelessWidget implements PreferredSizeWidget
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(56.0 + 16.0 + (bottom?.preferredSize.height ?? 0.0));
+  Size get preferredSize =>
+      Size.fromHeight(56.0 + 16.0 + (bottom?.preferredSize.height ?? 0.0));
 }
 
 class MeshColors {
@@ -146,7 +150,8 @@ class AppScaffold extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final meshTheme = ref.watch(settingsProvider).valueOrNull?.meshTheme ?? 'sunset';
+    final meshTheme =
+        ref.watch(settingsProvider).valueOrNull?.meshTheme ?? 'sunset';
     final colors = MeshColors.resolve(meshTheme);
 
     return Stack(
@@ -154,7 +159,8 @@ class AppScaffold extends ConsumerWidget {
         // Base solid background layer to prevent black window bleed
         Positioned.fill(
           child: Container(
-            color: backgroundColor ?? (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+            color: backgroundColor ??
+                (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
           ),
         ),
         // Ambient soft pastel glow circles (Vibrant Mesh)
@@ -235,7 +241,7 @@ class AppScaffold extends ConsumerWidget {
             ),
           ),
         ),
-        
+
         // Scaffold with transparent background overlaying the mesh background
         Scaffold(
           backgroundColor: Colors.transparent,
@@ -244,7 +250,8 @@ class AppScaffold extends ConsumerWidget {
             title: title,
             leading: showBack
                 ? IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                    icon:
+                        const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                     onPressed: onBack ?? () => Navigator.of(context).pop(),
                   )
                 : Builder(

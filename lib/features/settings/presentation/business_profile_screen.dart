@@ -16,12 +16,13 @@ class BusinessProfileScreen extends ConsumerStatefulWidget {
   const BusinessProfileScreen({super.key});
 
   @override
-  ConsumerState<BusinessProfileScreen> createState() => _BusinessProfileScreenState();
+  ConsumerState<BusinessProfileScreen> createState() =>
+      _BusinessProfileScreenState();
 }
 
 class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _businessNameCon;
   late TextEditingController _ownerNameCon;
   late TextEditingController _phoneCon;
@@ -82,7 +83,8 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        SnackbarHelper.showError(context, 'Failed to load business profile: $e');
+        SnackbarHelper.showError(
+            context, 'Failed to load business profile: $e');
       }
     }
   }
@@ -147,12 +149,14 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     try {
       await BusinessProfileService.saveProfile(updated);
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Business Profile updated successfully!');
+        SnackbarHelper.showSuccess(
+            context, 'Business Profile updated successfully!');
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        SnackbarHelper.showError(context, 'Failed to save business profile: $e');
+        SnackbarHelper.showError(
+            context, 'Failed to save business profile: $e');
       }
     }
   }
@@ -162,7 +166,8 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     if (_loading) {
       return const AppScaffold(
         title: 'Business Profile',
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body:
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
@@ -184,16 +189,22 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                       child: CircleAvatar(
                         radius: 50,
                         backgroundColor: AppColors.primarySurface,
-                        backgroundImage: _logoPath.isNotEmpty ? FileImage(File(_logoPath)) : null,
+                        backgroundImage: _logoPath.isNotEmpty
+                            ? FileImage(File(_logoPath))
+                            : null,
                         child: _logoPath.isEmpty
-                            ? const Icon(Icons.add_a_photo_rounded, size: 36, color: AppColors.primary)
+                            ? const Icon(Icons.add_a_photo_rounded,
+                                size: 36, color: AppColors.primary)
                             : null,
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       'Tap to change Business Logo',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -207,7 +218,9 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.storefront_rounded),
                 ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Enter business name' : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Enter business name'
+                    : null,
               ),
               const SizedBox(height: 12),
 
@@ -291,7 +304,10 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
 
               const Text(
                 'Financial & Payment Branding',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.primary),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: AppColors.primary),
               ),
               const SizedBox(height: 10),
 
@@ -358,10 +374,12 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _save,
                   icon: const Icon(Icons.save_rounded),
-                  label: const Text('Save Business Branding', style: TextStyle(fontWeight: FontWeight.w800)),
+                  label: const Text('Save Business Branding',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),

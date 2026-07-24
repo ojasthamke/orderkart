@@ -23,7 +23,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
   final List<int> _pin = [];
   String _targetName = 'User';
   bool _isWorker = false;
-  bool _loading = false; // ignore: unused_field - used in setState for state management
+  bool _loading = false;
   int _lockoutTimeRemaining = 0;
   Timer? _lockoutTimer;
 
@@ -87,7 +87,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
   }
 
   void _keyTap(int digit) {
-    if (_lockoutTimeRemaining > 0 && !_isWorker) {
+    if (_loading || (_lockoutTimeRemaining > 0 && !_isWorker)) {
       AppHaptics.error();
       return;
     }
@@ -103,7 +103,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
   }
 
   void _backspace() {
-    if (_lockoutTimeRemaining > 0 && !_isWorker) {
+    if (_loading || (_lockoutTimeRemaining > 0 && !_isWorker)) {
       AppHaptics.error();
       return;
     }
@@ -116,11 +116,15 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
   }
 
   Future<void> _verifyPin() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+
     if (!_isWorker) {
       final remaining = await AppModeService.getRemainingLockoutTime();
       if (remaining > 0) {
         AppHaptics.error();
-        SnackbarHelper.showError(context, 'Locked out. Please wait $remaining seconds.');
+        SnackbarHelper.showError(
+            context, 'Locked out. Please wait $remaining seconds.');
         setState(() {
           _pin.clear();
         });
@@ -128,7 +132,6 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
       }
     }
 
-    setState(() => _loading = true);
     final enteredPin = _pin.join();
     bool validated = false;
 
@@ -137,17 +140,20 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
         final workerId = WorkerSession.instance.currentWorkerId;
         if (workerId != null) {
           final db = await DatabaseHelper.instance.database;
-          final res = await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
+          final res =
+              await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
           if (res.isNotEmpty) {
             final storedHash = res.first['pin_hash'] as String? ?? '';
             final enteredHash = SecurityHelper.hashPin(enteredPin);
-            
+
             // If worker hasn't set a pin yet (e.g. fresh import), let them set it!
             if (storedHash.isEmpty) {
-              await db.update('workers', {'pin_hash': enteredHash}, where: 'id = ?', whereArgs: [workerId]);
+              await db.update('workers', {'pin_hash': enteredHash},
+                  where: 'id = ?', whereArgs: [workerId]);
               validated = true;
               if (mounted) {
-                SnackbarHelper.showSuccess(context, 'Security PIN established successfully!');
+                SnackbarHelper.showSuccess(
+                    context, 'Security PIN established successfully!');
               }
             } else {
               validated = (enteredHash == storedHash);
@@ -162,7 +168,8 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
         AppHaptics.buttonClick();
         if (mounted) {
           if (_isWorker) {
-            Navigator.of(context).pushReplacementNamed(AppRoutes.workerDashboard);
+            Navigator.of(context)
+                .pushReplacementNamed(AppRoutes.workerDashboard);
           } else {
             AppModeService.loginOwnerSuccess();
             Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
@@ -175,9 +182,11 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
         }
         if (mounted) {
           if (_lockoutTimeRemaining > 0) {
-            SnackbarHelper.showError(context, 'Incorrect PIN. Locked out for $_lockoutTimeRemaining seconds.');
+            SnackbarHelper.showError(context,
+                'Incorrect PIN. Locked out for $_lockoutTimeRemaining seconds.');
           } else {
-            SnackbarHelper.showError(context, 'Incorrect security PIN. Please try again.');
+            SnackbarHelper.showError(
+                context, 'Incorrect security PIN. Please try again.');
           }
           setState(() {
             _pin.clear();
@@ -210,13 +219,17 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
                   child: Column(
                     children: [
                       const Spacer(),
-                      
+
                       // --- HEADER INFO ---
-                      const Icon(Icons.lock_rounded, size: 54, color: AppColors.primary),
+                      const Icon(Icons.lock_rounded,
+                          size: 54, color: AppColors.primary),
                       const SizedBox(height: 16),
                       Text(
                         'Welcome Back, $_targetName',
-                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 8),
                       Padding(
@@ -227,15 +240,19 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
                               : 'Enter your 6-digit security PIN to unlock:',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: _lockoutTimeRemaining > 0 && !_isWorker ? Colors.redAccent : AppColors.textSecondary,
+                            color: _lockoutTimeRemaining > 0 && !_isWorker
+                                ? Colors.redAccent
+                                : AppColors.textSecondary,
                             fontSize: 13,
-                            fontWeight: _lockoutTimeRemaining > 0 && !_isWorker ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: _lockoutTimeRemaining > 0 && !_isWorker
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       ),
-                      
+
                       const Spacer(),
-                      
+
                       // --- PIN DOTS DISPLAY ---
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -246,19 +263,22 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
                             width: 16,
                             height: 16,
                             decoration: BoxDecoration(
-                              color: active ? AppColors.primary : Colors.transparent,
+                              color: active
+                                  ? AppColors.primary
+                                  : Colors.transparent,
                               shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primary, width: 2),
+                              border: Border.all(
+                                  color: AppColors.primary, width: 2),
                             ),
                           );
                         }),
                       ),
-                      
+
                       const Spacer(),
-                      
+
                       // --- KEYPAD ---
                       _buildKeypad(),
-                      
+
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -313,14 +333,16 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
                 onPressed: () {
                   AppHaptics.buttonClick();
                   WorkerSession.instance.clear();
-                  Navigator.of(context).pushReplacementNamed(AppRoutes.modeSelection);
+                  Navigator.of(context)
+                      .pushReplacementNamed(AppRoutes.modeSelection);
                 },
               ),
               _keyButton(0),
               // Backspace button
               IconButton(
                 iconSize: 28,
-                icon: const Icon(Icons.backspace_outlined, color: Colors.white70),
+                icon:
+                    const Icon(Icons.backspace_outlined, color: Colors.white70),
                 onPressed: _backspace,
               ),
             ],
@@ -345,7 +367,8 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
         alignment: Alignment.center,
         child: Text(
           '$value',
-          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
         ),
       ),
     );

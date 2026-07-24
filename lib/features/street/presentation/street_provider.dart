@@ -7,8 +7,8 @@ import '../../area/presentation/area_provider.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../customer/presentation/customer_provider.dart';
 
-final streetRepositoryProvider = Provider<StreetRepository>(
-    (ref) => StreetRepositoryImpl(StreetDao()));
+final streetRepositoryProvider =
+    Provider<StreetRepository>((ref) => StreetRepositoryImpl(StreetDao()));
 
 class StreetNotifier extends StateNotifier<AsyncValue<List<Street>>> {
   final Ref _ref;
@@ -16,7 +16,8 @@ class StreetNotifier extends StateNotifier<AsyncValue<List<Street>>> {
   final String areaId;
   String _search = '';
 
-  StreetNotifier(this._ref, this._repo, this.areaId) : super(const AsyncValue.loading()) {
+  StreetNotifier(this._ref, this._repo, this.areaId)
+      : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -62,7 +63,7 @@ class StreetNotifier extends StateNotifier<AsyncValue<List<Street>>> {
   }
 }
 
-final streetProviderFamily = StateNotifierProvider.family<
-    StreetNotifier, AsyncValue<List<Street>>, String>((ref, areaId) {
+final streetProviderFamily = StateNotifierProvider.family<StreetNotifier,
+    AsyncValue<List<Street>>, String>((ref, areaId) {
   return StreetNotifier(ref, ref.read(streetRepositoryProvider), areaId);
 });

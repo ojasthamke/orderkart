@@ -8,11 +8,11 @@ class AppFormatters {
   AppFormatters._();
 
   static final _currencyFmt = NumberFormat('#,##0.00');
-  static final _dateFmt     = DateFormat('dd MMM yyyy');
-  static final _timeFmt     = DateFormat('hh:mm a');
+  static final _dateFmt = DateFormat('dd MMM yyyy');
+  static final _timeFmt = DateFormat('hh:mm a');
   static final _dateTimeFmt = DateFormat('dd MMM yyyy, hh:mm a');
-  static final _monthFmt    = DateFormat('MMMM yyyy');
-  static final _shortDate   = DateFormat('dd MMM');
+  static final _monthFmt = DateFormat('MMMM yyyy');
+  static final _shortDate = DateFormat('dd MMM');
 
   /// Format amount as currency: ₹1,234.50
   static String currency(double amount, {String? symbol}) {
@@ -52,14 +52,16 @@ class AppFormatters {
   static String quantity(double qty, {String? unit}) {
     final display = qty == qty.truncateToDouble()
         ? qty.toInt().toString()
-        : qty.toStringAsFixed(qty < 1 ? 2 : 1).replaceAll(RegExp(r'\.?0+$'), '');
+        : qty
+            .toStringAsFixed(qty < 1 ? 2 : 1)
+            .replaceAll(RegExp(r'\.?0+$'), '');
     return unit != null ? '$display $unit' : display;
   }
 
   /// Compact number: 1200 → 1.2K
   static String compact(double value) {
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
-    if (value >= 1000)    return '${(value / 1000).toStringAsFixed(1)}K';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
     return _currencyFmt.format(value);
   }
 
@@ -73,32 +75,41 @@ class AppFormatters {
   static String relativeDate(DateTime dt) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final d     = DateTime(dt.year, dt.month, dt.day);
-    final diff  = today.difference(d).inDays;
+    final d = DateTime(dt.year, dt.month, dt.day);
+    final diff = today.difference(d).inDays;
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
-    if (diff < 7)  return '$diff days ago';
+    if (diff < 7) return '$diff days ago';
     return _dateFmt.format(dt);
   }
 
   /// Payment method display label
   static String paymentMethod(String method) {
     switch (method.toLowerCase()) {
-      case 'cash':   return 'Cash';
-      case 'online': return 'Online';
-      case 'upi':    return 'UPI';
-      case 'card':   return 'Card';
-      default:       return method;
+      case 'cash':
+        return 'Cash';
+      case 'online':
+        return 'Online';
+      case 'upi':
+        return 'UPI';
+      case 'card':
+        return 'Card';
+      default:
+        return method;
     }
   }
 
   /// Delivery status display label
   static String deliveryStatus(String status) {
     switch (status.toLowerCase()) {
-      case 'pending':   return 'Pending';
-      case 'delivered': return 'Delivered';
-      case 'cancelled': return 'Cancelled';
-      default:          return status;
+      case 'pending':
+        return 'Pending';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
     }
   }
 }

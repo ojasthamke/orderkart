@@ -64,8 +64,12 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   Widget build(BuildContext context) {
     final modeAsync = ref.watch(appModeProvider);
     final isWorker = modeAsync.valueOrNull == AppMode.worker;
-    final workerId = isWorker ? (WorkerSession.instance.currentWorkerId ?? 'worker_guest') : 'owner';
-    final workerName = isWorker ? (WorkerSession.instance.currentWorkerName ?? 'Worker') : 'Owner';
+    final workerId = isWorker
+        ? (WorkerSession.instance.currentWorkerId ?? 'worker_guest')
+        : 'owner';
+    final workerName = isWorker
+        ? (WorkerSession.instance.currentWorkerName ?? 'Worker')
+        : 'Owner';
 
     return AppScaffold(
       title: 'Backup & Restore',
@@ -73,28 +77,30 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           _SectionCard(
-            title:    'Export Packages',
-            icon:     Icons.upload_rounded,
+            title: 'Export Packages',
+            icon: Icons.upload_rounded,
             iconColor: AppColors.success,
             children: [
               _ActionTile(
-                icon:     Icons.backup_rounded,
-                title:    'Full Business Backup',
-                subtitle: 'Export entire database and files (.orderkart backup)',
-                onTap:    _exportBusinessBackup,
-                loading:  _loading,
+                icon: Icons.backup_rounded,
+                title: 'Full Business Backup',
+                subtitle:
+                    'Export entire database and files (.orderkart backup)',
+                onTap: _exportBusinessBackup,
+                loading: _loading,
               ),
               const Divider(height: 1),
               _ActionTile(
-                icon:     Icons.drive_folder_upload_rounded,
-                title:    'Modular Package Export',
-                subtitle: 'Select Areas, Customers, Orders, Inventory, Settings to export (.zip)',
-                onTap:    () => ExportWizardDialog.show(context),
-                loading:  _loading,
+                icon: Icons.drive_folder_upload_rounded,
+                title: 'Modular Package Export',
+                subtitle:
+                    'Select Areas, Customers, Orders, Inventory, Settings to export (.zip)',
+                onTap: () => ExportWizardDialog.show(context),
+                loading: _loading,
               ),
             ],
           ),
-           HotspotSyncControlCard(
+          HotspotSyncControlCard(
             workerId: workerId,
             workerName: workerName,
             onSyncCompleted: () {
@@ -105,32 +111,35 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
           const SizedBox(height: 16),
           if (!isWorker) ...[
             _SectionCard(
-              title:    'Import & Merge Data',
-              icon:     Icons.download_rounded,
+              title: 'Import & Merge Data',
+              icon: Icons.download_rounded,
               iconColor: AppColors.primary,
               children: [
                 _ActionTile(
-                  icon:     Icons.auto_mode_rounded,
-                  title:    '4-Step Import Wizard (Preview & Merge)',
-                  subtitle: 'Preview incoming record counts, review conflict policy, and merge safely',
-                  onTap:    () => Navigator.pushNamed(context, AppRoutes.importWizard),
-                  loading:  _loading,
+                  icon: Icons.auto_mode_rounded,
+                  title: '4-Step Import Wizard (Preview & Merge)',
+                  subtitle:
+                      'Preview incoming record counts, review conflict policy, and merge safely',
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.importWizard),
+                  loading: _loading,
                 ),
                 const Divider(height: 1),
                 _ActionTile(
-                  icon:     Icons.folder_open_rounded,
-                  title:    'Full Restore from File (Overwrite)',
-                  subtitle: 'Replace entire database with a .db or .zip backup file',
-                  onTap:    _importDatabase,
-                  loading:  _loading,
+                  icon: Icons.folder_open_rounded,
+                  title: 'Full Restore from File (Overwrite)',
+                  subtitle:
+                      'Replace entire database with a .db or .zip backup file',
+                  onTap: _importDatabase,
+                  loading: _loading,
                 ),
               ],
             ),
             const SizedBox(height: 16),
           ],
           const _SectionCard(
-            title:    'Cloud Sync (Coming Soon)',
-            icon:     Icons.cloud_rounded,
+            title: 'Cloud Sync (Coming Soon)',
+            icon: Icons.cloud_rounded,
             iconColor: AppColors.gray400,
             children: [
               _ComingSoon('Google Drive Backup'),
@@ -144,7 +153,8 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   }
 
   Future<void> _exportBusinessBackup() async {
-    final defaultName = 'BusinessBackup_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
+    final defaultName =
+        'BusinessBackup_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
     final customName = await ExportFilenameDialog.show(
       context,
       defaultName: defaultName,
@@ -160,7 +170,8 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         customFileName: customName,
       );
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Full Business Backup "$customName" created successfully!');
+        SnackbarHelper.showSuccess(context,
+            'Full Business Backup "$customName" created successfully!');
       }
     } catch (e) {
       if (mounted) {
@@ -187,7 +198,8 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       if (srcPath == null || srcPath.isEmpty) {
         throw Exception('Selected file has no valid local path.');
       }
-      final dbPath  = await DatabaseHelper.instance.database.then((db) => db.path);
+      final dbPath =
+          await DatabaseHelper.instance.database.then((db) => db.path);
 
       // Preserve current active mode before replacing database file
       final currentMode = await AppModeService.getAppMode();
@@ -232,7 +244,6 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       if (mounted) setState(() => _loading = false);
     }
   }
-
 }
 
 class _SectionCard extends StatelessWidget {
@@ -253,7 +264,8 @@ class _SectionCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color ?? (isDark ? const Color(0xFF0A0A0A) : Colors.white),
+        color: Theme.of(context).cardTheme.color ??
+            (isDark ? const Color(0xFF0A0A0A) : Colors.white),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? const Color(0xFF1A1A1A) : AppColors.gray200,
@@ -306,8 +318,7 @@ class _ActionTile extends StatelessWidget {
       leading: Icon(icon, color: AppColors.primary),
       title: Text(title),
       subtitle: Text(subtitle,
-          style: const TextStyle(
-              fontSize: 12, color: AppColors.textSecondary)),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
       trailing: loading
           ? const SizedBox(
               width: 20,
@@ -327,13 +338,11 @@ class _ComingSoon extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: const Icon(Icons.cloud_outlined, color: AppColors.gray400),
-      title: Text(title,
-          style: const TextStyle(color: AppColors.gray500)),
+      title: Text(title, style: const TextStyle(color: AppColors.gray500)),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-            color: AppColors.gray100,
-            borderRadius: BorderRadius.circular(8)),
+            color: AppColors.gray100, borderRadius: BorderRadius.circular(8)),
         child: const Text('Soon',
             style: TextStyle(
                 fontSize: 11,

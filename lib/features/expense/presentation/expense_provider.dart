@@ -5,15 +5,15 @@ import '../domain/expense.dart';
 import '../domain/expense_repository.dart';
 import '../../order/presentation/order_provider.dart';
 
-final expenseRepositoryProvider = Provider<ExpenseRepository>(
-    (ref) => ExpenseRepositoryImpl(ExpenseDao()));
+final expenseRepositoryProvider =
+    Provider<ExpenseRepository>((ref) => ExpenseRepositoryImpl(ExpenseDao()));
 
 class ExpenseNotifier extends StateNotifier<AsyncValue<List<Expense>>> {
   final Ref _ref;
   final ExpenseRepository _repo;
-  String _search   = '';
+  String _search = '';
   String _category = '';
-  String _month    = '';
+  String _month = '';
 
   ExpenseNotifier(this._ref, this._repo) : super(const AsyncValue.loading()) {
     load();
@@ -25,9 +25,9 @@ class ExpenseNotifier extends StateNotifier<AsyncValue<List<Expense>>> {
     }
     try {
       final list = await _repo.getAllExpenses(
-        searchQuery: _search.isEmpty   ? null : _search,
-        category:    _category.isEmpty ? null : _category,
-        month:       _month.isEmpty    ? null : _month,
+        searchQuery: _search.isEmpty ? null : _search,
+        category: _category.isEmpty ? null : _category,
+        month: _month.isEmpty ? null : _month,
       );
       state = AsyncValue.data(list);
     } catch (e, st) {

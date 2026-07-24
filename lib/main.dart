@@ -65,7 +65,6 @@ Future<void> main() async {
     await BackgroundService.instance.init();
     BackgroundService.instance.registerDailyTask();
 
-
     runApp(
       const ProviderScope(
         child: OrderKartApp(),
@@ -90,4 +89,3 @@ Future<void> main() async {
     );
   }
 }
-

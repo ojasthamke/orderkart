@@ -56,9 +56,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
   Future<void> _handleEditItem(Item item) async {
     if (mounted) {
-      Navigator.of(context)
-          .pushNamed(AppRoutes.addEditItem, arguments: {'itemId': item.id})
-          .then((_) => ref.refresh(inventoryProvider));
+      Navigator.of(context).pushNamed(AppRoutes.addEditItem, arguments: {
+        'itemId': item.id
+      }).then((_) => ref.refresh(inventoryProvider));
     }
   }
 
@@ -73,7 +73,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         selectedModules: ['items', 'prices', 'entire_db'],
       );
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Official Stock & Price List exported successfully!');
+        SnackbarHelper.showSuccess(
+            context, 'Official Stock & Price List exported successfully!');
       }
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Export failed: $e');
@@ -91,13 +92,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       if (filePath == null) return;
       final validation = await PackageValidator.validatePackage(filePath);
       if (!validation.isValid) {
-        if (mounted) SnackbarHelper.showError(context, 'Invalid Package: ${validation.errorMessage}');
+        if (mounted)
+          SnackbarHelper.showError(
+              context, 'Invalid Package: ${validation.errorMessage}');
         return;
       }
 
       final extractedDbPath = validation.dbPath;
       if (extractedDbPath.isEmpty || !File(extractedDbPath).existsSync()) {
-        if (mounted) SnackbarHelper.showError(context, 'No database found in package');
+        if (mounted)
+          SnackbarHelper.showError(context, 'No database found in package');
         return;
       }
 
@@ -108,10 +112,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
       ref.invalidate(inventoryProvider);
       if (mounted) {
-        SnackbarHelper.showSuccess(context, '✅ Official Owner Stock & Price List updated!');
+        SnackbarHelper.showSuccess(
+            context, '✅ Official Owner Stock & Price List updated!');
       }
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Price List import failed: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Price List import failed: $e');
     }
   }
 
@@ -157,11 +163,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           icon: const Icon(Icons.sort_rounded),
           onSelected: (v) => ref.read(inventoryProvider.notifier).sort(v),
           itemBuilder: (_) => [
-            const PopupMenuItem(value: 'name',       child: Text('Sort by Name')),
-            const PopupMenuItem(value: 'stock_asc',  child: Text('Sort by Stock (Low first)')),
-            const PopupMenuItem(value: 'price_desc', child: Text('Sort by Price')),
-            const PopupMenuItem(value: 'category',   child: Text('Sort by Category')),
-            const PopupMenuItem(value: 'shuffle',    child: Text('Shuffle / Randomize')),
+            const PopupMenuItem(value: 'name', child: Text('Sort by Name')),
+            const PopupMenuItem(
+                value: 'stock_asc', child: Text('Sort by Stock (Low first)')),
+            const PopupMenuItem(
+                value: 'price_desc', child: Text('Sort by Price')),
+            const PopupMenuItem(
+                value: 'category', child: Text('Sort by Category')),
+            const PopupMenuItem(
+                value: 'shuffle', child: Text('Shuffle / Randomize')),
           ],
         ),
       ],
@@ -169,10 +179,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         controller: _tabController,
         isScrollable: true,
         tabAlignment: TabAlignment.start,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicatorPadding:
+            const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+        labelColor: Colors.white,
+        unselectedLabelColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white70
+            : AppColors.textSecondary,
         indicatorColor: Colors.transparent,
         indicator: AppColors.tabDecoration(context),
-        labelColor: AppColors.primary,
-        unselectedLabelColor: AppColors.textSecondary,
         tabs: const [
           Tab(icon: Icon(Icons.inventory_2_rounded), text: 'Stock Items'),
           Tab(icon: Icon(Icons.price_change_rounded), text: 'Market Savings'),
@@ -216,7 +232,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   }
 
   // ── TAB 1: Stock List ──────────────────────────────────────────────────────
-  Widget _buildStockTab(BuildContext context, AsyncValue<List<Item>> itemsAsync, bool isWorker) {
+  Widget _buildStockTab(
+      BuildContext context, AsyncValue<List<Item>> itemsAsync, bool isWorker) {
     return Column(
       children: [
         CustomSearchBar(
@@ -235,26 +252,28 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               return GestureDetector(
                 onTap: () {
                   setState(() => _category = cat);
-                  ref.read(inventoryProvider.notifier)
+                  ref
+                      .read(inventoryProvider.notifier)
                       .filterByCategory(cat == 'All' ? '' : cat);
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: selected
-                        ? AppColors.primary.withOpacity(0.3)
+                        ? AppColors.primary
                         : (Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white.withOpacity(0.08)
-                            : Colors.black.withOpacity(0.04)),
+                            ? const Color(0xFF1E293B)
+                            : AppColors.gray100),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: selected
                           ? AppColors.primary
                           : (Theme.of(context).brightness == Brightness.dark
                               ? Colors.white.withOpacity(0.12)
-                              : Colors.black.withOpacity(0.1)),
+                              : AppColors.gray300),
                     ),
                   ),
                   child: Center(
@@ -266,7 +285,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                             : (Theme.of(context).brightness == Brightness.dark
                                 ? Colors.white70
                                 : AppColors.textPrimary),
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -291,7 +311,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               return RefreshIndicator(
                 onRefresh: () async => ref.refresh(inventoryProvider),
                 child: ReorderableListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: items.length,
                   onReorder: (oldIndex, newIndex) async {
                     if (newIndex > oldIndex) {
@@ -301,7 +322,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     final dragged = list.removeAt(oldIndex);
                     list.insert(newIndex, dragged);
                     final ids = list.map((item) => item.id).toList();
-                    await ref.read(inventoryProvider.notifier).reorderItems(ids);
+                    await ref
+                        .read(inventoryProvider.notifier)
+                        .reorderItems(ids);
                   },
                   itemBuilder: (_, i) => _ItemTile(
                     key: ValueKey(items[i].id),
@@ -321,7 +344,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   }
 
   // ── TAB 2: Market Price & Customer Savings Calculator ──────────────────────
-  Widget _buildMarketSavingsTab(BuildContext context, AsyncValue<List<Item>> itemsAsync) {
+  Widget _buildMarketSavingsTab(
+      BuildContext context, AsyncValue<List<Item>> itemsAsync) {
     return itemsAsync.when(
       loading: () => const LoadingShimmer(),
       error: (e, _) => Center(child: Text('Error: $e')),
@@ -339,7 +363,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         }
 
         final totalSavings = totalMarketVal - totalOurVal;
-        final overallSavingsPct = totalMarketVal > 0 ? (totalSavings / totalMarketVal) * 100 : 0.0;
+        final overallSavingsPct =
+            totalMarketVal > 0 ? (totalSavings / totalMarketVal) * 100 : 0.0;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -358,7 +383,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.savings_rounded, color: Colors.white, size: 28),
+                        Icon(Icons.savings_rounded,
+                            color: Colors.white, size: 28),
                         SizedBox(width: 10),
                         Text(
                           'CUSTOMER SAVINGS CALCULATOR',
@@ -383,7 +409,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     const SizedBox(height: 6),
                     Text(
                       'Based on $itemsWithSavings items with comparison market rates set.',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
@@ -392,7 +419,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               const SizedBox(height: 20),
               Text(
                 'Market Price vs Our Store Price',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 10),
 
@@ -409,7 +439,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(14),
                     borderRadius: BorderRadius.circular(16),
-                    borderColor: hasSavings ? Colors.green.withOpacity(0.5) : null,
+                    borderColor:
+                        hasSavings ? Colors.green.withOpacity(0.5) : null,
                     child: Row(
                       children: [
                         Expanded(
@@ -418,7 +449,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                             children: [
                               Text(
                                 item.name,
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 15),
                               ),
                               const SizedBox(height: 4),
                               Row(
@@ -447,7 +479,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                         ),
                         if (hasSavings)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.green.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(10),
@@ -513,13 +546,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('HISTORICAL PRICE LOG & REPORT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.textSecondary)),
+                        const Text('HISTORICAL PRICE LOG & REPORT',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textSecondary)),
                         const SizedBox(height: 4),
                         Text(
                           hasRange
                               ? '${AppFormatters.date(_priceHistoryRange!.start)} - ${AppFormatters.date(_priceHistoryRange!.end)}'
                               : AppFormatters.date(_selectedHistoryDate),
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.primary),
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary),
                         ),
                       ],
                     ),
@@ -530,7 +570,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                           context: context,
                           initialDateRange: _priceHistoryRange ??
                               DateTimeRange(
-                                start: DateTime.now().subtract(const Duration(days: 7)),
+                                start: DateTime.now()
+                                    .subtract(const Duration(days: 7)),
                                 end: DateTime.now(),
                               ),
                           firstDate: DateTime(2024),
@@ -570,7 +611,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
           // Fetch historical price log & generate report
           FutureBuilder<List<Map<String, dynamic>>>(
-            future: ItemDao().getPriceHistoryDateRange(startDateStr, endDateStr),
+            future:
+                ItemDao().getPriceHistoryDateRange(startDateStr, endDateStr),
             builder: (ctx, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const LoadingShimmer(count: 3);
@@ -582,7 +624,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     padding: const EdgeInsets.all(32),
                     child: Column(
                       children: [
-                        const Icon(Icons.history_toggle_off_rounded, size: 48, color: AppColors.gray400),
+                        const Icon(Icons.history_toggle_off_rounded,
+                            size: 48, color: AppColors.gray400),
                         const SizedBox(height: 8),
                         Text(
                           hasRange
@@ -595,7 +638,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                         const Text(
                           'Daily prices are recorded automatically whenever items or rates are updated.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                          style: TextStyle(
+                              color: AppColors.textSecondary, fontSize: 12),
                         ),
                       ],
                     ),
@@ -629,11 +673,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.analytics_rounded, color: Colors.white, size: 22),
+                            const Icon(Icons.analytics_rounded,
+                                color: Colors.white, size: 22),
                             const SizedBox(width: 8),
                             Text(
                               'PRICE HISTORY REPORT (${datesSet.length} DAYS LOGGED)',
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.8),
                             ),
                           ],
                         ),
@@ -644,22 +693,40 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Avg Store Rate', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                Text(AppFormatters.currency(avgSelling), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                                const Text('Avg Store Rate',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 11)),
+                                Text(AppFormatters.currency(avgSelling),
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16)),
                               ],
                             ),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Avg Market Rate', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                Text(AppFormatters.currency(avgMarket), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                                const Text('Avg Market Rate',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 11)),
+                                Text(AppFormatters.currency(avgMarket),
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16)),
                               ],
                             ),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Total Snapshots', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                Text('${list.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                                const Text('Total Snapshots',
+                                    style: TextStyle(
+                                        color: Colors.white70, fontSize: 11)),
+                                Text('${list.length}',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16)),
                               ],
                             ),
                           ],
@@ -669,7 +736,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   ),
                   const SizedBox(height: 16),
 
-                  Text('Price Logs & History', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text('Price Logs & History',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
 
                   ListView.builder(
@@ -681,8 +752,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       final name = row['name'] as String? ?? 'Item';
                       final unit = row['unit'] as String? ?? '';
                       final dateVal = row['date'] as String? ?? '';
-                      final sellPrice = (row['selling_price'] as num?)?.toDouble() ?? 0.0;
-                      final mktPrice = (row['market_price'] as num?)?.toDouble() ?? 0.0;
+                      final sellPrice =
+                          (row['selling_price'] as num?)?.toDouble() ?? 0.0;
+                      final mktPrice =
+                          (row['market_price'] as num?)?.toDouble() ?? 0.0;
 
                       return GlassContainer(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -694,10 +767,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                                Text(name,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14)),
                                 Text(
                                   AppFormatters.dateFromString(dateVal),
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary),
                                 ),
                               ],
                             ),
@@ -706,11 +784,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                 if (mktPrice > 0)
                                   Text(
                                     'MRP: ${AppFormatters.currency(mktPrice)} ',
-                                    style: const TextStyle(fontSize: 12, decoration: TextDecoration.lineThrough, color: AppColors.textSecondary),
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        decoration: TextDecoration.lineThrough,
+                                        color: AppColors.textSecondary),
                                   ),
                                 Text(
                                   '${AppFormatters.currency(sellPrice)} / $unit',
-                                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 14),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.primary,
+                                      fontSize: 14),
                                 ),
                               ],
                             ),
@@ -754,7 +838,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Mode Selector Chips
                   Wrap(
                     spacing: 8,
@@ -770,13 +854,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                         label: const Text('- Reduce Stock'),
                         selected: mode == 'reduce',
                         selectedColor: AppColors.error.withOpacity(0.2),
-                        onSelected: (s) => setStateDialog(() => mode = 'reduce'),
+                        onSelected: (s) =>
+                            setStateDialog(() => mode = 'reduce'),
                       ),
                       ChoiceChip(
                         label: const Text('🍏 Wastage / Spoilage'),
                         selected: mode == 'wastage',
                         selectedColor: Colors.amber.withOpacity(0.3),
-                        onSelected: (s) => setStateDialog(() => mode = 'wastage'),
+                        onSelected: (s) =>
+                            setStateDialog(() => mode = 'wastage'),
                       ),
                     ],
                   ),
@@ -784,14 +870,23 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
                   TextField(
                     controller: qtyCon,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
-                      labelText: mode == 'wastage' ? 'Wastage Quantity (${item.unit})' : 'Quantity (${item.unit})',
+                      labelText: mode == 'wastage'
+                          ? 'Wastage Quantity (${item.unit})'
+                          : 'Quantity (${item.unit})',
                       prefixIcon: Icon(
                         mode == 'add'
                             ? Icons.add_circle_outline_rounded
-                            : (mode == 'wastage' ? Icons.delete_outline_rounded : Icons.remove_circle_outline_rounded),
-                        color: mode == 'add' ? AppColors.success : (mode == 'wastage' ? Colors.amber.shade800 : AppColors.error),
+                            : (mode == 'wastage'
+                                ? Icons.delete_outline_rounded
+                                : Icons.remove_circle_outline_rounded),
+                        color: mode == 'add'
+                            ? AppColors.success
+                            : (mode == 'wastage'
+                                ? Colors.amber.shade800
+                                : AppColors.error),
                       ),
                     ),
                     autofocus: true,
@@ -820,12 +915,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.amber.shade900, size: 20),
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.amber.shade900, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Estimated Loss Value: ${AppFormatters.currency(costLoss)}',
-                              style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade900, fontSize: 13),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.amber.shade900,
+                                  fontSize: 13),
                             ),
                           ),
                         ],
@@ -835,9 +934,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Auto-log Expense under 🍏 Spoilage & Damaged Goods', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      title: const Text(
+                          'Auto-log Expense under 🍏 Spoilage & Damaged Goods',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600)),
                       value: autoLogExpense,
-                      onChanged: (v) => setStateDialog(() => autoLogExpense = v ?? true),
+                      onChanged: (v) =>
+                          setStateDialog(() => autoLogExpense = v ?? true),
                       controlAffinity: ListTileControlAffinity.leading,
                     ),
                   ],
@@ -854,26 +957,31 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   final qty = double.tryParse(qtyCon.text.trim());
                   if (qty == null || qty <= 0) return;
 
-                  if ((mode == 'reduce' || mode == 'wastage') && qty > item.stock) {
-                    SnackbarHelper.showError(context, 'Cannot reduce stock below 0. Current stock is ${AppFormatters.quantity(item.stock, unit: item.unit)}');
+                  if ((mode == 'reduce' || mode == 'wastage') &&
+                      qty > item.stock) {
+                    SnackbarHelper.showError(context,
+                        'Cannot reduce stock below 0. Current stock is ${AppFormatters.quantity(item.stock, unit: item.unit)}');
                     return;
                   }
 
                   AppHaptics.primarySave();
 
                   if (mode == 'wastage') {
-                    final reason = reasonCon.text.trim().isEmpty ? 'Wastage / Spoilage loss' : reasonCon.text.trim();
+                    final reason = reasonCon.text.trim().isEmpty
+                        ? 'Wastage / Spoilage loss'
+                        : reasonCon.text.trim();
                     await ref.read(inventoryProvider.notifier).adjustStock(
-                      item.id,
-                      -qty,
-                      'Wastage: $reason',
-                    );
+                          item.id,
+                          -qty,
+                          'Wastage: $reason',
+                        );
 
                     if (autoLogExpense && costLoss > 0) {
                       await ExpenseDao().insertExpense(
                         Expense(
                           id: '',
-                          name: 'Wastage: ${item.name} (${AppFormatters.quantity(qty, unit: item.unit)})',
+                          name:
+                              'Wastage: ${item.name} (${AppFormatters.quantity(qty, unit: item.unit)})',
                           category: AppConstants.expSpoilageLoss,
                           amount: costLoss,
                           date: DateTime.now(),
@@ -885,17 +993,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       );
                     }
                     if (ctx.mounted) {
-                      SnackbarHelper.showSuccess(context, 'Recorded ${AppFormatters.quantity(qty, unit: item.unit)} wastage for ${item.name}');
+                      SnackbarHelper.showSuccess(context,
+                          'Recorded ${AppFormatters.quantity(qty, unit: item.unit)} wastage for ${item.name}');
                       Navigator.pop(ctx);
                     }
                   } else {
                     final isAddMode = mode == 'add';
                     final change = isAddMode ? qty : -qty;
                     await ref.read(inventoryProvider.notifier).adjustStock(
-                      item.id,
-                      change,
-                      isAddMode ? 'Stock added' : 'Stock reduced',
-                    );
+                          item.id,
+                          change,
+                          isAddMode ? 'Stock added' : 'Stock reduced',
+                        );
                     if (ctx.mounted) Navigator.pop(ctx);
                   }
                 },
@@ -957,7 +1066,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.amber.withOpacity(0.2),
-                    child: Icon(Icons.delete_outline_rounded, color: Colors.amber.shade800),
+                    child: Icon(Icons.delete_outline_rounded,
+                        color: Colors.amber.shade800),
                   ),
                   title: Text(
                     log.itemName,
@@ -969,12 +1079,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       const SizedBox(height: 4),
                       Text(
                         cleanReason,
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                        style: TextStyle(
+                            color: Colors.grey.shade600, fontSize: 13),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         formattedDate,
-                        style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                        style: TextStyle(
+                            color: Colors.grey.shade400, fontSize: 11),
                       ),
                     ],
                   ),
@@ -1006,7 +1118,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           return const EmptyStateWidget(
             icon: Icons.analytics_outlined,
             title: 'No Ordered Items',
-            subtitle: 'Ordered items and profit analysis will appear here once orders are placed.',
+            subtitle:
+                'Ordered items and profit analysis will appear here once orders are placed.',
           );
         }
 
@@ -1016,7 +1129,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
         for (final row in stats) {
           overallCost += (row['total_cost_price'] as num?)?.toDouble() ?? 0.0;
-          overallRevenue += (row['total_selling_price'] as num?)?.toDouble() ?? 0.0;
+          overallRevenue +=
+              (row['total_selling_price'] as num?)?.toDouble() ?? 0.0;
           overallProfit += (row['total_profit'] as num?)?.toDouble() ?? 0.0;
         }
 
@@ -1030,12 +1144,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   children: [
                     Expanded(
                       child: GlassContainer(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 8),
                         child: Column(
                           children: [
                             Text(
                               'TOTAL COST',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
                                     color: AppColors.textSecondary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 10,
@@ -1044,7 +1162,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                             const SizedBox(height: 6),
                             Text(
                               AppFormatters.currency(overallCost),
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
                             ),
@@ -1055,12 +1176,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: GlassContainer(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 8),
                         child: Column(
                           children: [
                             Text(
                               'TOTAL SALES',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
                                     color: AppColors.textSecondary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 10,
@@ -1069,7 +1194,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                             const SizedBox(height: 6),
                             Text(
                               AppFormatters.currency(overallRevenue),
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
                             ),
@@ -1080,12 +1208,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: GlassContainer(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 8),
                         child: Column(
                           children: [
                             Text(
                               'TOTAL PROFIT',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
                                     color: AppColors.textSecondary,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 10,
@@ -1094,9 +1226,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                             const SizedBox(height: 6),
                             Text(
                               AppFormatters.currency(overallProfit),
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: overallProfit >= 0 ? AppColors.success : AppColors.error,
+                                    color: overallProfit >= 0
+                                        ? AppColors.success
+                                        : AppColors.error,
                                   ),
                             ),
                           ],
@@ -1107,7 +1244,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1131,16 +1269,21 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               ),
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: stats.length,
                   itemBuilder: (ctx, i) {
                     final row = stats[i];
                     final name = row['item_name'] ?? '';
                     final unit = row['item_unit'] ?? '';
-                    final qty = (row['total_quantity'] as num?)?.toDouble() ?? 0.0;
-                    final cost = (row['total_cost_price'] as num?)?.toDouble() ?? 0.0;
-                    final revenue = (row['total_selling_price'] as num?)?.toDouble() ?? 0.0;
-                    final profit = (row['total_profit'] as num?)?.toDouble() ?? 0.0;
+                    final qty =
+                        (row['total_quantity'] as num?)?.toDouble() ?? 0.0;
+                    final cost =
+                        (row['total_cost_price'] as num?)?.toDouble() ?? 0.0;
+                    final revenue =
+                        (row['total_selling_price'] as num?)?.toDouble() ?? 0.0;
+                    final profit =
+                        (row['total_profit'] as num?)?.toDouble() ?? 0.0;
 
                     return GlassContainer(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -1154,7 +1297,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                               children: [
                                 Text(
                                   name,
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
                                         fontWeight: FontWeight.w800,
                                       ),
                                 ),
@@ -1162,9 +1308,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withOpacity(0.08),
+                                        color:
+                                            AppColors.primary.withOpacity(0.08),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
@@ -1195,7 +1343,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                               Text(
                                 AppFormatters.currency(profit),
                                 style: TextStyle(
-                                  color: profit >= 0 ? AppColors.success : AppColors.error,
+                                  color: profit >= 0
+                                      ? AppColors.success
+                                      : AppColors.error,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
                                 ),
@@ -1254,7 +1404,9 @@ class _ItemTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.primarySurface,
             borderRadius: BorderRadius.circular(8),
-            image: (item.photoPath.isNotEmpty && (item.photoPath.startsWith('http') || AppConstants.resolveFile(item.photoPath).existsSync()))
+            image: (item.photoPath.isNotEmpty &&
+                    (item.photoPath.startsWith('http') ||
+                        AppConstants.resolveFile(item.photoPath).existsSync()))
                 ? DecorationImage(
                     image: item.photoPath.startsWith('http')
                         ? NetworkImage(item.photoPath) as ImageProvider
@@ -1263,7 +1415,9 @@ class _ItemTile extends StatelessWidget {
                   )
                 : null,
           ),
-          child: (item.photoPath.isEmpty || (!item.photoPath.startsWith('http') && !AppConstants.resolveFile(item.photoPath).existsSync()))
+          child: (item.photoPath.isEmpty ||
+                  (!item.photoPath.startsWith('http') &&
+                      !AppConstants.resolveFile(item.photoPath).existsSync()))
               ? const Icon(Icons.image_outlined, color: AppColors.primary)
               : null,
         ),
@@ -1272,7 +1426,8 @@ class _ItemTile extends StatelessWidget {
             Expanded(
               child: Text(
                 '${item.sequenceNo > 0 ? "#${item.sequenceNo} " : ""}${item.name}',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
               ),
             ),
             if (item.isLowStock)
@@ -1290,8 +1445,10 @@ class _ItemTile extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-              ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-               .fadeIn(begin: 0.40, duration: 1000.ms),
+              )
+                  .animate(
+                      onPlay: (controller) => controller.repeat(reverse: true))
+                  .fadeIn(begin: 0.40, duration: 1000.ms),
           ],
         ),
         subtitle: Column(
@@ -1305,7 +1462,10 @@ class _ItemTile extends StatelessWidget {
               children: [
                 Text(
                   'Price: ${AppFormatters.currency(item.sellingPrice)} / ${item.unit}',
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary, fontSize: 13),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                      fontSize: 13),
                 ),
                 if (item.marketPrice > 0)
                   Text(
@@ -1329,15 +1489,20 @@ class _ItemTile extends StatelessWidget {
                   'Cost: ${AppFormatters.currency(item.costPrice)}',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF80CBC4) : Colors.teal,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF80CBC4)
+                        : Colors.teal,
                     fontSize: 12,
                   ),
                 ),
                 Text(
                   'Stock: ${AppFormatters.quantity(item.stock, unit: item.unit)}',
                   style: TextStyle(
-                    color: item.isLowStock ? AppColors.error : AppColors.textSecondaryColor(context),
-                    fontWeight: item.isLowStock ? FontWeight.w800 : FontWeight.w600,
+                    color: item.isLowStock
+                        ? AppColors.error
+                        : AppColors.textSecondaryColor(context),
+                    fontWeight:
+                        item.isLowStock ? FontWeight.w800 : FontWeight.w600,
                     fontSize: 12,
                   ),
                 ),
@@ -1354,9 +1519,28 @@ class _ItemTile extends StatelessWidget {
                   if (v == 'delete') onDelete();
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_rounded, size: 18), SizedBox(width: 8), Text('Edit Item')])),
-                  const PopupMenuItem(value: 'stock', child: Row(children: [Icon(Icons.swap_vert_rounded, size: 18), SizedBox(width: 8), Text('Adjust Stock')])),
-                  const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error), SizedBox(width: 8), Text('Delete', style: TextStyle(color: AppColors.error))])),
+                  const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(children: [
+                        Icon(Icons.edit_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Text('Edit Item')
+                      ])),
+                  const PopupMenuItem(
+                      value: 'stock',
+                      child: Row(children: [
+                        Icon(Icons.swap_vert_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Text('Adjust Stock')
+                      ])),
+                  const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(children: [
+                        Icon(Icons.delete_outline_rounded,
+                            size: 18, color: AppColors.error),
+                        SizedBox(width: 8),
+                        Text('Delete', style: TextStyle(color: AppColors.error))
+                      ])),
                 ],
               ),
       ),

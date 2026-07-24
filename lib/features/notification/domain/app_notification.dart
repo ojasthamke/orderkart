@@ -63,7 +63,8 @@ class AppNotification {
       relatedId: map['related_id'] as String? ?? '',
       isRead: (map['is_read'] as int? ?? 0) == 1,
       priority: map['priority'] as int? ?? 0,
-      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 }

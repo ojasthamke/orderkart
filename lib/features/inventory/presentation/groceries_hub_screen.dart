@@ -27,7 +27,7 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _spoilageFormKey = GlobalKey<FormState>();
-  
+
   Item? _selectedSpoilageItem;
   final _spoilageQtyCon = TextEditingController();
   final _spoilageRemarksCon = TextEditingController();
@@ -70,7 +70,8 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
   }
 
   Future<void> _logSpoilage() async {
-    if (!_spoilageFormKey.currentState!.validate() || _selectedSpoilageItem == null) {
+    if (!_spoilageFormKey.currentState!.validate() ||
+        _selectedSpoilageItem == null) {
       SnackbarHelper.showError(context, 'Please select an item and quantity');
       return;
     }
@@ -115,7 +116,7 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
       ));
 
       ref.invalidate(inventoryProvider);
-      
+
       if (mounted) {
         final settingsVal = ref.read(settingsProvider).valueOrNull;
         final currency = settingsVal?.currency ?? '₹';
@@ -130,7 +131,8 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
         });
       }
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Failed logging spoilage: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Failed logging spoilage: $e');
     } finally {
       if (mounted) setState(() => _submittingSpoilage = false);
     }
@@ -150,16 +152,23 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         tabs: const [
-          Tab(icon: Icon(Icons.shopping_basket_rounded), text: 'Catalog & Stock'),
+          Tab(
+              icon: Icon(Icons.shopping_basket_rounded),
+              text: 'Catalog & Stock'),
           Tab(icon: Icon(Icons.timer_rounded), text: 'Freshness Radar'),
-          Tab(icon: Icon(Icons.report_gmailerrorred_rounded), text: 'Spoilage Logger'),
+          Tab(
+              icon: Icon(Icons.report_gmailerrorred_rounded),
+              text: 'Spoilage Logger'),
         ],
       ),
       body: itemsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (allItems) {
-          final groceries = allItems.where((i) => i.category == AppConstants.catGroceries).toList();
+          final groceries = allItems
+              .where((i) => i.category == AppConstants.catGroceries)
+              .toList();
 
           return TabBarView(
             controller: _tabController,
@@ -192,7 +201,8 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -203,21 +213,26 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                     children: [
                       Text(
                         item.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: isLow ? AppColors.errorSurface : AppColors.successSurface,
+                              color: isLow
+                                  ? AppColors.errorSurface
+                                  : AppColors.successSurface,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               'Stock: ${item.stock} ${item.unit}',
                               style: TextStyle(
-                                color: isLow ? AppColors.error : AppColors.success,
+                                color:
+                                    isLow ? AppColors.error : AppColors.success,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11,
                               ),
@@ -227,7 +242,8 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                           if (item.bestBefore.isNotEmpty)
                             Text(
                               'Expiry: ${item.bestBefore}',
-                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              style: const TextStyle(
+                                  fontSize: 11, color: AppColors.textSecondary),
                             ),
                         ],
                       ),
@@ -239,7 +255,9 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                   children: [
                     IconButton.filledTonal(
                       icon: const Icon(Icons.remove_rounded),
-                      onPressed: item.stock < 0.001 ? null : () => _adjustStock(item, -1),
+                      onPressed: item.stock < 0.001
+                          ? null
+                          : () => _adjustStock(item, -1),
                     ),
                     const SizedBox(width: 4),
                     IconButton.filledTonal(
@@ -263,7 +281,8 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
       return const EmptyStateWidget(
         icon: Icons.health_and_safety_outlined,
         title: 'No Dated Items',
-        subtitle: 'Configure pack/best-before dates in inventory editing screen',
+        subtitle:
+            'Configure pack/best-before dates in inventory editing screen',
       );
     }
 
@@ -284,28 +303,41 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: isExpired ? AppColors.error.withOpacity(0.5) : Colors.transparent,
+              color: isExpired
+                  ? AppColors.error.withOpacity(0.5)
+                  : Colors.transparent,
               width: 1.5,
             ),
           ),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: isExpired ? AppColors.errorSurface : AppColors.successSurface,
+              backgroundColor:
+                  isExpired ? AppColors.errorSurface : AppColors.successSurface,
               child: Icon(
-                isExpired ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
+                isExpired
+                    ? Icons.warning_amber_rounded
+                    : Icons.check_circle_outline_rounded,
                 color: isExpired ? AppColors.error : AppColors.success,
               ),
             ),
-            title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('Best Before: ${item.bestBefore} • Pack Date: ${item.packDate.isNotEmpty ? item.packDate : "N/A"}'),
+            title: Text(item.name,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(
+                'Best Before: ${item.bestBefore} • Pack Date: ${item.packDate.isNotEmpty ? item.packDate : "N/A"}'),
             trailing: isExpired
                 ? const Text(
                     'EXPIRED',
-                    style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 11),
+                    style: TextStyle(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11),
                   )
                 : const Text(
                     'FRESH',
-                    style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 11),
+                    style: TextStyle(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11),
                   ),
           ),
         ).animate().fadeIn(delay: (index * 50).ms);
@@ -331,7 +363,10 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
           children: [
             const Text(
               'Report Spoiled or Damaged Groceries',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -363,7 +398,8 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
             // Quantity Field
             TextFormField(
               controller: _spoilageQtyCon,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Spoiled Quantity',
                 prefixIcon: Icon(Icons.scale_rounded),
@@ -371,8 +407,10 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Enter quantity';
                 final numVal = double.tryParse(v);
-                if (numVal == null || numVal <= 0) return 'Enter a positive quantity';
-                if (_selectedSpoilageItem != null && numVal > _selectedSpoilageItem!.stock) {
+                if (numVal == null || numVal <= 0)
+                  return 'Enter a positive quantity';
+                if (_selectedSpoilageItem != null &&
+                    numVal > _selectedSpoilageItem!.stock) {
                   return 'Cannot exceed current stock (${_selectedSpoilageItem!.stock})';
                 }
                 return null;
@@ -388,7 +426,8 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                 prefixIcon: Icon(Icons.notes_rounded),
               ),
               textCapitalization: TextCapitalization.sentences,
-              validator: (v) => v == null || v.trim().isEmpty ? 'Enter remarks' : null,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Enter remarks' : null,
             ),
             const SizedBox(height: 32),
 
@@ -400,7 +439,8 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.check_rounded),
                 label: const Text('Confirm Spoilage & Log Expense'),

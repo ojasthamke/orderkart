@@ -18,7 +18,7 @@ class AddEditNoteScreen extends ConsumerStatefulWidget {
 class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
-  
+
   bool _isPinned = false;
   int _colorLabel = 0;
   DateTime? _remindAt;
@@ -35,11 +35,13 @@ class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.existingNote?.title ?? '');
-    _contentController = TextEditingController(text: widget.existingNote?.content ?? '');
+    _titleController =
+        TextEditingController(text: widget.existingNote?.title ?? '');
+    _contentController =
+        TextEditingController(text: widget.existingNote?.content ?? '');
     _isPinned = widget.existingNote?.isPinned ?? false;
     _colorLabel = widget.existingNote?.colorLabel ?? 0;
-    
+
     if (widget.existingNote?.remindAt.isNotEmpty == true) {
       _remindAt = DateTime.tryParse(widget.existingNote!.remindAt);
     }
@@ -81,14 +83,15 @@ class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
   void _saveNote() {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
-    
+
     if (title.isEmpty && content.isEmpty) {
       Navigator.pop(context);
       return;
     }
 
     final note = AppNote(
-      id: widget.existingNote?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id: widget.existingNote?.id ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
       content: content,
       remindAt: _remindAt?.toIso8601String() ?? '',
@@ -108,7 +111,8 @@ class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
       NotificationService.instance.scheduleNotification(
         id: note.id.hashCode,
         title: 'Note Reminder: $title',
-        body: content.isNotEmpty ? content : 'You have a reminder for this note.',
+        body:
+            content.isNotEmpty ? content : 'You have a reminder for this note.',
         scheduledDate: _remindAt!,
         payload: 'note_${note.id}',
       );
@@ -120,8 +124,8 @@ class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bgColor = _colorLabel == 0 
-        ? theme.scaffoldBackgroundColor 
+    final bgColor = _colorLabel == 0
+        ? theme.scaffoldBackgroundColor
         : _availableColors[_colorLabel];
 
     return Scaffold(
@@ -145,7 +149,7 @@ class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
                   if (context.mounted) {
                     Navigator.pop(context);
                     SnackbarHelper.showWithUndo(
-                      context, 
+                      context,
                       message: 'Note deleted',
                       undoLabel: 'Undo',
                     ).then((undone) async {
@@ -196,7 +200,8 @@ class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: Row(
                     children: [
-                      Icon(Icons.alarm, size: 16, color: theme.colorScheme.primary),
+                      Icon(Icons.alarm,
+                          size: 16, color: theme.colorScheme.primary),
                       const SizedBox(width: 8),
                       Text(
                         'Reminder: ${_remindAt!.year}-${_remindAt!.month.toString().padLeft(2, '0')}-${_remindAt!.day.toString().padLeft(2, '0')} ${_remindAt!.hour.toString().padLeft(2, '0')}:${_remindAt!.minute.toString().padLeft(2, '0')}',
@@ -266,18 +271,18 @@ class _AddEditNoteScreenState extends ConsumerState<AddEditNoteScreen> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: color == Colors.transparent 
-                        ? Theme.of(context).colorScheme.primaryContainer 
+                    color: color == Colors.transparent
+                        ? Theme.of(context).colorScheme.primaryContainer
                         : color,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: _colorLabel == index 
-                          ? Theme.of(context).colorScheme.primary 
+                      color: _colorLabel == index
+                          ? Theme.of(context).colorScheme.primary
                           : Colors.grey.shade300,
                       width: _colorLabel == index ? 3 : 1,
                     ),
                   ),
-                  child: color == Colors.transparent 
+                  child: color == Colors.transparent
                       ? const Icon(Icons.format_color_reset, color: Colors.grey)
                       : null,
                 ),

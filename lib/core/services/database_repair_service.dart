@@ -29,7 +29,8 @@ class DatabaseRepairService {
     int cleanedStreets = 0;
 
     // 1. Scan customer photo paths
-    final customers = await db.query('customers', columns: ['id', 'photo_path']);
+    final customers =
+        await db.query('customers', columns: ['id', 'photo_path']);
     for (final c in customers) {
       final path = c['photo_path'] as String? ?? '';
       if (path.isNotEmpty) {
@@ -38,7 +39,8 @@ class DatabaseRepairService {
           final fallback = AppConstants.resolveFile(path);
           if (!fallback.existsSync()) {
             // Reset broken path
-            await db.update('customers', {'photo_path': ''}, where: 'id = ?', whereArgs: [c['id']]);
+            await db.update('customers', {'photo_path': ''},
+                where: 'id = ?', whereArgs: [c['id']]);
             fixedPhotos++;
           }
         }
@@ -67,14 +69,16 @@ class DatabaseRepairService {
       cleanedStreets++;
     }
 
-    final summary = 'Diagnostic Repair Complete: $fixedPhotos broken photo links reset, $cleanedOrderItems orphan items cleaned, $cleanedStreets orphan streets cleaned.';
+    final summary =
+        'Diagnostic Repair Complete: $fixedPhotos broken photo links reset, $cleanedOrderItems orphan items cleaned, $cleanedStreets orphan streets cleaned.';
 
     // Log diagnostic run
     await db.insert('repair_logs', {
       'id': uuid.v4(),
       'date': DateTime.now().toIso8601String(),
       'issue_type': 'database_diagnostics',
-      'details': 'Fixed photos: $fixedPhotos, Cleaned items: $cleanedOrderItems, Cleaned streets: $cleanedStreets',
+      'details':
+          'Fixed photos: $fixedPhotos, Cleaned items: $cleanedOrderItems, Cleaned streets: $cleanedStreets',
       'action_taken': 'auto_repair',
     });
 

@@ -17,7 +17,8 @@ class CallLogsScreen extends ConsumerStatefulWidget {
   ConsumerState<CallLogsScreen> createState() => _CallLogsScreenState();
 }
 
-class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTickerProviderStateMixin {
+class _CallLogsScreenState extends ConsumerState<CallLogsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<Map<String, dynamic>> _callLogs = [];
   bool _loadingLogs = true;
@@ -56,10 +57,10 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
 
   Future<void> _placeCall(String customerId, String name, String phone) async {
     AppHaptics.buttonClick();
-    
+
     // Copy name to clipboard
     await Clipboard.setData(ClipboardData(text: name));
-    
+
     // Log the call in SQLite
     await DatabaseHelper.instance.insertCallLog(
       customerId: customerId,
@@ -73,7 +74,8 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
     if (await canLaunchUrl(telUri)) {
       await launchUrl(telUri);
     } else {
-      if (mounted) SnackbarHelper.showError(context, 'Could not open phone app');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Could not open phone app');
     }
 
     _loadLogs(); // Refresh log list
@@ -84,8 +86,10 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Clear Call Logs?', style: TextStyle(fontWeight: FontWeight.w800)),
-        content: const Text('Are you sure you want to clear your local call history? This cannot be undone.'),
+        title: const Text('Clear Call Logs?',
+            style: TextStyle(fontWeight: FontWeight.w800)),
+        content: const Text(
+            'Are you sure you want to clear your local call history? This cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -93,7 +97,9 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white),
             child: const Text('Clear All'),
           ),
         ],
@@ -129,10 +135,13 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: Colors.transparent,
             indicator: AppColors.tabDecoration(context),
-            labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            labelStyle:
+                const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
             tabs: const [
               Tab(text: 'Recent Calls', icon: Icon(Icons.history_rounded)),
-              Tab(text: 'Directory (Contacts)', icon: Icon(Icons.contacts_rounded)),
+              Tab(
+                  text: 'Directory (Contacts)',
+                  icon: Icon(Icons.contacts_rounded)),
             ],
           ),
           Expanded(
@@ -154,7 +163,8 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
 
   Widget _buildRecentTab() {
     if (_loadingLogs) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+          child: CircularProgressIndicator(color: AppColors.primary));
     }
 
     if (_callLogs.isEmpty) {
@@ -162,11 +172,15 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.phone_missed_rounded, size: 72, color: AppColors.gray300),
+            Icon(Icons.phone_missed_rounded,
+                size: 72, color: AppColors.gray300),
             const SizedBox(height: 16),
             Text(
               'No Call History',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -191,7 +205,8 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
         String dateStr = '';
         try {
           final parsed = DateTime.parse(calledAt);
-          dateStr = '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+          dateStr =
+              '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')} ${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
         } catch (_) {}
 
         return Card(
@@ -207,16 +222,23 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
               foregroundColor: AppColors.primary,
               child: const Icon(Icons.call_made_rounded, size: 20),
             ),
-            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+            title: Text(name,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(phone, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                Text(dateStr, style: const TextStyle(color: AppColors.textHint, fontSize: 11)),
+                Text(phone,
+                    style: TextStyle(
+                        color: AppColors.textSecondary, fontSize: 13)),
+                Text(dateStr,
+                    style: const TextStyle(
+                        color: AppColors.textHint, fontSize: 11)),
               ],
             ),
             trailing: IconButton.filledTonal(
-              icon: const Icon(Icons.phone_rounded, color: AppColors.primary, size: 18),
+              icon: const Icon(Icons.phone_rounded,
+                  color: AppColors.primary, size: 18),
               onPressed: () => _placeCall(custId, name, phone),
             ),
           ),
@@ -227,7 +249,8 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
 
   Widget _buildDirectoryTab(AsyncValue<List<Customer>> customersAsync) {
     return customersAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary)),
       error: (e, _) => Center(child: Text('Failed to load contacts: $e')),
       data: (customers) {
         final filtered = customers.where((c) {
@@ -239,28 +262,29 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
 
         return Column(
           children: [
-             Padding(
-               padding: const EdgeInsets.all(16),
-               child: TextField(
-                 controller: _directorySearchCon,
-                 onChanged: (val) => setState(() => _searchQuery = val),
-                 decoration: InputDecoration(
-                   hintText: 'Search contacts...',
-                   prefixIcon: const Icon(Icons.search_rounded),
-                   suffixIcon: _searchQuery.isNotEmpty
-                       ? IconButton(
-                           icon: const Icon(Icons.clear_rounded),
-                           onPressed: () {
-                             _directorySearchCon.clear();
-                             setState(() => _searchQuery = '');
-                           },
-                         )
-                       : null,
-                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                 ),
-               ),
-             ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                controller: _directorySearchCon,
+                onChanged: (val) => setState(() => _searchQuery = val),
+                decoration: InputDecoration(
+                  hintText: 'Search contacts...',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded),
+                          onPressed: () {
+                            _directorySearchCon.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+              ),
+            ),
 
             // Customer List
             Expanded(
@@ -268,7 +292,8 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
                   ? Center(
                       child: Text(
                         'No contacts found',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 14),
                       ),
                     )
                   : ListView.builder(
@@ -288,23 +313,39 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen> with SingleTick
                               backgroundColor: AppColors.gray100,
                               foregroundColor: AppColors.textPrimary,
                               child: Text(
-                                customer.name.isNotEmpty ? customer.name.substring(0, 1).toUpperCase() : '?',
-                                style: const TextStyle(fontWeight: FontWeight.w800),
+                                customer.name.isNotEmpty
+                                    ? customer.name
+                                        .substring(0, 1)
+                                        .toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800),
                               ),
                             ),
-                            title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                            subtitle: Text(customer.phone1, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                            title: Text(customer.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 14)),
+                            subtitle: Text(customer.phone1,
+                                style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12)),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (customer.phone2.isNotEmpty)
                                   IconButton(
-                                    icon: const Icon(Icons.phone_callback_rounded, color: Colors.blue, size: 20),
-                                    onPressed: () => _placeCall(customer.id, customer.name, customer.phone2),
+                                    icon: const Icon(
+                                        Icons.phone_callback_rounded,
+                                        color: Colors.blue,
+                                        size: 20),
+                                    onPressed: () => _placeCall(customer.id,
+                                        customer.name, customer.phone2),
                                   ),
                                 IconButton.filledTonal(
-                                  icon: const Icon(Icons.phone_rounded, color: AppColors.primary, size: 18),
-                                  onPressed: () => _placeCall(customer.id, customer.name, customer.phone1),
+                                  icon: const Icon(Icons.phone_rounded,
+                                      color: AppColors.primary, size: 18),
+                                  onPressed: () => _placeCall(customer.id,
+                                      customer.name, customer.phone1),
                                 ),
                               ],
                             ),

@@ -38,10 +38,12 @@ class LocationDetailScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<LocationDetailScreen> createState() => _LocationDetailScreenState();
+  ConsumerState<LocationDetailScreen> createState() =>
+      _LocationDetailScreenState();
 }
 
-class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> with SingleTickerProviderStateMixin {
+class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -59,7 +61,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
   @override
   Widget build(BuildContext context) {
     final breadcrumbsAsync = ref.watch(breadcrumbsProvider(widget.locationId));
-    final childLocationsAsync = ref.watch(locationListProvider(widget.locationId));
+    final childLocationsAsync =
+        ref.watch(locationListProvider(widget.locationId));
     final customersAsync = ref.watch(customerListProvider(widget.locationId));
     final settingsAsync = ref.watch(settingsProvider);
     final currency = settingsAsync.valueOrNull?.currency ?? '₹';
@@ -103,7 +106,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
               if (breadcrumbs.isEmpty) return const SizedBox.shrink();
               return Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 color: Theme.of(context).cardTheme.color,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -119,7 +123,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                                 ? null
                                 : () {
                                     // Pop back to this breadcrumb parent
-                                    final popsCount = (breadcrumbs.length - 1) - idx;
+                                    final popsCount =
+                                        (breadcrumbs.length - 1) - idx;
                                     for (int i = 0; i < popsCount; i++) {
                                       Navigator.of(context).pop();
                                     }
@@ -128,15 +133,19 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                               node.name,
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
-                                color: isLast ? AppColors.textPrimaryColor(context) : AppColors.primary,
+                                fontWeight:
+                                    isLast ? FontWeight.w700 : FontWeight.w500,
+                                color: isLast
+                                    ? AppColors.textPrimaryColor(context)
+                                    : AppColors.primary,
                               ),
                             ),
                           ),
                           if (!isLast)
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 6),
-                              child: Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.gray400),
+                              child: Icon(Icons.chevron_right_rounded,
+                                  size: 16, color: AppColors.gray400),
                             ),
                         ],
                       );
@@ -146,7 +155,7 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
               );
             },
           ),
-          
+
           // Tab bar to switch between Sub-locations and Customers
           TabBar(
             controller: _tabController,
@@ -169,7 +178,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                   children: [
                     CustomSearchBar(
                       hint: 'Search customers...',
-                      onChanged: (q) => ref.read(customerListProvider(widget.locationId).notifier).search(q),
+                      onChanged: (q) => ref
+                          .read(
+                              customerListProvider(widget.locationId).notifier)
+                          .search(q),
                     ),
                     Expanded(
                       child: customersAsync.when(
@@ -180,13 +192,15 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                             return EmptyStateWidget(
                               icon: Icons.people_outline_rounded,
                               title: 'No Customers Here',
-                              subtitle: 'No customers are registered at this specific road/location.',
+                              subtitle:
+                                  'No customers are registered at this specific road/location.',
                               actionLabel: 'Add Customer',
                               onAction: () {
                                 Navigator.of(context).pushNamed(
                                   AppRoutes.addEditCustomer,
                                   arguments: {'streetId': widget.locationId},
-                                ).then((_) => ref.refresh(customerListProvider(widget.locationId)));
+                                ).then((_) => ref.refresh(
+                                    customerListProvider(widget.locationId)));
                               },
                             );
                           }
@@ -198,7 +212,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                               if (newIndex > oldIndex) {
                                 newIndex -= 1;
                               }
-                              ref.read(customerListProvider(widget.locationId).notifier).reorder(oldIndex, newIndex);
+                              ref
+                                  .read(customerListProvider(widget.locationId)
+                                      .notifier)
+                                  .reorder(oldIndex, newIndex);
                             },
                             itemBuilder: (ctx, i) {
                               final cust = rawCustomers[i];
@@ -212,7 +229,9 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                                     Navigator.of(context).pushNamed(
                                       AppRoutes.customerProfile,
                                       arguments: {'customerId': cust.id},
-                                    ).then((_) => ref.refresh(customerListProvider(widget.locationId)));
+                                    ).then((_) => ref.refresh(
+                                        customerListProvider(
+                                            widget.locationId)));
                                   },
                                 ),
                               );
@@ -229,7 +248,10 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                   children: [
                     CustomSearchBar(
                       hint: 'Search sub-locations...',
-                      onChanged: (q) => ref.read(locationListProvider(widget.locationId).notifier).search(q),
+                      onChanged: (q) => ref
+                          .read(
+                              locationListProvider(widget.locationId).notifier)
+                          .search(q),
                     ),
                     Expanded(
                       child: childLocationsAsync.when(
@@ -241,9 +263,11 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                             return EmptyStateWidget(
                               icon: Icons.holiday_village_rounded,
                               title: 'No Sub-locations',
-                              subtitle: 'Add societies, gallis, buildings, or lanes inside this location.',
+                              subtitle:
+                                  'Add societies, gallis, buildings, or lanes inside this location.',
                               actionLabel: 'Add Sub-location',
-                              onAction: () => _showAddEditLocationDialog(context, null),
+                              onAction: () =>
+                                  _showAddEditLocationDialog(context, null),
                             );
                           }
 
@@ -263,12 +287,16 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                                       'areaName': loc.name,
                                     },
                                   ).then((_) {
-                                    ref.invalidate(locationListProvider(widget.locationId));
-                                    ref.invalidate(breadcrumbsProvider(widget.locationId));
+                                    ref.invalidate(locationListProvider(
+                                        widget.locationId));
+                                    ref.invalidate(
+                                        breadcrumbsProvider(widget.locationId));
                                   });
                                 },
-                                onEdit: () => _showAddEditLocationDialog(context, loc),
-                                onDelete: () => _confirmDeleteLocation(context, loc),
+                                onEdit: () =>
+                                    _showAddEditLocationDialog(context, loc),
+                                onDelete: () =>
+                                    _confirmDeleteLocation(context, loc),
                               );
                             },
                           );
@@ -291,7 +319,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
               Navigator.of(context).pushNamed(
                 AppRoutes.addEditCustomer,
                 arguments: {'streetId': widget.locationId},
-              ).then((_) => ref.refresh(customerListProvider(widget.locationId)));
+              ).then(
+                  (_) => ref.refresh(customerListProvider(widget.locationId)));
             },
             tooltip: 'Add Customer',
             child: const Icon(Icons.person_add_rounded),
@@ -320,7 +349,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
       context: context,
       builder: (dlgCtx) => StatefulBuilder(
         builder: (dlgCtx, setDlgState) => AlertDialog(
-          title: Text(location == null ? 'Add Sub-location' : 'Edit Sub-location'),
+          title:
+              Text(location == null ? 'Add Sub-location' : 'Edit Sub-location'),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -339,19 +369,23 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                               ListTile(
                                 leading: const Icon(Icons.camera_alt_rounded),
                                 title: const Text('Take a Photo'),
-                                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                                onTap: () =>
+                                    Navigator.pop(ctx, ImageSource.camera),
                               ),
                               ListTile(
-                                leading: const Icon(Icons.photo_library_rounded),
+                                leading:
+                                    const Icon(Icons.photo_library_rounded),
                                 title: const Text('Choose from Gallery'),
-                                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                                onTap: () =>
+                                    Navigator.pop(ctx, ImageSource.gallery),
                               ),
                             ],
                           ),
                         ),
                       );
                       if (source != null) {
-                        final file = await ImageUtils.pickAndCompress(source: source);
+                        final file =
+                            await ImageUtils.pickAndCompress(source: source);
                         if (file != null) {
                           setDlgState(() => photoPath = file.path);
                         }
@@ -364,20 +398,28 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                         color: AppColors.gray100,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.gray300),
-                        image: (photoPath.isNotEmpty && File(photoPath).existsSync())
-                            ? DecorationImage(image: FileImage(File(photoPath)), fit: BoxFit.cover)
+                        image: (photoPath.isNotEmpty &&
+                                File(photoPath).existsSync())
+                            ? DecorationImage(
+                                image: FileImage(File(photoPath)),
+                                fit: BoxFit.cover)
                             : null,
                       ),
-                      child: (photoPath.isEmpty || !File(photoPath).existsSync())
-                          ? const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_a_photo_rounded, color: AppColors.gray500, size: 24),
-                                SizedBox(height: 2),
-                                Text('Photo', style: TextStyle(fontSize: 10, color: AppColors.gray600)),
-                              ],
-                            )
-                          : null,
+                      child:
+                          (photoPath.isEmpty || !File(photoPath).existsSync())
+                              ? const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_a_photo_rounded,
+                                        color: AppColors.gray500, size: 24),
+                                    SizedBox(height: 2),
+                                    Text('Photo',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            color: AppColors.gray600)),
+                                  ],
+                                )
+                              : null,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -390,8 +432,12 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                       prefixIcon: Icon(Icons.layers_rounded),
                     ),
                     items: LocationKind.values
-                        .where((k) => k != LocationKind.area) // root locations are Area, sub-locations are Road/Galli/etc.
-                        .map((k) => DropdownMenuItem(value: k, child: Text(k.value)))
+                        .where((k) =>
+                            k !=
+                            LocationKind
+                                .area) // root locations are Area, sub-locations are Road/Galli/etc.
+                        .map((k) =>
+                            DropdownMenuItem(value: k, child: Text(k.value)))
                         .toList(),
                     onChanged: (k) {
                       if (k != null) {
@@ -446,12 +492,14 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                 if (!formKey.currentState!.validate()) return;
                 Navigator.of(dlgCtx).pop();
 
-                final notifier = ref.read(locationListProvider(widget.locationId).notifier);
+                final notifier =
+                    ref.read(locationListProvider(widget.locationId).notifier);
                 final now = DateTime.now();
                 final locId = location?.id ?? const Uuid().v4();
 
                 String finalPhotoPath = photoPath;
-                if (photoPath.isNotEmpty && !photoPath.startsWith('/data/user/')) {
+                if (photoPath.isNotEmpty &&
+                    !photoPath.startsWith('/data/user/')) {
                   final savedPath = await ImageUtils.saveImagePermanently(
                     sourcePath: photoPath,
                     subFolder: 'location_photos',
@@ -476,7 +524,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                     updatedAt: now,
                   ));
                   if (mounted) {
-                    SnackbarHelper.showSuccess(context, '${selectedKind.value} added');
+                    SnackbarHelper.showSuccess(
+                        context, '${selectedKind.value} added');
                   }
                 } else {
                   await notifier.updateLocation(location.copyWith(
@@ -488,7 +537,8 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
                     updatedAt: now,
                   ));
                   if (mounted) {
-                    SnackbarHelper.showSuccess(context, '${selectedKind.value} updated');
+                    SnackbarHelper.showSuccess(
+                        context, '${selectedKind.value} updated');
                   }
                 }
               },
@@ -500,14 +550,18 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen> wit
     );
   }
 
-  Future<void> _confirmDeleteLocation(BuildContext context, Location location) async {
+  Future<void> _confirmDeleteLocation(
+      BuildContext context, Location location) async {
     final ok = await ConfirmDeleteDialog.show(
       context,
       title: 'Delete ${location.locationKind.value}',
-      message: 'Delete "${location.name}"? All nested child sub-locations and customers inside will also be deleted.',
+      message:
+          'Delete "${location.name}"? All nested child sub-locations and customers inside will also be deleted.',
     );
     if (!ok || !mounted) return;
-    await ref.read(locationListProvider(widget.locationId).notifier).delete(location.id);
+    await ref
+        .read(locationListProvider(widget.locationId).notifier)
+        .delete(location.id);
     if (!mounted) return;
     SnackbarHelper.showSuccess(context, '"${location.name}" deleted');
   }
@@ -542,9 +596,12 @@ class _LocationTile extends StatelessWidget {
               // Photo/Icon indicator
               GestureDetector(
                 onTap: () {
-                  final resolvedFile = AppConstants.resolveFile(location.photoPath);
-                  if (location.photoPath.isNotEmpty && resolvedFile.existsSync()) {
-                    FullScreenImageViewer.show(context, resolvedFile.path, title: location.name);
+                  final resolvedFile =
+                      AppConstants.resolveFile(location.photoPath);
+                  if (location.photoPath.isNotEmpty &&
+                      resolvedFile.existsSync()) {
+                    FullScreenImageViewer.show(context, resolvedFile.path,
+                        title: location.name);
                   }
                 },
                 child: Container(
@@ -553,12 +610,20 @@ class _LocationTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.primarySurface,
                     borderRadius: BorderRadius.circular(12),
-                    image: (location.photoPath.isNotEmpty && AppConstants.resolveFile(location.photoPath).existsSync())
-                        ? DecorationImage(image: FileImage(AppConstants.resolveFile(location.photoPath)), fit: BoxFit.cover)
+                    image: (location.photoPath.isNotEmpty &&
+                            AppConstants.resolveFile(location.photoPath)
+                                .existsSync())
+                        ? DecorationImage(
+                            image: FileImage(
+                                AppConstants.resolveFile(location.photoPath)),
+                            fit: BoxFit.cover)
                         : null,
                   ),
-                  child: (location.photoPath.isEmpty || !AppConstants.resolveFile(location.photoPath).existsSync())
-                      ? Icon(location.locationKind.icon, color: AppColors.primary, size: 24)
+                  child: (location.photoPath.isEmpty ||
+                          !AppConstants.resolveFile(location.photoPath)
+                              .existsSync())
+                      ? Icon(location.locationKind.icon,
+                          color: AppColors.primary, size: 24)
                       : null,
                 ),
               ),
@@ -569,13 +634,19 @@ class _LocationTile extends StatelessWidget {
                   children: [
                     Text(
                       location.name,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     if (location.description.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         location.description,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: AppColors.textSecondary),
                       ),
                     ],
                     const SizedBox(height: 6),
@@ -584,38 +655,50 @@ class _LocationTile extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             location.locationKind.value,
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary),
+                            style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary),
                           ),
                         ),
                         if (location.childCount > 0)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: Colors.green.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               '${location.childCount} sub-roads',
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green),
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green),
                             ),
                           ),
                         if (location.customerCount > 0)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: Colors.blue.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               '${location.customerCount} customers',
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.blue),
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blue),
                             ),
                           ),
                         if (location.mapsLocation.isNotEmpty)
@@ -623,17 +706,21 @@ class _LocationTile extends StatelessWidget {
                             onTap: () async {
                               final loc = location.mapsLocation.trim();
                               Uri uri;
-                              if (loc.startsWith('http://') || loc.startsWith('https://')) {
+                              if (loc.startsWith('http://') ||
+                                  loc.startsWith('https://')) {
                                 uri = Uri.parse(loc);
                               } else {
-                                uri = Uri.parse('https://maps.google.com/?q=${Uri.encodeComponent(loc)}');
+                                uri = Uri.parse(
+                                    'https://maps.google.com/?q=${Uri.encodeComponent(loc)}');
                               }
                               if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                await launchUrl(uri,
+                                    mode: LaunchMode.externalApplication);
                               }
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: Colors.deepOrange.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(6),
@@ -641,9 +728,14 @@ class _LocationTile extends StatelessWidget {
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.location_on_rounded, size: 12, color: Colors.deepOrange),
+                                  Icon(Icons.location_on_rounded,
+                                      size: 12, color: Colors.deepOrange),
                                   SizedBox(width: 4),
-                                  Text('📍 Location', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.deepOrange)),
+                                  Text('📍 Location',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.deepOrange)),
                                 ],
                               ),
                             ),
@@ -654,7 +746,8 @@ class _LocationTile extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded, color: AppColors.gray500),
+                icon: const Icon(Icons.more_vert_rounded,
+                    color: AppColors.gray500),
                 onSelected: (v) {
                   if (v == 'edit') onEdit();
                   if (v == 'delete') onDelete();
@@ -704,17 +797,16 @@ class _CustomerTile extends ConsumerWidget {
                 index: index,
                 child: const Padding(
                   padding: EdgeInsets.only(right: 12),
-                  child: Icon(Icons.drag_indicator_rounded, color: AppColors.gray400),
+                  child: Icon(Icons.drag_indicator_rounded,
+                      color: AppColors.gray400),
                 ),
               ),
-              
               VipGlowAvatar(
                 isVip: customer.isVipActive,
                 photoPath: customer.photoPath,
                 radius: 22,
               ),
               const SizedBox(width: 12),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,7 +816,10 @@ class _CustomerTile extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             customer.name,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
@@ -732,42 +827,50 @@ class _CustomerTile extends ConsumerWidget {
                         if (customer.serialNo > 0)
                           Text(
                             customer.serialLabel,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                           ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Phone: ${customer.phone1}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.textSecondary),
                     ),
                     if (customer.houseNumber.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
                         'House: ${customer.houseNumber}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: AppColors.textSecondary),
                       ),
                     ],
                   ],
                 ),
               ),
-
               const SizedBox(width: 8),
-              
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    AppFormatters.currency(customer.outstandingBalance, symbol: currency),
+                    AppFormatters.currency(customer.outstandingBalance,
+                        symbol: currency),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: customer.outstandingBalance > 0
                           ? AppColors.error
-                          : (customer.outstandingBalance < 0 ? AppColors.success : AppColors.textPrimary),
+                          : (customer.outstandingBalance < 0
+                              ? AppColors.success
+                              : AppColors.textPrimary),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -776,13 +879,15 @@ class _CustomerTile extends ConsumerWidget {
                       IconButton(
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        icon: const Icon(Icons.account_balance_wallet_outlined, size: 20, color: AppColors.primary),
+                        icon: const Icon(Icons.account_balance_wallet_outlined,
+                            size: 20, color: AppColors.primary),
                         onPressed: () {
                           InstantLedgerSheet.show(
                             context,
                             customer,
                           ).then((_) {
-                            ref.invalidate(customerListProvider(customer.streetId));
+                            ref.invalidate(
+                                customerListProvider(customer.streetId));
                           });
                         },
                       ),

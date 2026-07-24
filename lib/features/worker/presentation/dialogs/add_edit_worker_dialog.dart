@@ -33,7 +33,7 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
   late TextEditingController _salaryCon;
   late TextEditingController _targetCon;
   late TextEditingController _notesCon;
-  
+
   // New Controllers
   late TextEditingController _aadhaarCon;
   late TextEditingController _emergencyContactCon;
@@ -54,15 +54,19 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
     _phoneCon = TextEditingController(text: w?.phone ?? '');
     _addressCon = TextEditingController(text: w?.address ?? '');
     _empIdCon = TextEditingController(text: w?.employeeId ?? '');
-    _commValCon = TextEditingController(text: (w?.commissionValue ?? 5.0).toString());
+    _commValCon =
+        TextEditingController(text: (w?.commissionValue ?? 5.0).toString());
     _salaryCon = TextEditingController(text: (w?.salary ?? 0.0).toString());
-    _targetCon = TextEditingController(text: (w?.target ?? 50000.0).toStringAsFixed(0));
+    _targetCon =
+        TextEditingController(text: (w?.target ?? 50000.0).toStringAsFixed(0));
     _notesCon = TextEditingController(text: w?.notes ?? '');
-    
+
     _aadhaarCon = TextEditingController(text: w?.aadhaarId ?? '');
-    _emergencyContactCon = TextEditingController(text: w?.emergencyContact ?? '');
+    _emergencyContactCon =
+        TextEditingController(text: w?.emergencyContact ?? '');
     _bankDetailsCon = TextEditingController(text: w?.bankDetails ?? '');
-    _joiningSalaryCon = TextEditingController(text: (w?.joiningSalary ?? 0.0).toString());
+    _joiningSalaryCon =
+        TextEditingController(text: (w?.joiningSalary ?? 0.0).toString());
     _remarksCon = TextEditingController(text: w?.remarks ?? '');
     _pinCon = TextEditingController(text: w?.pinHash ?? '');
 
@@ -149,10 +153,11 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                     prefixIcon: Icon(Icons.person_outline_rounded),
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter worker name' : null,
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? 'Enter worker name'
+                      : null,
                 ),
                 const SizedBox(height: 12),
-
                 Row(
                   children: [
                     Expanded(
@@ -180,7 +185,6 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
                 TextFormField(
                   controller: _addressCon,
                   decoration: const InputDecoration(
@@ -190,7 +194,6 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
                 Row(
                   children: [
                     Expanded(
@@ -218,7 +221,6 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
                 TextFormField(
                   controller: _bankDetailsCon,
                   decoration: const InputDecoration(
@@ -228,11 +230,12 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 const Text('Commission & Earnings Rule',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textPrimary)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: AppColors.textPrimary)),
                 const SizedBox(height: 8),
-
                 DropdownButtonFormField<CommissionType>(
                   value: _commType,
                   decoration: const InputDecoration(
@@ -240,18 +243,27 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                     prefixIcon: Icon(Icons.payments_outlined),
                   ),
                   items: const [
-                    DropdownMenuItem(value: CommissionType.pctOrder, child: Text('% of Order Sales')),
-                    DropdownMenuItem(value: CommissionType.pctCollection, child: Text('% of Payment Collections')),
-                    DropdownMenuItem(value: CommissionType.fixed, child: Text('Fixed Per Order Amount')),
-                    DropdownMenuItem(value: CommissionType.salary, child: Text('Fixed Monthly Salary')),
-                    DropdownMenuItem(value: CommissionType.mixed, child: Text('Base Salary + % Sales Commission')),
+                    DropdownMenuItem(
+                        value: CommissionType.pctOrder,
+                        child: Text('% of Order Sales')),
+                    DropdownMenuItem(
+                        value: CommissionType.pctCollection,
+                        child: Text('% of Payment Collections')),
+                    DropdownMenuItem(
+                        value: CommissionType.fixed,
+                        child: Text('Fixed Per Order Amount')),
+                    DropdownMenuItem(
+                        value: CommissionType.salary,
+                        child: Text('Fixed Monthly Salary')),
+                    DropdownMenuItem(
+                        value: CommissionType.mixed,
+                        child: Text('Base Salary + % Sales Commission')),
                   ],
                   onChanged: (val) {
                     if (val != null) setState(() => _commType = val);
                   },
                 ),
                 const SizedBox(height: 12),
-
                 Row(
                   children: [
                     Expanded(
@@ -259,7 +271,9 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                         controller: _commValCon,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: _commType == CommissionType.fixed ? 'Amount (₹)' : 'Rate (%)',
+                          labelText: _commType == CommissionType.fixed
+                              ? 'Amount (₹)'
+                              : 'Rate (%)',
                           prefixIcon: const Icon(Icons.percent_rounded),
                           border: const OutlineInputBorder(),
                         ),
@@ -280,7 +294,6 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
                 Row(
                   children: [
                     Expanded(
@@ -308,7 +321,6 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                   ],
                 ),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _pinCon,
                   obscureText: true,
@@ -325,40 +337,41 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 16),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Account Status:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Text('Account Status:',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
                     SegmentedButton<String>(
                       segments: const [
                         ButtonSegment(value: 'active', label: Text('Active')),
-                        ButtonSegment(value: 'inactive', label: Text('Suspended')),
+                        ButtonSegment(
+                            value: 'inactive', label: Text('Suspended')),
                       ],
                       selected: {_status},
-                      onSelectionChanged: (set) => setState(() => _status = set.first),
+                      onSelectionChanged: (set) =>
+                          setState(() => _status = set.first),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Leave Status:', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Text('Leave Status:',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
                     SegmentedButton<String>(
                       segments: const [
                         ButtonSegment(value: 'active', label: Text('On Duty')),
                         ButtonSegment(value: 'leave', label: Text('On Leave')),
                       ],
                       selected: {_leaveStatus},
-                      onSelectionChanged: (set) => setState(() => _leaveStatus = set.first),
+                      onSelectionChanged: (set) =>
+                          setState(() => _leaveStatus = set.first),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -372,8 +385,10 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
                       onPressed: _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
                       ),
                       child: Text(isEdit ? 'Save Changes' : 'Create Worker'),
                     ),

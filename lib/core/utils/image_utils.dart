@@ -47,7 +47,7 @@ class ImageUtils {
 
       final ext = p.extension(sourcePath);
       final destFile = File(p.join(targetDir.path, '$fileName$ext'));
-      
+
       // Copy to destination
       await file.copy(destFile.path);
 

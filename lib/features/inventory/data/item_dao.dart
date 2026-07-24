@@ -13,7 +13,8 @@ class ItemDao {
     return executor ?? await _db;
   }
 
-  Future<List<Item>> getAllItems({String? category, String? searchQuery, String? sortBy}) async {
+  Future<List<Item>> getAllItems(
+      {String? category, String? searchQuery, String? sortBy}) async {
     final db = await _db;
     List<String> conditions = [];
     List<dynamic> args = [];
@@ -31,7 +32,10 @@ class ItemDao {
         where: where, whereArgs: args.isEmpty ? null : args);
     final items = maps.map(Item.fromMap).toList();
 
-    if (sortBy == null || sortBy.isEmpty || sortBy == 'category' || sortBy == 'name') {
+    if (sortBy == null ||
+        sortBy.isEmpty ||
+        sortBy == 'category' ||
+        sortBy == 'name') {
       items.sort((a, b) {
         final aNo = a.sequenceNo;
         final bNo = b.sequenceNo;
@@ -40,7 +44,8 @@ class ItemDao {
             final catComp = a.category.compareTo(b.category);
             if (catComp != 0) return catComp;
           } else if (sortBy == 'name') {
-            final nameComp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+            final nameComp =
+                a.name.toLowerCase().compareTo(b.name.toLowerCase());
             if (nameComp != 0) return nameComp;
           }
           return a.createdAt.compareTo(b.createdAt);
@@ -77,25 +82,28 @@ class ItemDao {
 
   Future<String> insertItem(Item item) async {
     final db = await _db;
-    final id  = item.id.isEmpty ? _uuid.v4() : item.id;
+    final id = item.id.isEmpty ? _uuid.v4() : item.id;
     final now = DateTime.now().toIso8601String();
     final itemWithId = item.copyWith(id: id);
-    await db.insert('items', {
-      ...itemWithId.toMap(),
-      'id':         id,
-      'created_at': now,
-      'updated_at': now,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'items',
+        {
+          ...itemWithId.toMap(),
+          'id': id,
+          'created_at': now,
+          'updated_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
 
     if (itemWithId.stock > 0) {
       await insertStockHistory(StockHistory(
-        id:           _uuid.v4(),
-        itemId:       id,
-        itemName:     itemWithId.name,
+        id: _uuid.v4(),
+        itemId: id,
+        itemName: itemWithId.name,
         changeAmount: itemWithId.stock,
-        reason:       'Initial Stock Allocation',
-        orderId:      '',
-        createdAt:    DateTime.now(),
+        reason: 'Initial Stock Allocation',
+        orderId: '',
+        createdAt: DateTime.now(),
       ));
     }
 
@@ -118,13 +126,13 @@ class ItemDao {
       final stockDiff = item.stock - oldItem.stock;
       if (stockDiff != 0) {
         await insertStockHistory(StockHistory(
-          id:           _uuid.v4(),
-          itemId:       item.id,
-          itemName:     item.name,
+          id: _uuid.v4(),
+          itemId: item.id,
+          itemName: item.name,
           changeAmount: stockDiff,
-          reason:       'Manual Inventory Update (Edit)',
-          orderId:      '',
-          createdAt:    DateTime.now(),
+          reason: 'Manual Inventory Update (Edit)',
+          orderId: '',
+          createdAt: DateTime.now(),
         ));
       }
     }
@@ -137,7 +145,8 @@ class ItemDao {
     final db = await _db;
     await db.transaction((txn) async {
       for (final item in items) {
-        final maps = await txn.query('items', where: 'id = ?', whereArgs: [item.id]);
+        final maps =
+            await txn.query('items', where: 'id = ?', whereArgs: [item.id]);
         final oldItem = maps.isNotEmpty ? Item.fromMap(maps.first) : null;
 
         await txn.update(
@@ -211,7 +220,8 @@ class ItemDao {
     ''', [date]);
   }
 
-  Future<List<Map<String, dynamic>>> getPriceHistoryDateRange(String startDate, String endDate) async {
+  Future<List<Map<String, dynamic>>> getPriceHistoryDateRange(
+      String startDate, String endDate) async {
     final db = await _db;
     return await db.rawQuery('''
       SELECT h.*, COALESCE(i.name, 'Archived Item') AS name, COALESCE(i.unit, '') AS unit, COALESCE(i.category, '') AS category
@@ -231,11 +241,13 @@ class ItemDao {
   Future<void> deleteItem(String id) async {
     final db = await _db;
     await db.delete('stock_history', where: 'item_id = ?', whereArgs: [id]);
-    await db.delete('item_price_history', where: 'item_id = ?', whereArgs: [id]);
+    await db
+        .delete('item_price_history', where: 'item_id = ?', whereArgs: [id]);
     await db.delete('items', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<void> adjustStock(String itemId, double change, {DatabaseExecutor? executor}) async {
+  Future<void> adjustStock(String itemId, double change,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     await db.rawUpdate(
         'UPDATE items SET stock = stock + ?, updated_at = ? WHERE id = ?',
@@ -244,12 +256,16 @@ class ItemDao {
   }
 
   // Stock History
-  Future<void> insertStockHistory(StockHistory sh, {DatabaseExecutor? executor}) async {
+  Future<void> insertStockHistory(StockHistory sh,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
-    await db.insert('stock_history', {
-      ...sh.toMap(),
-      'id': sh.id.isEmpty ? _uuid.v4() : sh.id,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'stock_history',
+        {
+          ...sh.toMap(),
+          'id': sh.id.isEmpty ? _uuid.v4() : sh.id,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<StockHistory>> getStockHistory(String itemId) async {
@@ -261,7 +277,9 @@ class ItemDao {
         limit: 50);
     return maps.map(StockHistory.fromMap).toList();
   }
-  Future<void> _checkAndTriggerLowStock(String itemId, DatabaseExecutor db) async {
+
+  Future<void> _checkAndTriggerLowStock(
+      String itemId, DatabaseExecutor db) async {
     try {
       final itemRes = await db.query(
         'items',
@@ -279,7 +297,8 @@ class ItemDao {
           await NotificationService.instance.showNotification(
             id: itemId.hashCode,
             title: '⚠️ Low Stock Alert: $name',
-            body: 'Inventory for "$name" is down to $stock $unit. Reorder immediately to avoid stockouts.',
+            body:
+                'Inventory for "$name" is down to $stock $unit. Reorder immediately to avoid stockouts.',
             payload: 'low_stock',
           );
         }
@@ -293,7 +312,10 @@ class ItemDao {
       for (int i = 0; i < itemIds.length; i++) {
         await txn.update(
           'items',
-          {'sequence_no': i + 1, 'updated_at': DateTime.now().toIso8601String()},
+          {
+            'sequence_no': i + 1,
+            'updated_at': DateTime.now().toIso8601String()
+          },
           where: 'id = ?',
           whereArgs: [itemIds[i]],
         );
@@ -313,8 +335,7 @@ class ItemDao {
 
   Future<List<Map<String, dynamic>>> getOrderedItemStats() async {
     final db = await _db;
-    return await db.rawQuery(
-      '''
+    return await db.rawQuery('''
       SELECT 
         COALESCE(i.name, oi.item_name) AS item_name,
         COALESCE(i.unit, oi.item_unit) AS item_unit,
@@ -329,7 +350,6 @@ class ItemDao {
       WHERE o.delivery_status != 'cancelled'
       GROUP BY oi.item_id, item_name, item_unit, cost_price
       ORDER BY total_profit DESC, total_quantity DESC
-      '''
-    );
+      ''');
   }
 }

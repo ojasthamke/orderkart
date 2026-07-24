@@ -22,19 +22,18 @@ class AddEditExpenseScreen extends ConsumerStatefulWidget {
       _AddEditExpenseScreenState();
 }
 
-class _AddEditExpenseScreenState
-    extends ConsumerState<AddEditExpenseScreen> {
-  final _formKey     = GlobalKey<FormState>();
-  final _nameCon     = TextEditingController();
-  final _amountCon   = TextEditingController();
-  final _notesCon    = TextEditingController();
+class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameCon = TextEditingController();
+  final _amountCon = TextEditingController();
+  final _notesCon = TextEditingController();
 
-  String   _category      = AppConstants.expTransport;
-  String   _paymentMethod = AppConstants.paymentCash;
-  DateTime _date          = DateTime.now();
-  String   _receiptPath   = '';
-  bool     _loading       = false;
-  bool     _isEdit        = false;
+  String _category = AppConstants.expTransport;
+  String _paymentMethod = AppConstants.paymentCash;
+  DateTime _date = DateTime.now();
+  String _receiptPath = '';
+  bool _loading = false;
+  bool _isEdit = false;
 
   @override
   void initState() {
@@ -46,23 +45,27 @@ class _AddEditExpenseScreenState
   }
 
   Future<void> _loadExpense() async {
-    final e = await ref.read(expenseRepositoryProvider).getExpenseById(widget.expenseId!);
+    final e = await ref
+        .read(expenseRepositoryProvider)
+        .getExpenseById(widget.expenseId!);
     if (e != null && mounted) {
       setState(() {
-        _nameCon.text   = e.name;
+        _nameCon.text = e.name;
         _amountCon.text = e.amount.toString();
-        _notesCon.text  = e.notes;
-        _category       = e.category;
-        _paymentMethod  = e.paymentMethod;
-        _date           = e.date;
-        _receiptPath    = e.receiptPhotoPath;
+        _notesCon.text = e.notes;
+        _category = e.category;
+        _paymentMethod = e.paymentMethod;
+        _date = e.date;
+        _receiptPath = e.receiptPhotoPath;
       });
     }
   }
 
   @override
   void dispose() {
-    _nameCon.dispose(); _amountCon.dispose(); _notesCon.dispose();
+    _nameCon.dispose();
+    _amountCon.dispose();
+    _notesCon.dispose();
     super.dispose();
   }
 
@@ -86,28 +89,34 @@ class _AddEditExpenseScreenState
                   labelText: 'Expense Name *',
                   prefixIcon: Icon(Icons.receipt_long_rounded),
                 ),
-                validator: (v) => AppValidators.nameField(v, field: 'Expense name'),
+                validator: (v) =>
+                    AppValidators.nameField(v, field: 'Expense name'),
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 16),
 
               TextFormField(
                 controller: _amountCon,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
                   labelText: 'Amount *',
                   prefixText: '$currency ',
                   prefixIcon: const Icon(Icons.monetization_on_rounded),
                 ),
-                validator: (v) => AppValidators.positiveNumber(v, field: 'Amount'),
+                validator: (v) =>
+                    AppValidators.positiveNumber(v, field: 'Amount'),
               ),
               const SizedBox(height: 16),
 
               // Category
               Builder(builder: (ctx) {
-                final categoryExists = AppConstants.expenseCategories.contains(_category);
+                final categoryExists =
+                    AppConstants.expenseCategories.contains(_category);
                 return DropdownButtonFormField<String>(
-                  value: categoryExists ? _category : AppConstants.expenseCategories.first,
+                  value: categoryExists
+                      ? _category
+                      : AppConstants.expenseCategories.first,
                   decoration: const InputDecoration(
                     labelText: 'Category',
                     prefixIcon: Icon(Icons.category_rounded),
@@ -150,8 +159,7 @@ class _AddEditExpenseScreenState
                   ChoiceChip(
                     label: const Text('Cash'),
                     selected: _paymentMethod == 'cash',
-                    onSelected: (_) =>
-                        setState(() => _paymentMethod = 'cash'),
+                    onSelected: (_) => setState(() => _paymentMethod = 'cash'),
                   ),
                   const SizedBox(width: 8),
                   ChoiceChip(
@@ -175,7 +183,8 @@ class _AddEditExpenseScreenState
               const SizedBox(height: 16),
 
               // Receipt Photo
-              Text('Receipt Capture', style: Theme.of(context).textTheme.labelMedium),
+              Text('Receipt Capture',
+                  style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: 8),
               if (_receiptPath.isNotEmpty) ...[
                 Row(
@@ -300,15 +309,15 @@ class _AddEditExpenseScreenState
       }
 
       final expense = Expense(
-        id:            expenseId,
-        name:          _nameCon.text.trim(),
-        category:      _category,
-        amount:        double.tryParse(_amountCon.text) ?? 0,
-        date:          _date,
-        notes:         _notesCon.text.trim(),
+        id: expenseId,
+        name: _nameCon.text.trim(),
+        category: _category,
+        amount: double.tryParse(_amountCon.text) ?? 0,
+        date: _date,
+        notes: _notesCon.text.trim(),
         paymentMethod: _paymentMethod,
-        createdAt:     now,
-        updatedAt:     now,
+        createdAt: now,
+        updatedAt: now,
         receiptPhotoPath: finalReceiptPath,
       );
       if (_isEdit) {
@@ -317,7 +326,8 @@ class _AddEditExpenseScreenState
         await ref.read(expenseProvider.notifier).add(expense);
       }
       if (!mounted) return;
-      SnackbarHelper.showSuccess(context, _isEdit ? 'Expense updated' : 'Expense added');
+      SnackbarHelper.showSuccess(
+          context, _isEdit ? 'Expense updated' : 'Expense added');
       Navigator.of(context).pop();
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Failed to save: $e');

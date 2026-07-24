@@ -112,14 +112,16 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
     try {
       final targetDb = await DatabaseHelper.instance.database;
       final incomingDb = await openDatabase(incomingDbPath, readOnly: true);
-      final incomingCustomers = await incomingDb.query('customers', columns: ['id', 'phone']);
-      
+      final incomingCustomers =
+          await incomingDb.query('customers', columns: ['id', 'phone']);
+
       for (final row in incomingCustomers) {
         final phone = row['phone']?.toString() ?? '';
         final id = row['id']?.toString() ?? '';
         if (phone.isEmpty || id.isEmpty) continue;
-        
-        final local = await targetDb.query('customers', where: 'phone = ? AND id != ?', whereArgs: [phone, id]);
+
+        final local = await targetDb.query('customers',
+            where: 'phone = ? AND id != ?', whereArgs: [phone, id]);
         if (local.isNotEmpty) {
           duplicates++;
         }
@@ -176,7 +178,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
 
       // Block worker-to-worker data transfer
       final currentMode = await AppModeService.getAppMode();
-      final generatedByWorkerId = _manifest['generated_by_worker_id']?.toString() ?? '';
+      final generatedByWorkerId =
+          _manifest['generated_by_worker_id']?.toString() ?? '';
       if (currentMode == AppMode.worker && generatedByWorkerId.isNotEmpty) {
         if (mounted) {
           showDialog(
@@ -189,7 +192,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                   Text('Access Blocked'),
                 ],
               ),
-              content: const Text('Worker-to-worker data transfer is strictly prohibited. Workers can only import database packages created by the Owner.'),
+              content: const Text(
+                  'Worker-to-worker data transfer is strictly prohibited. Workers can only import database packages created by the Owner.'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
@@ -241,10 +245,13 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       for (final row in incomingItems) {
         final id = row['id'] as String;
         final name = row['name'] as String? ?? 'Item';
-        final local = await targetDb.query('items', where: 'id = ?', whereArgs: [id]);
+        final local =
+            await targetDb.query('items', where: 'id = ?', whereArgs: [id]);
         if (local.isNotEmpty) {
-          final localPrice = (local.first['selling_price'] as num?)?.toDouble() ?? 0.0;
-          final incomingPrice = (row['selling_price'] as num?)?.toDouble() ?? 0.0;
+          final localPrice =
+              (local.first['selling_price'] as num?)?.toDouble() ?? 0.0;
+          final incomingPrice =
+              (row['selling_price'] as num?)?.toDouble() ?? 0.0;
           if (localPrice != incomingPrice) {
             list.add(MergeConflict(
               table: 'items',
@@ -265,10 +272,13 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       for (final row in incomingCustomers) {
         final id = row['id'] as String;
         final name = row['name'] as String? ?? 'Customer';
-        final local = await targetDb.query('customers', where: 'id = ?', whereArgs: [id]);
+        final local =
+            await targetDb.query('customers', where: 'id = ?', whereArgs: [id]);
         if (local.isNotEmpty) {
-          final localBal = (local.first['outstanding_balance'] as num?)?.toDouble() ?? 0.0;
-          final incomingBal = (row['outstanding_balance'] as num?)?.toDouble() ?? 0.0;
+          final localBal =
+              (local.first['outstanding_balance'] as num?)?.toDouble() ?? 0.0;
+          final incomingBal =
+              (row['outstanding_balance'] as num?)?.toDouble() ?? 0.0;
           if (localBal != incomingBal) {
             list.add(MergeConflict(
               table: 'customers',
@@ -327,28 +337,38 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       final targetDb = await DatabaseHelper.instance.database;
 
       for (final c in _conflicts) {
-        final resolution = _applyToAllSimilar ? _conflicts.first.resolution : c.resolution;
-        
+        final resolution =
+            _applyToAllSimilar ? _conflicts.first.resolution : c.resolution;
+
         if (resolution == 'keep_owner') {
           // Update temp DB row to match owner local DB values (so merge keeps local value)
-          final localRecord = await targetDb.query(c.table, where: 'id = ?', whereArgs: [c.id]);
+          final localRecord =
+              await targetDb.query(c.table, where: 'id = ?', whereArgs: [c.id]);
           if (localRecord.isNotEmpty) {
-            await tempDb.update(c.table, localRecord.first, where: 'id = ?', whereArgs: [c.id]);
+            await tempDb.update(c.table, localRecord.first,
+                where: 'id = ?', whereArgs: [c.id]);
           }
         } else if (resolution == 'merge') {
           // Averaging merge values logic for prices/balances
-          final localRecord = await targetDb.query(c.table, where: 'id = ?', whereArgs: [c.id]);
+          final localRecord =
+              await targetDb.query(c.table, where: 'id = ?', whereArgs: [c.id]);
           if (localRecord.isNotEmpty) {
-            final double localNum = double.tryParse(c.localValue.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
-            final double incomingNum = double.tryParse(c.incomingValue.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+            final double localNum = double.tryParse(
+                    c.localValue.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                0.0;
+            final double incomingNum = double.tryParse(
+                    c.incomingValue.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                0.0;
             final double mergedVal = (localNum + incomingNum) / 2;
 
-            final keyToUpdate = c.field == 'Price' ? 'selling_price' : 'outstanding_balance';
+            final keyToUpdate =
+                c.field == 'Price' ? 'selling_price' : 'outstanding_balance';
             final Map<String, dynamic> updatedRow = Map.from(localRecord.first);
             updatedRow[keyToUpdate] = mergedVal;
             updatedRow['updated_at'] = DateTime.now().toIso8601String();
 
-            await tempDb.update(c.table, updatedRow, where: 'id = ?', whereArgs: [c.id]);
+            await tempDb.update(c.table, updatedRow,
+                where: 'id = ?', whereArgs: [c.id]);
           }
         }
       }
@@ -385,10 +405,12 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       if (_pickedFilePath.isNotEmpty) {
         await PackageValidator.extractAssets(_pickedFilePath);
       }
-      final packageId = _manifest['package_id']?.toString() ?? const Uuid().v4();
-      final workerName = _manifest['generated_by_worker_name']?.toString() ?? '';
+      final packageId =
+          _manifest['package_id']?.toString() ?? const Uuid().v4();
+      final workerName =
+          _manifest['generated_by_worker_name']?.toString() ?? '';
       final deviceName = _manifest['device_name']?.toString() ?? '';
-      
+
       await targetDb.insert('import_history', {
         'id': const Uuid().v4(),
         'package_id': packageId,
@@ -410,7 +432,6 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
         _isImporting = false;
         _currentStep = 3; // Step 4: Finish Summary
       });
-
     } catch (e) {
       // Transaction failed -> Automatic rollback database file restore!
       if (backupFile != null && backupFile.existsSync()) {
@@ -419,14 +440,16 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       setState(() {
         _isImporting = false;
       });
-      SnackbarHelper.showError(context, 'Import failed. Database rolled back safely. Error: $e');
+      SnackbarHelper.showError(
+          context, 'Import failed. Database rolled back safely. Error: $e');
     } finally {
       setState(() => _loading = false);
     }
   }
 
   Widget _detailedPreviewRow(String title, String tableKey) {
-    final stats = _previewStats[tableKey] ?? {'inserted': 0, 'updated': 0, 'skipped': 0, 'conflicted': 0};
+    final stats = _previewStats[tableKey] ??
+        {'inserted': 0, 'updated': 0, 'skipped': 0, 'conflicted': 0};
     final ins = stats['inserted'] ?? 0;
     final upd = stats['updated'] ?? 0;
     final skp = stats['skipped'] ?? 0;
@@ -437,16 +460,34 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
+          Text(title,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 2),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('New: +$ins', style: const TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w600)),
-              Text('Updated: +$upd', style: const TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600)),
-              Text('Skipped: $skp', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              Text('New: +$ins',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w600)),
+              Text('Updated: +$upd',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange,
+                      fontWeight: FontWeight.w600)),
+              Text('Skipped: $skp',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
               if (con > 0)
-                Text('Conflicts: $con', style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w600)),
+                Text('Conflicts: $con',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w600)),
             ],
           ),
           const Divider(height: 12),
@@ -461,8 +502,16 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('New Customer Photos:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
-          Text('+$count', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
+          const Text('New Customer Photos:',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: AppColors.textPrimary)),
+          Text('+$count',
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary)),
         ],
       ),
     );
@@ -483,7 +532,10 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                 const SizedBox(height: 24),
                 const Text(
                   'Merging Database...',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
                 LinearProgressIndicator(
@@ -511,12 +563,14 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
     return AppScaffold(
       title: 'Import Wizard',
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
           : Stepper(
               currentStep: _currentStep,
               onStepContinue: () {
                 if (_currentStep == 1) {
-                  setState(() => _currentStep = 2); // Step 3: Module & Conflict options
+                  setState(() =>
+                      _currentStep = 2); // Step 3: Module & Conflict options
                 } else if (_currentStep == 2) {
                   _executeMerge();
                 } else if (_currentStep == 3) {
@@ -538,7 +592,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                         onPressed: _loading ? null : details.onStepContinue,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                         child: Text(_currentStep == 2
                             ? 'Accept & Merge'
@@ -562,7 +617,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Choose an OrderKartPackage zip to verify and import:'),
+                      const Text(
+                          'Choose an OrderKartPackage zip to verify and import:'),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: _loading ? null : _pickFile,
@@ -570,7 +626,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                         label: const Text('Browse Package ZIP'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                     ],
@@ -593,7 +650,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text('Database Preview',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 16)),
                           const SizedBox(height: 12),
                           _detailedPreviewRow('Customers', 'customers'),
                           _detailedPreviewRow('Orders', 'orders'),
@@ -607,8 +665,16 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Duplicate Phone Numbers:', style: TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w600)),
-                                Text('$_duplicatePhonesCount', style: const TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w800)),
+                                const Text('Duplicate Phone Numbers:',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.error,
+                                        fontWeight: FontWeight.w600)),
+                                Text('$_duplicatePhonesCount',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.error,
+                                        fontWeight: FontWeight.w800)),
                               ],
                             ),
                           ),
@@ -617,16 +683,26 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('Deleted Records:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                Text('0 (Preserved)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                                Text('Deleted Records:',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary)),
+                                Text('0 (Preserved)',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w600)),
                               ],
                             ),
                           ),
                           const SizedBox(height: 12),
                           if (_manifest.isNotEmpty) ...[
                             const Divider(),
-                            Text('Exported By: ${_manifest['generated_by_worker_name'] ?? _manifest['device_name']}',
-                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                            Text(
+                                'Exported By: ${_manifest['generated_by_worker_name'] ?? _manifest['device_name']}',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary)),
                           ],
                         ],
                       ),
@@ -637,14 +713,18 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
 
                 // Step 3: Module & Conflict Resolution Settings
                 Step(
-                  title: const Text('Step 3: Configurations & Conflict Resolution'),
+                  title: const Text(
+                      'Step 3: Configurations & Conflict Resolution'),
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Conflicts header
                       if (_conflicts.isNotEmpty) ...[
                         const Text('Conflicts Detected:',
-                            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.error, fontSize: 14)),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.error,
+                                fontSize: 14)),
                         const SizedBox(height: 8),
                         Container(
                           constraints: const BoxConstraints(maxHeight: 180),
@@ -663,24 +743,35 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text('${c.name} (${c.field})',
-                                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 12)),
                                       const SizedBox(height: 4),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text('Local: ${c.localValue}', style: const TextStyle(fontSize: 11)),
-                                          Text('Incoming: ${c.incomingValue}', style: const TextStyle(fontSize: 11)),
+                                          Text('Local: ${c.localValue}',
+                                              style: const TextStyle(
+                                                  fontSize: 11)),
+                                          Text('Incoming: ${c.incomingValue}',
+                                              style: const TextStyle(
+                                                  fontSize: 11)),
                                         ],
                                       ),
                                       const SizedBox(height: 6),
                                       Row(
                                         children: [
-                                          _resolutionOption(c, 'keep_owner', 'Keep Owner'),
-                                          _resolutionOption(c, 'accept_worker', 'Accept Worker'),
-                                          _resolutionOption(c, 'merge', 'Merge'),
+                                          _resolutionOption(
+                                              c, 'keep_owner', 'Keep Owner'),
+                                          _resolutionOption(c, 'accept_worker',
+                                              'Accept Worker'),
+                                          _resolutionOption(
+                                              c, 'merge', 'Merge'),
                                         ],
                                       ),
                                     ],
@@ -692,15 +783,19 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                         ),
                         SwitchListTile(
                           dense: true,
-                          title: const Text('Apply resolution decision to all conflicts', style: TextStyle(fontSize: 12)),
+                          title: const Text(
+                              'Apply resolution decision to all conflicts',
+                              style: TextStyle(fontSize: 12)),
                           value: _applyToAllSimilar,
-                          onChanged: (v) => setState(() => _applyToAllSimilar = v),
+                          onChanged: (v) =>
+                              setState(() => _applyToAllSimilar = v),
                         ),
                         const Divider(),
                       ],
 
                       const Text('Choose Modules to Import:',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 14)),
                       const SizedBox(height: 8),
                       CheckboxListTile(
                         dense: true,
@@ -726,15 +821,26 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                       ),
                       if (!_importEntireDb) ...[
                         const Divider(),
-                        _moduleCheck('Import Areas', _importAreas, (v) => setState(() => _importAreas = v!)),
-                        _moduleCheck('Import Streets', _importStreets, (v) => setState(() => _importStreets = v!)),
-                        _moduleCheck('Import Customers', _importCustomers, (v) => setState(() => _importCustomers = v!)),
-                        _moduleCheck('Import Orders & Payments', _importOrders, (v) => setState(() => _importOrders = v!)),
-                        _moduleCheck('Import Items', _importItems, (v) => setState(() => _importItems = v!)),
-                        _moduleCheck('Import Expenses', _importExpenses, (v) => setState(() => _importExpenses = v!)),
-                        _moduleCheck('Import Field Visit Notes', _importNotes, (v) => setState(() => _importNotes = v!)),
-                        _moduleCheck('Import Workers & Reports', _importWorkers, (v) => setState(() => _importWorkers = v!)),
-                        _moduleCheck('Import Settings & UPI Details', _importSettings, (v) => setState(() => _importSettings = v!)),
+                        _moduleCheck('Import Areas', _importAreas,
+                            (v) => setState(() => _importAreas = v!)),
+                        _moduleCheck('Import Streets', _importStreets,
+                            (v) => setState(() => _importStreets = v!)),
+                        _moduleCheck('Import Customers', _importCustomers,
+                            (v) => setState(() => _importCustomers = v!)),
+                        _moduleCheck('Import Orders & Payments', _importOrders,
+                            (v) => setState(() => _importOrders = v!)),
+                        _moduleCheck('Import Items', _importItems,
+                            (v) => setState(() => _importItems = v!)),
+                        _moduleCheck('Import Expenses', _importExpenses,
+                            (v) => setState(() => _importExpenses = v!)),
+                        _moduleCheck('Import Field Visit Notes', _importNotes,
+                            (v) => setState(() => _importNotes = v!)),
+                        _moduleCheck('Import Workers & Reports', _importWorkers,
+                            (v) => setState(() => _importWorkers = v!)),
+                        _moduleCheck(
+                            'Import Settings & UPI Details',
+                            _importSettings,
+                            (v) => setState(() => _importSettings = v!)),
                       ],
                     ],
                   ),
@@ -749,23 +855,31 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
+                          Icon(Icons.check_circle_rounded,
+                              color: AppColors.success, size: 28),
                           SizedBox(width: 10),
                           Text('Data Successfully Merged!',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 16)),
                         ],
                       ),
                       const SizedBox(height: 8),
                       const Text(
                           'Outstanding balances, stock values, worker earnings, and analytics dashboards have been recalculated automatically.'),
                       const SizedBox(height: 12),
-                      const Text('Merge Results:', style: TextStyle(fontWeight: FontWeight.w700)),
+                      const Text('Merge Results:',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
                       for (var entry in _previewStats.entries)
-                        if ((entry.value['inserted']! + entry.value['updated']!) > 0)
-                          Text('• ${entry.key.toUpperCase()}: +${entry.value['inserted']} new, +${entry.value['updated']} updated'),
-                      
-                      if (_manifest['generated_by_worker_id']?.toString().isNotEmpty ?? false) ...[
+                        if ((entry.value['inserted']! +
+                                entry.value['updated']!) >
+                            0)
+                          Text(
+                              '• ${entry.key.toUpperCase()}: +${entry.value['inserted']} new, +${entry.value['updated']} updated'),
+                      if (_manifest['generated_by_worker_id']
+                              ?.toString()
+                              .isNotEmpty ??
+                          false) ...[
                         const SizedBox(height: 16),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16),
@@ -779,7 +893,10 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
                         const SizedBox(height: 12),
                         const Text(
                           'Worker Data Synchronization Provenance Verified.',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary),
                         ),
                       ],
                     ],
@@ -819,7 +936,9 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
           children: [
             Radio<String>(
               value: value,
-              groupValue: _applyToAllSimilar ? _conflicts.first.resolution : c.resolution,
+              groupValue: _applyToAllSimilar
+                  ? _conflicts.first.resolution
+                  : c.resolution,
               onChanged: (v) {
                 setState(() {
                   if (_applyToAllSimilar) {
@@ -834,7 +953,10 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
               activeColor: AppColors.primary,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600))),
+            Expanded(
+                child: Text(label,
+                    style: const TextStyle(
+                        fontSize: 10, fontWeight: FontWeight.w600))),
           ],
         ),
       ),

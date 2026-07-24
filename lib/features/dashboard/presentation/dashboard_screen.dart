@@ -31,7 +31,8 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  String _selectedFilter = 'all'; // 'all', 'today', 'yesterday', 'week', 'month', 'custom'
+  String _selectedFilter =
+      'all'; // 'all', 'today', 'yesterday', 'week', 'month', 'custom'
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -60,7 +61,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         loading: () => const LoadingShimmer(),
         error: (e, _) => Center(child: Text('Dashboard error: $e')),
         data: (summary) {
-          final double pendingPayments = (summary['pending_payments'] as num?)?.toDouble() ?? 0.0;
+          final double pendingPayments =
+              (summary['pending_payments'] as num?)?.toDouble() ?? 0.0;
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -116,14 +118,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           children: [
                             Text(
                               'Welcome Back!',
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
+                                  ?.copyWith(
                                     color: AppColors.textSecondary,
                                     fontWeight: FontWeight.w500,
                                   ),
                             ),
                             Text(
                               'OrderKart',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
                                     fontWeight: FontWeight.w800,
                                     color: AppColors.primary,
                                   ),
@@ -147,7 +155,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ? Badge(
                                     label: Text('${lowItems.length}'),
                                     child: IconButton.filledTonal(
-                                      icon: const Icon(Icons.warning_amber_rounded,
+                                      icon: const Icon(
+                                          Icons.warning_amber_rounded,
                                           color: AppColors.warning),
                                       onPressed: () => Navigator.of(context)
                                           .pushNamed(AppRoutes.inventory),
@@ -159,147 +168,237 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                       // ── Payment warning button ─────────────────────────
                       ref.watch(pendingCustomersProvider).when(
-                        data: (pending) => pending.isNotEmpty
-                            ? Badge(
-                                label: Text('${pending.length}'),
-                                backgroundColor: AppColors.error,
-                                child: IconButton.filledTonal(
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: AppColors.errorSurface,
+                            data: (pending) => pending.isNotEmpty
+                                ? Badge(
+                                    label: Text('${pending.length}'),
+                                    backgroundColor: AppColors.error,
+                                    child: IconButton.filledTonal(
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: AppColors.errorSurface,
+                                      ),
+                                      icon: const Icon(
+                                          Icons.warning_amber_rounded,
+                                          color: AppColors.error),
+                                      onPressed: () => _showPendingReminder(
+                                          context, pending),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          ),
+                    ],
+                  ),
+
+                  // ── Live Business Weather Summary Banner ───────────────
+                  Builder(
+                    builder: (ctx) {
+                      final hour = DateTime.now().hour;
+                      final greeting = hour < 12
+                          ? 'Good morning 🌅'
+                          : (hour < 17
+                              ? 'Good afternoon ☀️'
+                              : 'Good evening 🌙');
+                      final todayCount = summary['today_orders_count'] ?? 0;
+                      final pendingCount = summary['pending_orders'] ?? 0;
+
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(top: 14, bottom: 6),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary.withOpacity(0.88),
+                              const Color(0xFF0F766E),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(0.25),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  greeting,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
                                   ),
-                                  icon: const Icon(Icons.warning_amber_rounded,
-                                      color: AppColors.error),
-                                  onPressed: () =>
-                                      _showPendingReminder(context, pending),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    'Live Business Weather',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Today you have $todayCount orders ($pendingCount pending delivery) and ${AppFormatters.currency(pendingPayments, symbol: currency)} to collect.',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.35,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  // ── Pending Payments Warning Banner ───────────────────
+                  ref.watch(pendingCustomersProvider).when(
+                        data: (pending) => pending.isNotEmpty
+                            ? Container(
+                                margin: const EdgeInsets.only(top: 16),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.error.withOpacity(0.18),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.warning_rounded,
+                                        color: AppColors.error, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        '${pending.length} customer${pending.length > 1 ? 's have' : ' has'} unpaid remaining money.',
+                                        style: const TextStyle(
+                                          color: AppColors.error,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _showPendingReminder(
+                                          context, pending),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 6),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        backgroundColor:
+                                            AppColors.error.withOpacity(0.12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'TRACK',
+                                        style: TextStyle(
+                                          color: AppColors.error,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               )
                             : const SizedBox.shrink(),
                         loading: () => const SizedBox.shrink(),
                         error: (_, __) => const SizedBox.shrink(),
                       ),
-                    ],
-                  ),
-
-                  // ── Pending Payments Warning Banner ───────────────────
-                  ref.watch(pendingCustomersProvider).when(
-                    data: (pending) => pending.isNotEmpty
-                        ? Container(
-                            margin: const EdgeInsets.only(top: 16),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.error.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.error.withOpacity(0.18),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.warning_rounded,
-                                    color: AppColors.error, size: 20),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    '${pending.length} customer${pending.length > 1 ? 's have' : ' has'} unpaid remaining money.',
-                                    style: const TextStyle(
-                                      color: AppColors.error,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      _showPendingReminder(context, pending),
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    backgroundColor:
-                                        AppColors.error.withOpacity(0.12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'TRACK',
-                                    style: TextStyle(
-                                      color: AppColors.error,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
 
                   // ── Overpaid / Remaining Money Return Reminder Banner ────────────────
                   ref.watch(overpaidCustomersProvider).when(
-                    data: (overpaid) => overpaid.isNotEmpty
-                        ? Container(
-                            margin: const EdgeInsets.only(top: 12),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0284C7).withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFF0284C7).withOpacity(0.3),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.account_balance_wallet_rounded,
-                                    color: Color(0xFF0284C7), size: 20),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    '${overpaid.length} customer${overpaid.length > 1 ? 's have' : ' has'} overpaid balance to return.',
-                                    style: const TextStyle(
-                                      color: Color(0xFF0284C7),
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
+                        data: (overpaid) => overpaid.isNotEmpty
+                            ? Container(
+                                margin: const EdgeInsets.only(top: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color:
+                                      const Color(0xFF0284C7).withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFF0284C7)
+                                        .withOpacity(0.3),
+                                    width: 1.5,
                                   ),
                                 ),
-                                TextButton(
-                                  onPressed: () => _showOverpaidReminder(context, overpaid),
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    backgroundColor:
-                                        const Color(0xFF0284C7).withOpacity(0.12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                        Icons.account_balance_wallet_rounded,
+                                        color: Color(0xFF0284C7),
+                                        size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        '${overpaid.length} customer${overpaid.length > 1 ? 's have' : ' has'} overpaid balance to return.',
+                                        style: const TextStyle(
+                                          color: Color(0xFF0284C7),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: const Text(
-                                    'RETURN',
-                                    style: TextStyle(
-                                      color: Color(0xFF0284C7),
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 12,
+                                    TextButton(
+                                      onPressed: () => _showOverpaidReminder(
+                                          context, overpaid),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 6),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        backgroundColor: const Color(0xFF0284C7)
+                                            .withOpacity(0.12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'RETURN',
+                                        style: TextStyle(
+                                          color: Color(0xFF0284C7),
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
+                              )
+                            : const SizedBox.shrink(),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
 
                   const SizedBox(height: 20),
 
@@ -310,14 +409,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           orElse: () => <String, dynamic>{},
                         );
                     final totalItems = (stockData['total_items'] as int?) ?? 0;
-                    final lowStockCount = (stockData['low_stock_count'] as int?) ?? 0;
-                    final outOfStockCount = (stockData['out_of_stock_count'] as int?) ?? 0;
-                    final inStock = (totalItems - outOfStockCount - lowStockCount).clamp(0, 99999);
+                    final lowStockCount =
+                        (stockData['low_stock_count'] as int?) ?? 0;
+                    final outOfStockCount =
+                        (stockData['out_of_stock_count'] as int?) ?? 0;
+                    final inStock =
+                        (totalItems - outOfStockCount - lowStockCount)
+                            .clamp(0, 99999);
 
                     return SmartBusinessPulseWidget(
-                      todaySales: (summary['today_sales'] as num?)?.toDouble() ?? 0.0,
+                      todaySales:
+                          (summary['today_sales'] as num?)?.toDouble() ?? 0.0,
                       pendingDues: pendingPayments,
-                      totalRevenue: (summary['all_time_sales'] as num?)?.toDouble() ?? 0.0,
+                      totalRevenue:
+                          (summary['all_time_sales'] as num?)?.toDouble() ??
+                              0.0,
                       inStockCount: inStock,
                       lowStockCount: lowStockCount,
                       outOfStockCount: outOfStockCount,
@@ -325,16 +431,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       vipCount: (summary['vip_count'] as int?) ?? 0,
                       deliveredCount: (summary['delivered_count'] as int?) ?? 0,
                       pendingCount: (summary['pending_count'] as int?) ?? 0,
-                      todayExpenses: (summary['today_expenses'] as num?)?.toDouble() ?? 0.0,
-                      todayOrdersCount: (summary['today_orders_count'] as int?) ?? 0,
-                      monthlySales: (summary['monthly_sales'] as num?)?.toDouble() ?? 0.0,
-                      cashReceived: (summary['cash_received'] as num?)?.toDouble() ?? 0.0,
-                      onlineReceived: (summary['online_received'] as num?)?.toDouble() ?? 0.0,
-                      todayProfit: (summary['today_profit'] as num?)?.toDouble() ?? 0.0,
-                      monthlyProfit: (summary['monthly_profit'] as num?)?.toDouble() ?? 0.0,
-                      currency: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹',
-                      onCreateOrder: () => Navigator.of(context).pushNamed(AppRoutes.customers),
-                      onViewInventory: () => Navigator.of(context).pushNamed(AppRoutes.inventory),
+                      todayExpenses:
+                          (summary['today_expenses'] as num?)?.toDouble() ??
+                              0.0,
+                      todayOrdersCount:
+                          (summary['today_orders_count'] as int?) ?? 0,
+                      monthlySales:
+                          (summary['monthly_sales'] as num?)?.toDouble() ?? 0.0,
+                      cashReceived:
+                          (summary['cash_received'] as num?)?.toDouble() ?? 0.0,
+                      onlineReceived:
+                          (summary['online_received'] as num?)?.toDouble() ??
+                              0.0,
+                      todayProfit:
+                          (summary['today_profit'] as num?)?.toDouble() ?? 0.0,
+                      monthlyProfit:
+                          (summary['monthly_profit'] as num?)?.toDouble() ??
+                              0.0,
+                      currency:
+                          ref.watch(settingsProvider).valueOrNull?.currency ??
+                              '₹',
+                      onCreateOrder: () =>
+                          Navigator.of(context).pushNamed(AppRoutes.customers),
+                      onViewInventory: () =>
+                          Navigator.of(context).pushNamed(AppRoutes.inventory),
                     );
                   }(),
 
@@ -368,26 +488,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.shopping_bag_rounded,
                           color: AppColors.primary,
                           providerValue: summaryAsync.maybeWhen(
-                            data: (s) => (s['today_orders_count'] ?? 0).toString(),
+                            data: (s) =>
+                                (s['today_orders_count'] ?? 0).toString(),
                             orElse: () => '0',
                           ),
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.orderManagement),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.orderManagement),
                         ),
                         _buildDashboardCard(
                           context,
                           title: 'Pending Dues',
                           icon: Icons.account_balance_wallet_rounded,
                           color: AppColors.warning,
-                          providerValue: ref.watch(pendingCustomersProvider).maybeWhen(
-                            data: (list) => list.length.toString(),
-                            orElse: () => '-',
-                          ),
+                          providerValue:
+                              ref.watch(pendingCustomersProvider).maybeWhen(
+                                    data: (list) => list.length.toString(),
+                                    orElse: () => '-',
+                                  ),
                           onTap: () {
-                            ref.read(pendingCustomersProvider).whenData((pending) {
+                            ref
+                                .read(pendingCustomersProvider)
+                                .whenData((pending) {
                               if (pending.isNotEmpty) {
                                 _showPendingReminder(context, pending);
                               } else {
-                                SnackbarHelper.showInfo(context, 'No customers currently have pending dues');
+                                SnackbarHelper.showInfo(context,
+                                    'No customers currently have pending dues');
                               }
                             });
                           },
@@ -398,10 +524,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.inventory_rounded,
                           color: AppColors.warning,
                           providerValue: ref.watch(lowStockProvider).maybeWhen(
-                            data: (list) => list.length.toString(),
-                            orElse: () => '-',
-                          ),
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.inventory),
+                                data: (list) => list.length.toString(),
+                                orElse: () => '-',
+                              ),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.inventory),
                         ),
                         _buildDashboardCard(
                           context,
@@ -409,21 +536,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.note_alt_rounded,
                           color: Colors.purple,
                           providerValue: ref.watch(noteListNotifier).maybeWhen(
-                            data: (list) => list.where((n) => n.remindAt.isNotEmpty && !n.isCompleted && !n.isArchived).length.toString(),
-                            orElse: () => '-',
-                          ),
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.notes),
+                                data: (list) => list
+                                    .where((n) =>
+                                        n.remindAt.isNotEmpty &&
+                                        !n.isCompleted &&
+                                        !n.isArchived)
+                                    .length
+                                    .toString(),
+                                orElse: () => '-',
+                              ),
+                          onTap: () =>
+                              Navigator.of(context).pushNamed(AppRoutes.notes),
                         ),
                         _buildDashboardCard(
                           context,
                           title: 'Unread Alerts',
                           icon: Icons.notifications_active_rounded,
                           color: Colors.teal,
-                          providerValue: ref.watch(notificationListProvider).maybeWhen(
-                            data: (list) => list.where((n) => !n.isRead).length.toString(),
-                            orElse: () => '-',
-                          ),
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.notifications),
+                          providerValue:
+                              ref.watch(notificationListProvider).maybeWhen(
+                                    data: (list) => list
+                                        .where((n) => !n.isRead)
+                                        .length
+                                        .toString(),
+                                    orElse: () => '-',
+                                  ),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.notifications),
                         ),
                         _buildDashboardCard(
                           context,
@@ -431,7 +570,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.badge_rounded,
                           color: Colors.indigo,
                           providerValue: 'Add / View',
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.workers),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.workers),
                         ),
                         _buildDashboardCard(
                           context,
@@ -439,7 +579,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.question_answer_rounded,
                           color: Colors.amber.shade900,
                           providerValue: 'Manage',
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.orderQuestionsConfig),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.orderQuestionsConfig),
                         ),
                         _buildDashboardCard(
                           context,
@@ -447,7 +588,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.shopping_basket_rounded,
                           color: Colors.green,
                           providerValue: 'Freshness / Spoilage',
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.groceriesHub),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.groceriesHub),
                         ),
                         _buildDashboardCard(
                           context,
@@ -455,7 +597,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.medical_services_rounded,
                           color: Colors.teal,
                           providerValue: 'Rx / Expiry Radar',
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.medicinesHub),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.medicinesHub),
                         ),
                         _buildDashboardCard(
                           context,
@@ -463,7 +606,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.grid_view_rounded,
                           color: Colors.pink,
                           providerValue: 'Showroom Mode',
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.catalogShowroom),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.catalogShowroom),
                         ),
                         _buildDashboardCard(
                           context,
@@ -471,7 +615,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           icon: Icons.trending_down_rounded,
                           color: Colors.redAccent,
                           providerValue: 'Smart Retention',
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.churnRisk),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.churnRisk),
                         ),
                       ],
                     ),
@@ -505,7 +650,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFD97706).withOpacity(0.12),
+                                color:
+                                    const Color(0xFFD97706).withOpacity(0.12),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -518,7 +664,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          AppFormatters.currency(pendingPayments, symbol: currency),
+                          AppFormatters.currency(pendingPayments,
+                              symbol: currency),
                           style: const TextStyle(
                             color: Color(0xFFD97706),
                             fontSize: 28,
@@ -551,9 +698,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             .titleMedium
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      if (_selectedFilter == 'custom' && _startDate != null && _endDate != null)
+                      if (_selectedFilter == 'custom' &&
+                          _startDate != null &&
+                          _endDate != null)
                         IconButton(
-                          icon: const Icon(Icons.date_range_rounded, size: 20, color: AppColors.primary),
+                          icon: const Icon(Icons.date_range_rounded,
+                              size: 20, color: AppColors.primary),
                           onPressed: _pickDateRange,
                         ),
                     ],
@@ -577,7 +727,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  if (_selectedFilter == 'custom' && _startDate != null && _endDate != null) ...[
+                  if (_selectedFilter == 'custom' &&
+                      _startDate != null &&
+                      _endDate != null) ...[
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Text(
@@ -614,18 +766,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               final o = orders[i];
                               return _RecentOrderTile(
                                 order: o,
-                                onTap: () => Navigator.of(context)
-                                    .pushNamed(AppRoutes.orderDetail,
-                                        arguments: {'orderId': o.id})
-                                    .then((_) {
+                                onTap: () => Navigator.of(context).pushNamed(
+                                    AppRoutes.orderDetail,
+                                    arguments: {'orderId': o.id}).then((_) {
                                   ref.invalidate(analyticsSummaryProvider);
-                                  ref.invalidate(dashboardOrdersProvider(params));
+                                  ref.invalidate(
+                                      dashboardOrdersProvider(params));
                                 }),
                               ).animate(delay: (i * 30).ms).fadeIn();
                             },
                           ),
                   ),
-                  
+
                   // ── Areas Quick Access Section ───────────────────
                   const SizedBox(height: 24),
                   Center(
@@ -634,17 +786,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Text(
                           'GEOGRAPHIC REGIONS',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.2,
+                                  ),
                         ),
                         const SizedBox(height: 8),
                         GestureDetector(
-                          onTap: () => Navigator.of(context).pushNamed(AppRoutes.areas),
+                          onTap: () =>
+                              Navigator.of(context).pushNamed(AppRoutes.areas),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 14),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(16),
@@ -664,7 +819,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 const SizedBox(width: 8),
                                 Text(
                                   'Manage Areas & Streets',
-                                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelLarge
+                                      ?.copyWith(
                                         color: AppColors.primary,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -691,8 +849,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-
-  Widget _buildDashboardCard(BuildContext context, {required String title, required IconData icon, required Color color, required String providerValue, required VoidCallback onTap}) {
+  Widget _buildDashboardCard(BuildContext context,
+      {required String title,
+      required IconData icon,
+      required Color color,
+      required String providerValue,
+      required VoidCallback onTap}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
@@ -731,7 +893,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Text(
               title,
               style: TextStyle(
-                color: isDark ? Colors.white70 : AppColors.textPrimary.withOpacity(0.9),
+                color: isDark
+                    ? Colors.white70
+                    : AppColors.textPrimary.withOpacity(0.9),
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
@@ -940,56 +1104,59 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                             if (c.serialNo > 0 || c.houseNumber.isNotEmpty)
-                               Text(
-                                 [
-                                   if (c.serialNo > 0)
-                                     '#${c.serialNo}',
-                                   if (c.houseNumber.isNotEmpty)
-                                     c.houseNumber,
-                                 ].join(' · '),
-                                 style: Theme.of(context)
-                                     .textTheme
-                                     .labelSmall
-                                     ?.copyWith(color: AppColors.textHint),
-                               ),
-                           ],
-                         ),
-                         trailing: Column(
-                           mainAxisAlignment: MainAxisAlignment.center,
-                           crossAxisAlignment: CrossAxisAlignment.end,
-                           children: [
-                             Text(
-                               AppFormatters.currency(c.outstandingBalance, symbol: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹'),
-                               style: Theme.of(context)
-                                   .textTheme
-                                   .titleSmall
-                                   ?.copyWith(
-                                     color: AppColors.error,
-                                     fontWeight: FontWeight.w800,
-                                   ),
-                             ),
-                             const SizedBox(height: 2),
-                             Text(
-                               'Due',
-                               style: Theme.of(context)
-                                   .textTheme
-                                   .labelSmall
-                                   ?.copyWith(color: AppColors.error),
-                             ),
-                           ],
-                         ),
-                       ),
-                     ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.05);
-                   },
-                 ),
-               ),
-             ],
-           ),
-         ),
-       ),
-     );
-   }
+                            if (c.serialNo > 0 || c.houseNumber.isNotEmpty)
+                              Text(
+                                [
+                                  if (c.serialNo > 0) '#${c.serialNo}',
+                                  if (c.houseNumber.isNotEmpty) c.houseNumber,
+                                ].join(' · '),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(color: AppColors.textHint),
+                              ),
+                          ],
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              AppFormatters.currency(c.outstandingBalance,
+                                  symbol: ref
+                                          .watch(settingsProvider)
+                                          .valueOrNull
+                                          ?.currency ??
+                                      '₹'),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Due',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: AppColors.error),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.05);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   void _showOverpaidReminder(BuildContext context, List<Customer> overpaid) {
     showModalBottomSheet(
@@ -1091,14 +1258,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         subtitle: Text(
                           c.phone1.isNotEmpty ? c.phone1 : c.address,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
                         ),
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              AppFormatters.currency(returnAmount, symbol: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹'),
+                              AppFormatters.currency(returnAmount,
+                                  symbol: ref
+                                          .watch(settingsProvider)
+                                          .valueOrNull
+                                          ?.currency ??
+                                      '₹'),
                               style: const TextStyle(
                                 color: Color(0xFF0284C7),
                                 fontWeight: FontWeight.w900,
@@ -1107,7 +1280,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                             const Text(
                               'Return Change',
-                              style: TextStyle(fontSize: 10, color: Color(0xFF0284C7)),
+                              style: TextStyle(
+                                  fontSize: 10, color: Color(0xFF0284C7)),
                             ),
                           ],
                         ),
@@ -1148,7 +1322,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.03 : 0.02),
+            color: (isDark ? Colors.white : Colors.black)
+                .withOpacity(isDark ? 0.03 : 0.02),
             blurRadius: 1,
             offset: const Offset(0, -1),
           ),
@@ -1162,9 +1337,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             padding: padding,
             decoration: BoxDecoration(
               borderRadius: r,
-              gradient: isDark ? AppColors.glassGradientDark : AppColors.glassGradientLight,
+              gradient: isDark
+                  ? AppColors.glassGradientDark
+                  : AppColors.glassGradientLight,
               border: Border.all(
-                color: borderColor ?? (isDark ? Colors.white30 : Colors.white70),
+                color:
+                    borderColor ?? (isDark ? Colors.white30 : Colors.white70),
                 width: 1.5,
               ),
             ),
@@ -1186,9 +1364,12 @@ class _RecentOrderTile extends ConsumerWidget {
 
   Color get _statusColor {
     switch (order.deliveryStatus) {
-      case 'delivered': return AppColors.delivered;
-      case 'cancelled': return AppColors.cancelled;
-      default:          return AppColors.pending;
+      case 'delivered':
+        return AppColors.delivered;
+      case 'cancelled':
+        return AppColors.cancelled;
+      default:
+        return AppColors.pending;
     }
   }
 
@@ -1196,9 +1377,10 @@ class _RecentOrderTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currency = ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
     final customerAsync = ref.watch(customerDetailProvider(order.customerId));
-    final displayName = (order.customerName != null && order.customerName!.trim().isNotEmpty)
-        ? order.customerName!.trim()
-        : 'Unknown Customer';
+    final displayName =
+        (order.customerName != null && order.customerName!.trim().isNotEmpty)
+            ? order.customerName!.trim()
+            : 'Unknown Customer';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),

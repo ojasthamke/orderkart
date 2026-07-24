@@ -47,10 +47,19 @@ class VipGlowAvatar extends StatelessWidget {
             ),
           )
               .animate(onPlay: (controller) => controller.repeat(reverse: true))
-              .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1500.ms)
+              .scale(
+                  begin: const Offset(0.95, 0.95),
+                  end: const Offset(1.05, 1.05),
+                  duration: 1500.ms)
               .boxShadow(
-                begin: BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.3), blurRadius: 6, spreadRadius: 0),
-                end: BoxShadow(color: const Color(0xFFFFD700).withOpacity(0.7), blurRadius: 16, spreadRadius: 3),
+                begin: BoxShadow(
+                    color: const Color(0xFFFFD700).withOpacity(0.3),
+                    blurRadius: 6,
+                    spreadRadius: 0),
+                end: BoxShadow(
+                    color: const Color(0xFFFFD700).withOpacity(0.7),
+                    blurRadius: 16,
+                    spreadRadius: 3),
                 duration: 1500.ms,
               ),
 
@@ -114,7 +123,8 @@ class VipGoldBadgeChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.workspace_premium_rounded, color: Color(0xFF0F172A), size: 12),
+          const Icon(Icons.workspace_premium_rounded,
+              color: Color(0xFF0F172A), size: 12),
           const SizedBox(width: 3),
           Text(
             planName.toUpperCase(),

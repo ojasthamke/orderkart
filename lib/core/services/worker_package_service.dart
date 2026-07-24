@@ -73,32 +73,44 @@ class WorkerPackageService {
     packageDir.createSync();
 
     // Query Data Scoped to the Worker
-    final workerRow = await mainDb.query('workers', where: 'id = ?', whereArgs: [workerId]);
+    final workerRow =
+        await mainDb.query('workers', where: 'id = ?', whereArgs: [workerId]);
     await WorkerPermissionService.getPermissionsForWorker(workerId);
-    final permissionsRow = await mainDb.query('worker_permissions', where: 'worker_id = ?', whereArgs: [workerId]);
-    final assignmentsRows = await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId]);
+    final permissionsRow = await mainDb.query('worker_permissions',
+        where: 'worker_id = ?', whereArgs: [workerId]);
+    final assignmentsRows = await mainDb.query('worker_assignments',
+        where: 'worker_id = ?', whereArgs: [workerId]);
 
-    final List<Map<String, dynamic>> locationsRows = await mainDb.query('locations');
+    final List<Map<String, dynamic>> locationsRows =
+        await mainDb.query('locations');
     final List<Map<String, dynamic>> areasRows = await mainDb.query('areas');
-    final List<Map<String, dynamic>> streetsRows = await mainDb.query('streets');
-    final List<Map<String, dynamic>> customersRows = await mainDb.query('customers');
+    final List<Map<String, dynamic>> streetsRows =
+        await mainDb.query('streets');
+    final List<Map<String, dynamic>> customersRows =
+        await mainDb.query('customers');
 
     final itemsRows = await mainDb.query('items');
     final priceListRows = await mainDb.query('item_price_history');
     final businessProfileRow = await mainDb.query('business_profile');
-    
+
     // Filter settings: avoid owner_secret
     final allSettings = await mainDb.query('settings');
-    final settingsRows = allSettings.where((row) => !row['key'].toString().startsWith('owner_secret')).toList();
+    final settingsRows = allSettings
+        .where((row) => !row['key'].toString().startsWith('owner_secret'))
+        .toList();
 
-    final List<Map<String, dynamic>> orderQuestionsRows = await mainDb.query('order_questions');
-    final List<Map<String, dynamic>> customerQuestionAnswersRows = await mainDb.query('customer_question_answers');
-    final List<Map<String, dynamic>> orderQuestionAnswersRows = await mainDb.query('order_question_answers');
+    final List<Map<String, dynamic>> orderQuestionsRows =
+        await mainDb.query('order_questions');
+    final List<Map<String, dynamic>> customerQuestionAnswersRows =
+        await mainDb.query('customer_question_answers');
+    final List<Map<String, dynamic>> orderQuestionAnswersRows =
+        await mainDb.query('order_question_answers');
 
     // Serialize and Encrypt JSON files helper
     Future<void> writeEncryptedJson(String filename, dynamic data) async {
       final jsonStr = jsonEncode(data);
-      final encryptedBytes = SecurityHelper.encryptBytes(utf8.encode(jsonStr), secretKey);
+      final encryptedBytes =
+          SecurityHelper.encryptBytes(utf8.encode(jsonStr), secretKey);
       final file = File('${packageDir.path}/$filename');
       await file.writeAsBytes(encryptedBytes);
     }
@@ -115,8 +127,10 @@ class WorkerPackageService {
     await writeEncryptedJson('business_profile.json', businessProfileRow);
     await writeEncryptedJson('settings.json', settingsRows);
     await writeEncryptedJson('order_questions.json', orderQuestionsRows);
-    await writeEncryptedJson('customer_question_answers.json', customerQuestionAnswersRows);
-    await writeEncryptedJson('order_question_answers.json', orderQuestionAnswersRows);
+    await writeEncryptedJson(
+        'customer_question_answers.json', customerQuestionAnswersRows);
+    await writeEncryptedJson(
+        'order_question_answers.json', orderQuestionAnswersRows);
 
     // Create database.db for direct SQLite importers
     final dbFile = File('${packageDir.path}/database.db');
@@ -126,27 +140,70 @@ class WorkerPackageService {
     await scopedDb.execute('PRAGMA foreign_keys = OFF');
 
     try {
-      for (final r in workerRow) { await scopedDb.insert('workers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in permissionsRow) { await scopedDb.insert('worker_permissions', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in assignmentsRows) { await scopedDb.insert('worker_assignments', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in locationsRows) { await scopedDb.insert('locations', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in areasRows) { await scopedDb.insert('areas', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in streetsRows) { await scopedDb.insert('streets', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in customersRows) { await scopedDb.insert('customers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in itemsRows) { await scopedDb.insert('items', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in priceListRows) { await scopedDb.insert('item_price_history', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in businessProfileRow) { await scopedDb.insert('business_profile', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in settingsRows) { await scopedDb.insert('settings', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in orderQuestionsRows) { await scopedDb.insert('order_questions', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in customerQuestionAnswersRows) { await scopedDb.insert('customer_question_answers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-      for (final r in orderQuestionAnswersRows) { await scopedDb.insert('order_question_answers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+      for (final r in workerRow) {
+        await scopedDb.insert('workers', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in permissionsRow) {
+        await scopedDb.insert('worker_permissions', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in assignmentsRows) {
+        await scopedDb.insert('worker_assignments', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in locationsRows) {
+        await scopedDb.insert('locations', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in areasRows) {
+        await scopedDb.insert('areas', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in streetsRows) {
+        await scopedDb.insert('streets', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in customersRows) {
+        await scopedDb.insert('customers', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in itemsRows) {
+        await scopedDb.insert('items', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in priceListRows) {
+        await scopedDb.insert('item_price_history', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in businessProfileRow) {
+        await scopedDb.insert('business_profile', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in settingsRows) {
+        await scopedDb.insert('settings', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in orderQuestionsRows) {
+        await scopedDb.insert('order_questions', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in customerQuestionAnswersRows) {
+        await scopedDb.insert('customer_question_answers', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in orderQuestionAnswersRows) {
+        await scopedDb.insert('order_question_answers', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
     } finally {
       await scopedDb.close();
     }
 
     // Export customer photos for only assigned customers
     final photosDir = Directory('${packageDir.path}/photos')..createSync();
-    final custPhotosDir = Directory('${photosDir.path}/customer_photos')..createSync();
+    final custPhotosDir = Directory('${photosDir.path}/customer_photos')
+      ..createSync();
     final Set<String> assignedPhotoNames = customersRows
         .map((e) => e['photo_path']?.toString() ?? '')
         .where((e) => e.isNotEmpty)
@@ -167,7 +224,8 @@ class WorkerPackageService {
     }
 
     // Export product photos
-    final itemPhotosDir = Directory('${photosDir.path}/item_photos')..createSync();
+    final itemPhotosDir = Directory('${photosDir.path}/item_photos')
+      ..createSync();
     final Set<String> itemPhotoNames = itemsRows
         .map((e) => e['photo_path']?.toString() ?? '')
         .where((e) => e.isNotEmpty && !e.startsWith('http'))
@@ -208,8 +266,18 @@ class WorkerPackageService {
     // Calculate file hashes
     final fileHashes = <String, String>{};
     final List<String> jsonFiles = [
-      'worker.json', 'permissions.json', 'assignments.json', 'areas.json', 'streets.json',
-      'locations.json', 'customers.json', 'inventory.json', 'price_list.json', 'business_profile.json', 'settings.json', 'database.enc'
+      'worker.json',
+      'permissions.json',
+      'assignments.json',
+      'areas.json',
+      'streets.json',
+      'locations.json',
+      'customers.json',
+      'inventory.json',
+      'price_list.json',
+      'business_profile.json',
+      'settings.json',
+      'database.enc'
     ];
     for (final f in jsonFiles) {
       fileHashes[f] = await _calculateFileHash(File('${packageDir.path}/$f'));
@@ -218,15 +286,18 @@ class WorkerPackageService {
     final photoList = photosDir.listSync(recursive: true);
     for (final f in photoList) {
       if (f is File) {
-        final relPath = p.relative(f.path, from: packageDir.path).replaceAll('\\', '/');
+        final relPath =
+            p.relative(f.path, from: packageDir.path).replaceAll('\\', '/');
         fileHashes[relPath] = await _calculateFileHash(f);
       }
     }
     if (File('${logoDir.path}/logo.png').existsSync()) {
-      fileHashes['logo/logo.png'] = await _calculateFileHash(File('${logoDir.path}/logo.png'));
+      fileHashes['logo/logo.png'] =
+          await _calculateFileHash(File('${logoDir.path}/logo.png'));
     }
     if (File('${qrDir.path}/qr.png').existsSync()) {
-      fileHashes['qr/qr.png'] = await _calculateFileHash(File('${qrDir.path}/qr.png'));
+      fileHashes['qr/qr.png'] =
+          await _calculateFileHash(File('${qrDir.path}/qr.png'));
     }
 
     // Generate manifest.json
@@ -251,7 +322,8 @@ class WorkerPackageService {
       'key_version': activeKeyVersion,
       'app_version': AppConstants.appVersion,
       'export_timestamp': DateTime.now().toIso8601String(),
-      'expires_at': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
+      'expires_at':
+          DateTime.now().add(const Duration(days: 30)).toIso8601String(),
       'revoked': false,
       'file_hashes': fileHashes,
     };
@@ -281,7 +353,8 @@ class WorkerPackageService {
     }
     for (final f in photoList) {
       if (f is File) {
-        final relPath = p.relative(f.path, from: packageDir.path).replaceAll('\\', '/');
+        final relPath =
+            p.relative(f.path, from: packageDir.path).replaceAll('\\', '/');
         encoder.addFile(f, relPath);
       }
     }
@@ -314,7 +387,8 @@ class WorkerPackageService {
     // Cleanup temp files
     if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
 
-    await Share.shareXFiles([XFile(zipFile.path)], subject: 'OrderKart Worker Provisioning Package');
+    await Share.shareXFiles([XFile(zipFile.path)],
+        subject: 'OrderKart Worker Provisioning Package');
   }
 
   /// 2. GENERATE WORKER REPORT PACKAGE (WorkerReport.orderkart)
@@ -326,9 +400,12 @@ class WorkerPackageService {
   }) async {
     // Verify Worker Export Permission
     if (workerId.isNotEmpty) {
-      final allowed = await WorkerPermissionService.hasPermission(workerId, 'export_data', requiredLevel: 1);
+      final allowed = await WorkerPermissionService.hasPermission(
+          workerId, 'export_data',
+          requiredLevel: 1);
       if (!allowed) {
-        throw Exception('Data export is disabled by the Owner for this worker profile.');
+        throw Exception(
+            'Data export is disabled by the Owner for this worker profile.');
       }
     }
 
@@ -372,7 +449,8 @@ class WorkerPackageService {
     // Check last sync timestamp for incremental export
     String lastSyncTime = '';
     if (isIncremental) {
-      final syncRow = await mainDb.query('settings', where: 'key = ?', whereArgs: ['last_owner_sync_timestamp']);
+      final syncRow = await mainDb.query('settings',
+          where: 'key = ?', whereArgs: ['last_owner_sync_timestamp']);
       if (syncRow.isNotEmpty) {
         lastSyncTime = syncRow.first['value']?.toString() ?? '';
       }
@@ -385,7 +463,8 @@ class WorkerPackageService {
     packageDir.createSync();
 
     // Query Data Scoped to the Worker's field edits and assignments
-    final assignmentsRows = await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId]);
+    final assignmentsRows = await mainDb.query('worker_assignments',
+        where: 'worker_id = ?', whereArgs: [workerId]);
 
     final List<String> explicitAreaIds = assignmentsRows
         .where((e) => e['entity_type'] == 'area')
@@ -410,28 +489,32 @@ class WorkerPackageService {
     if (assignmentsRows.isNotEmpty) {
       List<String> conditions = [];
       List<dynamic> args = [];
-      
+
       if (explicitCustomerIds.isNotEmpty) {
-        final placeholders = List.filled(explicitCustomerIds.length, '?').join(',');
+        final placeholders =
+            List.filled(explicitCustomerIds.length, '?').join(',');
         conditions.add('id IN ($placeholders)');
         args.addAll(explicitCustomerIds);
       }
-      
+
       if (explicitStreetIds.isNotEmpty) {
-        final placeholders = List.filled(explicitStreetIds.length, '?').join(',');
+        final placeholders =
+            List.filled(explicitStreetIds.length, '?').join(',');
         conditions.add('street_id IN ($placeholders)');
         args.addAll(explicitStreetIds);
       }
-      
+
       if (explicitAreaIds.isNotEmpty) {
         final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
-        conditions.add('street_id IN (SELECT id FROM streets WHERE area_id IN ($placeholders))');
+        conditions.add(
+            'street_id IN (SELECT id FROM streets WHERE area_id IN ($placeholders))');
         args.addAll(explicitAreaIds);
       }
-      
+
       if (conditions.isNotEmpty) {
         final whereClause = conditions.join(' OR ');
-        customersRows = await mainDb.query('customers', where: whereClause, whereArgs: args);
+        customersRows = await mainDb.query('customers',
+            where: whereClause, whereArgs: args);
       }
     } else {
       customersRows = await mainDb.query('customers');
@@ -444,27 +527,30 @@ class WorkerPackageService {
       final sId = c['street_id']?.toString() ?? '';
       if (sId.isNotEmpty) resolvedStreetIds.add(sId);
     }
-    
+
     List<Map<String, dynamic>> streetsRows = [];
     if (assignmentsRows.isNotEmpty) {
       if (resolvedStreetIds.isNotEmpty || explicitAreaIds.isNotEmpty) {
         List<String> conditions = [];
         List<dynamic> args = [];
-        
+
         if (resolvedStreetIds.isNotEmpty) {
-          final placeholders = List.filled(resolvedStreetIds.length, '?').join(',');
+          final placeholders =
+              List.filled(resolvedStreetIds.length, '?').join(',');
           conditions.add('id IN ($placeholders)');
           args.addAll(resolvedStreetIds.toList());
         }
-        
+
         if (explicitAreaIds.isNotEmpty) {
-          final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
+          final placeholders =
+              List.filled(explicitAreaIds.length, '?').join(',');
           conditions.add('area_id IN ($placeholders)');
           args.addAll(explicitAreaIds);
         }
-        
+
         final whereClause = conditions.join(' OR ');
-        streetsRows = await mainDb.query('streets', where: whereClause, whereArgs: args);
+        streetsRows =
+            await mainDb.query('streets', where: whereClause, whereArgs: args);
       }
     } else {
       streetsRows = await mainDb.query('streets');
@@ -477,12 +563,14 @@ class WorkerPackageService {
       final aId = s['area_id']?.toString() ?? '';
       if (aId.isNotEmpty) resolvedAreaIds.add(aId);
     }
-    
+
     List<Map<String, dynamic>> areasRows = [];
     if (assignmentsRows.isNotEmpty) {
       if (resolvedAreaIds.isNotEmpty) {
         final placeholders = List.filled(resolvedAreaIds.length, '?').join(',');
-        areasRows = await mainDb.query('areas', where: 'id IN ($placeholders)', whereArgs: resolvedAreaIds.toList());
+        areasRows = await mainDb.query('areas',
+            where: 'id IN ($placeholders)',
+            whereArgs: resolvedAreaIds.toList());
       }
     } else {
       areasRows = await mainDb.query('areas');
@@ -490,8 +578,11 @@ class WorkerPackageService {
 
     final itemsRows = await mainDb.query('items');
     final itemPriceHistoryRows = await mainDb.query('item_price_history');
-    
-    final List<String> customerIds = customersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
+
+    final List<String> customerIds = customersRows
+        .map((e) => e['id']?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
     List<Map<String, dynamic>> ordersRows = [];
     if (assignmentsRows.isNotEmpty) {
       if (customerIds.isNotEmpty) {
@@ -502,7 +593,8 @@ class WorkerPackageService {
         final args = lastSyncTime.isNotEmpty
             ? [...customerIds, workerId, workerId, lastSyncTime, lastSyncTime]
             : [...customerIds, workerId, workerId];
-        ordersRows = await mainDb.query('orders', where: whereClause, whereArgs: args);
+        ordersRows =
+            await mainDb.query('orders', where: whereClause, whereArgs: args);
       } else {
         final whereClause = lastSyncTime.isNotEmpty
             ? '(assigned_worker_id = ? OR created_by = ?) AND (created_at >= ? OR updated_at >= ?)'
@@ -510,23 +602,30 @@ class WorkerPackageService {
         final args = lastSyncTime.isNotEmpty
             ? [workerId, workerId, lastSyncTime, lastSyncTime]
             : [workerId, workerId];
-        ordersRows = await mainDb.query('orders', where: whereClause, whereArgs: args);
+        ordersRows =
+            await mainDb.query('orders', where: whereClause, whereArgs: args);
       }
     } else {
       ordersRows = lastSyncTime.isNotEmpty
-          ? await mainDb.query('orders', where: 'created_at >= ? OR updated_at >= ?', whereArgs: [lastSyncTime, lastSyncTime])
+          ? await mainDb.query('orders',
+              where: 'created_at >= ? OR updated_at >= ?',
+              whereArgs: [lastSyncTime, lastSyncTime])
           : await mainDb.query('orders');
     }
 
-    final List<String> orderIds = ordersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
+    final List<String> orderIds = ordersRows
+        .map((e) => e['id']?.toString() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
     final List<Map<String, dynamic>> orderItemsRows;
     if (orderIds.isNotEmpty) {
       final placeholders = List.filled(orderIds.length, '?').join(',');
-      orderItemsRows = await mainDb.query('order_items', where: 'order_id IN ($placeholders)', whereArgs: orderIds);
+      orderItemsRows = await mainDb.query('order_items',
+          where: 'order_id IN ($placeholders)', whereArgs: orderIds);
     } else {
       orderItemsRows = [];
     }
-    
+
     final List<Map<String, dynamic>> paymentsRows;
     if (assignmentsRows.isNotEmpty) {
       if (orderIds.isNotEmpty) {
@@ -537,15 +636,16 @@ class WorkerPackageService {
         final args = lastSyncTime.isNotEmpty
             ? [lastSyncTime, ...orderIds, workerId]
             : [...orderIds, workerId];
-        paymentsRows = await mainDb.query('payments', where: whereClause, whereArgs: args);
+        paymentsRows =
+            await mainDb.query('payments', where: whereClause, whereArgs: args);
       } else {
         final whereClause = lastSyncTime.isNotEmpty
             ? 'created_at >= ? AND customer_id IN (SELECT id FROM customers WHERE created_by = ?)'
             : 'customer_id IN (SELECT id FROM customers WHERE created_by = ?)';
-        final args = lastSyncTime.isNotEmpty
-            ? [lastSyncTime, workerId]
-            : [workerId];
-        paymentsRows = await mainDb.query('payments', where: whereClause, whereArgs: args);
+        final args =
+            lastSyncTime.isNotEmpty ? [lastSyncTime, workerId] : [workerId];
+        paymentsRows =
+            await mainDb.query('payments', where: whereClause, whereArgs: args);
       }
     } else {
       if (lastSyncTime.isNotEmpty) {
@@ -556,8 +656,7 @@ class WorkerPackageService {
               whereArgs: [lastSyncTime, ...orderIds]);
         } else {
           paymentsRows = await mainDb.query('payments',
-              where: 'created_at >= ?',
-              whereArgs: [lastSyncTime]);
+              where: 'created_at >= ?', whereArgs: [lastSyncTime]);
         }
       } else {
         paymentsRows = await mainDb.query('payments');
@@ -569,14 +668,22 @@ class WorkerPackageService {
     final List<Map<String, dynamic>> visitsRows;
 
     if (assignmentsRows.isNotEmpty) {
-      expensesRows = await mainDb.query('expenses', where: 'assigned_worker_id = ? OR created_by = ?', whereArgs: [workerId, workerId]);
+      expensesRows = await mainDb.query('expenses',
+          where: 'assigned_worker_id = ? OR created_by = ?',
+          whereArgs: [workerId, workerId]);
       if (customerIds.isNotEmpty) {
         final placeholders = List.filled(customerIds.length, '?').join(',');
-        notesRows = await mainDb.query('notes', where: 'customer_id IN ($placeholders) OR created_by = ?', whereArgs: [...customerIds, workerId]);
-        visitsRows = await mainDb.query('visits', where: 'customer_id IN ($placeholders) OR worker_id = ?', whereArgs: [...customerIds, workerId]);
+        notesRows = await mainDb.query('notes',
+            where: 'customer_id IN ($placeholders) OR created_by = ?',
+            whereArgs: [...customerIds, workerId]);
+        visitsRows = await mainDb.query('visits',
+            where: 'customer_id IN ($placeholders) OR worker_id = ?',
+            whereArgs: [...customerIds, workerId]);
       } else {
-        notesRows = await mainDb.query('notes', where: 'created_by = ?', whereArgs: [workerId]);
-        visitsRows = await mainDb.query('visits', where: 'worker_id = ?', whereArgs: [workerId]);
+        notesRows = await mainDb
+            .query('notes', where: 'created_by = ?', whereArgs: [workerId]);
+        visitsRows = await mainDb
+            .query('visits', where: 'worker_id = ?', whereArgs: [workerId]);
       }
     } else {
       expensesRows = await mainDb.query('expenses');
@@ -584,27 +691,65 @@ class WorkerPackageService {
       visitsRows = await mainDb.query('visits');
     }
 
-    final workerReportsRows = await mainDb.query('worker_reports', where: 'worker_id = ?', whereArgs: [workerId]);
+    final workerReportsRows = await mainDb
+        .query('worker_reports', where: 'worker_id = ?', whereArgs: [workerId]);
 
     // Create scoped SQLite database file for direct DB import compatibility
     final scopedDbFile = File('${packageDir.path}/database.db');
     if (scopedDbFile.existsSync()) scopedDbFile.deleteSync();
-    final scopedDb = await openDatabase(scopedDbFile.path, version: AppConstants.dbVersion, onCreate: (db, v) async {
+    final scopedDb = await openDatabase(scopedDbFile.path,
+        version: AppConstants.dbVersion, onCreate: (db, v) async {
       await DatabaseHelper.instance.createSchema(db);
     });
 
-    for (final r in areasRows) { await scopedDb.insert('areas', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in streetsRows) { await scopedDb.insert('streets', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in customersRows) { await scopedDb.insert('customers', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in itemsRows) { await scopedDb.insert('items', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in itemPriceHistoryRows) { await scopedDb.insert('item_price_history', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in ordersRows) { await scopedDb.insert('orders', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in orderItemsRows) { await scopedDb.insert('order_items', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in paymentsRows) { await scopedDb.insert('payments', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in expensesRows) { await scopedDb.insert('expenses', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in notesRows) { await scopedDb.insert('notes', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in visitsRows) { await scopedDb.insert('visits', r, conflictAlgorithm: ConflictAlgorithm.replace); }
-    for (final r in workerReportsRows) { await scopedDb.insert('worker_reports', r, conflictAlgorithm: ConflictAlgorithm.replace); }
+    for (final r in areasRows) {
+      await scopedDb.insert('areas', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in streetsRows) {
+      await scopedDb.insert('streets', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in customersRows) {
+      await scopedDb.insert('customers', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in itemsRows) {
+      await scopedDb.insert('items', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in itemPriceHistoryRows) {
+      await scopedDb.insert('item_price_history', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in ordersRows) {
+      await scopedDb.insert('orders', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in orderItemsRows) {
+      await scopedDb.insert('order_items', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in paymentsRows) {
+      await scopedDb.insert('payments', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in expensesRows) {
+      await scopedDb.insert('expenses', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in notesRows) {
+      await scopedDb.insert('notes', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in visitsRows) {
+      await scopedDb.insert('visits', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    for (final r in workerReportsRows) {
+      await scopedDb.insert('worker_reports', r,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
     await scopedDb.close();
 
     // Encrypt database.db to database.enc for report
@@ -617,7 +762,8 @@ class WorkerPackageService {
     // Serialize and Encrypt JSON files helper
     Future<void> writeEncryptedJson(String filename, dynamic data) async {
       final jsonStr = jsonEncode(data);
-      final encryptedBytes = SecurityHelper.encryptBytes(utf8.encode(jsonStr), secretKey);
+      final encryptedBytes =
+          SecurityHelper.encryptBytes(utf8.encode(jsonStr), secretKey);
       final file = File('${packageDir.path}/$filename');
       await file.writeAsBytes(encryptedBytes);
     }
@@ -652,12 +798,14 @@ class WorkerPackageService {
       if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
     }
     for (final n in notesRows) {
-      final pathStr = (n['attachment_path'] ?? n['photo_path'])?.toString() ?? '';
+      final pathStr =
+          (n['attachment_path'] ?? n['photo_path'])?.toString() ?? '';
       if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
     }
     for (final i in itemsRows) {
       final pathStr = i['photo_path']?.toString() ?? '';
-      if (pathStr.isNotEmpty && !pathStr.startsWith('http')) assignedPhotoNames.add(p.basename(pathStr));
+      if (pathStr.isNotEmpty && !pathStr.startsWith('http'))
+        assignedPhotoNames.add(p.basename(pathStr));
     }
     for (final e in expensesRows) {
       final pathStr = e['receipt_photo_path']?.toString() ?? '';
@@ -695,9 +843,18 @@ class WorkerPackageService {
     final fileHashes = <String, String>{};
     fileHashes['database.enc'] = await _calculateFileHash(destDbEnc);
     final List<String> jsonFiles = [
-      'areas.json', 'streets.json', 'customers.json', 'inventory.json', 'price_list.json',
-      'orders.json', 'order_items.json', 'payments.json', 'expenses.json',
-      'notes.json', 'visits.json', 'worker_reports.json'
+      'areas.json',
+      'streets.json',
+      'customers.json',
+      'inventory.json',
+      'price_list.json',
+      'orders.json',
+      'order_items.json',
+      'payments.json',
+      'expenses.json',
+      'notes.json',
+      'visits.json',
+      'worker_reports.json'
     ];
     for (final f in jsonFiles) {
       fileHashes[f] = await _calculateFileHash(File('${packageDir.path}/$f'));
@@ -706,7 +863,8 @@ class WorkerPackageService {
     final photoList = photosDir.listSync();
     for (final f in photoList) {
       if (f is File) {
-        fileHashes['photos/${p.basename(f.path)}'] = await _calculateFileHash(f);
+        fileHashes['photos/${p.basename(f.path)}'] =
+            await _calculateFileHash(f);
       }
     }
 
@@ -732,7 +890,8 @@ class WorkerPackageService {
       'key_version': activeKeyVersion,
       'app_version': AppConstants.appVersion,
       'export_timestamp': DateTime.now().toIso8601String(),
-      'expires_at': DateTime.now().add(const Duration(days: 30)).toIso8601String(),
+      'expires_at':
+          DateTime.now().add(const Duration(days: 30)).toIso8601String(),
       'revoked': false,
       'file_hashes': fileHashes,
     };
@@ -781,41 +940,57 @@ class WorkerPackageService {
 
     // Update last sync timestamp if incremental
     if (isIncremental) {
-      await mainDb.insert('settings', {
-        'key': 'last_owner_sync_timestamp',
-        'value': DateTime.now().toIso8601String(),
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await mainDb.insert(
+          'settings',
+          {
+            'key': 'last_owner_sync_timestamp',
+            'value': DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
     }
 
     // Cleanup temp files
     if (packageDir.existsSync()) packageDir.deleteSync(recursive: true);
 
-    await Share.shareXFiles([XFile(zipFile.path)], subject: 'OrderKart Worker Report Package');
+    await Share.shareXFiles([XFile(zipFile.path)],
+        subject: 'OrderKart Worker Report Package');
   }
 
   /// Compile scoped worker data directly as JSON for P2P synchronization
-  static Future<Map<String, dynamic>> getScopedDataForWorker(String workerId) async {
+  static Future<Map<String, dynamic>> getScopedDataForWorker(
+      String workerId) async {
     final mainDb = await DatabaseHelper.instance.database;
 
-    final workerRow = await mainDb.query('workers', where: 'id = ?', whereArgs: [workerId]);
-    final permissionsRow = await mainDb.query('worker_permissions', where: 'worker_id = ?', whereArgs: [workerId]);
-    final assignmentsRows = await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId]);
+    final workerRow =
+        await mainDb.query('workers', where: 'id = ?', whereArgs: [workerId]);
+    final permissionsRow = await mainDb.query('worker_permissions',
+        where: 'worker_id = ?', whereArgs: [workerId]);
+    final assignmentsRows = await mainDb.query('worker_assignments',
+        where: 'worker_id = ?', whereArgs: [workerId]);
 
-    final List<Map<String, dynamic>> locationsRows = await mainDb.query('locations');
+    final List<Map<String, dynamic>> locationsRows =
+        await mainDb.query('locations');
     final List<Map<String, dynamic>> areasRows = await mainDb.query('areas');
-    final List<Map<String, dynamic>> streetsRows = await mainDb.query('streets');
-    final List<Map<String, dynamic>> customersRows = await mainDb.query('customers');
+    final List<Map<String, dynamic>> streetsRows =
+        await mainDb.query('streets');
+    final List<Map<String, dynamic>> customersRows =
+        await mainDb.query('customers');
 
     final itemsRows = await mainDb.query('items');
     final priceListRows = await mainDb.query('item_price_history');
     final businessProfileRow = await mainDb.query('business_profile');
-    
-    final allSettings = await mainDb.query('settings');
-    final settingsRows = allSettings.where((row) => !row['key'].toString().startsWith('owner_secret')).toList();
 
-    final List<Map<String, dynamic>> orderQuestionsRows = await mainDb.query('order_questions');
-    final List<Map<String, dynamic>> customerQuestionAnswersRows = await mainDb.query('customer_question_answers');
-    final List<Map<String, dynamic>> orderQuestionAnswersRows = await mainDb.query('order_question_answers');
+    final allSettings = await mainDb.query('settings');
+    final settingsRows = allSettings
+        .where((row) => !row['key'].toString().startsWith('owner_secret'))
+        .toList();
+
+    final List<Map<String, dynamic>> orderQuestionsRows =
+        await mainDb.query('order_questions');
+    final List<Map<String, dynamic>> customerQuestionAnswersRows =
+        await mainDb.query('customer_question_answers');
+    final List<Map<String, dynamic>> orderQuestionAnswersRows =
+        await mainDb.query('order_question_answers');
 
     return {
       'workers': workerRow,

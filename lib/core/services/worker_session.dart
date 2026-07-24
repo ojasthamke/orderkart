@@ -26,7 +26,9 @@ class WorkerSession {
     return 'Mobile Device';
   }
 
-  bool get isWorker => _appMode == AppMode.worker || (_currentWorkerId != null && _currentWorkerId!.isNotEmpty);
+  bool get isWorker =>
+      _appMode == AppMode.worker ||
+      (_currentWorkerId != null && _currentWorkerId!.isNotEmpty);
   bool get isOwner => !isWorker;
 
   /// Loads the persisted worker ID and mode from settings.
@@ -38,7 +40,8 @@ class WorkerSession {
 
       if (_currentWorkerId != null && _currentWorkerId!.isNotEmpty) {
         final db = await DatabaseHelper.instance.database;
-        final w = await db.query('workers', where: 'id = ?', whereArgs: [_currentWorkerId]);
+        final w = await db
+            .query('workers', where: 'id = ?', whereArgs: [_currentWorkerId]);
         if (w.isNotEmpty) {
           _currentWorkerName = w.first['name'] as String?;
         }
@@ -67,15 +70,20 @@ class WorkerSession {
 
       final db = await DatabaseHelper.instance.database;
       if (workerId == null) {
-        await db.delete('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+        await db.delete('settings',
+            where: 'key = ?', whereArgs: ['active_worker_id']);
       } else {
-        await db.insert('settings', {
-          'key': 'active_worker_id',
-          'value': workerId,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert(
+            'settings',
+            {
+              'key': 'active_worker_id',
+              'value': workerId,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
 
         if (workerName == null || workerName.isEmpty) {
-          final w = await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
+          final w =
+              await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
           if (w.isNotEmpty) {
             _currentWorkerName = w.first['name'] as String?;
           }
@@ -91,4 +99,3 @@ class WorkerSession {
     await setWorker(null);
   }
 }
-

@@ -68,11 +68,13 @@ class FullScreenImageViewer extends StatelessWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.broken_image_rounded, size: 64, color: Colors.white54),
+                            Icon(Icons.broken_image_rounded,
+                                size: 64, color: Colors.white54),
                             SizedBox(height: 12),
                             Text(
                               'Unable to load image',
-                              style: TextStyle(color: Colors.white70, fontSize: 16),
+                              style: TextStyle(
+                                  color: Colors.white70, fontSize: 16),
                             ),
                           ],
                         ),
@@ -118,7 +120,8 @@ class FullScreenImageViewer extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white, size: 28),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ),

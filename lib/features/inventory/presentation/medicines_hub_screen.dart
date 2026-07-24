@@ -72,16 +72,23 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         tabs: const [
-          Tab(icon: Icon(Icons.medical_services_rounded), text: 'Medical Stock'),
-          Tab(icon: Icon(Icons.notifications_active_rounded), text: 'Expiry Radar'),
+          Tab(
+              icon: Icon(Icons.medical_services_rounded),
+              text: 'Medical Stock'),
+          Tab(
+              icon: Icon(Icons.notifications_active_rounded),
+              text: 'Expiry Radar'),
           Tab(icon: Icon(Icons.rule_folder_rounded), text: 'Rx Compliance'),
         ],
       ),
       body: itemsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (allItems) {
-          final medicines = allItems.where((i) => i.category == AppConstants.catMedicines).toList();
+          final medicines = allItems
+              .where((i) => i.category == AppConstants.catMedicines)
+              .toList();
 
           return TabBarView(
             controller: _tabController,
@@ -114,7 +121,8 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -128,18 +136,21 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                           Expanded(
                             child: Text(
                               item.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (item.prescriptionRequired)
                             Container(
                               margin: const EdgeInsets.only(left: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: AppColors.error.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                                border: Border.all(
+                                    color: AppColors.error.withOpacity(0.3)),
                               ),
                               child: const Text(
                                 'Rx',
@@ -156,21 +167,26 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                       if (item.dosageInfo.isNotEmpty)
                         Text(
                           item.dosageInfo,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
                         ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: isLow ? AppColors.errorSurface : AppColors.primarySurface,
+                              color: isLow
+                                  ? AppColors.errorSurface
+                                  : AppColors.primarySurface,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               'Stock: ${item.stock} ${item.unit}',
                               style: TextStyle(
-                                color: isLow ? AppColors.error : AppColors.primary,
+                                color:
+                                    isLow ? AppColors.error : AppColors.primary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11,
                               ),
@@ -180,7 +196,8 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                             const SizedBox(width: 8),
                             Text(
                               'Batch: ${item.batchNumber}',
-                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              style: const TextStyle(
+                                  fontSize: 11, color: AppColors.textSecondary),
                             ),
                           ],
                         ],
@@ -192,7 +209,9 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                   children: [
                     IconButton.filledTonal(
                       icon: const Icon(Icons.remove_rounded),
-                      onPressed: item.stock < 0.001 ? null : () => _adjustStock(item, -1),
+                      onPressed: item.stock < 0.001
+                          ? null
+                          : () => _adjustStock(item, -1),
                     ),
                     const SizedBox(width: 4),
                     IconButton.filledTonal(
@@ -231,7 +250,8 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
       itemBuilder: (context, index) {
         final item = datedItems[index];
         final isExpired = item.expiryDate.compareTo(todayStr) < 0;
-        final isExpiringSoon = !isExpired && item.expiryDate.compareTo(limitStr) <= 0;
+        final isExpiringSoon =
+            !isExpired && item.expiryDate.compareTo(limitStr) <= 0;
 
         Color cardBorderColor = Colors.transparent;
         Color badgeColor = AppColors.success;
@@ -260,7 +280,11 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                 CircleAvatar(
                   backgroundColor: badgeColor.withOpacity(0.12),
                   child: Icon(
-                    isExpired ? Icons.warning_rounded : (isExpiringSoon ? Icons.access_time_filled_rounded : Icons.check_rounded),
+                    isExpired
+                        ? Icons.warning_rounded
+                        : (isExpiringSoon
+                            ? Icons.access_time_filled_rounded
+                            : Icons.check_rounded),
                     color: badgeColor,
                   ),
                 ),
@@ -274,19 +298,22 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
-                          decoration: isExpired ? TextDecoration.lineThrough : null,
+                          decoration:
+                              isExpired ? TextDecoration.lineThrough : null,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Expiry: ${item.expiryDate} (Batch: ${item.batchNumber.isNotEmpty ? item.batchNumber : "N/A"})',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: badgeColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -336,7 +363,10 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                       const SizedBox(width: 8),
                       Text(
                         'Rx Prescription Compliance Guide',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: rxColor),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: rxColor),
                       ),
                     ],
                   ),
@@ -345,7 +375,10 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                     '1. Verify the customer doctor note during order delivery.\n'
                     '2. Check and record customer signatures/drawings on receipt checkout.\n'
                     '3. Keep expired medical batches isolated from active stocks.',
-                    style: TextStyle(fontSize: 12, height: 1.5, color: rxColor.withOpacity(0.85)),
+                    style: TextStyle(
+                        fontSize: 12,
+                        height: 1.5,
+                        color: rxColor.withOpacity(0.85)),
                   ),
                 ],
               ),
@@ -358,7 +391,8 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
               ? const EmptyStateWidget(
                   icon: Icons.shield_outlined,
                   title: 'No Rx Medicines',
-                  subtitle: 'No items in catalog currently require doctor prescriptions',
+                  subtitle:
+                      'No items in catalog currently require doctor prescriptions',
                 )
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -368,11 +402,16 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       child: ListTile(
-                        leading: const Icon(Icons.offline_pin_rounded, color: AppColors.error),
-                        title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text('Batch: ${item.batchNumber.isNotEmpty ? item.batchNumber : "N/A"} • Composition: ${item.dosageInfo.isNotEmpty ? item.dosageInfo : "N/A"}'),
+                        leading: const Icon(Icons.offline_pin_rounded,
+                            color: AppColors.error),
+                        title: Text(item.name,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                            'Batch: ${item.batchNumber.isNotEmpty ? item.batchNumber : "N/A"} • Composition: ${item.dosageInfo.isNotEmpty ? item.dosageInfo : "N/A"}'),
                       ),
                     ).animate().fadeIn(delay: (index * 50).ms);
                   },

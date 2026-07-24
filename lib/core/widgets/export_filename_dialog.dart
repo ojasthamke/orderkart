@@ -73,7 +73,8 @@ class _ExportFilenameDialogState extends State<ExportFilenameDialog> {
               color: AppColors.primarySurface,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.edit_document, color: AppColors.primary, size: 24),
+            child: const Icon(Icons.edit_document,
+                color: AppColors.primary, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -99,10 +100,13 @@ class _ExportFilenameDialogState extends State<ExportFilenameDialog> {
             onSubmitted: (_) => _submit(),
             decoration: InputDecoration(
               suffixText: widget.extension,
-              suffixStyle: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+              suffixStyle: const TextStyle(
+                  fontWeight: FontWeight.w700, color: AppColors.primary),
               labelText: 'Package Name',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
           ),
         ],
@@ -119,7 +123,8 @@ class _ExportFilenameDialogState extends State<ExportFilenameDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ],

@@ -39,17 +39,17 @@ class BackgroundService {
       final db = await DatabaseHelper.instance.database;
 
       // Check if daily summary is enabled in settings
-      final summaryEnabled =
-          (await db.query('settings', where: 'key = ?', whereArgs: [AppConstants.keyDailySummary]))
-                  .firstOrNull?['value'] ==
-              'true';
+      final summaryEnabled = (await db.query('settings',
+                  where: 'key = ?', whereArgs: [AppConstants.keyDailySummary]))
+              .firstOrNull?['value'] ==
+          'true';
       if (!summaryEnabled) return;
 
       // Check scheduled notification time
-      final targetTime =
-          (await db.query('settings', where: 'key = ?', whereArgs: [AppConstants.keyNotifTime]))
-                  .firstOrNull?['value'] as String? ??
-              '06:00';
+      final targetTime = (await db.query('settings',
+                  where: 'key = ?', whereArgs: [AppConstants.keyNotifTime]))
+              .firstOrNull?['value'] as String? ??
+          '06:00';
       final targetHour = int.tryParse(targetTime.split(':')[0]) ?? 6;
 
       // Only show in the morning window (within 1 hour of configured time)
@@ -59,14 +59,15 @@ class BackgroundService {
       final pendingCustomers = await db.rawQuery(
           'SELECT COUNT(*) as count, SUM(outstanding_balance) as total FROM customers WHERE outstanding_balance > 0');
       final pendingCount = _firstInt(pendingCustomers) ?? 0;
-      final pendingTotal = (pendingCustomers.first['total'] as num?)?.toDouble() ?? 0.0;
+      final pendingTotal =
+          (pendingCustomers.first['total'] as num?)?.toDouble() ?? 0.0;
 
-      final lowStockItems = await db
-          .rawQuery('SELECT COUNT(*) as count FROM items WHERE stock <= min_stock');
+      final lowStockItems = await db.rawQuery(
+          'SELECT COUNT(*) as count FROM items WHERE stock <= min_stock');
       final lowStockCount = _firstInt(lowStockItems) ?? 0;
 
-      final visits = await db
-          .rawQuery('SELECT COUNT(*) as count FROM visits WHERE date = ?', [todayStr]);
+      final visits = await db.rawQuery(
+          'SELECT COUNT(*) as count FROM visits WHERE date = ?', [todayStr]);
       final visitCount = _firstInt(visits) ?? 0;
 
       final buf = StringBuffer();
@@ -90,14 +91,15 @@ class BackgroundService {
       });
 
       // Show local notification
-      final playSound =
-          (await db.query('settings', where: 'key = ?', whereArgs: [AppConstants.keyNotifSound]))
-                  .firstOrNull?['value'] ==
-              'true';
-      final vibrate =
-          (await db.query('settings', where: 'key = ?', whereArgs: [AppConstants.keyNotifVibration]))
-                  .firstOrNull?['value'] ==
-              'true';
+      final playSound = (await db.query('settings',
+                  where: 'key = ?', whereArgs: [AppConstants.keyNotifSound]))
+              .firstOrNull?['value'] ==
+          'true';
+      final vibrate = (await db.query('settings',
+                  where: 'key = ?',
+                  whereArgs: [AppConstants.keyNotifVibration]))
+              .firstOrNull?['value'] ==
+          'true';
 
       await NotificationService.instance.showNotification(
         id: 9999,

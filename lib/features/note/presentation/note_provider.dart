@@ -57,6 +57,7 @@ class NoteListNotifier extends StateNotifier<AsyncValue<List<AppNote>>> {
   }
 }
 
-final noteListNotifier = StateNotifierProvider<NoteListNotifier, AsyncValue<List<AppNote>>>((ref) {
+final noteListNotifier =
+    StateNotifierProvider<NoteListNotifier, AsyncValue<List<AppNote>>>((ref) {
   return NoteListNotifier(NoteDao());
 });

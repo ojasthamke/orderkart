@@ -56,10 +56,7 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
   }
 
   List<String> _getSelectedModulesList() {
-    return _modules.entries
-        .where((e) => e.value)
-        .map((e) => e.key)
-        .toList();
+    return _modules.entries.where((e) => e.value).map((e) => e.key).toList();
   }
 
   @override
@@ -84,7 +81,9 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: isServer ? AppColors.successSurface : AppColors.primarySurface,
+                      color: isServer
+                          ? AppColors.successSurface
+                          : AppColors.primarySurface,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -100,20 +99,27 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                       children: [
                         const Text(
                           'P2P Hotspot Sync Control',
-                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w900, fontSize: 16),
                         ),
                         Text(
-                          _localIp != null ? 'My IP: $_localIp' : 'Connect to a hotspot to start',
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                          _localIp != null
+                              ? 'My IP: $_localIp'
+                              : 'Connect to a hotspot to start',
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 11),
                         ),
                       ],
                     ),
                   ),
                   // Server Status Badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isServer ? AppColors.successSurface : AppColors.gray100,
+                      color: isServer
+                          ? AppColors.successSurface
+                          : AppColors.gray100,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -121,7 +127,9 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
-                        color: isServer ? AppColors.success : AppColors.textSecondary,
+                        color: isServer
+                            ? AppColors.success
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -134,7 +142,10 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
               // Selection checkboxes title
               const Text(
                 'Select data modules to sync:',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.textPrimary),
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: AppColors.textPrimary),
               ),
               const SizedBox(height: 8),
 
@@ -143,18 +154,27 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                 crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: MediaQuery.textScalerOf(context).scale(1.0) > 1.4
-                    ? 2.0
-                    : (MediaQuery.textScalerOf(context).scale(1.0) > 1.1 ? 2.5 : 3.2),
+                childAspectRatio:
+                    MediaQuery.textScalerOf(context).scale(1.0) > 1.4
+                        ? 2.0
+                        : (MediaQuery.textScalerOf(context).scale(1.0) > 1.1
+                            ? 2.5
+                            : 3.2),
                 mainAxisSpacing: 4,
                 crossAxisSpacing: 8,
                 children: [
-                  _buildCheckbox('Areas & Streets', 'areas_streets', Icons.map_rounded),
-                  _buildCheckbox('Customer Info & VIP', 'customers', Icons.people_rounded),
-                  _buildCheckbox('Orders & Payments', 'orders_payments', Icons.receipt_rounded),
-                  _buildCheckbox('Products Catalog', 'products', Icons.inventory_2_rounded),
-                  _buildCheckbox('Expenses Log', 'expenses', Icons.payments_rounded),
-                  _buildCheckbox('All Photos & Media', 'photos', Icons.photo_library_rounded),
+                  _buildCheckbox(
+                      'Areas & Streets', 'areas_streets', Icons.map_rounded),
+                  _buildCheckbox(
+                      'Customer Info & VIP', 'customers', Icons.people_rounded),
+                  _buildCheckbox('Orders & Payments', 'orders_payments',
+                      Icons.receipt_rounded),
+                  _buildCheckbox('Products Catalog', 'products',
+                      Icons.inventory_2_rounded),
+                  _buildCheckbox(
+                      'Expenses Log', 'expenses', Icons.payments_rounded),
+                  _buildCheckbox('All Photos & Media', 'photos',
+                      Icons.photo_library_rounded),
                 ],
               ),
               const SizedBox(height: 16),
@@ -176,18 +196,26 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                         ? const SizedBox(
                             width: 14,
                             height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppColors.primary),
                           )
                         : Icon(
-                            isServer ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                            isServer
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.radio_button_off_rounded,
                             size: 14,
-                            color: isServer ? AppColors.success : AppColors.textHint,
+                            color: isServer
+                                ? AppColors.success
+                                : AppColors.textHint,
                           ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _status,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary),
                       ),
                     ),
                   ],
@@ -202,13 +230,20 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: _loading ? null : _toggleReceiverServer,
-                      icon: Icon(isServer ? Icons.stop_rounded : Icons.play_arrow_rounded),
-                      label: Text(isServer ? 'Stop Receiver' : 'Start Receiver', style: const TextStyle(fontSize: 12)),
+                      icon: Icon(isServer
+                          ? Icons.stop_rounded
+                          : Icons.play_arrow_rounded),
+                      label: Text(isServer ? 'Stop Receiver' : 'Start Receiver',
+                          style: const TextStyle(fontSize: 12)),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: isServer ? AppColors.error : AppColors.primary,
-                        side: BorderSide(color: isServer ? AppColors.error : AppColors.primary),
+                        foregroundColor:
+                            isServer ? AppColors.error : AppColors.primary,
+                        side: BorderSide(
+                            color:
+                                isServer ? AppColors.error : AppColors.primary),
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -219,12 +254,14 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
                     child: ElevatedButton.icon(
                       onPressed: _loading ? null : _sendSyncPacket,
                       icon: const Icon(Icons.send_rounded),
-                      label: const Text('Send / Sync Now', style: TextStyle(fontSize: 12)),
+                      label: const Text('Send / Sync Now',
+                          style: TextStyle(fontSize: 12)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepOrange,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -261,7 +298,9 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
               });
             },
           ),
-          Icon(icon, size: 16, color: isSelected ? AppColors.primary : AppColors.gray400),
+          Icon(icon,
+              size: 16,
+              color: isSelected ? AppColors.primary : AppColors.gray400),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
@@ -269,7 +308,9 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                color: isSelected
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -294,11 +335,12 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
         });
       } else {
         await _fetchNetworkInfo();
-        
-        HotspotSyncService.onConfirmIncomingSync = (manifest, incomingCounts) async {
+
+        HotspotSyncService.onConfirmIncomingSync =
+            (manifest, incomingCounts) async {
           final context = OrderKartApp.navigatorKey.currentContext;
           if (context == null) return null;
-          
+
           return await showDialog<List<String>?>(
             context: context,
             barrierDismissible: false,
@@ -315,10 +357,12 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
           },
           onSyncSuccess: () {
             if (mounted) {
-              SnackbarHelper.showSuccess(context, '✅ Data packet successfully received and merged!');
+              SnackbarHelper.showSuccess(
+                  context, '✅ Data packet successfully received and merged!');
               widget.onSyncCompleted();
               setState(() {
-                _status = 'Last sync completed successfully at ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}';
+                _status =
+                    'Last sync completed successfully at ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}';
               });
             }
           },
@@ -335,7 +379,8 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
     AppHaptics.buttonClick();
     final selected = _getSelectedModulesList();
     if (selected.isEmpty) {
-      SnackbarHelper.showError(context, '❌ Please select at least one module to send!');
+      SnackbarHelper.showError(
+          context, '❌ Please select at least one module to send!');
       return;
     }
 
@@ -351,16 +396,19 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
       if (receiverIp == null || receiverIp.isEmpty) {
         if (mounted) {
           setState(() {
-            _status = 'No active receiver found. Connect to hotspot/Wi-Fi and check if receiver is ON.';
+            _status =
+                'No active receiver found. Connect to hotspot/Wi-Fi and check if receiver is ON.';
           });
-          SnackbarHelper.showError(context, '❌ No receiver found on the network. Check connection.');
+          SnackbarHelper.showError(
+              context, '❌ No receiver found on the network. Check connection.');
         }
         return;
       }
 
       if (mounted) {
         setState(() {
-          _status = 'Receiver discovered at $receiverIp. Packing and sending data...';
+          _status =
+              'Receiver discovered at $receiverIp. Packing and sending data...';
         });
       }
 
@@ -377,13 +425,15 @@ class _HotspotSyncControlCardState extends State<HotspotSyncControlCard> {
           setState(() {
             _status = 'Sync sent successfully to $receiverIp!';
           });
-          SnackbarHelper.showSuccess(context, '✅ Sync packet successfully sent to receiver!');
+          SnackbarHelper.showSuccess(
+              context, '✅ Sync packet successfully sent to receiver!');
           widget.onSyncCompleted();
         } else {
           setState(() {
             _status = 'Upload failed. Receiver returned error.';
           });
-          SnackbarHelper.showError(context, '❌ Sync upload failed (possibly incorrect pairing code).');
+          SnackbarHelper.showError(context,
+              '❌ Sync upload failed (possibly incorrect pairing code).');
         }
       }
     } catch (e) {
@@ -424,7 +474,8 @@ class _ConfirmSyncDialogState extends State<ConfirmSyncDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final senderName = widget.manifest['generated_by_worker_name']?.toString() ?? 'Worker';
+    final senderName =
+        widget.manifest['generated_by_worker_name']?.toString() ?? 'Worker';
     final devName = widget.manifest['device_name']?.toString() ?? 'Device';
     final counts = widget.incomingCounts;
 
@@ -437,11 +488,14 @@ class _ConfirmSyncDialogState extends State<ConfirmSyncDialog> {
             children: [
               Icon(Icons.sync_alt_rounded, color: AppColors.primary, size: 28),
               SizedBox(width: 8),
-              Text('Incoming Sync', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              Text('Incoming Sync',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
             ],
           ),
           const SizedBox(height: 4),
-          Text('From: $senderName ($devName)', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          Text('From: $senderName ($devName)',
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary)),
         ],
       ),
       content: SingleChildScrollView(
@@ -454,19 +508,29 @@ class _ConfirmSyncDialogState extends State<ConfirmSyncDialog> {
               style: TextStyle(fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 16),
-            _buildRow('Areas & Streets (${counts['areas'] ?? 0} areas, ${counts['streets'] ?? 0} streets)', 'areas_streets', Icons.map_rounded),
-            _buildRow('Customers & VIP (${counts['customers'] ?? 0} customers)', 'customers', Icons.people_rounded),
-            _buildRow('Orders & Payments (${counts['orders'] ?? 0} orders)', 'orders_payments', Icons.receipt_rounded),
-            _buildRow('Products Catalog (${counts['items'] ?? 0} items)', 'products', Icons.inventory_2_rounded),
-            _buildRow('Expenses Log (${counts['expenses'] ?? 0} expenses)', 'expenses', Icons.payments_rounded),
-            _buildRow('Photos & Receipts (${counts['photos'] ?? 0} files)', 'photos', Icons.photo_library_rounded),
+            _buildRow(
+                'Areas & Streets (${counts['areas'] ?? 0} areas, ${counts['streets'] ?? 0} streets)',
+                'areas_streets',
+                Icons.map_rounded),
+            _buildRow('Customers & VIP (${counts['customers'] ?? 0} customers)',
+                'customers', Icons.people_rounded),
+            _buildRow('Orders & Payments (${counts['orders'] ?? 0} orders)',
+                'orders_payments', Icons.receipt_rounded),
+            _buildRow('Products Catalog (${counts['items'] ?? 0} items)',
+                'products', Icons.inventory_2_rounded),
+            _buildRow('Expenses Log (${counts['expenses'] ?? 0} expenses)',
+                'expenses', Icons.payments_rounded),
+            _buildRow('Photos & Receipts (${counts['photos'] ?? 0} files)',
+                'photos', Icons.photo_library_rounded),
           ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, null),
-          child: const Text('Cancel / Reject', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+          child: const Text('Cancel / Reject',
+              style: TextStyle(
+                  color: AppColors.error, fontWeight: FontWeight.bold)),
         ),
         ElevatedButton(
           onPressed: () {
@@ -475,10 +539,17 @@ class _ConfirmSyncDialogState extends State<ConfirmSyncDialog> {
               modules.addAll(['areas', 'streets', 'visits']);
             }
             if (_selections['customers'] == true) {
-              modules.addAll(['customers', 'vip_membership', 'customer_question_answers']);
+              modules.addAll(
+                  ['customers', 'vip_membership', 'customer_question_answers']);
             }
             if (_selections['orders_payments'] == true) {
-              modules.addAll(['orders', 'order_items', 'payments', 'order_questions', 'order_question_answers']);
+              modules.addAll([
+                'orders',
+                'order_items',
+                'payments',
+                'order_questions',
+                'order_question_answers'
+              ]);
             }
             if (_selections['products'] == true) {
               modules.addAll(['items', 'item_price_history']);
@@ -503,7 +574,9 @@ class _ConfirmSyncDialogState extends State<ConfirmSyncDialog> {
       value: isChecked,
       title: Row(
         children: [
-          Icon(icon, size: 18, color: isChecked ? AppColors.primary : AppColors.gray400),
+          Icon(icon,
+              size: 18,
+              color: isChecked ? AppColors.primary : AppColors.gray400),
           const SizedBox(width: 8),
           Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
         ],

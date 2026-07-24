@@ -142,14 +142,17 @@ class Worker {
       lastPackageGenerated: lastPackageGenerated ?? this.lastPackageGenerated,
       packageVersion: packageVersion ?? this.packageVersion,
       isPackageOutdated: isPackageOutdated ?? this.isPackageOutdated,
-      assignedCustomersCount: assignedCustomersCount ?? this.assignedCustomersCount,
+      assignedCustomersCount:
+          assignedCustomersCount ?? this.assignedCustomersCount,
       assignedAreasCount: assignedAreasCount ?? this.assignedAreasCount,
       assignedStreetsCount: assignedStreetsCount ?? this.assignedStreetsCount,
-      assignedCategoriesCount: assignedCategoriesCount ?? this.assignedCategoriesCount,
+      assignedCategoriesCount:
+          assignedCategoriesCount ?? this.assignedCategoriesCount,
       assignedItemsCount: assignedItemsCount ?? this.assignedItemsCount,
       assignedRoutesCount: assignedRoutesCount ?? this.assignedRoutesCount,
       totalCollection: totalCollection ?? this.totalCollection,
-      totalCommissionEarned: totalCommissionEarned ?? this.totalCommissionEarned,
+      totalCommissionEarned:
+          totalCommissionEarned ?? this.totalCommissionEarned,
     );
   }
 
@@ -185,15 +188,21 @@ class Worker {
   factory Worker.fromMap(Map<String, dynamic> map) {
     CommissionType parseType(String val) {
       switch (val) {
-        case 'fixed': return CommissionType.fixed;
+        case 'fixed':
+          return CommissionType.fixed;
         case 'pctCollection':
-        case 'pct_collection': return CommissionType.pctCollection;
-        case 'salary': return CommissionType.salary;
-        case 'bonus': return CommissionType.bonus;
-        case 'mixed': return CommissionType.mixed;
+        case 'pct_collection':
+          return CommissionType.pctCollection;
+        case 'salary':
+          return CommissionType.salary;
+        case 'bonus':
+          return CommissionType.bonus;
+        case 'mixed':
+          return CommissionType.mixed;
         case 'pctOrder':
         case 'pct_order':
-        default: return CommissionType.pctOrder;
+        default:
+          return CommissionType.pctOrder;
       }
     }
 
@@ -207,13 +216,16 @@ class Worker {
       employeeId: map['employee_id'] as String? ?? '',
       status: map['status'] as String? ?? 'active',
       pinHash: map['pin_hash'] as String? ?? '',
-      commissionType: parseType(map['commission_type'] as String? ?? 'pct_order'),
+      commissionType:
+          parseType(map['commission_type'] as String? ?? 'pct_order'),
       commissionValue: (map['commission_value'] as num?)?.toDouble() ?? 5.0,
       salary: (map['salary'] as num?)?.toDouble() ?? 0.0,
       bonus: (map['bonus'] as num?)?.toDouble() ?? 0.0,
       notes: map['notes'] as String? ?? '',
-      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(map['updated_at']?.toString() ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      updatedAt: DateTime.tryParse(map['updated_at']?.toString() ?? '') ??
+          DateTime.now(),
       aadhaarId: map['aadhaar_id'] as String? ?? '',
       emergencyContact: map['emergency_contact'] as String? ?? '',
       bankDetails: map['bank_details'] as String? ?? '',
@@ -231,9 +243,11 @@ class Worker {
       assignedItemsCount: map['assigned_items_count'] as int? ?? 0,
       assignedRoutesCount: map['assigned_routes_count'] as int? ?? 0,
       totalCollection: (map['total_collection'] as num?)?.toDouble() ?? 0.0,
-      totalCommissionEarned: (map['total_commission'] as num?)?.toDouble() ?? 0.0,
+      totalCommissionEarned:
+          (map['total_commission'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
-  double get monthlyTarget => target > 0 ? target : (salary > 0 ? salary : 10000.0);
+  double get monthlyTarget =>
+      target > 0 ? target : (salary > 0 ? salary : 10000.0);
 }

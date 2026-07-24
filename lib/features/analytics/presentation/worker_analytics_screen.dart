@@ -17,9 +17,10 @@ import '../../../core/security/app_mode_service.dart';
 // --- PROVIDERS ---
 
 /// Fetch all workers summary (leaderboard data for Owner)
-final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final workerAnalyticsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final db = await DatabaseHelper.instance.database;
-  
+
   final workers = await db.query('workers');
   final List<Map<String, dynamic>> list = [];
 
@@ -40,8 +41,9 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
         SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
       )) AND o.delivery_status != 'cancelled'
     ''', [wid, wid, wid, wid, wid]);
-    
-    final totalSales = (orderRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
+
+    final totalSales =
+        (orderRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
     final orderCount = (orderRes.first['order_count'] as num?)?.toInt() ?? 0;
 
     // Fetch payment totals (Cash vs Online) safely
@@ -139,15 +141,18 @@ final workerAnalyticsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
     });
   }
 
-  list.sort((a, b) => (b['total_collected'] as double).compareTo(a['total_collected'] as double));
+  list.sort((a, b) => (b['total_collected'] as double)
+      .compareTo(a['total_collected'] as double));
   return list;
 });
 
 /// Fetch detailed metrics for a single worker (Personal Stats)
-final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, workerId) async {
+final singleWorkerStatsProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, workerId) async {
   final db = await DatabaseHelper.instance.database;
-  
-  final workerRows = await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
+
+  final workerRows =
+      await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
   if (workerRows.isEmpty) return {};
   final w = workerRows.first;
   final wname = w['name'] as String? ?? 'Worker';
@@ -173,21 +178,24 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
     FROM orders 
     WHERE DATE(created_at) = DATE(?) AND (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
   ''', [todayStr, workerId, workerId]);
-  final todaySales = (todaySalesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
+  final todaySales =
+      (todaySalesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
 
   final monthlySalesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(grand_total), 0) as total_sales 
     FROM orders 
     WHERE strftime('%Y-%m', created_at) = ? AND (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
   ''', [monthStr, workerId, workerId]);
-  final monthlySales = (monthlySalesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
+  final monthlySales =
+      (monthlySalesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
 
   final duesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(remaining_amount), 0) as pending_dues 
     FROM orders 
     WHERE remaining_amount > 0 AND (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
   ''', [workerId, workerId]);
-  final pendingDues = (duesRes.first['pending_dues'] as num?)?.toDouble() ?? 0.0;
+  final pendingDues =
+      (duesRes.first['pending_dues'] as num?)?.toDouble() ?? 0.0;
 
   // Collections (Cash vs Online)
   final cashRes = await db.rawQuery('''
@@ -217,10 +225,14 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
   final expensesCount = (expRes.first['count'] as num?)?.toInt() ?? 0;
 
   // Territories and notes
-  final areaRes = await db.rawQuery("SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = 'area'", [workerId]);
+  final areaRes = await db.rawQuery(
+      "SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = 'area'",
+      [workerId]);
   final areasCount = (areaRes.first['v'] as num?)?.toInt() ?? 0;
 
-  final streetRes = await db.rawQuery("SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = 'street'", [workerId]);
+  final streetRes = await db.rawQuery(
+      "SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = 'street'",
+      [workerId]);
   final streetsCount = (streetRes.first['v'] as num?)?.toInt() ?? 0;
 
   final custRes = await db.rawQuery('''
@@ -230,7 +242,8 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
   ''', [workerId, workerId, workerId]);
   final customerCount = (custRes.first['count'] as num?)?.toInt() ?? 0;
 
-  final noteRes = await db.rawQuery('SELECT COUNT(*) as v FROM notes WHERE worker_id = ?', [workerId]);
+  final noteRes = await db.rawQuery(
+      'SELECT COUNT(*) as v FROM notes WHERE worker_id = ?', [workerId]);
   final notesCount = (noteRes.first['v'] as num?)?.toInt() ?? 0;
 
   final photosRes = await db.rawQuery('''
@@ -249,13 +262,19 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
   }
 
   // Delivery status distribution
-  final deliveredRes = await db.rawQuery("SELECT COUNT(*) as v FROM orders WHERE delivery_status = 'delivered' AND (assigned_worker_id = ? OR created_by = ?)", [workerId, workerId]);
+  final deliveredRes = await db.rawQuery(
+      "SELECT COUNT(*) as v FROM orders WHERE delivery_status = 'delivered' AND (assigned_worker_id = ? OR created_by = ?)",
+      [workerId, workerId]);
   final deliveredCount = (deliveredRes.first['v'] as num?)?.toInt() ?? 0;
 
-  final pendingRes = await db.rawQuery("SELECT COUNT(*) as v FROM orders WHERE delivery_status = 'pending' AND (assigned_worker_id = ? OR created_by = ?)", [workerId, workerId]);
+  final pendingRes = await db.rawQuery(
+      "SELECT COUNT(*) as v FROM orders WHERE delivery_status = 'pending' AND (assigned_worker_id = ? OR created_by = ?)",
+      [workerId, workerId]);
   final pendingCount = (pendingRes.first['v'] as num?)?.toInt() ?? 0;
 
-  final cancelledRes = await db.rawQuery("SELECT COUNT(*) as v FROM orders WHERE delivery_status = 'cancelled' AND (assigned_worker_id = ? OR created_by = ?)", [workerId, workerId]);
+  final cancelledRes = await db.rawQuery(
+      "SELECT COUNT(*) as v FROM orders WHERE delivery_status = 'cancelled' AND (assigned_worker_id = ? OR created_by = ?)",
+      [workerId, workerId]);
   final cancelledCount = (cancelledRes.first['v'] as num?)?.toInt() ?? 0;
 
   // Weekly Trend
@@ -288,7 +307,8 @@ final singleWorkerStatsProvider = FutureProvider.family<Map<String, dynamic>, St
     LIMIT 5
   ''', [workerId, workerId]);
 
-  final targetPct = monthlyTarget > 0 ? (totalColl / monthlyTarget).clamp(0.0, 1.0) : 0.0;
+  final targetPct =
+      monthlyTarget > 0 ? (totalColl / monthlyTarget).clamp(0.0, 1.0) : 0.0;
 
   return {
     'id': workerId,
@@ -330,7 +350,7 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isOwner = AppModeService.isOwnerSessionActive;
-    
+
     if (!isOwner) {
       // ── WORKER MODE: SHOW DIRECT WORKER REPORT & DASHBOARD ──
       final workerId = WorkerSession.instance.currentWorkerId ?? '';
@@ -357,14 +377,16 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
     return AppScaffold(
       title: 'Worker Analytics & Performance',
       body: analyticsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
         error: (err, _) => Center(child: Text('Error loading analytics: $err')),
         data: (workers) {
           if (workers.isEmpty) {
             return const EmptyStateWidget(
               icon: Icons.analytics_outlined,
               title: 'No Worker Performance Data',
-              subtitle: 'Add workers and import sync packages to view performance leaderboards.',
+              subtitle:
+                  'Add workers and import sync packages to view performance leaderboards.',
             );
           }
 
@@ -385,20 +407,74 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Builder(
-                          builder: (context) {
-                            final isDark = Theme.of(context).brightness == Brightness.dark;
+                        child: Builder(builder: (context) {
+                          final isDark =
+                              Theme.of(context).brightness == Brightness.dark;
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppColors.success.withOpacity(0.12)
+                                  : AppColors.successSurface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark
+                                    ? AppColors.success.withOpacity(0.4)
+                                    : AppColors.success.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.emoji_events_rounded,
+                                        color: AppColors.success, size: 20),
+                                    SizedBox(width: 6),
+                                    Text('TOP PERFORMER',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.success)),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(topWorker['name'] as String,
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16,
+                                        color: isDark
+                                            ? Colors.white
+                                            : AppColors.textPrimary)),
+                                Text(
+                                    'Collected: ${AppFormatters.currency(topWorker['total_collected'] as double)}',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: isDark
+                                            ? Colors.white70
+                                            : AppColors.textSecondary)),
+                              ],
+                            ),
+                          );
+                        }),
+                      ),
+                      if (lowestWorker != null) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Builder(builder: (context) {
+                            final isDark =
+                                Theme.of(context).brightness == Brightness.dark;
                             return Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: isDark
-                                    ? AppColors.success.withOpacity(0.12)
-                                    : AppColors.successSurface,
+                                    ? AppColors.error.withOpacity(0.12)
+                                    : AppColors.errorSurface,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: isDark
-                                      ? AppColors.success.withOpacity(0.4)
-                                      : AppColors.success.withOpacity(0.3),
+                                      ? AppColors.error.withOpacity(0.4)
+                                      : AppColors.error.withOpacity(0.3),
                                 ),
                               ),
                               child: Column(
@@ -406,71 +482,35 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                                 children: [
                                   const Row(
                                     children: [
-                                      Icon(Icons.emoji_events_rounded, color: AppColors.success, size: 20),
+                                      Icon(Icons.trending_down_rounded,
+                                          color: AppColors.error, size: 20),
                                       SizedBox(width: 6),
-                                      Text('TOP PERFORMER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.success)),
+                                      Text('NEEDS SUPPORT',
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w900,
+                                              color: AppColors.error)),
                                     ],
                                   ),
                                   const SizedBox(height: 8),
-                                  Text(topWorker['name'] as String,
+                                  Text(lowestWorker['name'] as String,
                                       style: TextStyle(
                                           fontWeight: FontWeight.w800,
                                           fontSize: 16,
-                                          color: isDark ? Colors.white : AppColors.textPrimary)),
-                                  Text('Collected: ${AppFormatters.currency(topWorker['total_collected'] as double)}',
+                                          color: isDark
+                                              ? Colors.white
+                                              : AppColors.textPrimary)),
+                                  Text(
+                                      'Collected: ${AppFormatters.currency(lowestWorker['total_collected'] as double)}',
                                       style: TextStyle(
                                           fontSize: 12,
-                                          color: isDark ? Colors.white70 : AppColors.textSecondary)),
+                                          color: isDark
+                                              ? Colors.white70
+                                              : AppColors.textSecondary)),
                                 ],
                               ),
                             );
-                          }
-                        ),
-                      ),
-                      if (lowestWorker != null) ...[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Builder(
-                            builder: (context) {
-                              final isDark = Theme.of(context).brightness == Brightness.dark;
-                              return Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? AppColors.error.withOpacity(0.12)
-                                      : AppColors.errorSurface,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? AppColors.error.withOpacity(0.4)
-                                        : AppColors.error.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Row(
-                                      children: [
-                                        Icon(Icons.trending_down_rounded, color: AppColors.error, size: 20),
-                                        SizedBox(width: 6),
-                                        Text('NEEDS SUPPORT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.error)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(lowestWorker['name'] as String,
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 16,
-                                            color: isDark ? Colors.white : AppColors.textPrimary)),
-                                    Text('Collected: ${AppFormatters.currency(lowestWorker['total_collected'] as double)}',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: isDark ? Colors.white70 : AppColors.textSecondary)),
-                                  ],
-                                ),
-                              );
-                            }
-                          ),
+                          }),
                         ),
                       ],
                     ],
@@ -479,13 +519,20 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
 
                   Row(
                     children: [
-                      const Text('Worker Performance Leaderboard', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                      const Text('Worker Performance Leaderboard',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 16)),
                       const SizedBox(width: 6),
-                      const Icon(Icons.touch_app_outlined, color: AppColors.primary, size: 16),
+                      const Icon(Icons.touch_app_outlined,
+                          color: AppColors.primary, size: 16),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('Tap any worker card below to open their detailed report and charts.', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryColor(context))),
+                  Text(
+                      'Tap any worker card below to open their detailed report and charts.',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondaryColor(context))),
                   const SizedBox(height: 16),
 
                   ListView.builder(
@@ -501,95 +548,147 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                       return InkWell(
                         onTap: () {
                           // Tap to zoom into worker stats detailed report via full screen bottom sheet!
-                          _showWorkerDetailsSheet(context, workerId, w['name'] as String);
+                          _showWorkerDetailsSheet(
+                              context, workerId, w['name'] as String);
                         },
                         borderRadius: BorderRadius.circular(16),
-                        child: Builder(
-                          builder: (context) {
-                            final isDark = Theme.of(context).brightness == Brightness.dark;
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF1E293B).withOpacity(0.55) : Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200),
-                                boxShadow: AppColors.cardShadow,
-                              ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: rank == 1 ? Colors.amber.shade100 : AppColors.primarySurface,
-                                    child: Text('#$rank',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 13,
-                                          color: rank == 1 ? Colors.amber.shade900 : AppColors.primary,
-                                        )),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Builder(builder: (context) {
+                          final isDark =
+                              Theme.of(context).brightness == Brightness.dark;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1E293B).withOpacity(0.55)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withOpacity(0.12)
+                                      : AppColors.gray200),
+                              boxShadow: AppColors.cardShadow,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: rank == 1
+                                          ? Colors.amber.shade100
+                                          : AppColors.primarySurface,
+                                      child: Text('#$rank',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 13,
+                                            color: rank == 1
+                                                ? Colors.amber.shade900
+                                                : AppColors.primary,
+                                          )),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(w['name'] as String,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 16)),
+                                          if ((w['employee_id'] as String)
+                                              .isNotEmpty)
+                                            Text('ID: ${w['employee_id']}',
+                                                style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: AppColors
+                                                        .textSecondaryColor(
+                                                            context))),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
                                       children: [
-                                        Text(w['name'] as String, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                                        if ((w['employee_id'] as String).isNotEmpty)
-                                          Text('ID: ${w['employee_id']}', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context))),
+                                        Text(
+                                            AppFormatters.currency(
+                                                w['total_collected'] as double),
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 16,
+                                                color: AppColors.primary)),
+                                        const Text('Total Collection',
+                                            style: TextStyle(
+                                                fontSize: 10,
+                                                color: AppColors.textHint)),
                                       ],
                                     ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(AppFormatters.currency(w['total_collected'] as double),
-                                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.primary)),
-                                      const Text('Total Collection', style: TextStyle(fontSize: 10, color: AppColors.textHint)),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-
-                              // Target progress
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text('Target Progress', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                                  Text('${(targetPct * 100).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.success)),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: LinearProgressIndicator(
-                                  value: targetPct,
-                                  minHeight: 6,
-                                  backgroundColor: AppColors.gray200,
-                                  color: AppColors.success,
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 12),
+                                const SizedBox(height: 12),
 
-                              // Small metrics rows
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  _subStat(context, 'Sales', AppFormatters.currency(w['total_sales'] as double)),
-                                  _subStat(context, 'Commission', AppFormatters.currency(w['commission_earned'] as double)),
-                                  _subStat(context, 'Expenses', AppFormatters.currency(w['total_expenses'] as double)),
-                                  _subStat(context, 'Customers', '${w['customer_count']}'),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    );
-                  },
+                                // Target progress
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Target Progress',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700)),
+                                    Text(
+                                        '${(targetPct * 100).toStringAsFixed(0)}%',
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.success)),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: LinearProgressIndicator(
+                                    value: targetPct,
+                                    minHeight: 6,
+                                    backgroundColor: AppColors.gray200,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Small metrics rows
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _subStat(
+                                        context,
+                                        'Sales',
+                                        AppFormatters.currency(
+                                            w['total_sales'] as double)),
+                                    _subStat(
+                                        context,
+                                        'Commission',
+                                        AppFormatters.currency(
+                                            w['commission_earned'] as double)),
+                                    _subStat(
+                                        context,
+                                        'Expenses',
+                                        AppFormatters.currency(
+                                            w['total_expenses'] as double)),
+                                    _subStat(context, 'Customers',
+                                        '${w['customer_count']}'),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -603,26 +702,35 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
   Widget _subStat(BuildContext context, String label, String value) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimaryColor(context))),
-        Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textHint)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimaryColor(context))),
+        Text(label,
+            style: const TextStyle(fontSize: 9, color: AppColors.textHint)),
       ],
     );
   }
 
   /// Show detailed worker report in a beautiful modal sliding sheet
-  void _showWorkerDetailsSheet(BuildContext context, String workerId, String workerName) {
+  void _showWorkerDetailsSheet(
+      BuildContext context, String workerId, String workerName) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return ClipRRect(
-          borderRadius: const BorderRadius.only(topLeft: Radius.circular(28), topRight: Radius.circular(28)),
+          borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(28), topRight: Radius.circular(28)),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               height: MediaQuery.of(context).size.height * 0.88,
-              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF111827) : const Color(0xFFF9FAFB),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF111827)
+                  : const Color(0xFFF9FAFB),
               child: Column(
                 children: [
                   // Handlebar
@@ -630,11 +738,14 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                     margin: const EdgeInsets.only(top: 12, bottom: 8),
                     width: 50,
                     height: 5,
-                    decoration: BoxDecoration(color: AppColors.gray300, borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(
+                        color: AppColors.gray300,
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                   // Sheet Title
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -642,8 +753,15 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('$workerName Report', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-                              Text('Detailed analytics and history', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryColor(context))),
+                              Text('$workerName Report',
+                                  style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900)),
+                              Text('Detailed analytics and history',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondaryColor(
+                                          context))),
                             ],
                           ),
                         ),
@@ -655,7 +773,7 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
                     ),
                   ),
                   const Divider(height: 1),
-                  
+
                   // Content
                   Expanded(
                     child: _WorkerStatsDashboard(workerId: workerId),
@@ -683,7 +801,8 @@ class _WorkerStatsDashboard extends ConsumerWidget {
     final statsAsync = ref.watch(singleWorkerStatsProvider(workerId));
 
     return statsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary)),
       error: (e, _) => Center(child: Text('Error loading stats: $e')),
       data: (stats) {
         if (stats.isEmpty) {
@@ -725,7 +844,10 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisCount: 2,
-                  childAspectRatio: MediaQuery.textScalerOf(context).scale(1.0) > 1.4 ? 0.85 : 1.15,
+                  childAspectRatio:
+                      MediaQuery.textScalerOf(context).scale(1.0) > 1.4
+                          ? 0.85
+                          : 1.15,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   children: [
@@ -777,14 +899,22 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                         children: [
                           const Row(
                             children: [
-                              Icon(Icons.flag_rounded, color: Colors.white, size: 22),
+                              Icon(Icons.flag_rounded,
+                                  color: Colors.white, size: 22),
                               SizedBox(width: 8),
-                              Text('MONTHLY SALES TARGET', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+                              Text('MONTHLY SALES TARGET',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900)),
                             ],
                           ),
                           Text(
                             '${(targetPct * 100).toStringAsFixed(0)}% Achieved',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13),
                           ),
                         ],
                       ),
@@ -805,15 +935,27 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Target Amount', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                              Text(AppFormatters.currency(target), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                              const Text('Target Amount',
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 11)),
+                              Text(AppFormatters.currency(target),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16)),
                             ],
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              const Text('Total Collection', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                              Text(AppFormatters.currency(totalColl), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                              const Text('Total Collection',
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 11)),
+                              Text(AppFormatters.currency(totalColl),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16)),
                             ],
                           ),
                         ],
@@ -826,7 +968,10 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                 // ── SALES TREND LINE CHART (Like Owner App) ──
                 Text(
                   'Sales Trend (Last 7 Days)',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
                 GlassContainer(
@@ -841,7 +986,10 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                 // ── PAYMENT BREAKDOWN ──
                 Text(
                   'Collection Breakdown',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
                 Container(
@@ -876,7 +1024,10 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                 // ── PERFORMANCE BREAKDOWN ──
                 Text(
                   'Performance Breakdown',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
                 GlassContainer(
@@ -884,20 +1035,34 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16),
                   child: Column(
                     children: [
-                      _detailRow(context, 'All-Time Sales', AppFormatters.currency(stats['total_sales'] as double)),
+                      _detailRow(
+                          context,
+                          'All-Time Sales',
+                          AppFormatters.currency(
+                              stats['total_sales'] as double)),
                       const Divider(height: 20),
-                      _detailRow(context, 'Average Order Value (AOV)', 
-                          AppFormatters.currency(orderCount > 0 ? ((stats['total_sales'] as double) / orderCount) : 0.0)),
+                      _detailRow(
+                          context,
+                          'Average Order Value (AOV)',
+                          AppFormatters.currency(orderCount > 0
+                              ? ((stats['total_sales'] as double) / orderCount)
+                              : 0.0)),
                       const Divider(height: 20),
-                      _detailRow(context, 'Expenses Logged', AppFormatters.currency(totalExpenses), valueColor: AppColors.error),
+                      _detailRow(context, 'Expenses Logged',
+                          AppFormatters.currency(totalExpenses),
+                          valueColor: AppColors.error),
                       const Divider(height: 20),
-                      _detailRow(context, 'Active Customers Served', '${stats['customer_count']}'),
+                      _detailRow(context, 'Active Customers Served',
+                          '${stats['customer_count']}'),
                       const Divider(height: 20),
-                      _detailRow(context, 'Assigned Areas/Streets', '${stats['areas_count']} / ${stats['streets_count']}'),
+                      _detailRow(context, 'Assigned Areas/Streets',
+                          '${stats['areas_count']} / ${stats['streets_count']}'),
                       const Divider(height: 20),
-                      _detailRow(context, 'Notes Logged', '${stats['notes_count']}'),
+                      _detailRow(
+                          context, 'Notes Logged', '${stats['notes_count']}'),
                       const Divider(height: 20),
-                      _detailRow(context, 'Photos Uploaded', '${stats['photos_uploaded']}'),
+                      _detailRow(context, 'Photos Uploaded',
+                          '${stats['photos_uploaded']}'),
                     ],
                   ),
                 ),
@@ -906,7 +1071,10 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                 // ── ORDER STATUS DISTRIBUTION ──
                 Text(
                   'Order Status Distribution',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
                 GlassContainer(
@@ -945,7 +1113,10 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                 // ── TOP SELLING ITEMS ──
                 Text(
                   'Top Selling Items',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
                 GlassContainer(
@@ -964,18 +1135,28 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                           itemBuilder: (_, i) {
                             final it = topItems[i];
                             final String name = it['item_name'] ?? '';
-                            final double revenue = (it['revenue'] as num?)?.toDouble() ?? 0;
-                            final double qty = (it['qty'] as num?)?.toDouble() ?? 0;
+                            final double revenue =
+                                (it['revenue'] as num?)?.toDouble() ?? 0;
+                            final double qty =
+                                (it['qty'] as num?)?.toDouble() ?? 0;
 
                             return ListTile(
                               leading: CircleAvatar(
                                 backgroundColor: AppColors.primarySurface,
-                                child: Text('${i + 1}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                                child: Text('${i + 1}',
+                                    style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w700)),
                               ),
-                              title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: Text('Sold Qty: ${AppFormatters.quantity(qty)}'),
+                              title: Text(name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: Text(
+                                  'Sold Qty: ${AppFormatters.quantity(qty)}'),
                               trailing: Text(AppFormatters.currency(revenue),
-                                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.success)),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.success)),
                             );
                           },
                         ),
@@ -985,7 +1166,10 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                 // ── TOP CUSTOMERS ──
                 Text(
                   'Top Customers Served',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
                 GlassContainer(
@@ -1006,22 +1190,33 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                             final String name = cust['name'] ?? 'Unknown';
                             final String photo = cust['photo_path'] ?? '';
                             final int orders = cust['total_orders'] ?? 0;
-                            final double purchase = (cust['total_purchase'] as num?)?.toDouble() ?? 0;
-                            final double pending = (cust['pending_amount'] as num?)?.toDouble() ?? 0;
+                            final double purchase =
+                                (cust['total_purchase'] as num?)?.toDouble() ??
+                                    0;
+                            final double pending =
+                                (cust['pending_amount'] as num?)?.toDouble() ??
+                                    0;
 
                             return ListTile(
                               leading: CustomerAvatar(
                                 photoPath: photo,
                                 radius: 20,
                               ),
-                              title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                              subtitle: Text('Orders: $orders  •  Purchase: ${AppFormatters.currency(purchase)}'),
+                              title: Text(name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700)),
+                              subtitle: Text(
+                                  'Orders: $orders  •  Purchase: ${AppFormatters.currency(purchase)}'),
                               trailing: Text(
-                                pending > 0 ? 'Dues: ${AppFormatters.currency(pending)}' : 'Clear',
+                                pending > 0
+                                    ? 'Dues: ${AppFormatters.currency(pending)}'
+                                    : 'Clear',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
-                                  color: pending > 0 ? AppColors.error : AppColors.success,
+                                  color: pending > 0
+                                      ? AppColors.error
+                                      : AppColors.success,
                                 ),
                               ),
                             );
@@ -1052,19 +1247,24 @@ class _WorkerStatsDashboard extends ConsumerWidget {
       LineChartData(
         gridData: const FlGridData(show: false),
         titlesData: FlTitlesData(
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               getTitlesWidget: (val, meta) {
                 final int index = val.toInt();
-                if (index < 0 || index >= labels.length) return const SizedBox.shrink();
+                if (index < 0 || index >= labels.length)
+                  return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     labels[index],
-                    style: TextStyle(fontSize: 10, color: AppColors.textSecondaryColor(context)),
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondaryColor(context)),
                   ),
                 );
               },
@@ -1090,17 +1290,25 @@ class _WorkerStatsDashboard extends ConsumerWidget {
     );
   }
 
-  Widget _detailRow(BuildContext context, String label, String value, {Color? valueColor}) {
+  Widget _detailRow(BuildContext context, String label, String value,
+      {Color? valueColor}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondaryColor(context))),
-        Text(value, style: TextStyle(fontWeight: FontWeight.w700, color: valueColor ?? AppColors.textPrimaryColor(context))),
+        Text(label,
+            style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondaryColor(context))),
+        Text(value,
+            style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: valueColor ?? AppColors.textPrimaryColor(context))),
       ],
     );
   }
 
-  Widget _paymentSplitRow(BuildContext context, String label, double amount, double total, Color color) {
+  Widget _paymentSplitRow(BuildContext context, String label, double amount,
+      double total, Color color) {
     final double pct = total > 0 ? (amount / total) : 0.0;
 
     return Column(
@@ -1113,7 +1321,9 @@ class _WorkerStatsDashboard extends ConsumerWidget {
             Text(
               total > 0 && amount > 0
                   ? '${label.contains('Orders') ? amount.toInt() : AppFormatters.currency(amount)} (${(pct * 100).toStringAsFixed(0)}%)'
-                  : (label.contains('Orders') ? '${amount.toInt()}' : AppFormatters.currency(amount)),
+                  : (label.contains('Orders')
+                      ? '${amount.toInt()}'
+                      : AppFormatters.currency(amount)),
               style: TextStyle(fontWeight: FontWeight.w700, color: color),
             ),
           ],

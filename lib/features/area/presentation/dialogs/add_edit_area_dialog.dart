@@ -10,7 +10,8 @@ import 'package:latlong2/latlong.dart';
 
 class AddEditAreaDialog extends StatefulWidget {
   final Area? area;
-  final void Function(String name, String description, int color, String photoPath, String mapsLocation) onSave;
+  final void Function(String name, String description, int color,
+      String photoPath, String mapsLocation) onSave;
 
   const AddEditAreaDialog({super.key, this.area, required this.onSave});
 
@@ -20,12 +21,12 @@ class AddEditAreaDialog extends StatefulWidget {
 
 class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCon     = TextEditingController();
-  final _descCon     = TextEditingController();
+  final _nameCon = TextEditingController();
+  final _descCon = TextEditingController();
   final _locationCon = TextEditingController();
-  String _photoPath  = '';
-  int   _color       = 0xFF1565C0;
-  bool  _loading     = false;
+  String _photoPath = '';
+  int _color = 0xFF1565C0;
+  bool _loading = false;
 
   final _colorOptions = [
     0xFF1565C0, // Blue
@@ -42,11 +43,11 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
   void initState() {
     super.initState();
     if (widget.area != null) {
-      _nameCon.text     = widget.area!.name;
-      _descCon.text     = widget.area!.description;
+      _nameCon.text = widget.area!.name;
+      _descCon.text = widget.area!.description;
       _locationCon.text = widget.area!.mapsLocation;
-      _photoPath        = widget.area!.photoPath;
-      _color            = widget.area!.color;
+      _photoPath = widget.area!.photoPath;
+      _color = widget.area!.color;
     }
   }
 
@@ -110,20 +111,28 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
                       color: AppColors.gray100,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.gray300),
-                      image: (_photoPath.isNotEmpty && File(_photoPath).existsSync())
-                          ? DecorationImage(image: FileImage(File(_photoPath)), fit: BoxFit.cover)
+                      image: (_photoPath.isNotEmpty &&
+                              File(_photoPath).existsSync())
+                          ? DecorationImage(
+                              image: FileImage(File(_photoPath)),
+                              fit: BoxFit.cover)
                           : null,
                     ),
-                    child: (_photoPath.isEmpty || !File(_photoPath).existsSync())
-                        ? const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_a_photo_rounded, color: AppColors.gray500, size: 28),
-                              SizedBox(height: 4),
-                              Text('Add Photo', style: TextStyle(fontSize: 10, color: AppColors.gray600)),
-                            ],
-                          )
-                        : null,
+                    child:
+                        (_photoPath.isEmpty || !File(_photoPath).existsSync())
+                            ? const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add_a_photo_rounded,
+                                      color: AppColors.gray500, size: 28),
+                                  SizedBox(height: 4),
+                                  Text('Add Photo',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.gray600)),
+                                ],
+                              )
+                            : null,
                   ),
                 ),
               ),
@@ -135,7 +144,8 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
                   labelText: 'Area Name *',
                   prefixIcon: Icon(Icons.map_outlined),
                 ),
-                validator: (v) => AppValidators.nameField(v, field: 'Area name'),
+                validator: (v) =>
+                    AppValidators.nameField(v, field: 'Area name'),
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 14),
@@ -184,7 +194,8 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
                       ) as LatLng?;
                       if (picked != null && mounted) {
                         setState(() {
-                          _locationCon.text = '${picked.latitude},${picked.longitude}';
+                          _locationCon.text =
+                              '${picked.latitude},${picked.longitude}';
                         });
                       }
                     },
@@ -198,7 +209,8 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
                 spacing: 10,
                 children: _colorOptions.map((c) {
                   final selected = c == _color;
-                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
                   final borderColor = isDark ? Colors.white : AppColors.gray800;
                   return GestureDetector(
                     onTap: () => setState(() => _color = c),
@@ -237,7 +249,8 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
                 )
               : Text(isEdit ? 'Update' : 'Add Area'),
         ),

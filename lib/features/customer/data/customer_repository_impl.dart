@@ -7,17 +7,20 @@ class CustomerRepositoryImpl implements CustomerRepository {
   CustomerRepositoryImpl(this._dao);
 
   @override
-  Future<List<Customer>> getCustomersByStreet(String streetId, {String? searchQuery}) =>
+  Future<List<Customer>> getCustomersByStreet(String streetId,
+          {String? searchQuery}) =>
       _dao.getCustomersByStreet(streetId, searchQuery: searchQuery);
 
   @override
   Future<Customer?> getCustomerById(String id) => _dao.getCustomerById(id);
 
   @override
-  Future<String> addCustomer(Customer customer) => _dao.insertCustomer(customer);
+  Future<String> addCustomer(Customer customer) =>
+      _dao.insertCustomer(customer);
 
   @override
-  Future<void> updateCustomer(Customer customer) => _dao.updateCustomer(customer);
+  Future<void> updateCustomer(Customer customer) =>
+      _dao.updateCustomer(customer);
 
   @override
   Future<void> deleteCustomer(String id) => _dao.deleteCustomer(id);

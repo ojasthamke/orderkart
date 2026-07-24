@@ -84,7 +84,7 @@ class AnalyticsDao {
   /// 5. Profit Summary: returns total sales, product cost, expenses, and calculated net profit.
   Future<Map<String, dynamic>> getProfitSummary() async {
     final db = await _db;
-    
+
     // Sum of sales and item costs
     final salesRes = await db.rawQuery('''
       SELECT 
@@ -95,15 +95,18 @@ class AnalyticsDao {
          LEFT JOIN items i ON oi.item_id = i.id
          WHERE o.delivery_status != 'cancelled') AS total_cost
     ''');
-    
-    final double sales = (salesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
-    final double cost = (salesRes.first['total_cost'] as num?)?.toDouble() ?? 0.0;
+
+    final double sales =
+        (salesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
+    final double cost =
+        (salesRes.first['total_cost'] as num?)?.toDouble() ?? 0.0;
 
     // Sum of expenses
     final expRes = await db.rawQuery('''
       SELECT COALESCE(SUM(amount), 0) AS total_expenses FROM expenses
     ''');
-    final double expenses = (expRes.first['total_expenses'] as num?)?.toDouble() ?? 0.0;
+    final double expenses =
+        (expRes.first['total_expenses'] as num?)?.toDouble() ?? 0.0;
 
     final double grossProfit = sales - cost;
     final double netProfit = grossProfit - expenses;
@@ -130,8 +133,10 @@ class AnalyticsDao {
     ''');
 
     final double sales = (res.first['total_sales'] as num?)?.toDouble() ?? 0.0;
-    final double collection = (res.first['total_collection'] as num?)?.toDouble() ?? 0.0;
-    final double outstanding = (res.first['total_outstanding'] as num?)?.toDouble() ?? 0.0;
+    final double collection =
+        (res.first['total_collection'] as num?)?.toDouble() ?? 0.0;
+    final double outstanding =
+        (res.first['total_outstanding'] as num?)?.toDouble() ?? 0.0;
 
     final double efficiency = sales > 0 ? (collection / sales) * 100.0 : 100.0;
 

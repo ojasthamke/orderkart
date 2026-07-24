@@ -61,7 +61,9 @@ class GeoBoundary {
         'updated_at': updatedAt.toIso8601String(),
       };
 
-  factory GeoBoundary.fromMap(Map<String, dynamic> map, [List<GeoBoundaryPoint> points = const []]) => GeoBoundary(
+  factory GeoBoundary.fromMap(Map<String, dynamic> map,
+          [List<GeoBoundaryPoint> points = const []]) =>
+      GeoBoundary(
         id: map['id'] as String,
         locationId: map['location_id'] as String,
         geometryType: map['geometry_type'] as String,
@@ -114,7 +116,8 @@ class GeoBoundaryPoint {
         'sequence': sequence,
       };
 
-  factory GeoBoundaryPoint.fromMap(Map<String, dynamic> map) => GeoBoundaryPoint(
+  factory GeoBoundaryPoint.fromMap(Map<String, dynamic> map) =>
+      GeoBoundaryPoint(
         id: map['id'] as String,
         boundaryId: map['boundary_id'] as String,
         latitude: (map['latitude'] as num).toDouble(),

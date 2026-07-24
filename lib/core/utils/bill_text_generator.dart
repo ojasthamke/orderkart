@@ -26,6 +26,7 @@ class BillTextGenerator {
     double marketSavings = 0.0, // savings vs market price
     String currency = AppConstants.defaultCurrency,
     String notes = '',
+    String disclaimer = '',
     List<Map<String, dynamic>> questionAnswers = const [],
   }) {
     final buf = StringBuffer();
@@ -60,13 +61,14 @@ class BillTextGenerator {
     buf.writeln(sep);
 
     for (final item in items) {
-      final name  = item['item_name']?.toString() ?? 'Item';
-      final qty   = (item['quantity'] as num?)?.toDouble() ?? 0.0;
-      final unit  = item['item_unit']?.toString() ?? '';
+      final name = item['item_name']?.toString() ?? 'Item';
+      final qty = (item['quantity'] as num?)?.toDouble() ?? 0.0;
+      final unit = item['item_unit']?.toString() ?? '';
       final price = (item['unit_price'] as num?)?.toDouble() ?? 0.0;
       final total = (item['total_price'] as num?)?.toDouble() ?? (qty * price);
       buf.writeln('🔹 *$name* (${AppFormatters.quantity(qty, unit: unit)})');
-      buf.writeln('  Rate: $currency${price.toStringAsFixed(2)}  |  Total: *$currency${total.toStringAsFixed(2)}*');
+      buf.writeln(
+          '  Rate: $currency${price.toStringAsFixed(2)}  |  Total: *$currency${total.toStringAsFixed(2)}*');
       buf.writeln('');
     }
 
@@ -77,14 +79,17 @@ class BillTextGenerator {
       buf.writeln('• Discount: -$currency${discount.toStringAsFixed(2)}');
     }
     if (deliveryCharge > 0) {
-      buf.writeln('• Delivery Fee: +$currency${deliveryCharge.toStringAsFixed(2)}');
+      buf.writeln(
+          '• Delivery Fee: +$currency${deliveryCharge.toStringAsFixed(2)}');
     }
     buf.writeln('• *Grand Total: $currency${grandTotal.toStringAsFixed(2)}*');
     buf.writeln(sep);
     buf.writeln('💳 *PAYMENT STATUS*');
-    buf.writeln('• Paid Amount: $currency${paidAmount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(paymentMethod).toUpperCase()})');
+    buf.writeln(
+        '• Paid Amount: $currency${paidAmount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(paymentMethod).toUpperCase()})');
     if (remainingAmount > 0) {
-      buf.writeln('• *Due Amount: $currency${remainingAmount.toStringAsFixed(2)}* ⚠️');
+      buf.writeln(
+          '• *Due Amount: $currency${remainingAmount.toStringAsFixed(2)}* ⚠️');
     } else {
       buf.writeln('• Status: *Fully Paid* ✅');
     }
@@ -95,12 +100,16 @@ class BillTextGenerator {
     if (totalSavings > 0) {
       buf.writeln('🎉 *CONGRATULATIONS!*');
       if (discount > 0 && marketSavings > 0) {
-        buf.writeln('You saved *$currency${discount.toStringAsFixed(2)}* (order discount) + *$currency${marketSavings.toStringAsFixed(2)}* (vs. market price)');
-        buf.writeln('🏷️ *Total savings: $currency${totalSavings.toStringAsFixed(2)}* by shopping with us! 🥳✨');
+        buf.writeln(
+            'You saved *$currency${discount.toStringAsFixed(2)}* (order discount) + *$currency${marketSavings.toStringAsFixed(2)}* (vs. market price)');
+        buf.writeln(
+            '🏷️ *Total savings: $currency${totalSavings.toStringAsFixed(2)}* by shopping with us! 🥳✨');
       } else if (marketSavings > 0) {
-        buf.writeln('You saved *$currency${marketSavings.toStringAsFixed(2)}* vs. market price by shopping with us! 🥳✨');
+        buf.writeln(
+            'You saved *$currency${marketSavings.toStringAsFixed(2)}* vs. market price by shopping with us! 🥳✨');
       } else {
-        buf.writeln('You saved *$currency${discount.toStringAsFixed(2)}* on this order by shopping with us! 🥳✨');
+        buf.writeln(
+            'You saved *$currency${discount.toStringAsFixed(2)}* on this order by shopping with us! 🥳✨');
       }
       buf.writeln(doubleSep);
     } else {
@@ -110,13 +119,20 @@ class BillTextGenerator {
 
     final hasRx = items.any((it) => it['prescription_required'] == true);
     if (hasRx) {
-      buf.writeln('⚠️ *Prescription Note (Rx)*: Hand over subject to verification of a valid physical doctor note.');
+      buf.writeln(
+          '⚠️ *Prescription Note (Rx)*: Hand over subject to verification of a valid physical doctor note.');
       buf.writeln(doubleSep);
     }
 
     if (ownerPhone.trim().isNotEmpty) {
       buf.writeln('📞 *STORE CONTACT*');
       buf.writeln('Owner Phone: ${ownerPhone.trim()}');
+      buf.writeln(doubleSep);
+    }
+
+    if (disclaimer.trim().isNotEmpty) {
+      buf.writeln('📌 *TERMS & DISCLAIMER*');
+      buf.writeln(disclaimer.trim());
       buf.writeln(doubleSep);
     }
 

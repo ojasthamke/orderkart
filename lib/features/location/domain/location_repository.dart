@@ -18,7 +18,8 @@ abstract class LocationRepository {
 
   Future<List<Location>> getBreadcrumbs(String locationId);
 
-  Future<String> getNextSequenceKey(String? parentId, {String? afterId, String? beforeId});
+  Future<String> getNextSequenceKey(String? parentId,
+      {String? afterId, String? beforeId});
 
   Future<int> getCustomerCount(String locationId, {bool recursive = false});
 

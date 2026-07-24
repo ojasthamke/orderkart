@@ -23,25 +23,31 @@ class OwnerFeaturesHubScreen extends ConsumerStatefulWidget {
   const OwnerFeaturesHubScreen({super.key, this.initialTab = 0});
 
   @override
-  ConsumerState<OwnerFeaturesHubScreen> createState() => _OwnerFeaturesHubScreenState();
+  ConsumerState<OwnerFeaturesHubScreen> createState() =>
+      _OwnerFeaturesHubScreenState();
 }
 
 class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  String get currency => ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
+  String get currency =>
+      ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
 
   // Suppliers state
   List<Map<String, dynamic>> _suppliers = [];
   List<Map<String, dynamic>> _priceChanges = [];
-  
+
   // Custom Fields state
   List<Map<String, dynamic>> _customFields = [];
 
   // Multi-Store state
   List<Map<String, dynamic>> _warehouseStock = [];
-  final List<String> _warehouses = ['Main Godown', 'Sub-Store Alpha', 'Warehouse West'];
+  final List<String> _warehouses = [
+    'Main Godown',
+    'Sub-Store Alpha',
+    'Warehouse West'
+  ];
   String _selectedWarehouse = 'Main Godown';
 
   // Audit Logs state
@@ -59,7 +65,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this, initialIndex: widget.initialTab);
+    _tabController =
+        TabController(length: 6, vsync: this, initialIndex: widget.initialTab);
     _loadAllData();
   }
 
@@ -76,10 +83,12 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     try {
       final db = await DatabaseHelper.instance.database;
       final sups = await db.query('suppliers');
-      final prices = await db.query('supplier_price_tracker', orderBy: 'change_date DESC');
+      final prices =
+          await db.query('supplier_price_tracker', orderBy: 'change_date DESC');
       final fields = await db.query('custom_fields');
       final warehouseLogs = await db.query('item_warehouses');
-      final audits = await db.query('audit_logs', orderBy: 'created_at DESC', limit: 30);
+      final audits =
+          await db.query('audit_logs', orderBy: 'created_at DESC', limit: 30);
 
       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
       final cashRes = await db.rawQuery(
@@ -89,8 +98,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       final cashToday = (cashRes.first['total'] as num?)?.toDouble() ?? 0.0;
 
       final duesRes = await db.rawQuery(
-        "SELECT SUM(remaining_amount) as total FROM orders WHERE remaining_amount > 0"
-      );
+          "SELECT SUM(remaining_amount) as total FROM orders WHERE remaining_amount > 0");
       final totalDues = (duesRes.first['total'] as num?)?.toDouble() ?? 0.0;
 
       if (mounted) {
@@ -116,7 +124,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     final db = await DatabaseHelper.instance.database;
     final id = const Uuid().v4();
     final now = DateTime.now().toIso8601String();
-    
+
     await db.insert('suppliers', {
       'id': id,
       'name': _supplierNameCon.text.trim(),
@@ -129,10 +137,12 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     _supplierNameCon.clear();
     _supplierPhoneCon.clear();
     await _loadAllData();
-    if (mounted) SnackbarHelper.showSuccess(context, 'Supplier registered successfully');
+    if (mounted)
+      SnackbarHelper.showSuccess(context, 'Supplier registered successfully');
   }
 
-  Future<void> _showSupplierAdjustmentDialog(Map<String, dynamic> supplier) async {
+  Future<void> _showSupplierAdjustmentDialog(
+      Map<String, dynamic> supplier) async {
     final amountCon = TextEditingController();
     String type = 'credit'; // 'credit' (adds due), 'debit' (reduces due)
     final currency = ref.read(settingsProvider).valueOrNull?.currency ?? '₹';
@@ -149,8 +159,12 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                 value: type,
                 decoration: const InputDecoration(labelText: 'Adjustment Type'),
                 items: const [
-                  DropdownMenuItem(value: 'credit', child: Text('Add Purchase (Increases Due)')),
-                  DropdownMenuItem(value: 'debit', child: Text('Record Payment (Decreases Due)')),
+                  DropdownMenuItem(
+                      value: 'credit',
+                      child: Text('Add Purchase (Increases Due)')),
+                  DropdownMenuItem(
+                      value: 'debit',
+                      child: Text('Record Payment (Decreases Due)')),
                 ],
                 onChanged: (v) {
                   if (v != null) {
@@ -161,13 +175,17 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               const SizedBox(height: 12),
               TextField(
                 controller: amountCon,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: 'Amount ($currency)', prefixText: currency),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                    labelText: 'Amount ($currency)', prefixText: currency),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () async {
                 final amt = double.tryParse(amountCon.text.trim()) ?? 0.0;
@@ -175,10 +193,13 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                   SnackbarHelper.showError(ctx, 'Please enter a valid amount');
                   return;
                 }
-                
+
                 final db = await DatabaseHelper.instance.database;
-                final currentBal = (supplier['outstanding_balance'] as num?)?.toDouble() ?? 0.0;
-                final newBal = type == 'credit' ? (currentBal + amt) : (currentBal - amt);
+                final currentBal =
+                    (supplier['outstanding_balance'] as num?)?.toDouble() ??
+                        0.0;
+                final newBal =
+                    type == 'credit' ? (currentBal + amt) : (currentBal - amt);
 
                 await db.update(
                   'suppliers',
@@ -195,7 +216,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                 await db.insert('audit_logs', {
                   'id': logId,
                   'user_type': 'owner',
-                  'action': '${type == 'credit' ? 'Supplier Purchase credit' : 'Supplier Payment debit'} of $currency$amt recorded for ${supplier['name']}',
+                  'action':
+                      '${type == 'credit' ? 'Supplier Purchase credit' : 'Supplier Payment debit'} of $currency$amt recorded for ${supplier['name']}',
                   'entity_type': 'supplier',
                   'entity_id': supplier['id'],
                   'created_at': DateTime.now().toIso8601String(),
@@ -204,7 +226,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                 Navigator.pop(ctx);
                 await _loadAllData();
                 if (mounted) {
-                  SnackbarHelper.showSuccess(context, 'Supplier balance updated');
+                  SnackbarHelper.showSuccess(
+                      context, 'Supplier balance updated');
                 }
               },
               child: const Text('Save'),
@@ -221,7 +244,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     AppHaptics.buttonClick();
     final db = await DatabaseHelper.instance.database;
     final id = const Uuid().v4();
-    
+
     await db.insert('custom_fields', {
       'id': id,
       'entity_type': 'customer',
@@ -232,15 +255,17 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
 
     _customFieldNameCon.clear();
     await _loadAllData();
-    if (mounted) SnackbarHelper.showSuccess(context, 'Custom customer field added');
+    if (mounted)
+      SnackbarHelper.showSuccess(context, 'Custom customer field added');
   }
 
   // --- 3. Multi-Store Config ---
   Future<void> _adjustWarehouseStock(String itemId, double change) async {
     final db = await DatabaseHelper.instance.database;
     final key = '${itemId}_$_selectedWarehouse';
-    final existing = await db.query('item_warehouses', where: 'id = ?', whereArgs: [key]);
-    
+    final existing =
+        await db.query('item_warehouses', where: 'id = ?', whereArgs: [key]);
+
     if (existing.isEmpty) {
       await db.insert('item_warehouses', {
         'id': key,
@@ -260,7 +285,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     await _loadAllData();
   }
 
-  Future<void> _showStockTransferDialog(Item item, double warehouseStock) async {
+  Future<void> _showStockTransferDialog(
+      Item item, double warehouseStock) async {
     final transferCon = TextEditingController();
 
     showDialog(
@@ -275,16 +301,19 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
             const SizedBox(height: 12),
             TextField(
               controller: transferCon,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Quantity to Transfer',
-                helperText: 'Will reduce godown stock and add to storefront crates',
+                helperText:
+                    'Will reduce godown stock and add to storefront crates',
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               final qty = double.tryParse(transferCon.text.trim()) ?? 0.0;
@@ -293,12 +322,13 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                 return;
               }
               if (qty > warehouseStock) {
-                SnackbarHelper.showError(ctx, 'Transfer quantity exceeds available godown stock');
+                SnackbarHelper.showError(
+                    ctx, 'Transfer quantity exceeds available godown stock');
                 return;
               }
 
               final db = await DatabaseHelper.instance.database;
-              
+
               // 1. Subtract from warehouse stock
               final key = '${item.id}_$_selectedWarehouse';
               await db.update(
@@ -319,7 +349,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               await db.insert('audit_logs', {
                 'id': logId,
                 'user_type': 'owner',
-                'action': 'Transfer: Sent $qty ${item.unit} of ${item.name} from $_selectedWarehouse to Storefront Crates',
+                'action':
+                    'Transfer: Sent $qty ${item.unit} of ${item.name} from $_selectedWarehouse to Storefront Crates',
                 'entity_type': 'item',
                 'entity_id': item.id,
                 'created_at': DateTime.now().toIso8601String(),
@@ -331,7 +362,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               Navigator.pop(ctx);
               await _loadAllData();
               if (mounted) {
-                SnackbarHelper.showSuccess(context, 'Transfer completed! Storefront stock updated.');
+                SnackbarHelper.showSuccess(
+                    context, 'Transfer completed! Storefront stock updated.');
               }
             },
             child: const Text('Transfer'),
@@ -344,7 +376,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
   // --- 4. Digital PDF Catalog ---
   Future<void> _generatePdfCatalog(List<Item> items) async {
     AppHaptics.buttonClick();
-    
+
     List<Item> pdfItems = items;
     try {
       final all = await ref.read(inventoryRepositoryProvider).getAllItems();
@@ -366,14 +398,24 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('ORDERKART OFFICIAL CATALOG', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Generated: ${DateTime.now().toIso8601String().substring(0, 10)}', style: const pw.TextStyle(fontSize: 10)),
+                  pw.Text('ORDERKART OFFICIAL CATALOG',
+                      style: pw.TextStyle(
+                          fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(
+                      'Generated: ${DateTime.now().toIso8601String().substring(0, 10)}',
+                      style: const pw.TextStyle(fontSize: 10)),
                 ],
               ),
             ),
             pw.SizedBox(height: 16),
             pw.TableHelper.fromTextArray(
-              headers: ['Product Name', 'Category', 'Selling Price', 'Unit', 'Stock Status'],
+              headers: [
+                'Product Name',
+                'Category',
+                'Selling Price',
+                'Unit',
+                'Stock Status'
+              ],
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               cellAlignment: pw.Alignment.centerLeft,
               data: pdfItems.isEmpty
@@ -399,13 +441,14 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/OrderKart_Catalog.pdf');
       await file.writeAsBytes(await pdf.save());
-      
+
       await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Sharing OrderKart Official Product Stock & Price List Catalog',
       );
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'PDF Generation failed: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'PDF Generation failed: $e');
     }
   }
 
@@ -413,8 +456,9 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
   Future<void> _archiveOldData() async {
     AppHaptics.buttonClick();
     final db = await DatabaseHelper.instance.database;
-    final cutoffDate = DateTime.now().subtract(const Duration(days: 365)).toIso8601String();
-    
+    final cutoffDate =
+        DateTime.now().subtract(const Duration(days: 365)).toIso8601String();
+
     // Count matches
     final countRes = await db.rawQuery(
       "SELECT COUNT(*) as count FROM orders WHERE created_at < ?",
@@ -428,9 +472,11 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Archiver Completed'),
-            content: const Text('No records older than 1 year found. SQLite database is already running at peak efficiency.'),
+            content: const Text(
+                'No records older than 1 year found. SQLite database is already running at peak efficiency.'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
             ],
           ),
         );
@@ -443,24 +489,34 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Confirm Archiving'),
-          content: Text('Are you sure you want to compress and archive $count order records older than 1 year? This permanently reduces local memory load.'),
+          content: Text(
+              'Are you sure you want to compress and archive $count order records older than 1 year? This permanently reduces local memory load.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(ctx);
                 await db.transaction((txn) async {
-                  await txn.delete('orders', where: 'created_at < ?', whereArgs: [cutoffDate]);
-                  await txn.delete('order_items', where: 'order_id NOT IN (SELECT id FROM orders)');
-                  await txn.delete('payments', where: 'order_id NOT IN (SELECT id FROM orders)');
-                  await txn.delete('order_question_answers', where: 'order_id NOT IN (SELECT id FROM orders)');
+                  await txn.delete('orders',
+                      where: 'created_at < ?', whereArgs: [cutoffDate]);
+                  await txn.delete('order_items',
+                      where: 'order_id NOT IN (SELECT id FROM orders)');
+                  await txn.delete('payments',
+                      where: 'order_id NOT IN (SELECT id FROM orders)');
+                  await txn.delete('order_question_answers',
+                      where: 'order_id NOT IN (SELECT id FROM orders)');
                 });
                 await _loadAllData();
                 if (mounted) {
-                  SnackbarHelper.showSuccess(context, 'Successfully archived $count old records!');
+                  SnackbarHelper.showSuccess(
+                      context, 'Successfully archived $count old records!');
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white),
               child: const Text('Archive Now'),
             ),
           ],
@@ -475,7 +531,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     final oldValue = log['old_value'] as String? ?? '';
 
     if (oldValue.isEmpty || entityType.isEmpty || entityId.isEmpty) {
-      SnackbarHelper.showError(context, 'This action cannot be rolled back (no historical data)');
+      SnackbarHelper.showError(
+          context, 'This action cannot be rolled back (no historical data)');
       return;
     }
 
@@ -483,12 +540,17 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm Rollback'),
-        content: Text('Are you sure you want to revert this "$entityType" to its previous state?'),
+        content: Text(
+            'Are you sure you want to revert this "$entityType" to its previous state?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white),
             child: const Text('Rollback'),
           ),
         ],
@@ -501,7 +563,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       final db = await DatabaseHelper.instance.database;
       final Map<String, dynamic> oldData = jsonDecode(oldValue);
 
-      Future<Map<String, dynamic>> filterColumns(String tableName, Map<String, dynamic> row) async {
+      Future<Map<String, dynamic>> filterColumns(
+          String tableName, Map<String, dynamic> row) async {
         final pragma = await db.rawQuery('PRAGMA table_info($tableName)');
         final columns = pragma.map((r) => r['name'] as String).toList();
         return Map.fromEntries(
@@ -512,19 +575,23 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       if (entityType == 'item' || entityType == 'items') {
         // Resolve target fields if conflict algorithms require it
         final filtered = await filterColumns('items', oldData);
-        await db.insert('items', filtered, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert('items', filtered,
+            conflictAlgorithm: ConflictAlgorithm.replace);
         ref.invalidate(inventoryProvider);
       } else if (entityType == 'customer' || entityType == 'customers') {
         final mapWithLocation = {
           ...oldData,
-          if (!oldData.containsKey('location_id') && oldData.containsKey('street_id'))
+          if (!oldData.containsKey('location_id') &&
+              oldData.containsKey('street_id'))
             'location_id': oldData['street_id'],
         };
         final filtered = await filterColumns('customers', mapWithLocation);
-        await db.insert('customers', filtered, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert('customers', filtered,
+            conflictAlgorithm: ConflictAlgorithm.replace);
       } else if (entityType == 'order' || entityType == 'orders') {
         final filtered = await filterColumns('orders', oldData);
-        await db.insert('orders', filtered, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert('orders', filtered,
+            conflictAlgorithm: ConflictAlgorithm.replace);
       } else {
         throw Exception('Unsupported entity rollback type: $entityType');
       }
@@ -541,7 +608,9 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       });
 
       await _loadAllData();
-      if (mounted) SnackbarHelper.showSuccess(context, 'Rollback successful! Entity restored.');
+      if (mounted)
+        SnackbarHelper.showSuccess(
+            context, 'Rollback successful! Entity restored.');
     } catch (e) {
       if (mounted) SnackbarHelper.showError(context, 'Rollback failed: $e');
     }
@@ -560,12 +629,18 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         tabs: const [
-          Tab(icon: Icon(Icons.business_center_rounded), text: 'Suppliers Ledger'),
+          Tab(
+              icon: Icon(Icons.business_center_rounded),
+              text: 'Suppliers Ledger'),
           Tab(icon: Icon(Icons.warehouse_rounded), text: 'Warehouses'),
-          Tab(icon: Icon(Icons.dashboard_customize_rounded), text: 'Custom Fields'),
+          Tab(
+              icon: Icon(Icons.dashboard_customize_rounded),
+              text: 'Custom Fields'),
           Tab(icon: Icon(Icons.pie_chart_rounded), text: 'Forecast & Cash'),
           Tab(icon: Icon(Icons.picture_as_pdf_rounded), text: 'PDF Catalog'),
-          Tab(icon: Icon(Icons.history_toggle_off_rounded), text: 'Audits & Archive'),
+          Tab(
+              icon: Icon(Icons.history_toggle_off_rounded),
+              text: 'Audits & Archive'),
         ],
       ),
       body: TabBarView(
@@ -600,14 +675,18 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               Expanded(
                 child: TextField(
                   controller: _supplierNameCon,
-                  decoration: const InputDecoration(labelText: 'Supplier Name', prefixIcon: Icon(Icons.person_rounded)),
+                  decoration: const InputDecoration(
+                      labelText: 'Supplier Name',
+                      prefixIcon: Icon(Icons.person_rounded)),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   controller: _supplierPhoneCon,
-                  decoration: const InputDecoration(labelText: 'Phone', prefixIcon: Icon(Icons.phone_rounded)),
+                  decoration: const InputDecoration(
+                      labelText: 'Phone',
+                      prefixIcon: Icon(Icons.phone_rounded)),
                 ),
               ),
               const SizedBox(width: 8),
@@ -625,7 +704,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               ? const EmptyStateWidget(
                   icon: Icons.contact_mail_outlined,
                   title: 'No Suppliers Listed',
-                  subtitle: 'Use the fields above to register active supplier partners',
+                  subtitle:
+                      'Use the fields above to register active supplier partners',
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
@@ -634,26 +714,34 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                     final sup = _suppliers[index];
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: AppColors.primarySurface,
-                          child: const Icon(Icons.store_rounded, color: AppColors.primary),
+                          child: const Icon(Icons.store_rounded,
+                              color: AppColors.primary),
                         ),
-                        title: Text(sup['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text(sup['name'] ?? '',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text('Phone: ${sup['phone'] ?? "N/A"}'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
                               'Bal: $currency${((sup['outstanding_balance'] ?? 0.0) as num).toStringAsFixed(1)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.error),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.error),
                             ),
                             const SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(Icons.currency_exchange_rounded, color: AppColors.primary, size: 20),
+                              icon: const Icon(Icons.currency_exchange_rounded,
+                                  color: AppColors.primary, size: 20),
                               tooltip: 'Record Credit / Payment',
-                              onPressed: () => _showSupplierAdjustmentDialog(sup),
+                              onPressed: () =>
+                                  _showSupplierAdjustmentDialog(sup),
                             ),
                           ],
                         ),
@@ -670,7 +758,10 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               alignment: Alignment.centerLeft,
               child: Text(
                 'Supplier Cost Tracker Logs [${_priceChanges.length}]',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppColors.primary),
               ),
             ),
           ),
@@ -685,10 +776,12 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     dense: true,
-                    leading: const Icon(Icons.trending_up_rounded, color: Colors.orange, size: 18),
+                    leading: const Icon(Icons.trending_up_rounded,
+                        color: Colors.orange, size: 18),
                     title: Text(
                       'Cost Price changed for Item ID: ${log['item_id'] ?? ""}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 11),
                     ),
                     subtitle: Text(
                       'Old Cost: $currency${log['old_cost'] ?? "0"} ➔ New Cost: $currency${log['new_cost'] ?? "0"}\nChanged Date: ${log['change_date'] ?? ""}',
@@ -734,14 +827,18 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
             itemBuilder: (context, index) {
               final item = items[index];
               final wKey = '${item.id}_$_selectedWarehouse';
-              final wMatch = _warehouseStock.firstWhere((ws) => ws['id'] == wKey, orElse: () => {});
-              final double currentStock = (wMatch['stock'] as num?)?.toDouble() ?? 0.0;
+              final wMatch = _warehouseStock
+                  .firstWhere((ws) => ws['id'] == wKey, orElse: () => {});
+              final double currentStock =
+                  (wMatch['stock'] as num?)?.toDouble() ?? 0.0;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Category: ${item.category} • Base Unit: ${item.unit}'),
+                  title: Text(item.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                      'Category: ${item.category} • Base Unit: ${item.unit}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -761,14 +858,20 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                               title: Text('Adjust Stock: ${item.name}'),
                               content: TextField(
                                 controller: adjustCon,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                decoration: const InputDecoration(labelText: 'Adjustment Change (+ / -)'),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: const InputDecoration(
+                                    labelText: 'Adjustment Change (+ / -)'),
                               ),
                               actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel')),
                                 ElevatedButton(
                                   onPressed: () async {
-                                    final val = double.tryParse(adjustCon.text) ?? 0.0;
+                                    final val =
+                                        double.tryParse(adjustCon.text) ?? 0.0;
                                     await _adjustWarehouseStock(item.id, val);
                                     Navigator.pop(ctx);
                                   },
@@ -783,7 +886,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                       IconButton.filledTonal(
                         icon: const Icon(Icons.transform_rounded, size: 18),
                         tooltip: 'Transfer to Storefront',
-                        onPressed: () => _showStockTransferDialog(item, currentStock),
+                        onPressed: () =>
+                            _showStockTransferDialog(item, currentStock),
                       ),
                     ],
                   ),
@@ -807,7 +911,9 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               Expanded(
                 child: TextField(
                   controller: _customFieldNameCon,
-                  decoration: const InputDecoration(labelText: 'Custom Field Name (e.g. Landmark)', prefixIcon: Icon(Icons.dashboard_customize_rounded)),
+                  decoration: const InputDecoration(
+                      labelText: 'Custom Field Name (e.g. Landmark)',
+                      prefixIcon: Icon(Icons.dashboard_customize_rounded)),
                 ),
               ),
               const SizedBox(width: 8),
@@ -824,7 +930,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               ? const EmptyStateWidget(
                   icon: Icons.dashboard_customize_outlined,
                   title: 'No Custom Fields Configured',
-                  subtitle: 'Add attributes that workers can fill during customer signups',
+                  subtitle:
+                      'Add attributes that workers can fill during customer signups',
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
@@ -834,8 +941,11 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: const Icon(Icons.star_border_rounded, color: AppColors.primary),
-                        title: Text(field['field_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        leading: const Icon(Icons.star_border_rounded,
+                            color: AppColors.primary),
+                        title: Text(field['field_name'] ?? '',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text('Type: ${field['field_type'] ?? ''}'),
                       ),
                     );
@@ -853,7 +963,9 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('AI Demand Forecasting', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: AppColors.primary)),
+          Text('AI Demand Forecasting',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold, color: AppColors.primary)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
@@ -869,7 +981,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                   children: [
                     Icon(Icons.trending_up_rounded, color: AppColors.primary),
                     SizedBox(width: 8),
-                    Text('Tomato Demand: Increase expected (14%)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Tomato Demand: Increase expected (14%)',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                   ],
                 ),
                 SizedBox(height: 8),
@@ -881,10 +994,15 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
             ),
           ),
           const SizedBox(height: 28),
-          Text('Cashflow Liquidity Planner', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Cashflow Liquidity Planner',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -892,24 +1010,38 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Cash Collected Today:', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('$currency${_cashCollectedToday.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
+                      const Text('Cash Collected Today:',
+                          style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('$currency${_cashCollectedToday.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Outstanding Dues Ledger:', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('$currency${_outstandingDuesLedger.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                      const Text('Outstanding Dues Ledger:',
+                          style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                          '$currency${_outstandingDuesLedger.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const Divider(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Net Projected Liquidity:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('$currency${(_cashCollectedToday + _outstandingDuesLedger).toStringAsFixed(2)}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                      const Text('Net Projected Liquidity:',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                          '$currency${(_cashCollectedToday + _outstandingDuesLedger).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ],
@@ -927,9 +1059,11 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.picture_as_pdf_rounded, size: 84, color: AppColors.primary),
+          const Icon(Icons.picture_as_pdf_rounded,
+              size: 84, color: AppColors.primary),
           const SizedBox(height: 16),
-          const Text('Digital Catalog Generator', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const Text('Digital Catalog Generator',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 8),
           const Text(
             'Export all active inventory prices and stock levels\ninto a clean PDF to send directly to your customers.',
@@ -970,12 +1104,17 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                 const Expanded(
                   child: Text(
                     'Memory full? Compress and clean old orders database log to maintain lag-free rendering.',
-                    style: TextStyle(fontSize: 11, color: Colors.deepOrange, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.deepOrange,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
                 ElevatedButton(
                   onPressed: _archiveOldData,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white),
                   child: const Text('Archive'),
                 ),
               ],
@@ -987,7 +1126,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text('Recent Action Audit Trails', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('Recent Action Audit Trails',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ),
         Expanded(
@@ -995,7 +1135,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               ? const EmptyStateWidget(
                   icon: Icons.history_rounded,
                   title: 'No Logs Found',
-                  subtitle: 'Any critical configurations made in the app will reflect here',
+                  subtitle:
+                      'Any critical configurations made in the app will reflect here',
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
@@ -1005,24 +1146,34 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: const Icon(Icons.lock_person_rounded, size: 20),
-                        title: Text(log['action'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        subtitle: Text('User: ${log['user_type'] ?? ''} • ${log['created_at'] ?? ''}'),
-                        trailing: (log['old_value'] != null && log['old_value'].toString().isNotEmpty)
+                        leading:
+                            const Icon(Icons.lock_person_rounded, size: 20),
+                        title: Text(log['action'] ?? '',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13)),
+                        subtitle: Text(
+                            'User: ${log['user_type'] ?? ''} • ${log['created_at'] ?? ''}'),
+                        trailing: (log['old_value'] != null &&
+                                log['old_value'].toString().isNotEmpty)
                             ? TextButton.icon(
                                 icon: const Icon(Icons.undo_rounded, size: 14),
-                                label: const Text('Revert', style: TextStyle(fontSize: 11)),
+                                label: const Text('Revert',
+                                    style: TextStyle(fontSize: 11)),
                                 style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
                                   minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                   foregroundColor: AppColors.primary,
                                 ),
                                 onPressed: () => _rollbackAuditLog(log),
                               )
                             : Text(
                                 log['entity_type'] ?? '',
-                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary),
                               ),
                       ),
                     );

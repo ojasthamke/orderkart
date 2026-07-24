@@ -27,7 +27,6 @@ class AppTheme {
         onPrimary: AppColors.white,
         secondary: AppColors.successLight,
         surface: AppColors.surface,
-
         error: AppColors.error,
       ),
       textTheme: _buildTextTheme(AppColors.textPrimary),
@@ -114,7 +113,8 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           backgroundColor: AppColors.primary.withOpacity(0.06),
-          side: BorderSide(color: AppColors.primary.withOpacity(0.2), width: 1.0),
+          side:
+              BorderSide(color: AppColors.primary.withOpacity(0.2), width: 1.0),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -160,8 +160,10 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.gray100,
         selectedColor: AppColors.primary,
-        labelStyle: GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
-        secondaryLabelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+        labelStyle:
+            GoogleFonts.inter(fontSize: 13, color: AppColors.textPrimary),
+        secondaryLabelStyle:
+            GoogleFonts.inter(fontSize: 13, color: Colors.white),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -202,11 +204,13 @@ class AppTheme {
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         indicatorColor: AppColors.primary,
-        labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+        labelStyle:
+            GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
         unselectedLabelStyle: GoogleFonts.inter(fontSize: 13),
       ),
       dropdownMenuTheme: DropdownMenuThemeData(
-        textStyle: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
+        textStyle:
+            GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
         menuStyle: MenuStyle(
           backgroundColor: WidgetStateProperty.all(AppColors.white),
           elevation: WidgetStateProperty.all(8),
@@ -276,7 +280,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFEF4444)),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         labelStyle: GoogleFonts.inter(
           color: Colors.white70,
           fontSize: 14,
@@ -306,7 +311,8 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF10B981),
           backgroundColor: const Color(0xFF10B981).withOpacity(0.08),
-          side: BorderSide(color: const Color(0xFF10B981).withOpacity(0.3), width: 1.0),
+          side: BorderSide(
+              color: const Color(0xFF10B981).withOpacity(0.3), width: 1.0),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -336,7 +342,8 @@ class AppTheme {
         backgroundColor: const Color(0xFF1E293B),
         selectedColor: const Color(0xFF10B981),
         labelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
-        secondaryLabelStyle: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+        secondaryLabelStyle:
+            GoogleFonts.inter(fontSize: 13, color: Colors.white),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
           side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
@@ -378,7 +385,8 @@ class AppTheme {
         labelColor: const Color(0xFF10B981),
         unselectedLabelColor: Colors.white70,
         indicatorColor: const Color(0xFF10B981),
-        labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+        labelStyle:
+            GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
         unselectedLabelStyle: GoogleFonts.inter(fontSize: 13),
       ),
       dropdownMenuTheme: DropdownMenuThemeData(
@@ -394,21 +402,36 @@ class AppTheme {
   // ── Text Theme ───────────────────────────────────────────────────────────────
   static TextTheme _buildTextTheme(Color textColor) {
     return TextTheme(
-      displayLarge:  GoogleFonts.outfit(fontSize: 57, fontWeight: FontWeight.bold, color: textColor),
-      displayMedium: GoogleFonts.outfit(fontSize: 45, fontWeight: FontWeight.bold, color: textColor),
-      displaySmall:  GoogleFonts.outfit(fontSize: 36, fontWeight: FontWeight.w600, color: textColor),
-      headlineLarge: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.w800, color: textColor),
-      headlineMedium:GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.w700, color: textColor),
-      headlineSmall: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w700, color: textColor),
-      titleLarge:    GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w700, color: textColor),
-      titleMedium:   GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: textColor),
-      titleSmall:    GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: textColor),
-      bodyLarge:     GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: textColor),
-      bodyMedium:    GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: textColor),
-      bodySmall:     GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: textColor),
-      labelLarge:    GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: textColor),
-      labelMedium:   GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: textColor),
-      labelSmall:    GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: textColor),
+      displayLarge: GoogleFonts.outfit(
+          fontSize: 57, fontWeight: FontWeight.bold, color: textColor),
+      displayMedium: GoogleFonts.outfit(
+          fontSize: 45, fontWeight: FontWeight.bold, color: textColor),
+      displaySmall: GoogleFonts.outfit(
+          fontSize: 36, fontWeight: FontWeight.w600, color: textColor),
+      headlineLarge: GoogleFonts.outfit(
+          fontSize: 32, fontWeight: FontWeight.w800, color: textColor),
+      headlineMedium: GoogleFonts.outfit(
+          fontSize: 28, fontWeight: FontWeight.w700, color: textColor),
+      headlineSmall: GoogleFonts.outfit(
+          fontSize: 24, fontWeight: FontWeight.w700, color: textColor),
+      titleLarge: GoogleFonts.outfit(
+          fontSize: 22, fontWeight: FontWeight.w700, color: textColor),
+      titleMedium: GoogleFonts.outfit(
+          fontSize: 16, fontWeight: FontWeight.w700, color: textColor),
+      titleSmall: GoogleFonts.outfit(
+          fontSize: 14, fontWeight: FontWeight.w600, color: textColor),
+      bodyLarge: GoogleFonts.inter(
+          fontSize: 16, fontWeight: FontWeight.w400, color: textColor),
+      bodyMedium: GoogleFonts.inter(
+          fontSize: 14, fontWeight: FontWeight.w400, color: textColor),
+      bodySmall: GoogleFonts.inter(
+          fontSize: 12, fontWeight: FontWeight.w400, color: textColor),
+      labelLarge: GoogleFonts.inter(
+          fontSize: 14, fontWeight: FontWeight.w600, color: textColor),
+      labelMedium: GoogleFonts.inter(
+          fontSize: 12, fontWeight: FontWeight.w500, color: textColor),
+      labelSmall: GoogleFonts.inter(
+          fontSize: 11, fontWeight: FontWeight.w500, color: textColor),
     );
   }
 }

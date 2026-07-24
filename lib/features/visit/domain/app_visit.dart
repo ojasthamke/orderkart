@@ -71,7 +71,8 @@ class AppVisit {
       notes: map['notes'] as String? ?? '',
       priority: map['priority'] as int? ?? 0,
       status: map['status'] as String? ?? 'pending',
-      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ??
+          DateTime.now(),
       areaName: map['area_name'] as String? ?? '',
       streetName: map['street_name'] as String? ?? '',
     );

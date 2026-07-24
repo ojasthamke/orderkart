@@ -52,21 +52,25 @@ class _TenDayLockScreenState extends State<TenDayLockScreen> {
     setState(() => _loading = true);
     final enteredPin = _pin.join();
 
-    await Future.delayed(const Duration(milliseconds: 300)); // subtle realism delay
+    await Future.delayed(
+        const Duration(milliseconds: 300)); // subtle realism delay
 
     final bytes = utf8.encode(enteredPin);
     final enteredHash = sha256.convert(bytes).toString();
-    const targetHash = '658ae39f06be30e1483f11373ce9ba253fd9a6893e10a39848cc04a022209fc5';
+    const targetHash =
+        '658ae39f06be30e1483f11373ce9ba253fd9a6893e10a39848cc04a022209fc5';
 
     if (enteredHash == targetHash) {
       AppHaptics.success();
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('last_10day_unlock_time', DateTime.now().millisecondsSinceEpoch);
+      await prefs.setInt(
+          'last_10day_unlock_time', DateTime.now().millisecondsSinceEpoch);
       widget.onUnlocked();
     } else {
       AppHaptics.error();
       if (mounted) {
-        SnackbarHelper.showError(context, 'Incorrect PIN. Hint: Check the instruction file.');
+        SnackbarHelper.showError(
+            context, 'Incorrect PIN. Hint: Check the instruction file.');
         setState(() {
           _pin.clear();
           _loading = false;
@@ -78,7 +82,8 @@ class _TenDayLockScreenState extends State<TenDayLockScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F19), // Ultra-premium deep slate/dark theme
+      backgroundColor:
+          const Color(0xFF0B0F19), // Ultra-premium deep slate/dark theme
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -98,7 +103,9 @@ class _TenDayLockScreenState extends State<TenDayLockScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.primary.withOpacity(0.12),
-                          border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
+                          border: Border.all(
+                              color: AppColors.primary.withOpacity(0.3),
+                              width: 1.5),
                         ),
                         child: const Icon(
                           Icons.security_rounded,
@@ -144,10 +151,13 @@ class _TenDayLockScreenState extends State<TenDayLockScreen> {
                             width: 14,
                             height: 14,
                             decoration: BoxDecoration(
-                              color: active ? AppColors.primary : Colors.transparent,
+                              color: active
+                                  ? AppColors.primary
+                                  : Colors.transparent,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: active ? AppColors.primary : Colors.white24,
+                                color:
+                                    active ? AppColors.primary : Colors.white24,
                                 width: 2,
                               ),
                             ),
@@ -160,7 +170,8 @@ class _TenDayLockScreenState extends State<TenDayLockScreen> {
                       // --- KEYPAD ---
                       if (_loading)
                         const Center(
-                          child: CircularProgressIndicator(color: AppColors.primary),
+                          child: CircularProgressIndicator(
+                              color: AppColors.primary),
                         )
                       else
                         _buildKeypad(),
@@ -222,7 +233,8 @@ class _TenDayLockScreenState extends State<TenDayLockScreen> {
               // Backspace Button
               IconButton(
                 iconSize: 26,
-                icon: const Icon(Icons.backspace_outlined, color: Colors.white60),
+                icon:
+                    const Icon(Icons.backspace_outlined, color: Colors.white60),
                 onPressed: _backspace,
               ),
             ],

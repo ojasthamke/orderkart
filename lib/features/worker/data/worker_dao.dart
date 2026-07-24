@@ -16,21 +16,35 @@ class WorkerDao {
 
     for (final m in maps) {
       final id = m['id'] as String;
-      final custRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "customer"', [id]);
-      final areaRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "area"', [id]);
-      final streetRes   = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"', [id]);
-      final catRes      = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "category"', [id]);
-      final itemRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "item"', [id]);
-      final routeRes    = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "route"', [id]);
-      final collRes     = await db.rawQuery('SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?', [id]);
+      final custRes = await db.rawQuery(
+          'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "customer"',
+          [id]);
+      final areaRes = await db.rawQuery(
+          'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "area"',
+          [id]);
+      final streetRes = await db.rawQuery(
+          'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"',
+          [id]);
+      final catRes = await db.rawQuery(
+          'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "category"',
+          [id]);
+      final itemRes = await db.rawQuery(
+          'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "item"',
+          [id]);
+      final routeRes = await db.rawQuery(
+          'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "route"',
+          [id]);
+      final collRes = await db.rawQuery(
+          'SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?',
+          [id]);
 
-      final custCount   = (custRes.first['v'] as num?)?.toInt() ?? 0;
-      final areaCount   = (areaRes.first['v'] as num?)?.toInt() ?? 0;
+      final custCount = (custRes.first['v'] as num?)?.toInt() ?? 0;
+      final areaCount = (areaRes.first['v'] as num?)?.toInt() ?? 0;
       final streetCount = (streetRes.first['v'] as num?)?.toInt() ?? 0;
-      final catCount    = (catRes.first['v'] as num?)?.toInt() ?? 0;
-      final itemCount   = (itemRes.first['v'] as num?)?.toInt() ?? 0;
-      final routeCount  = (routeRes.first['v'] as num?)?.toInt() ?? 0;
-      final collTotal   = (collRes.first['v'] as num?)?.toDouble() ?? 0.0;
+      final catCount = (catRes.first['v'] as num?)?.toInt() ?? 0;
+      final itemCount = (itemRes.first['v'] as num?)?.toInt() ?? 0;
+      final routeCount = (routeRes.first['v'] as num?)?.toInt() ?? 0;
+      final collTotal = (collRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
       final w = Worker.fromMap(m).copyWith(
         assignedCustomersCount: custCount,
@@ -52,13 +66,27 @@ class WorkerDao {
     if (maps.isEmpty) return null;
 
     final m = maps.first;
-    final custRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "customer"', [id]);
-    final areaRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "area"', [id]);
-    final streetRes   = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"', [id]);
-    final catRes      = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "category"', [id]);
-    final itemRes     = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "item"', [id]);
-    final routeRes    = await db.rawQuery('SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "route"', [id]);
-    final collRes     = await db.rawQuery('SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?', [id]);
+    final custRes = await db.rawQuery(
+        'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "customer"',
+        [id]);
+    final areaRes = await db.rawQuery(
+        'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "area"',
+        [id]);
+    final streetRes = await db.rawQuery(
+        'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "street"',
+        [id]);
+    final catRes = await db.rawQuery(
+        'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "category"',
+        [id]);
+    final itemRes = await db.rawQuery(
+        'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "item"',
+        [id]);
+    final routeRes = await db.rawQuery(
+        'SELECT COUNT(*) as v FROM worker_assignments WHERE worker_id = ? AND entity_type = "route"',
+        [id]);
+    final collRes = await db.rawQuery(
+        'SELECT COALESCE(SUM(amount), 0) as v FROM payments p JOIN orders o ON p.order_id = o.id WHERE o.assigned_worker_id = ?',
+        [id]);
 
     return Worker.fromMap(m).copyWith(
       assignedCustomersCount: (custRes.first['v'] as num?)?.toInt() ?? 0,
@@ -76,12 +104,15 @@ class WorkerDao {
     final id = worker.id.isEmpty ? _uuid.v4() : worker.id;
     final now = DateTime.now().toIso8601String();
 
-    await db.insert('workers', {
-      ...worker.toMap(),
-      'id': id,
-      'created_at': now,
-      'updated_at': now,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'workers',
+        {
+          ...worker.toMap(),
+          'id': id,
+          'created_at': now,
+          'updated_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
 
     // Auto-create worker security secret credential JIT
     final secret = SecurityHelper.generateOwnerSecret();
@@ -114,7 +145,8 @@ class WorkerDao {
         'action': 'COMMISSION_RATE_UPDATED',
         'entity_type': 'worker',
         'entity_id': worker.id,
-        'old_value': '${oldRecord.commissionType.name}:${oldRecord.commissionValue}%',
+        'old_value':
+            '${oldRecord.commissionType.name}:${oldRecord.commissionValue}%',
         'new_value': '${worker.commissionType.name}:${worker.commissionValue}%',
         'created_at': DateTime.now().toIso8601String(),
       });
@@ -131,8 +163,10 @@ class WorkerDao {
   Future<void> deleteWorker(String id) async {
     final db = await _db;
     await db.delete('workers', where: 'id = ?', whereArgs: [id]);
-    await db.delete('worker_assignments', where: 'worker_id = ?', whereArgs: [id]);
-    await db.update('customers', {'assigned_worker_id': ''}, where: 'assigned_worker_id = ?', whereArgs: [id]);
+    await db
+        .delete('worker_assignments', where: 'worker_id = ?', whereArgs: [id]);
+    await db.update('customers', {'assigned_worker_id': ''},
+        where: 'assigned_worker_id = ?', whereArgs: [id]);
   }
 
   // ── Assignments ───────────────────────────────────────────────────────────
@@ -179,7 +213,10 @@ class WorkerDao {
       // Mark worker package as outdated since assignments changed!
       await txn.update(
         'workers',
-        {'is_package_outdated': 1, 'updated_at': DateTime.now().toIso8601String()},
+        {
+          'is_package_outdated': 1,
+          'updated_at': DateTime.now().toIso8601String()
+        },
         where: 'id = ?',
         whereArgs: [workerId],
       );
@@ -207,33 +244,42 @@ class WorkerDao {
     );
   }
 
-  Future<void> assignEntity(String workerId, String entityType, String entityId) async {
+  Future<void> assignEntity(
+      String workerId, String entityType, String entityId) async {
     final db = await _db;
-    await db.insert('worker_assignments', {
-      'id': _uuid.v4(),
-      'worker_id': workerId,
-      'entity_type': entityType,
-      'entity_id': entityId,
-      'created_at': DateTime.now().toIso8601String(),
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'worker_assignments',
+        {
+          'id': _uuid.v4(),
+          'worker_id': workerId,
+          'entity_type': entityType,
+          'entity_id': entityId,
+          'created_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
 
     if (entityType == 'customer') {
-      await db.update('customers', {'assigned_worker_id': workerId}, where: 'id = ?', whereArgs: [entityId]);
+      await db.update('customers', {'assigned_worker_id': workerId},
+          where: 'id = ?', whereArgs: [entityId]);
     }
   }
 
-  Future<void> unassignEntity(String workerId, String entityType, String entityId) async {
+  Future<void> unassignEntity(
+      String workerId, String entityType, String entityId) async {
     final db = await _db;
     await db.delete('worker_assignments',
         where: 'worker_id = ? AND entity_type = ? AND entity_id = ?',
         whereArgs: [workerId, entityType, entityId]);
 
     if (entityType == 'customer') {
-      await db.update('customers', {'assigned_worker_id': ''}, where: 'id = ? AND assigned_worker_id = ?', whereArgs: [entityId, workerId]);
+      await db.update('customers', {'assigned_worker_id': ''},
+          where: 'id = ? AND assigned_worker_id = ?',
+          whereArgs: [entityId, workerId]);
     }
   }
 
-  Future<List<String>> getAssignedEntityIds(String workerId, String entityType) async {
+  Future<List<String>> getAssignedEntityIds(
+      String workerId, String entityType) async {
     final db = await _db;
     final res = await db.query('worker_assignments',
         columns: ['entity_id'],
@@ -259,20 +305,23 @@ class WorkerDao {
   }
 
   /// Worker Commission Calculation with historical snapshot protection
-  Future<Map<String, double>> getWorkerCommissionSummary(String workerId) async {
+  Future<Map<String, double>> getWorkerCommissionSummary(
+      String workerId) async {
     final db = await _db;
     final worker = await getWorkerById(workerId);
     if (worker == null) {
       return {'today': 0, 'monthly': 0, 'total': 0, 'pending': 0};
     }
 
-    final now   = DateTime.now();
+    final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day).toIso8601String();
     final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
     // Calculate sum of snapshotted order commissions
-    Future<double> calcHistoricalCommission(String? dateClause, List<dynamic> params) async {
-      String sql = 'SELECT grand_total, paid_amount, commission_rate FROM orders WHERE assigned_worker_id = ?';
+    Future<double> calcHistoricalCommission(
+        String? dateClause, List<dynamic> params) async {
+      String sql =
+          'SELECT grand_total, paid_amount, commission_rate FROM orders WHERE assigned_worker_id = ?';
       if (dateClause != null) sql += ' AND $dateClause';
 
       final orders = await db.rawQuery(sql, [workerId, ...params]);
@@ -281,7 +330,8 @@ class WorkerDao {
         final gt = (o['grand_total'] as num?)?.toDouble() ?? 0.0;
         final paid = (o['paid_amount'] as num?)?.toDouble() ?? 0.0;
         final rate = (o['commission_rate'] as num?)?.toDouble();
-        final effectiveRate = (rate != null && rate > 0) ? rate : worker.commissionValue;
+        final effectiveRate =
+            (rate != null && rate > 0) ? rate : worker.commissionValue;
 
         switch (worker.commissionType) {
           case CommissionType.fixed:
@@ -300,9 +350,11 @@ class WorkerDao {
       return total;
     }
 
-    final todayComm = await calcHistoricalCommission('DATE(created_at) = DATE(?)', [today]);
-    final monComm   = await calcHistoricalCommission('strftime("%Y-%m", created_at) = ?', [month]);
-    final totComm   = await calcHistoricalCommission(null, []);
+    final todayComm =
+        await calcHistoricalCommission('DATE(created_at) = DATE(?)', [today]);
+    final monComm = await calcHistoricalCommission(
+        'strftime("%Y-%m", created_at) = ?', [month]);
+    final totComm = await calcHistoricalCommission(null, []);
 
     return {
       'today': todayComm,
@@ -325,7 +377,8 @@ class WorkerDao {
     return perms;
   }
 
-  Future<void> updateWorkerPermissions(String workerId, Map<String, bool> permissions) async {
+  Future<void> updateWorkerPermissions(
+      String workerId, Map<String, bool> permissions) async {
     final db = await _db;
     final Map<String, dynamic> row = {
       'worker_id': workerId,
@@ -335,6 +388,7 @@ class WorkerDao {
       row[key] = val ? 1 : 0;
     });
 
-    await db.insert('worker_permissions', row, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('worker_permissions', row,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 }

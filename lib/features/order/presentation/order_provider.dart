@@ -17,7 +17,8 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
 });
 
 // Order management state
-class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> {
+class OrderManagementNotifier
+    extends StateNotifier<AsyncValue<List<AppOrder>>> {
   final Ref _ref;
   final OrderRepository _repo;
   String _status = 'all';
@@ -36,8 +37,8 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
     }
     try {
       final orders = await _repo.getAllOrders(
-        status:     _status == 'all' ? null : _status,
-        filter:     _filter == 'all' ? null : _filter,
+        status: _status == 'all' ? null : _status,
+        filter: _filter == 'all' ? null : _filter,
         customerId: _customerId,
       );
       state = AsyncValue.data(orders);
@@ -107,11 +108,19 @@ class OrderManagementNotifier extends StateNotifier<AsyncValue<List<AppOrder>>> 
     await load(silent: true);
     _invalidateAll();
   }
+
+  Future<Map<String, dynamic>> updateOrderRates(String orderId) async {
+    final result = await _repo.updateOrderRates(orderId);
+    await load(silent: true);
+    _invalidateAll();
+    return result;
+  }
 }
 
 final orderManagementProvider =
     StateNotifierProvider<OrderManagementNotifier, AsyncValue<List<AppOrder>>>(
-        (ref) => OrderManagementNotifier(ref, ref.read(orderRepositoryProvider)));
+        (ref) =>
+            OrderManagementNotifier(ref, ref.read(orderRepositoryProvider)));
 
 // Per-customer orders
 final customerOrdersProvider = StateNotifierProvider.family<
@@ -129,7 +138,7 @@ final orderDetailProvider =
   final repo = ref.read(orderRepositoryProvider);
   final order = await repo.getOrderById(orderId);
   if (order == null) return null;
-  final items    = await repo.getOrderItems(orderId);
+  final items = await repo.getOrderItems(orderId);
   final payments = await repo.getOrderPayments(orderId);
   return order.copyWith(items: items, payments: payments);
 });
@@ -152,7 +161,8 @@ final topCustomersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   return OrderDao().getTopCustomers();
 });
 
-final todaysDetailedReportProvider = FutureProvider<Map<String, dynamic>>((ref) {
+final todaysDetailedReportProvider =
+    FutureProvider<Map<String, dynamic>>((ref) {
   return OrderDao().getTodaysDetailedReport();
 });
 
@@ -180,7 +190,8 @@ class DashboardOrdersParams {
   int get hashCode => filter.hashCode ^ startDate.hashCode ^ endDate.hashCode;
 }
 
-final dashboardOrdersProvider = FutureProvider.family<List<AppOrder>, DashboardOrdersParams>((ref, params) {
+final dashboardOrdersProvider =
+    FutureProvider.family<List<AppOrder>, DashboardOrdersParams>((ref, params) {
   final repo = ref.read(orderRepositoryProvider);
   return repo.getAllOrders(
     filter: params.filter,

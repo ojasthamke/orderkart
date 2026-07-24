@@ -23,13 +23,17 @@ class HotspotSyncService {
   static bool _isSyncing = false;
   static String? currentSyncToken;
 
-  static final ValueNotifier<bool> isServerRunningNotifier = ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> isServerRunningNotifier =
+      ValueNotifier<bool>(false);
   static bool get isServerRunning => isServerRunningNotifier.value;
 
   static Future<String> getSyncToken() async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final res = await db.query('settings', columns: ['value'], where: 'key = ?', whereArgs: [AppConstants.keyOwnerSecret]);
+      final res = await db.query('settings',
+          columns: ['value'],
+          where: 'key = ?',
+          whereArgs: [AppConstants.keyOwnerSecret]);
       if (res.isNotEmpty) {
         final secret = res.first['value']?.toString() ?? '';
         if (secret.isNotEmpty) {
@@ -58,7 +62,8 @@ class HotspotSyncService {
 
   /// Helper to check if a specific IP responds to handshake on port 8292
   static Future<bool> _pingDevice(String ip) async {
-    final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 600);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(milliseconds: 600);
     try {
       final token = await getSyncToken();
       final req = await client.getUrl(Uri.parse('http://$ip:8292/handshake'));
@@ -102,17 +107,20 @@ class HotspotSyncService {
       ipsToPing.add(targetIp);
     }
 
-    final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 400);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(milliseconds: 400);
 
     try {
       const batchSize = 20;
       final token = await getSyncToken();
       for (int i = 0; i < ipsToPing.length; i += batchSize) {
-        final end = i + batchSize > ipsToPing.length ? ipsToPing.length : i + batchSize;
+        final end =
+            i + batchSize > ipsToPing.length ? ipsToPing.length : i + batchSize;
         final batch = ipsToPing.sublist(i, end);
         final results = await Future.wait(batch.map((ip) async {
           try {
-            final req = await client.getUrl(Uri.parse('http://$ip:8292/handshake'));
+            final req =
+                await client.getUrl(Uri.parse('http://$ip:8292/handshake'));
             req.headers.add('x-sync-token', token);
             final resp = await req.close();
             if (resp.statusCode == HttpStatus.ok) {
@@ -127,10 +135,12 @@ class HotspotSyncService {
         }));
 
         for (final res in results) {
-          if (res != null) return res; // Return immediately on first found device (N5)
+          if (res != null)
+            return res; // Return immediately on first found device (N5)
         }
       }
-    } catch (_) {} finally {
+    } catch (_) {
+    } finally {
       client.close();
     }
 
@@ -170,9 +180,11 @@ class HotspotSyncService {
           request.response
             ..statusCode = HttpStatus.unauthorized
             ..headers.contentType = ContentType.json
-            ..write(jsonEncode({'status': 'unauthorized', 'message': 'Invalid sync token'}));
+            ..write(jsonEncode(
+                {'status': 'unauthorized', 'message': 'Invalid sync token'}));
           await request.response.close();
-          onStatusUpdate('Rejected unauthorized sync request (token mismatch).');
+          onStatusUpdate(
+              'Rejected unauthorized sync request (token mismatch).');
           return;
         }
 
@@ -187,7 +199,6 @@ class HotspotSyncService {
           await request.response.close();
         } else if (method == 'POST' && path == '/sync') {
           try {
-
             // C5: Payload size limit check
             final contentLength = request.contentLength;
             if (contentLength > 50 * 1024 * 1024) {
@@ -225,24 +236,26 @@ class HotspotSyncService {
             final schemaVer = manifest['schema_version']?.toString() ?? '';
             final schemaInt = int.tryParse(schemaVer) ?? 0;
             if (schemaInt < 1 || schemaInt > 4) {
-              throw Exception('Incompatible database schema version: $schemaVer. Expected: 1-4.');
+              throw Exception(
+                  'Incompatible database schema version: $schemaVer. Expected: 1-4.');
             }
 
             // 2. Minimum Supported Version Check
-            final minSuppVer = manifest['minimum_supported_version']?.toString() ?? '1.0.0';
-            if (!PackageValidator.isVersionCompatible(AppConstants.appVersion, minSuppVer)) {
-              throw Exception('App version (${AppConstants.appVersion}) is too old. Expected at least $minSuppVer.');
+            final minSuppVer =
+                manifest['minimum_supported_version']?.toString() ?? '1.0.0';
+            if (!PackageValidator.isVersionCompatible(
+                AppConstants.appVersion, minSuppVer)) {
+              throw Exception(
+                  'App version (${AppConstants.appVersion}) is too old. Expected at least $minSuppVer.');
             }
 
             // 3. Double Import / Package Expiry Check
             final packageId = manifest['package_id']?.toString() ?? '';
             if (packageId.isNotEmpty) {
               final mainDb = await DatabaseHelper.instance.database;
-              final List<Map<String, dynamic>> existingImport = await mainDb.query(
-                'import_history', 
-                where: 'package_id = ?', 
-                whereArgs: [packageId]
-              );
+              final List<Map<String, dynamic>> existingImport = await mainDb
+                  .query('import_history',
+                      where: 'package_id = ?', whereArgs: [packageId]);
               if (existingImport.isNotEmpty) {
                 // Return success immediately without duplicate merging
                 request.response
@@ -261,13 +274,20 @@ class HotspotSyncService {
             final mainDb = await DatabaseHelper.instance.database;
 
             // Strict worker-to-worker prevention check
-            final settingsRows = await mainDb.query('settings', where: 'key = ?', whereArgs: ['app_mode']);
-            final currentAppModeStr = settingsRows.isNotEmpty ? settingsRows.first['value']?.toString() : '';
+            final settingsRows = await mainDb
+                .query('settings', where: 'key = ?', whereArgs: ['app_mode']);
+            final currentAppModeStr = settingsRows.isNotEmpty
+                ? settingsRows.first['value']?.toString()
+                : '';
             final isLocalWorker = currentAppModeStr == 'worker';
-            final generatedByWorkerId = manifest['generated_by_worker_id']?.toString() ?? '';
+            final generatedByWorkerId =
+                manifest['generated_by_worker_id']?.toString() ?? '';
 
-            if (isLocalWorker && generatedByWorkerId.isNotEmpty && generatedByWorkerId != 'owner') {
-              throw Exception('Worker-to-worker sync is strictly prohibited. Imports are only allowed from Owner.');
+            if (isLocalWorker &&
+                generatedByWorkerId.isNotEmpty &&
+                generatedByWorkerId != 'owner') {
+              throw Exception(
+                  'Worker-to-worker sync is strictly prohibited. Imports are only allowed from Owner.');
             }
 
             // Prepare counts of incoming elements for the confirmation dialog
@@ -285,7 +305,8 @@ class HotspotSyncService {
             bool importPhotos = true;
 
             if (onConfirmIncomingSync != null) {
-              final confirmedModules = await onConfirmIncomingSync!(manifest, incomingCounts);
+              final confirmedModules =
+                  await onConfirmIncomingSync!(manifest, incomingCounts);
               if (confirmedModules == null) {
                 request.response
                   ..statusCode = HttpStatus.badRequest
@@ -314,11 +335,13 @@ class HotspotSyncService {
               for (final photo in photos) {
                 if (photo is Map) {
                   final filename = photo['filename']?.toString();
-                  final folder = photo['folder']?.toString() ?? 'customer_photos';
+                  final folder =
+                      photo['folder']?.toString() ?? 'customer_photos';
                   final base64Str = photo['base64']?.toString();
                   if (filename != null && base64Str != null) {
                     final bytes = base64Decode(base64Str);
-                    final targetPath = '${AppConstants.appDocsDir}/$folder/$filename';
+                    final targetPath =
+                        '${AppConstants.appDocsDir}/$folder/$filename';
                     final destFile = File(targetPath);
                     await destFile.parent.create(recursive: true);
                     await destFile.writeAsBytes(bytes);
@@ -328,8 +351,10 @@ class HotspotSyncService {
             }
 
             // Log import activity in history logs
-            final wId = manifest['generated_by_worker_id']?.toString() ?? 'unknown';
-            final wName = manifest['generated_by_worker_name']?.toString() ?? 'Worker';
+            final wId =
+                manifest['generated_by_worker_id']?.toString() ?? 'unknown';
+            final wName =
+                manifest['generated_by_worker_name']?.toString() ?? 'Worker';
             final devName = manifest['device_name']?.toString() ?? 'Device';
 
             int recordsCount = 0;
@@ -345,7 +370,7 @@ class HotspotSyncService {
               'worker_name': wName,
               'device_name': devName,
               'record_count': recordsCount,
-            'status': 'success',
+              'status': 'success',
               'error_log': jsonEncode(stats),
             });
 
@@ -353,7 +378,8 @@ class HotspotSyncService {
             List<Map<String, String>> responsePhotos = [];
             if (wId != 'unknown' && wId.isNotEmpty && !isLocalWorker) {
               try {
-                scopedWorkerData = await WorkerPackageService.getScopedDataForWorker(wId);
+                scopedWorkerData =
+                    await WorkerPackageService.getScopedDataForWorker(wId);
                 // Compile photos that this worker has access to based on their scoped worker data
                 final Set<String> workerPhotoNames = {};
                 final custRows = scopedWorkerData['customers'] as List?;
@@ -387,7 +413,9 @@ class HotspotSyncService {
 
                 // Add expense receipt photo names
                 final mainDb = await DatabaseHelper.instance.database;
-                final expRows = await mainDb.query('expenses', where: 'assigned_worker_id = ? OR created_by = ?', whereArgs: [wId, wId]);
+                final expRows = await mainDb.query('expenses',
+                    where: 'assigned_worker_id = ? OR created_by = ?',
+                    whereArgs: [wId, wId]);
                 for (final e in expRows) {
                   final pStr = e['receipt_photo_path']?.toString() ?? '';
                   if (pStr.isNotEmpty) workerPhotoNames.add(p.basename(pStr));
@@ -472,7 +500,8 @@ class HotspotSyncService {
   /// Get last sync timestamp
   static Future<String> _getLastSyncTime() async {
     final mainDb = await DatabaseHelper.instance.database;
-    final rows = await mainDb.query('settings', where: 'key = ?', whereArgs: ['last_owner_sync_timestamp']);
+    final rows = await mainDb.query('settings',
+        where: 'key = ?', whereArgs: ['last_owner_sync_timestamp']);
     return rows.isNotEmpty ? rows.first['value']?.toString() ?? '' : '';
   }
 
@@ -486,7 +515,8 @@ class HotspotSyncService {
     final lastSyncTime = await _getLastSyncTime();
 
     final assignmentsRows = workerId.isNotEmpty
-        ? await mainDb.query('worker_assignments', where: 'worker_id = ?', whereArgs: [workerId])
+        ? await mainDb.query('worker_assignments',
+            where: 'worker_id = ?', whereArgs: [workerId])
         : [];
 
     final List<String> explicitAreaIds = assignmentsRows
@@ -513,23 +543,27 @@ class HotspotSyncService {
       List<String> conditions = [];
       List<dynamic> args = [];
       if (explicitCustomerIds.isNotEmpty) {
-        final placeholders = List.filled(explicitCustomerIds.length, '?').join(',');
+        final placeholders =
+            List.filled(explicitCustomerIds.length, '?').join(',');
         conditions.add('id IN ($placeholders)');
         args.addAll(explicitCustomerIds);
       }
       if (explicitStreetIds.isNotEmpty) {
-        final placeholders = List.filled(explicitStreetIds.length, '?').join(',');
+        final placeholders =
+            List.filled(explicitStreetIds.length, '?').join(',');
         conditions.add('street_id IN ($placeholders)');
         args.addAll(explicitStreetIds);
       }
       if (explicitAreaIds.isNotEmpty) {
         final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
-        conditions.add('street_id IN (SELECT id FROM streets WHERE area_id IN ($placeholders))');
+        conditions.add(
+            'street_id IN (SELECT id FROM streets WHERE area_id IN ($placeholders))');
         args.addAll(explicitAreaIds);
       }
       if (conditions.isNotEmpty) {
         final whereClause = conditions.join(' OR ');
-        customersRows = await mainDb.query('customers', where: whereClause, whereArgs: args);
+        customersRows = await mainDb.query('customers',
+            where: whereClause, whereArgs: args);
       }
     } else {
       customersRows = await mainDb.query('customers');
@@ -549,17 +583,20 @@ class HotspotSyncService {
         List<String> conditions = [];
         List<dynamic> args = [];
         if (resolvedStreetIds.isNotEmpty) {
-          final placeholders = List.filled(resolvedStreetIds.length, '?').join(',');
+          final placeholders =
+              List.filled(resolvedStreetIds.length, '?').join(',');
           conditions.add('id IN ($placeholders)');
           args.addAll(resolvedStreetIds.toList());
         }
         if (explicitAreaIds.isNotEmpty) {
-          final placeholders = List.filled(explicitAreaIds.length, '?').join(',');
+          final placeholders =
+              List.filled(explicitAreaIds.length, '?').join(',');
           conditions.add('area_id IN ($placeholders)');
           args.addAll(explicitAreaIds);
         }
         final whereClause = conditions.join(' OR ');
-        streetsRows = await mainDb.query('streets', where: whereClause, whereArgs: args);
+        streetsRows =
+            await mainDb.query('streets', where: whereClause, whereArgs: args);
       }
     } else {
       streetsRows = await mainDb.query('streets');
@@ -577,7 +614,9 @@ class HotspotSyncService {
     if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
       if (resolvedAreaIds.isNotEmpty) {
         final placeholders = List.filled(resolvedAreaIds.length, '?').join(',');
-        areasRows = await mainDb.query('areas', where: 'id IN ($placeholders)', whereArgs: resolvedAreaIds.toList());
+        areasRows = await mainDb.query('areas',
+            where: 'id IN ($placeholders)',
+            whereArgs: resolvedAreaIds.toList());
       }
     } else {
       areasRows = await mainDb.query('areas');
@@ -613,8 +652,10 @@ class HotspotSyncService {
           if (sId.isNotEmpty) resolvedLocationIds.add(sId);
         }
         if (resolvedLocationIds.isNotEmpty) {
-          final placeholders = List.filled(resolvedLocationIds.length, '?').join(',');
-          dataMap['locations'] = await mainDb.query('locations', where: 'id IN ($placeholders)', whereArgs: resolvedLocationIds);
+          final placeholders =
+              List.filled(resolvedLocationIds.length, '?').join(',');
+          dataMap['locations'] = await mainDb.query('locations',
+              where: 'id IN ($placeholders)', whereArgs: resolvedLocationIds);
         } else {
           dataMap['locations'] = [];
         }
@@ -624,7 +665,8 @@ class HotspotSyncService {
 
       // 1.2 Add visits
       if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
-        dataMap['visits'] = await mainDb.query('visits', where: 'created_by = ?', whereArgs: [workerId]);
+        dataMap['visits'] = await mainDb
+            .query('visits', where: 'created_by = ?', whereArgs: [workerId]);
       } else {
         dataMap['visits'] = await mainDb.query('visits');
       }
@@ -633,21 +675,33 @@ class HotspotSyncService {
     // 2. Customers catalog selection
     if (modules.contains('customers')) {
       dataMap['customers'] = customersRows;
-      final List<String> customerIds = customersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
+      final List<String> customerIds = customersRows
+          .map((e) => e['id']?.toString() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
       if (customerIds.isNotEmpty) {
         final placeholders = List.filled(customerIds.length, '?').join(',');
-        dataMap['vip_membership'] = await mainDb.query('vip_membership', where: 'customer_id IN ($placeholders)', whereArgs: customerIds);
+        dataMap['vip_membership'] = await mainDb.query('vip_membership',
+            where: 'customer_id IN ($placeholders)', whereArgs: customerIds);
         // Add customer notes
-        dataMap['notes'] = await mainDb.query('notes', where: 'customer_id IN ($placeholders) OR created_by = ?', whereArgs: [...customerIds, workerId]);
+        dataMap['notes'] = await mainDb.query('notes',
+            where: 'customer_id IN ($placeholders) OR created_by = ?',
+            whereArgs: [...customerIds, workerId]);
       } else {
         dataMap['vip_membership'] = [];
-        dataMap['notes'] = workerId.isNotEmpty ? await mainDb.query('notes', where: 'created_by = ?', whereArgs: [workerId]) : await mainDb.query('notes');
+        dataMap['notes'] = workerId.isNotEmpty
+            ? await mainDb
+                .query('notes', where: 'created_by = ?', whereArgs: [workerId])
+            : await mainDb.query('notes');
       }
     }
 
     // 3. Orders & Payments selection
     if (modules.contains('orders_payments')) {
-      final List<String> customerIds = customersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
+      final List<String> customerIds = customersRows
+          .map((e) => e['id']?.toString() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
       List<Map<String, dynamic>> ordersRows = [];
       if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
         if (customerIds.isNotEmpty) {
@@ -658,7 +712,8 @@ class HotspotSyncService {
           final args = lastSyncTime.isNotEmpty
               ? [...customerIds, workerId, workerId, lastSyncTime, lastSyncTime]
               : [...customerIds, workerId, workerId];
-          ordersRows = await mainDb.query('orders', where: whereClause, whereArgs: args);
+          ordersRows =
+              await mainDb.query('orders', where: whereClause, whereArgs: args);
         } else {
           final whereClause = lastSyncTime.isNotEmpty
               ? '(assigned_worker_id = ? OR created_by = ?) AND (created_at >= ? OR updated_at >= ?)'
@@ -666,21 +721,28 @@ class HotspotSyncService {
           final args = lastSyncTime.isNotEmpty
               ? [workerId, workerId, lastSyncTime, lastSyncTime]
               : [workerId, workerId];
-          ordersRows = await mainDb.query('orders', where: whereClause, whereArgs: args);
+          ordersRows =
+              await mainDb.query('orders', where: whereClause, whereArgs: args);
         }
       } else {
         ordersRows = lastSyncTime.isNotEmpty
-            ? await mainDb.query('orders', where: 'created_at >= ? OR updated_at >= ?', whereArgs: [lastSyncTime, lastSyncTime])
+            ? await mainDb.query('orders',
+                where: 'created_at >= ? OR updated_at >= ?',
+                whereArgs: [lastSyncTime, lastSyncTime])
             : await mainDb.query('orders');
       }
       dataMap['orders'] = ordersRows;
 
-      final List<String> orderIds = ordersRows.map((e) => e['id']?.toString() ?? '').where((e) => e.isNotEmpty).toList();
-      
+      final List<String> orderIds = ordersRows
+          .map((e) => e['id']?.toString() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
+
       final List<Map<String, dynamic>> orderItemsRows;
       if (orderIds.isNotEmpty) {
         final placeholders = List.filled(orderIds.length, '?').join(',');
-        orderItemsRows = await mainDb.query('order_items', where: 'order_id IN ($placeholders)', whereArgs: orderIds);
+        orderItemsRows = await mainDb.query('order_items',
+            where: 'order_id IN ($placeholders)', whereArgs: orderIds);
       } else {
         orderItemsRows = [];
       }
@@ -696,15 +758,16 @@ class HotspotSyncService {
           final args = lastSyncTime.isNotEmpty
               ? [lastSyncTime, ...orderIds, workerId]
               : [...orderIds, workerId];
-          paymentsRows = await mainDb.query('payments', where: whereClause, whereArgs: args);
+          paymentsRows = await mainDb.query('payments',
+              where: whereClause, whereArgs: args);
         } else {
           final whereClause = lastSyncTime.isNotEmpty
               ? 'created_at >= ? AND customer_id IN (SELECT id FROM customers WHERE created_by = ?)'
               : 'customer_id IN (SELECT id FROM customers WHERE created_by = ?)';
-          final args = lastSyncTime.isNotEmpty
-              ? [lastSyncTime, workerId]
-              : [workerId];
-          paymentsRows = await mainDb.query('payments', where: whereClause, whereArgs: args);
+          final args =
+              lastSyncTime.isNotEmpty ? [lastSyncTime, workerId] : [workerId];
+          paymentsRows = await mainDb.query('payments',
+              where: whereClause, whereArgs: args);
         }
       } else {
         if (lastSyncTime.isNotEmpty) {
@@ -715,8 +778,7 @@ class HotspotSyncService {
                 whereArgs: [lastSyncTime, ...orderIds]);
           } else {
             paymentsRows = await mainDb.query('payments',
-                where: 'created_at >= ?',
-                whereArgs: [lastSyncTime]);
+                where: 'created_at >= ?', whereArgs: [lastSyncTime]);
           }
         } else {
           paymentsRows = await mainDb.query('payments');
@@ -734,7 +796,9 @@ class HotspotSyncService {
     // 5. Expenses selection
     if (modules.contains('expenses')) {
       if (workerId.isNotEmpty && assignmentsRows.isNotEmpty) {
-        dataMap['expenses'] = await mainDb.query('expenses', where: 'assigned_worker_id = ? OR created_by = ?', whereArgs: [workerId, workerId]);
+        dataMap['expenses'] = await mainDb.query('expenses',
+            where: 'assigned_worker_id = ? OR created_by = ?',
+            whereArgs: [workerId, workerId]);
       } else {
         dataMap['expenses'] = await mainDb.query('expenses');
       }
@@ -762,7 +826,9 @@ class HotspotSyncService {
           final pathStr = i['photo_path']?.toString() ?? '';
           if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
         }
-        final expensesList = await mainDb.query('expenses', where: 'assigned_worker_id = ? OR created_by = ?', whereArgs: [workerId, workerId]);
+        final expensesList = await mainDb.query('expenses',
+            where: 'assigned_worker_id = ? OR created_by = ?',
+            whereArgs: [workerId, workerId]);
         for (final e in expensesList) {
           final pathStr = e['receipt_photo_path']?.toString() ?? '';
           if (pathStr.isNotEmpty) assignedPhotoNames.add(p.basename(pathStr));
@@ -783,7 +849,8 @@ class HotspotSyncService {
         Directory('${AppConstants.appDocsDir}/item_photos'),
         Directory('${AppConstants.appDocsDir}/expense_receipts'),
       ];
-      final lastSyncDate = lastSyncTime.isNotEmpty ? DateTime.tryParse(lastSyncTime) : null;
+      final lastSyncDate =
+          lastSyncTime.isNotEmpty ? DateTime.tryParse(lastSyncTime) : null;
       final Set<String> processedFilenames = {};
 
       for (final dir in photoDirsToScan) {
@@ -793,7 +860,9 @@ class HotspotSyncService {
           for (final f in files) {
             if (f is File) {
               final filename = p.basename(f.path);
-              if (workerId.isNotEmpty && assignmentsRows.isNotEmpty && !assignedPhotoNames.contains(filename)) {
+              if (workerId.isNotEmpty &&
+                  assignmentsRows.isNotEmpty &&
+                  !assignedPhotoNames.contains(filename)) {
                 continue;
               }
               final uniqueKey = '$folderName/$filename';
@@ -835,9 +904,11 @@ class HotspotSyncService {
       final token = await getSyncToken();
       // 1. Handshake verification
       final handshakeUri = Uri.parse('http://$gatewayIp:8292/handshake');
-      final handshakeReq = await client.getUrl(handshakeUri).timeout(const Duration(seconds: 5));
+      final handshakeReq =
+          await client.getUrl(handshakeUri).timeout(const Duration(seconds: 5));
       handshakeReq.headers.add('x-sync-token', token);
-      final handshakeResp = await handshakeReq.close().timeout(const Duration(seconds: 5));
+      final handshakeResp =
+          await handshakeReq.close().timeout(const Duration(seconds: 5));
       if (handshakeResp.statusCode != HttpStatus.ok) return false;
 
       final body = await utf8.decoder.bind(handshakeResp).join();
@@ -850,14 +921,16 @@ class HotspotSyncService {
         workerName: workerName,
         modules: modules,
       );
-      
+
       final syncUri = Uri.parse('http://$gatewayIp:8292/sync');
-      final syncReq = await client.postUrl(syncUri).timeout(const Duration(seconds: 30));
+      final syncReq =
+          await client.postUrl(syncUri).timeout(const Duration(seconds: 30));
       syncReq.headers.contentType = ContentType.json;
       syncReq.headers.add('x-sync-token', token);
       syncReq.write(jsonEncode({'data': payload}));
 
-      final syncResp = await syncReq.close().timeout(const Duration(seconds: 30));
+      final syncResp =
+          await syncReq.close().timeout(const Duration(seconds: 30));
       if (syncResp.statusCode == HttpStatus.ok) {
         final responseBody = await utf8.decoder.bind(syncResp).join();
         try {
@@ -873,11 +946,13 @@ class HotspotSyncService {
               for (final photo in photos) {
                 if (photo is Map) {
                   final filename = photo['filename']?.toString();
-                  final folder = photo['folder']?.toString() ?? 'customer_photos';
+                  final folder =
+                      photo['folder']?.toString() ?? 'customer_photos';
                   final base64Str = photo['base64']?.toString();
                   if (filename != null && base64Str != null) {
                     final bytes = base64Decode(base64Str);
-                    final targetPath = '${AppConstants.appDocsDir}/$folder/$filename';
+                    final targetPath =
+                        '${AppConstants.appDocsDir}/$folder/$filename';
                     final destFile = File(targetPath);
                     await destFile.parent.create(recursive: true);
                     await destFile.writeAsBytes(bytes);
@@ -887,14 +962,18 @@ class HotspotSyncService {
             }
           }
         } catch (e) {
-          debugPrint('Failed to merge updated scoped data from sync response: $e');
+          debugPrint(
+              'Failed to merge updated scoped data from sync response: $e');
         }
 
         final mainDb = await DatabaseHelper.instance.database;
-        await mainDb.insert('settings', {
-          'key': 'last_owner_sync_timestamp',
-          'value': DateTime.now().toIso8601String(),
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await mainDb.insert(
+            'settings',
+            {
+              'key': 'last_owner_sync_timestamp',
+              'value': DateTime.now().toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
         return true;
       }
       return false;
@@ -917,26 +996,37 @@ class HotspotSyncService {
   }) {
     _connectionSubscription?.cancel();
 
-    _connectionSubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) async {
+    _connectionSubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) async {
       if (_isSyncing) return;
-      
+
       if (results.contains(ConnectivityResult.wifi)) {
         _isSyncing = true;
         try {
           // Auto-discover the receiver IP on subnet
           final discoveredIp = await discoverReceiverDevice();
           if (discoveredIp != null) {
-            onSyncEvent('Connected to sync partner at $discoveredIp. Auto-syncing...');
-            
+            onSyncEvent(
+                'Connected to sync partner at $discoveredIp. Auto-syncing...');
+
             // Auto sync compiles all modules in background auto-sync mode
             final success = await syncWithGateway(
               gatewayIp: discoveredIp,
               workerId: workerId,
               workerName: workerName,
-              modules: ['areas_streets', 'customers', 'orders_payments', 'products', 'expenses', 'photos'],
+              modules: [
+                'areas_streets',
+                'customers',
+                'orders_payments',
+                'products',
+                'expenses',
+                'photos'
+              ],
             );
             if (success) {
-              onSyncEvent('SUCCESS: Automatically synced database and photos with partner!');
+              onSyncEvent(
+                  'SUCCESS: Automatically synced database and photos with partner!');
             }
           }
         } catch (_) {

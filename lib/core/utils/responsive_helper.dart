@@ -27,8 +27,10 @@ class ResponsiveHelper {
       MediaQuery.of(context).orientation == Orientation.landscape;
 
   // --- SCREEN DIMENSIONS ---
-  static double width(BuildContext context) => MediaQuery.of(context).size.width;
-  static double height(BuildContext context) => MediaQuery.of(context).size.height;
+  static double width(BuildContext context) =>
+      MediaQuery.of(context).size.width;
+  static double height(BuildContext context) =>
+      MediaQuery.of(context).size.height;
 
   // --- ADAPTIVE PADDING ---
   static double padding(BuildContext context) {

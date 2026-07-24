@@ -15,7 +15,8 @@ class OwnerPinDialog extends StatefulWidget {
   });
 
   /// Static helper method to prompt for PIN anywhere in the app
-  static Future<bool> verify(BuildContext context, {String? title, String? subtitle}) async {
+  static Future<bool> verify(BuildContext context,
+      {String? title, String? subtitle}) async {
     AppModeService.loginOwnerSuccess();
     return true; // Password disabled for now per user request
   }
@@ -90,7 +91,8 @@ class _OwnerPinDialogState extends State<OwnerPinDialog> {
                 color: AppColors.primarySurface,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.lock_rounded, color: AppColors.primary, size: 28),
+              child: const Icon(Icons.lock_rounded,
+                  color: AppColors.primary, size: 28),
             ),
             const SizedBox(height: 16),
             Text(
@@ -101,7 +103,8 @@ class _OwnerPinDialogState extends State<OwnerPinDialog> {
             Text(
               widget.subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -126,15 +129,13 @@ class _OwnerPinDialogState extends State<OwnerPinDialog> {
             ),
 
             const SizedBox(height: 24),
-            if (_loading)
-              const CircularProgressIndicator()
-            else
-              _buildKeypad(),
+            if (_loading) const CircularProgressIndicator() else _buildKeypad(),
 
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              child: const Text('Cancel',
+                  style: TextStyle(color: AppColors.textSecondary)),
             ),
           ],
         ),
@@ -164,7 +165,8 @@ class _OwnerPinDialogState extends State<OwnerPinDialog> {
             _keypadButton('0'),
             IconButton(
               iconSize: 26,
-              icon: const Icon(Icons.backspace_outlined, color: AppColors.textPrimary),
+              icon: const Icon(Icons.backspace_outlined,
+                  color: AppColors.textPrimary),
               onPressed: _onDelete,
             ),
           ],

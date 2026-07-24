@@ -40,7 +40,8 @@ class MapViewWidget extends ConsumerStatefulWidget {
   ConsumerState<MapViewWidget> createState() => _MapViewWidgetState();
 }
 
-class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTickerProviderStateMixin {
+class _MapViewWidgetState extends ConsumerState<MapViewWidget>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late final TileProvider _tileProvider;
   double _currentZoom = 16.0;
@@ -101,11 +102,14 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
 
     // Fit sub-sections boundary polygons & polylines
     if (widget.visibility.sectionBoundaries || widget.visibility.roads) {
-      final subBoundaries = widget.mapData.boundaries.where((b) => b.locationId != widget.areaId);
+      final subBoundaries =
+          widget.mapData.boundaries.where((b) => b.locationId != widget.areaId);
       for (final b in subBoundaries) {
-        if (b.geometryType == 'polygon' && widget.visibility.sectionBoundaries) {
+        if (b.geometryType == 'polygon' &&
+            widget.visibility.sectionBoundaries) {
           polygons.add(Polygon(
-            points: b.points.map((p) => LatLng(p.latitude, p.longitude)).toList(),
+            points:
+                b.points.map((p) => LatLng(p.latitude, p.longitude)).toList(),
             color: Color(b.fillColor),
             borderColor: Color(b.strokeColor),
             borderStrokeWidth: b.strokeWidth,
@@ -113,7 +117,8 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
           ));
         } else if (b.geometryType == 'polyline' && widget.visibility.roads) {
           polylines.add(Polyline(
-            points: b.points.map((p) => LatLng(p.latitude, p.longitude)).toList(),
+            points:
+                b.points.map((p) => LatLng(p.latitude, p.longitude)).toList(),
             color: Color(b.strokeColor),
             strokeWidth: b.strokeWidth,
           ));
@@ -158,7 +163,8 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
             child: Center(
               child: Text(
                 '${idx + 1}',
-                style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -189,7 +195,10 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                   boxShadow: const [
-                    BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                    BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2)),
                   ],
                 ),
                 child: Center(
@@ -264,7 +273,8 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
             latSum += p.latitude;
             lngSum += p.longitude;
           }
-          final center = LatLng(latSum / b.points.length, lngSum / b.points.length);
+          final center =
+              LatLng(latSum / b.points.length, lngSum / b.points.length);
           markers.add(Marker(
             point: center,
             width: 120,
@@ -310,7 +320,8 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
                     width: 14 + (18 * _pulseController.value),
                     height: 14 + (18 * _pulseController.value),
                     decoration: BoxDecoration(
-                      color: Colors.blueAccent.withOpacity(0.4 * (1.0 - _pulseController.value)),
+                      color: Colors.blueAccent
+                          .withOpacity(0.4 * (1.0 - _pulseController.value)),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -359,7 +370,8 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
         latSum += p.latitude;
         lngSum += p.longitude;
       }
-      initialCenter = LatLng(latSum / areaBoundary.points.length, lngSum / areaBoundary.points.length);
+      initialCenter = LatLng(latSum / areaBoundary.points.length,
+          lngSum / areaBoundary.points.length);
     } else if (widget.mapData.customerMarkers.isNotEmpty) {
       double latSum = 0;
       double lngSum = 0;
@@ -367,9 +379,12 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
         latSum += m.position.latitude;
         lngSum += m.position.longitude;
       }
-      initialCenter = LatLng(latSum / widget.mapData.customerMarkers.length, lngSum / widget.mapData.customerMarkers.length);
-    } else if (widget.mapData.areaLocation.latitude != 0.0 && widget.mapData.areaLocation.longitude != 0.0) {
-      initialCenter = LatLng(widget.mapData.areaLocation.latitude, widget.mapData.areaLocation.longitude);
+      initialCenter = LatLng(latSum / widget.mapData.customerMarkers.length,
+          lngSum / widget.mapData.customerMarkers.length);
+    } else if (widget.mapData.areaLocation.latitude != 0.0 &&
+        widget.mapData.areaLocation.longitude != 0.0) {
+      initialCenter = LatLng(widget.mapData.areaLocation.latitude,
+          widget.mapData.areaLocation.longitude);
     } else if (gpsPoint != null) {
       initialCenter = gpsPoint;
     } else {
@@ -453,7 +468,8 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget> with SingleTicker
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.orangeAccent.withOpacity(0.6 * (1.0 - _pulseController.value)),
+                    color: Colors.orangeAccent
+                        .withOpacity(0.6 * (1.0 - _pulseController.value)),
                     width: 4 * _pulseController.value,
                   ),
                 ),

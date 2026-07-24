@@ -2,9 +2,9 @@
 
 enum PermissionLevel {
   hidden, // 0
-  view,   // 1
-  edit,   // 2
-  full;   // 3
+  view, // 1
+  edit, // 2
+  full; // 3
 
   static PermissionLevel fromInt(int val) {
     if (val <= 0) return PermissionLevel.hidden;
@@ -15,10 +15,14 @@ enum PermissionLevel {
 
   int toInt() {
     switch (this) {
-      case PermissionLevel.hidden: return 0;
-      case PermissionLevel.view:   return 1;
-      case PermissionLevel.edit:   return 2;
-      case PermissionLevel.full:   return 3;
+      case PermissionLevel.hidden:
+        return 0;
+      case PermissionLevel.view:
+        return 1;
+      case PermissionLevel.edit:
+        return 2;
+      case PermissionLevel.full:
+        return 3;
     }
   }
 }
@@ -70,7 +74,8 @@ class WorkerPermission {
       orders: PermissionLevel.fromInt(map['create_order'] as int? ?? 3),
       payments: PermissionLevel.fromInt(map['receive_payment'] as int? ?? 3),
       expenses: PermissionLevel.fromInt(map['add_expenses'] as int? ?? 3),
-      sellingPrice: PermissionLevel.fromInt(map['edit_selling_price'] as int? ?? 3),
+      sellingPrice:
+          PermissionLevel.fromInt(map['edit_selling_price'] as int? ?? 3),
       costPrice: PermissionLevel.fromInt(map['edit_cost_price'] as int? ?? 0),
       stock: PermissionLevel.fromInt(map['edit_stock_quantity'] as int? ?? 3),
       items: PermissionLevel.fromInt(map['add_new_item'] as int? ?? 1),

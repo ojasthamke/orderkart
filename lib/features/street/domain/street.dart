@@ -64,32 +64,33 @@ class Street {
   }
 
   Map<String, dynamic> toMap() => {
-        'id':                 id,
-        'area_id':            areaId,
-        'name':               name,
-        'description':        description,
-        'photo_path':         photoPath,
-        'maps_location':      mapsLocation,
-        'created_by':         createdBy,
+        'id': id,
+        'area_id': areaId,
+        'name': name,
+        'description': description,
+        'photo_path': photoPath,
+        'maps_location': mapsLocation,
+        'created_by': createdBy,
         'assigned_worker_id': assignedWorkerId,
-        'worker_name':        workerName,
-        'device_name':        deviceName,
-        'created_at':         createdAt.toIso8601String(),
+        'worker_name': workerName,
+        'device_name': deviceName,
+        'created_at': createdAt.toIso8601String(),
       };
 
   factory Street.fromMap(Map<String, dynamic> map) => Street(
-        id:               map['id']          as String,
-        areaId:           map['area_id']     as String,
-        name:             map['name']        as String,
-        description:      map['description'] as String? ?? '',
-        photoPath:        map['photo_path']  as String? ?? '',
-        mapsLocation:     map['maps_location'] as String? ?? '',
-        createdBy:        map['created_by'] as String? ?? 'owner',
-        assignedWorkerId: (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
-        workerName:       map['worker_name'] as String? ?? '',
-        deviceName:       map['device_name'] as String? ?? '',
-        createdAt:        DateTime.parse(map['created_at'] as String),
-        customerCount:    map['customer_count'] as int? ?? 0,
+        id: map['id'] as String,
+        areaId: map['area_id'] as String,
+        name: map['name'] as String,
+        description: map['description'] as String? ?? '',
+        photoPath: map['photo_path'] as String? ?? '',
+        mapsLocation: map['maps_location'] as String? ?? '',
+        createdBy: map['created_by'] as String? ?? 'owner',
+        assignedWorkerId:
+            (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
+        workerName: map['worker_name'] as String? ?? '',
+        deviceName: map['device_name'] as String? ?? '',
+        createdAt: DateTime.parse(map['created_at'] as String),
+        customerCount: map['customer_count'] as int? ?? 0,
       );
 
   @override

@@ -11,10 +11,12 @@ class OrderQuestionsConfigScreen extends StatefulWidget {
   const OrderQuestionsConfigScreen({super.key});
 
   @override
-  State<OrderQuestionsConfigScreen> createState() => _OrderQuestionsConfigScreenState();
+  State<OrderQuestionsConfigScreen> createState() =>
+      _OrderQuestionsConfigScreenState();
 }
 
-class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen> {
+class _OrderQuestionsConfigScreenState
+    extends State<OrderQuestionsConfigScreen> {
   List<OrderQuestion> _questions = [];
   bool _loading = true;
 
@@ -28,7 +30,8 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
     final mode = await AppModeService.getAppMode();
     if (mode == AppMode.worker) {
       if (mounted) {
-        SnackbarHelper.showError(context, 'Access Denied: Only owners can manage order questions.');
+        SnackbarHelper.showError(
+            context, 'Access Denied: Only owners can manage order questions.');
         Navigator.of(context).pop();
       }
       return;
@@ -72,7 +75,8 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Question?'),
-        content: const Text('This will archive the question. It will no longer show in new orders but past orders will preserve it.'),
+        content: const Text(
+            'This will archive the question. It will no longer show in new orders but past orders will preserve it.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -111,10 +115,12 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
         foregroundColor: Colors.white,
         onPressed: () => _showAddEditDialog(null),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Question', style: TextStyle(fontWeight: FontWeight.w800)),
+        label: const Text('Add Question',
+            style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
           : _questions.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
@@ -160,7 +166,8 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
             const Text(
               'Create custom questions and option choices to display as note templates on order checkout.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+              style: TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary, height: 1.4),
             ),
           ],
         ),
@@ -181,15 +188,20 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
                 Expanded(
                   child: Text(
                     q.question,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
+                  icon: const Icon(Icons.edit_outlined,
+                      color: AppColors.primary, size: 20),
                   onPressed: () => _showAddEditDialog(q),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: Colors.redAccent, size: 20),
                   onPressed: () => _delete(q.id),
                 ),
               ],
@@ -198,7 +210,11 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
             const SizedBox(height: 8),
             const Text(
               'OPTIONS:',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textSecondary, letterSpacing: 0.5),
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.5),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -206,15 +222,20 @@ class _OrderQuestionsConfigScreenState extends State<OrderQuestionsConfigScreen>
               runSpacing: 8,
               children: q.options.map((opt) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+                    border:
+                        Border.all(color: AppColors.primary.withOpacity(0.15)),
                   ),
                   child: Text(
                     opt,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary),
                   ),
                 );
               }).toList(),
@@ -230,7 +251,8 @@ class AddEditQuestionDialog extends StatefulWidget {
   final OrderQuestion? existing;
   final VoidCallback onSaved;
 
-  const AddEditQuestionDialog({super.key, this.existing, required this.onSaved});
+  const AddEditQuestionDialog(
+      {super.key, this.existing, required this.onSaved});
 
   @override
   State<AddEditQuestionDialog> createState() => _AddEditQuestionDialogState();
@@ -300,7 +322,8 @@ class _AddEditQuestionDialogState extends State<AddEditQuestionDialog> {
 
     try {
       if (widget.existing != null) {
-        await OrderQuestionDao.instance.updateQuestion(widget.existing!.id, question, options);
+        await OrderQuestionDao.instance
+            .updateQuestion(widget.existing!.id, question, options);
       } else {
         await OrderQuestionDao.instance.addQuestion(question, options);
       }
@@ -319,7 +342,9 @@ class _AddEditQuestionDialogState extends State<AddEditQuestionDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.existing != null ? 'Edit Question' : 'Add New Question', style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+          widget.existing != null ? 'Edit Question' : 'Add New Question',
+          style: const TextStyle(fontWeight: FontWeight.bold)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       content: SizedBox(
         width: double.maxFinite,
@@ -349,9 +374,12 @@ class _AddEditQuestionDialogState extends State<AddEditQuestionDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Option Choices:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Text('Option Choices:',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14)),
                     TextButton.icon(
-                      icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                      icon: const Icon(Icons.add_circle_outline_rounded,
+                          size: 18),
                       label: const Text('Add Option'),
                       onPressed: _addOptionField,
                     ),
@@ -386,7 +414,8 @@ class _AddEditQuestionDialogState extends State<AddEditQuestionDialog> {
                           if (_optionCons.length > 1) ...[
                             const SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  color: Colors.redAccent),
                               onPressed: () => _removeOptionField(index),
                             ),
                           ],
@@ -408,10 +437,13 @@ class _AddEditQuestionDialogState extends State<AddEditQuestionDialog> {
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           onPressed: _save,
-          child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          child: const Text('Save',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ],
     );

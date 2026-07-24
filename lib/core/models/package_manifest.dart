@@ -54,7 +54,8 @@ class PackageManifest {
       businessName: map['business_name'] as String,
       generatedByWorkerId: map['generated_by_worker_id'] as String,
       generatedByWorkerName: map['generated_by_worker_name'] as String,
-      isWorkerProvisioningPackage: map['is_worker_provisioning_package'] as bool,
+      isWorkerProvisioningPackage:
+          map['is_worker_provisioning_package'] as bool,
       deviceName: map['device_name'] as String,
       deviceModel: map['device_model'] as String,
       androidId: map['android_id'] as String,

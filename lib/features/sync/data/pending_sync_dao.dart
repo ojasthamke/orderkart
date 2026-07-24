@@ -53,31 +53,39 @@ class PendingSyncDao {
     String payloadJson = '{}',
   }) async {
     final db = await _db;
-    await db.insert('pending_sync', {
-      'id': _uuid.v4(),
-      'entity_type': entityType,
-      'entity_id': entityId,
-      'action_type': actionType,
-      'payload_json': payloadJson,
-      'created_at': DateTime.now().toIso8601String(),
-      'status': 'pending',
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'pending_sync',
+        {
+          'id': _uuid.v4(),
+          'entity_type': entityType,
+          'entity_id': entityId,
+          'action_type': actionType,
+          'payload_json': payloadJson,
+          'created_at': DateTime.now().toIso8601String(),
+          'status': 'pending',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<PendingSyncItem>> getPendingItems() async {
     final db = await _db;
-    final maps = await db.query('pending_sync', where: 'status = ?', whereArgs: ['pending'], orderBy: 'created_at DESC');
+    final maps = await db.query('pending_sync',
+        where: 'status = ?',
+        whereArgs: ['pending'],
+        orderBy: 'created_at DESC');
     return maps.map(PendingSyncItem.fromMap).toList();
   }
 
   Future<int> getPendingCount() async {
     final db = await _db;
-    final res = await db.rawQuery('SELECT COUNT(*) as v FROM pending_sync WHERE status = "pending"');
+    final res = await db.rawQuery(
+        'SELECT COUNT(*) as v FROM pending_sync WHERE status = "pending"');
     return (res.first['v'] as num?)?.toInt() ?? 0;
   }
 
   Future<void> clearPendingQueue() async {
     final db = await _db;
-    await db.delete('pending_sync', where: 'status = ?', whereArgs: ['pending']);
+    await db
+        .delete('pending_sync', where: 'status = ?', whereArgs: ['pending']);
   }
 }

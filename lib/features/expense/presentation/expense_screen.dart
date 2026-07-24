@@ -23,9 +23,9 @@ class ExpenseScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final expensesAsync = ref.watch(expenseProvider);
-    final summaryAsync  = ref.watch(monthlySummaryProvider);
-    final settingsVal   = ref.watch(settingsProvider).valueOrNull;
-    final currency      = settingsVal?.currency ?? '₹';
+    final summaryAsync = ref.watch(monthlySummaryProvider);
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final currency = settingsVal?.currency ?? '₹';
 
     return AppScaffold(
       title: 'Expenses',
@@ -77,21 +77,22 @@ class ExpenseScreen extends ConsumerWidget {
                       itemBuilder: (ctx, i) => _ExpenseCard(
                         expense: expenses[i],
                         currency: currency,
-                        onEdit: () => Navigator.of(ctx)
-                            .pushNamed(AppRoutes.addEditExpense,
-                                arguments: {'expenseId': expenses[i].id})
-                            .then((_) {
+                        onEdit: () => Navigator.of(ctx).pushNamed(
+                            AppRoutes.addEditExpense,
+                            arguments: {'expenseId': expenses[i].id}).then((_) {
                           ref.invalidate(expenseProvider);
                           ref.invalidate(monthlySummaryProvider);
                         }),
                         onDelete: () async {
                           final ok = await ConfirmDeleteDialog.show(
                             ctx,
-                            title:   'Delete Expense',
+                            title: 'Delete Expense',
                             message: 'Delete "${expenses[i].name}"?',
                           );
                           if (!ok) return;
-                          await ref.read(expenseProvider.notifier).delete(expenses[i].id);
+                          await ref
+                              .read(expenseProvider.notifier)
+                              .delete(expenses[i].id);
                           ref.invalidate(monthlySummaryProvider);
                         },
                       ).animate(delay: (i * 30).ms).fadeIn(),
@@ -127,8 +128,12 @@ class _MonthlySummaryCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       borderRadius: BorderRadius.circular(16),
-      color: isDark ? Colors.red.withOpacity(0.20) : Colors.red.shade100.withOpacity(0.50),
-      borderColor: isDark ? Colors.red.withOpacity(0.40) : Colors.red.shade200.withOpacity(0.60),
+      color: isDark
+          ? Colors.red.withOpacity(0.20)
+          : Colors.red.shade100.withOpacity(0.50),
+      borderColor: isDark
+          ? Colors.red.withOpacity(0.40)
+          : Colors.red.shade200.withOpacity(0.60),
       child: Row(
         children: [
           Icon(Icons.trending_down_rounded, color: iconColor, size: 32),
@@ -138,16 +143,14 @@ class _MonthlySummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('This Month ($month)',
-                    style: TextStyle(
-                        color: secTextColor, fontSize: 12)),
+                    style: TextStyle(color: secTextColor, fontSize: 12)),
                 Text(AppFormatters.currency(total, symbol: currency),
                     style: TextStyle(
                         color: textColor,
                         fontSize: 22,
                         fontWeight: FontWeight.w700)),
                 Text('$count expense(s)',
-                    style: TextStyle(
-                        color: secTextColor, fontSize: 12)),
+                    style: TextStyle(color: secTextColor, fontSize: 12)),
               ],
             ),
           ),
@@ -178,99 +181,105 @@ class _ExpenseCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         borderRadius: BorderRadius.circular(14),
         child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: GestureDetector(
-          onTap: expense.receiptPhotoPath.isNotEmpty
-              ? () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => Dialog(
-                      child: InteractiveViewer(
-                        child: expense.receiptPhotoPath.startsWith('http')
-                            ? Image.network(expense.receiptPhotoPath)
-                            : Image.file(File(expense.receiptPhotoPath)),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: GestureDetector(
+            onTap: expense.receiptPhotoPath.isNotEmpty
+                ? () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        child: InteractiveViewer(
+                          child: expense.receiptPhotoPath.startsWith('http')
+                              ? Image.network(expense.receiptPhotoPath)
+                              : Image.file(File(expense.receiptPhotoPath)),
+                        ),
                       ),
-                    ),
-                  );
-                }
-              : null,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.errorSurface,
-              borderRadius: BorderRadius.circular(12),
+                    );
+                  }
+                : null,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.errorSurface,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: expense.receiptPhotoPath.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: expense.receiptPhotoPath.startsWith('http')
+                          ? Image.network(
+                              expense.receiptPhotoPath,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.receipt_long_rounded,
+                                  color: AppColors.error),
+                            )
+                          : Image.file(
+                              File(expense.receiptPhotoPath),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.receipt_long_rounded,
+                                  color: AppColors.error),
+                            ),
+                    )
+                  : const Icon(Icons.receipt_rounded, color: AppColors.error),
             ),
-            child: expense.receiptPhotoPath.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: expense.receiptPhotoPath.startsWith('http')
-                        ? Image.network(
-                            expense.receiptPhotoPath,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.receipt_long_rounded, color: AppColors.error),
-                          )
-                        : Image.file(
-                            File(expense.receiptPhotoPath),
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.receipt_long_rounded, color: AppColors.error),
-                          ),
-                  )
-                : const Icon(Icons.receipt_rounded, color: AppColors.error),
+          ),
+          title: Text(expense.name,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${expense.category} • ${AppFormatters.date(expense.date)}',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppColors.textSecondary),
+              ),
+              Text(
+                AppFormatters.paymentMethod(expense.paymentMethod),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(color: AppColors.textHint),
+              ),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                AppFormatters.currency(expense.amount, symbol: currency),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert_rounded,
+                    color: AppColors.gray500, size: 20),
+                onSelected: (v) {
+                  if (v == 'edit') onEdit();
+                  if (v == 'delete') onDelete();
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  const PopupMenuItem(
+                      value: 'delete',
+                      child:
+                          Text('Delete', style: TextStyle(color: Colors.red))),
+                ],
+              ),
+            ],
           ),
         ),
-        title: Text(expense.name,
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontWeight: FontWeight.w700)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${expense.category} • ${AppFormatters.date(expense.date)}',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppColors.textSecondary),
-            ),
-            Text(
-              AppFormatters.paymentMethod(expense.paymentMethod),
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: AppColors.textHint),
-            ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              AppFormatters.currency(expense.amount, symbol: currency),
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppColors.error,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded,
-                  color: AppColors.gray500, size: 20),
-              onSelected: (v) {
-                if (v == 'edit')   onEdit();
-                if (v == 'delete') onDelete();
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'edit',   child: Text('Edit')),
-                const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Delete', style: TextStyle(color: Colors.red))),
-              ],
-            ),
-          ],
-        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

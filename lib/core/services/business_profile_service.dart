@@ -11,7 +11,8 @@ class BusinessProfileService {
   /// If it does not exist, a default profile is created and returned.
   static Future<BusinessProfile> getProfile() async {
     final db = await DatabaseHelper.instance.database;
-    final List<Map<String, dynamic>> maps = await db.query('business_profile', limit: 1);
+    final List<Map<String, dynamic>> maps =
+        await db.query('business_profile', limit: 1);
 
     if (maps.isEmpty) {
       final now = DateTime.now();

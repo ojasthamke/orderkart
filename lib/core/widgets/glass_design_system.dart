@@ -103,7 +103,8 @@ class GlassButton extends StatefulWidget {
   State<GlassButton> createState() => _GlassButtonState();
 }
 
-class _GlassButtonState extends State<GlassButton> with SingleTickerProviderStateMixin {
+class _GlassButtonState extends State<GlassButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -277,7 +278,8 @@ class _GlassSearchBarState extends State<GlassSearchBar> {
                 ),
                 decoration: InputDecoration(
                   hintText: widget.hintText,
-                  hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  hintStyle: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 14),
                   border: InputBorder.none,
                   isDense: true,
                 ),
@@ -359,7 +361,8 @@ class GlassSwitch extends StatelessWidget {
               ? AppColors.primary.withOpacity(0.3)
               : (isDark ? Colors.white10 : Colors.black12),
           border: Border.all(
-            color: value ? AppColors.primary.withOpacity(0.5) : Colors.transparent,
+            color:
+                value ? AppColors.primary.withOpacity(0.5) : Colors.transparent,
           ),
         ),
         child: Align(
@@ -368,7 +371,9 @@ class GlassSwitch extends StatelessWidget {
             width: 24,
             height: 24,
             borderRadius: BorderRadius.circular(12),
-            color: value ? AppColors.primary : (isDark ? Colors.grey.shade400 : Colors.white),
+            color: value
+                ? AppColors.primary
+                : (isDark ? Colors.grey.shade400 : Colors.white),
             padding: EdgeInsets.zero,
             child: const SizedBox.shrink(),
           ),
@@ -471,8 +476,12 @@ class GlassSegmentedControl<T> extends StatelessWidget {
                             entry.value,
                             style: TextStyle(
                               fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -517,7 +526,9 @@ class GlassFormField extends StatelessWidget {
         validator: validator,
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: AppColors.textSecondary) : null,
+          prefixIcon: prefixIcon != null
+              ? Icon(prefixIcon, color: AppColors.textSecondary)
+              : null,
           border: InputBorder.none,
         ),
       ),
@@ -632,12 +643,14 @@ class GlassBanner extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   message,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 11),
                 ),
               ],
             ),
@@ -690,7 +703,9 @@ class GlassFloatingDock extends StatelessWidget {
                   children: [
                     Icon(
                       item.$1,
-                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                       size: 24,
                     ),
                     const SizedBox(height: 2),
@@ -698,8 +713,11 @@ class GlassFloatingDock extends StatelessWidget {
                       item.$2,
                       style: TextStyle(
                         fontSize: 10,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -785,7 +803,8 @@ class GlassDialog extends StatelessWidget {
           scale: scale,
           child: Opacity(
             opacity: opacity,
-            child: GlassDialog(title: title, content: content, actions: actions),
+            child:
+                GlassDialog(title: title, content: content, actions: actions),
           ),
         );
       },
@@ -809,12 +828,17 @@ class GlassDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             DefaultTextStyle(
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold) ?? const TextStyle(),
+              style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold) ??
+                  const TextStyle(),
               child: title,
             ),
             const SizedBox(height: 12),
             DefaultTextStyle(
-              style: Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
+              style:
+                  Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
               child: content,
             ),
             const SizedBox(height: 24),

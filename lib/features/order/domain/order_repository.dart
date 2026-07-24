@@ -18,6 +18,8 @@ abstract class OrderRepository {
   Future<void> deleteOrder(String id);
   Future<void> updateDeliveryStatus(String orderId, String status);
   Future<void> addPayment(Payment payment);
-  Future<void> updateOrderPayment(String orderId, double paidAmount, double remainingAmount);
+  Future<void> updateOrderPayment(
+      String orderId, double paidAmount, double remainingAmount);
+  Future<Map<String, dynamic>> updateOrderRates(String orderId);
   Future<Map<String, dynamic>> getAnalyticsSummary();
 }

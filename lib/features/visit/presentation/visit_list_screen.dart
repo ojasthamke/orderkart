@@ -20,7 +20,8 @@ class VisitListScreen extends ConsumerWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.add_rounded),
-          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.addEditVisit),
+          onPressed: () =>
+              Navigator.of(context).pushNamed(AppRoutes.addEditVisit),
         ),
       ],
       body: visitState.when(
@@ -32,7 +33,8 @@ class VisitListScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.route_rounded, size: 64, color: AppColors.gray300),
+                  const Icon(Icons.route_rounded,
+                      size: 64, color: AppColors.gray300),
                   const SizedBox(height: 16),
                   Text('No visits planned',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -40,7 +42,8 @@ class VisitListScreen extends ConsumerWidget {
                           )),
                   const SizedBox(height: 8),
                   ElevatedButton(
-                    onPressed: () => Navigator.of(context).pushNamed(AppRoutes.addEditVisit),
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.addEditVisit),
                     child: const Text('Schedule a Visit'),
                   ),
                 ],
@@ -60,7 +63,8 @@ class VisitListScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(16),
                 borderColor: isCompleted ? Colors.green.withOpacity(0.5) : null,
                 child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   onTap: () {
                     Navigator.of(context).pushNamed(
                       AppRoutes.addEditVisit,
@@ -68,11 +72,12 @@ class VisitListScreen extends ConsumerWidget {
                     );
                   },
                   leading: CircleAvatar(
-                    backgroundColor: isCompleted
-                        ? AppColors.success
-                        : AppColors.primary,
+                    backgroundColor:
+                        isCompleted ? AppColors.success : AppColors.primary,
                     child: Icon(
-                      isCompleted ? Icons.check_rounded : Icons.location_on_rounded,
+                      isCompleted
+                          ? Icons.check_rounded
+                          : Icons.location_on_rounded,
                       color: Colors.white,
                     ),
                   ),
@@ -80,7 +85,8 @@ class VisitListScreen extends ConsumerWidget {
                     visit.areaName.isNotEmpty ? visit.areaName : 'Unknown Area',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      decoration: isCompleted ? TextDecoration.lineThrough : null,
+                      decoration:
+                          isCompleted ? TextDecoration.lineThrough : null,
                     ),
                   ),
                   subtitle: Column(
@@ -106,19 +112,30 @@ class VisitListScreen extends ConsumerWidget {
                   trailing: PopupMenuButton<String>(
                     onSelected: (val) {
                       if (val == 'complete') {
-                        ref.read(visitListProvider.notifier).markStatus(visit.id, 'completed');
+                        ref
+                            .read(visitListProvider.notifier)
+                            .markStatus(visit.id, 'completed');
                       } else if (val == 'pending') {
-                        ref.read(visitListProvider.notifier).markStatus(visit.id, 'pending');
+                        ref
+                            .read(visitListProvider.notifier)
+                            .markStatus(visit.id, 'pending');
                       } else if (val == 'delete') {
-                        ref.read(visitListProvider.notifier).deleteVisit(visit.id);
+                        ref
+                            .read(visitListProvider.notifier)
+                            .deleteVisit(visit.id);
                       }
                     },
                     itemBuilder: (context) => [
                       if (!isCompleted)
-                        const PopupMenuItem(value: 'complete', child: Text('Mark Completed')),
+                        const PopupMenuItem(
+                            value: 'complete', child: Text('Mark Completed')),
                       if (isCompleted)
-                        const PopupMenuItem(value: 'pending', child: Text('Mark Pending')),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
+                        const PopupMenuItem(
+                            value: 'pending', child: Text('Mark Pending')),
+                      const PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Delete',
+                              style: TextStyle(color: AppColors.error))),
                     ],
                   ),
                 ),
@@ -128,7 +145,8 @@ class VisitListScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).pushNamed(AppRoutes.addEditVisit),
+        onPressed: () =>
+            Navigator.of(context).pushNamed(AppRoutes.addEditVisit),
         child: const Icon(Icons.add_rounded),
       ),
     );

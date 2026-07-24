@@ -27,17 +27,18 @@ class WorkerControlPanelScreen extends ConsumerStatefulWidget {
   const WorkerControlPanelScreen({super.key, required this.worker});
 
   @override
-  ConsumerState<WorkerControlPanelScreen> createState() => _WorkerControlPanelScreenState();
+  ConsumerState<WorkerControlPanelScreen> createState() =>
+      _WorkerControlPanelScreenState();
 }
 
-class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScreen> with SingleTickerProviderStateMixin {
+class _WorkerControlPanelScreenState
+    extends ConsumerState<WorkerControlPanelScreen>
+    with SingleTickerProviderStateMixin {
   final _dao = WorkerDao();
   late TabController _tabController;
   late Worker _currentWorker;
   bool _loading = true;
   String _lastSyncTime = '';
-
-
 
   @override
   void initState() {
@@ -55,7 +56,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
 
   Future<void> _loadData() async {
     setState(() => _loading = true);
-    final freshWorker = await _dao.getWorkerById(widget.worker.id) ?? widget.worker;
+    final freshWorker =
+        await _dao.getWorkerById(widget.worker.id) ?? widget.worker;
 
     // Fetch last sync from sync_history for this worker
     final db = await DatabaseHelper.instance.database;
@@ -67,7 +69,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
       orderBy: 'sync_date DESC',
       limit: 1,
     );
-    final String lastSync = syncRows.isNotEmpty ? (syncRows.first['sync_date'] as String) : '';
+    final String lastSync =
+        syncRows.isNotEmpty ? (syncRows.first['sync_date'] as String) : '';
 
     if (mounted) {
       setState(() {
@@ -78,21 +81,32 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     }
   }
 
-
-
   // ── PRE-EXPORT VALIDATION & PACKAGE SUMMARY MODAL ─────────────────────────
   Future<void> _triggerPackageSummary() async {
     AppHaptics.buttonClick();
 
     final db = await DatabaseHelper.instance.database;
-    final int areasCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM locations WHERE location_kind = 'area' AND is_archived = 0")) ?? 0;
-    final int streetsCount = Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM locations WHERE location_kind = 'road' AND is_archived = 0")) ?? 0;
-    final int customersCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM customers')) ?? 0;
-    final int categoriesCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(DISTINCT category) FROM items')) ?? 0;
-    final int itemsCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM items')) ?? 0;
-    final int routesCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM visits')) ?? 0;
+    final int areasCount = Sqflite.firstIntValue(await db.rawQuery(
+            "SELECT COUNT(*) FROM locations WHERE location_kind = 'area' AND is_archived = 0")) ??
+        0;
+    final int streetsCount = Sqflite.firstIntValue(await db.rawQuery(
+            "SELECT COUNT(*) FROM locations WHERE location_kind = 'road' AND is_archived = 0")) ??
+        0;
+    final int customersCount = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM customers')) ??
+        0;
+    final int categoriesCount = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(DISTINCT category) FROM items')) ??
+        0;
+    final int itemsCount = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM items')) ??
+        0;
+    final int routesCount = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM visits')) ??
+        0;
 
-    final double sizeEstimateMb = 0.5 + (customersCount * 0.01) + (itemsCount * 0.005);
+    final double sizeEstimateMb =
+        0.5 + (customersCount * 0.01) + (itemsCount * 0.005);
 
     if (!mounted) return;
 
@@ -119,7 +133,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
       );
       await _loadData();
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'WorkerPackage.orderkart generated & ready to share!');
+        SnackbarHelper.showSuccess(
+            context, 'WorkerPackage.orderkart generated & ready to share!');
       }
     } catch (e) {
       if (mounted) {
@@ -130,27 +145,30 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
 
   Future<void> _editWorker() async {
     AppHaptics.buttonClick();
-    final updatedWorker = await AddEditWorkerDialog.show(context, worker: _currentWorker);
+    final updatedWorker =
+        await AddEditWorkerDialog.show(context, worker: _currentWorker);
     if (updatedWorker != null) {
       await ref.read(workerListProvider.notifier).update(updatedWorker);
       setState(() {
         _currentWorker = updatedWorker;
       });
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Worker details updated successfully');
+        SnackbarHelper.showSuccess(
+            context, 'Worker details updated successfully');
       }
     }
   }
 
   Future<void> _toggleWorkerStatus() async {
     AppHaptics.buttonClick();
-    final newStatus = _currentWorker.status == 'active' ? 'suspended' : 'active';
+    final newStatus =
+        _currentWorker.status == 'active' ? 'suspended' : 'active';
     final updated = _currentWorker.copyWith(status: newStatus);
     await ref.read(workerListProvider.notifier).update(updated);
     setState(() => _currentWorker = updated);
-    SnackbarHelper.showSuccess(context, 'Worker status changed to ${newStatus.toUpperCase()}');
+    SnackbarHelper.showSuccess(
+        context, 'Worker status changed to ${newStatus.toUpperCase()}');
   }
-
 
   Future<void> _exportWorkerContactsToPhone() async {
     AppHaptics.buttonClick();
@@ -163,7 +181,9 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     );
 
     if (rows.isEmpty) {
-      if (mounted) SnackbarHelper.showInfo(context, 'No customers found for ${_currentWorker.name} to export.');
+      if (mounted)
+        SnackbarHelper.showInfo(context,
+            'No customers found for ${_currentWorker.name} to export.');
       return;
     }
 
@@ -179,7 +199,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     final buffer = StringBuffer();
     for (final row in rows) {
       final name = row['name']?.toString() ?? 'Customer';
-      final phone = row['phone1']?.toString() ?? row['phone2']?.toString() ?? '';
+      final phone =
+          row['phone1']?.toString() ?? row['phone2']?.toString() ?? '';
       if (phone.isEmpty) continue;
 
       buffer.writeln('BEGIN:VCARD');
@@ -204,7 +225,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     );
 
     if (mounted) {
-      SnackbarHelper.showSuccess(context, '✅ ${rows.length} contacts exported for phone saving!');
+      SnackbarHelper.showSuccess(
+          context, '✅ ${rows.length} contacts exported for phone saving!');
     }
   }
 
@@ -213,7 +235,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     if (_loading) {
       return const AppScaffold(
         title: 'Worker Profile',
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body:
+            Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
@@ -270,13 +293,19 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
                 children: [
                   CircleAvatar(
                     radius: 34,
-                    backgroundColor: _currentWorker.status == 'active' ? AppColors.primarySurface : AppColors.gray300,
+                    backgroundColor: _currentWorker.status == 'active'
+                        ? AppColors.primarySurface
+                        : AppColors.gray300,
                     child: Text(
-                      _currentWorker.name.isNotEmpty ? _currentWorker.name[0].toUpperCase() : 'W',
+                      _currentWorker.name.isNotEmpty
+                          ? _currentWorker.name[0].toUpperCase()
+                          : 'W',
                       style: TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
-                        color: _currentWorker.status == 'active' ? AppColors.primary : AppColors.gray600,
+                        color: _currentWorker.status == 'active'
+                            ? AppColors.primary
+                            : AppColors.gray600,
                       ),
                     ),
                   ),
@@ -287,25 +316,31 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
                       children: [
                         Text(
                           _currentWorker.name,
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 18),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           'Phone: ${_currentWorker.phone.isEmpty ? '—' : _currentWorker.phone}',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           'Emp ID: ${_currentWorker.employeeId.isEmpty ? _currentWorker.id.substring(0, 8) : _currentWorker.employeeId}',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _currentWorker.status == 'active' ? AppColors.successSurface : AppColors.gray200,
+                      color: _currentWorker.status == 'active'
+                          ? AppColors.successSurface
+                          : AppColors.gray200,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -313,7 +348,9 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: _currentWorker.status == 'active' ? AppColors.success : AppColors.gray600,
+                        color: _currentWorker.status == 'active'
+                            ? AppColors.success
+                            : AppColors.gray600,
                       ),
                     ),
                   ),
@@ -324,17 +361,35 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
               // Overview Grid Details
               Row(
                 children: [
-                  _overviewMetric('Package Ver', hasPackage ? 'v${_currentWorker.packageVersion}' : 'v0 (None)'),
-                  _overviewMetric('Status', _currentWorker.status.toUpperCase()),
+                  _overviewMetric(
+                      'Package Ver',
+                      hasPackage
+                          ? 'v${_currentWorker.packageVersion}'
+                          : 'v0 (None)'),
+                  _overviewMetric(
+                      'Status', _currentWorker.status.toUpperCase()),
                   _overviewMetric('Device', '📲 Bound'),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  _overviewMetric('Commission', '${_currentWorker.commissionValue}% (${_currentWorker.commissionType.name})'),
-                  _overviewMetric('Last Sync', _lastSyncTime.isEmpty ? 'Never' : AppFormatters.relativeDate(DateTime.tryParse(_lastSyncTime) ?? DateTime.now())),
-                  _overviewMetric('Last Generated', _currentWorker.lastPackageGenerated.isEmpty ? 'Never' : AppFormatters.shortDate(DateTime.tryParse(_currentWorker.lastPackageGenerated) ?? DateTime.now())),
+                  _overviewMetric('Commission',
+                      '${_currentWorker.commissionValue}% (${_currentWorker.commissionType.name})'),
+                  _overviewMetric(
+                      'Last Sync',
+                      _lastSyncTime.isEmpty
+                          ? 'Never'
+                          : AppFormatters.relativeDate(
+                              DateTime.tryParse(_lastSyncTime) ??
+                                  DateTime.now())),
+                  _overviewMetric(
+                      'Last Generated',
+                      _currentWorker.lastPackageGenerated.isEmpty
+                          ? 'Never'
+                          : AppFormatters.shortDate(DateTime.tryParse(
+                                  _currentWorker.lastPackageGenerated) ??
+                              DateTime.now())),
                 ],
               ),
             ],
@@ -350,7 +405,9 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
         _sectionTitle('Quick Actions'),
         _card([
           _actionTile(
-            title: isOutdated ? 'Regenerate Worker Package' : 'Generate & Export Package',
+            title: isOutdated
+                ? 'Regenerate Worker Package'
+                : 'Generate & Export Package',
             icon: Icons.cloud_upload_rounded,
             color: isOutdated ? Colors.deepOrange : AppColors.primary,
             onTap: _triggerPackageSummary,
@@ -358,17 +415,23 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
           const Divider(height: 1),
           _actionTile(
             title: 'Export Worker Customers to Phone (.vcf)',
-            subtitle: 'Save new customer names & phone numbers directly to phone contacts',
+            subtitle:
+                'Save new customer names & phone numbers directly to phone contacts',
             icon: Icons.contacts_rounded,
             color: Colors.teal,
             onTap: _exportWorkerContactsToPhone,
           ),
-
           const Divider(height: 1),
           _actionTile(
-            title: _currentWorker.status == 'active' ? 'Suspend Worker Account' : 'Activate Worker Account',
-            icon: _currentWorker.status == 'active' ? Icons.pause_circle_outline_rounded : Icons.play_circle_outline_rounded,
-            color: _currentWorker.status == 'active' ? Colors.red : AppColors.success,
+            title: _currentWorker.status == 'active'
+                ? 'Suspend Worker Account'
+                : 'Activate Worker Account',
+            icon: _currentWorker.status == 'active'
+                ? Icons.pause_circle_outline_rounded
+                : Icons.play_circle_outline_rounded,
+            color: _currentWorker.status == 'active'
+                ? Colors.red
+                : AppColors.success,
             onTap: _toggleWorkerStatus,
           ),
         ]),
@@ -378,7 +441,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   }
 
   // ── TAB 2: COMPLETE WORKER ASSIGNMENT SYSTEM (8 Cards) ────────────────────
-
 
   // ── TAB 3: STATS & SYNC PROVENANCE TAB ────────────────────────────────────
   Future<Map<String, dynamic>> _fetchWorkerStats() async {
@@ -458,7 +520,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
       });
     }
 
-    workerComparisons.sort((a, b) => (b['total_sales'] as double).compareTo(a['total_sales'] as double));
+    workerComparisons.sort((a, b) =>
+        (b['total_sales'] as double).compareTo(a['total_sales'] as double));
 
     return {
       'orders': processedOrders,
@@ -483,11 +546,16 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
         final data = snapshot.data ?? {};
         final ordersList = data['orders'] as List<Map<String, dynamic>>? ?? [];
         final double totalSales = data['total_sales'] as double? ?? 0.0;
-        final double totalCommission = data['total_commission'] as double? ?? 0.0;
-        final comparisons = data['comparisons'] as List<Map<String, dynamic>>? ?? [];
+        final double totalCommission =
+            data['total_commission'] as double? ?? 0.0;
+        final comparisons =
+            data['comparisons'] as List<Map<String, dynamic>>? ?? [];
 
-        final double avgOrder = ordersList.isNotEmpty ? totalSales / ordersList.length : 0.0;
-        final double maxSales = comparisons.isNotEmpty ? comparisons.first['total_sales'] as double : 1.0;
+        final double avgOrder =
+            ordersList.isNotEmpty ? totalSales / ordersList.length : 0.0;
+        final double maxSales = comparisons.isNotEmpty
+            ? comparisons.first['total_sales'] as double
+            : 1.0;
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -506,8 +574,12 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _kpiItem('Total Orders', '${ordersList.length}', Colors.purple),
-                      _kpiItem('Total Sales', AppFormatters.currency(totalSales), AppColors.success),
+                      _kpiItem('Total Orders', '${ordersList.length}',
+                          Colors.purple),
+                      _kpiItem(
+                          'Total Sales',
+                          AppFormatters.currency(totalSales),
+                          AppColors.success),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -516,15 +588,18 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _kpiItem('Commission Earned', AppFormatters.currency(totalCommission), Colors.orange),
-                      _kpiItem('Avg Order Value', AppFormatters.currency(avgOrder), AppColors.primary),
+                      _kpiItem(
+                          'Commission Earned',
+                          AppFormatters.currency(totalCommission),
+                          Colors.orange),
+                      _kpiItem('Avg Order Value',
+                          AppFormatters.currency(avgOrder), AppColors.primary),
                     ],
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-
             _sectionTitle('Worker Comparisons & Leaderboard'),
             Container(
               padding: const EdgeInsets.all(16),
@@ -550,7 +625,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
               ),
             ),
             const SizedBox(height: 24),
-
             _sectionTitle('Order & Commission Breakdown'),
             if (ordersList.isEmpty)
               Container(
@@ -579,21 +653,25 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: ordersList.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final o = ordersList[index];
-                    final dateStr = o['created_at'] != null 
+                    final dateStr = o['created_at'] != null
                         ? AppFormatters.dateTimeFromString(o['created_at'])
                         : 'Unknown Date';
                     return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       title: Text(
                         'Order #${o['id']}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       subtitle: Text(
                         dateStr,
-                        style: const TextStyle(color: AppColors.textHint, fontSize: 11),
+                        style: const TextStyle(
+                            color: AppColors.textHint, fontSize: 11),
                       ),
                       trailing: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -601,12 +679,18 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
                         children: [
                           Text(
                             AppFormatters.currency(o['grand_total']),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: AppColors.textPrimary),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'Comm: ${AppFormatters.currency(o['commission'])}',
-                            style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w700, fontSize: 11),
+                            style: const TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11),
                           ),
                         ],
                       ),
@@ -628,12 +712,16 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textHint),
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textHint),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color),
+            style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w900, color: color),
           ),
         ],
       ),
@@ -651,15 +739,20 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     final int orders = comparison['orders_count'] as int;
     final String name = comparison['name'] as String;
 
-    final double ratio = maxSales > 0 ? (sales / maxSales).clamp(0.0, 1.0) : 0.0;
+    final double ratio =
+        maxSales > 0 ? (sales / maxSales).clamp(0.0, 1.0) : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isCurrent ? const Color(0xFFFFD700).withOpacity(0.08) : Colors.transparent,
+        color: isCurrent
+            ? const Color(0xFFFFD700).withOpacity(0.08)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isCurrent ? const Color(0xFFFFD700).withOpacity(0.4) : Colors.transparent,
+          color: isCurrent
+              ? const Color(0xFFFFD700).withOpacity(0.4)
+              : Colors.transparent,
           width: 1,
         ),
       ),
@@ -672,16 +765,19 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: isCurrent ? const Color(0xFFFFD700) : AppColors.gray200,
+                  color:
+                      isCurrent ? const Color(0xFFFFD700) : AppColors.gray200,
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   '$rank',
                   style: TextStyle(
-                    fontSize: 11, 
-                    fontWeight: FontWeight.bold, 
-                    color: isCurrent ? const Color(0xFF0F172A) : AppColors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isCurrent
+                        ? const Color(0xFF0F172A)
+                        : AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -691,14 +787,17 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
                   isCurrent ? '$name (Current)' : name,
                   style: TextStyle(
                     fontWeight: isCurrent ? FontWeight.w800 : FontWeight.bold,
-                    color: isCurrent ? const Color(0xFFB45309) : AppColors.textPrimary,
+                    color: isCurrent
+                        ? const Color(0xFFB45309)
+                        : AppColors.textPrimary,
                     fontSize: 13,
                   ),
                 ),
               ),
               Text(
                 AppFormatters.currency(sales),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               ),
             ],
           ),
@@ -709,7 +808,9 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
               value: ratio,
               backgroundColor: AppColors.gray100,
               valueColor: AlwaysStoppedAnimation<Color>(
-                isCurrent ? const Color(0xFFFFD700) : AppColors.primary.withOpacity(0.7),
+                isCurrent
+                    ? const Color(0xFFFFD700)
+                    : AppColors.primary.withOpacity(0.7),
               ),
               minHeight: 6,
             ),
@@ -724,7 +825,10 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
               ),
               Text(
                 'Comm: ${AppFormatters.currency(commission)}',
-                style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11),
+                style: const TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11),
               ),
             ],
           ),
@@ -736,7 +840,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   // ── HELPER WIDGETS ────────────────────────────────────────────────────────
   Widget _buildPackageStatusBanner() {
     final bool isOutdated = _currentWorker.isPackageOutdated;
-    final bool hasPackage = _currentWorker.packageVersion > 0 && _currentWorker.lastPackageGenerated.isNotEmpty;
+    final bool hasPackage = _currentWorker.packageVersion > 0 &&
+        _currentWorker.lastPackageGenerated.isNotEmpty;
 
     Color bg;
     Color border;
@@ -749,7 +854,8 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
       border = AppColors.error;
       icon = Icons.cancel_rounded;
       title = 'Package Status: ❌ Not Generated';
-      subtitle = 'Assignments have not been compiled into a Worker Package yet.';
+      subtitle =
+          'Assignments have not been compiled into a Worker Package yet.';
     } else if (isOutdated) {
       bg = Colors.amber.shade50;
       border = Colors.amber.shade800;
@@ -760,8 +866,10 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
       bg = AppColors.successSurface;
       border = AppColors.success;
       icon = Icons.check_circle_rounded;
-      title = 'Package Status: ✅ Up-to-Date (v${_currentWorker.packageVersion})';
-      subtitle = 'Last generated on ${AppFormatters.dateTimeFromString(_currentWorker.lastPackageGenerated)}';
+      title =
+          'Package Status: ✅ Up-to-Date (v${_currentWorker.packageVersion})';
+      subtitle =
+          'Last generated on ${AppFormatters.dateTimeFromString(_currentWorker.lastPackageGenerated)}';
     }
 
     return Container(
@@ -781,12 +889,14 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: border),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 13, color: border),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textPrimary),
                 ),
               ],
             ),
@@ -797,18 +907,18 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
               style: ElevatedButton.styleFrom(
                 backgroundColor: border,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Generate', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+              child: const Text('Generate',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
             ),
         ],
       ),
     );
   }
-
-
 
   Widget _overviewMetric(String label, String value) {
     return Expanded(
@@ -819,7 +929,10 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 2),
           FittedBox(
@@ -827,7 +940,10 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary),
             ),
           ),
         ],
@@ -840,12 +956,13 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
       padding: const EdgeInsets.only(bottom: 8, top: 4),
       child: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.primary),
+        style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            color: AppColors.primary),
       ),
     );
   }
-
-
 
   Widget _card(List<Widget> children) {
     return Container(
@@ -859,8 +976,6 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
     );
   }
 
-
-
   Widget _actionTile({
     required String title,
     String? subtitle,
@@ -870,9 +985,16 @@ class _WorkerControlPanelScreenState extends ConsumerState<WorkerControlPanelScr
   }) {
     return ListTile(
       leading: Icon(icon, color: color, size: 20),
-      title: Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
-      subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)) : null,
-      trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.gray400),
+      title: Text(title,
+          style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+      subtitle: subtitle != null
+          ? Text(subtitle,
+              style:
+                  const TextStyle(fontSize: 11, color: AppColors.textSecondary))
+          : null,
+      trailing: const Icon(Icons.chevron_right_rounded,
+          size: 18, color: AppColors.gray400),
       onTap: onTap,
     );
   }

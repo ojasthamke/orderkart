@@ -19,7 +19,8 @@ class CatalogShowroomScreen extends ConsumerStatefulWidget {
   const CatalogShowroomScreen({super.key});
 
   @override
-  ConsumerState<CatalogShowroomScreen> createState() => _CatalogShowroomScreenState();
+  ConsumerState<CatalogShowroomScreen> createState() =>
+      _CatalogShowroomScreenState();
 }
 
 class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
@@ -53,14 +54,24 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('ORDERKART OFFICIAL CATALOG', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Generated: ${DateTime.now().toIso8601String().substring(0, 10)}', style: const pw.TextStyle(fontSize: 10)),
+                  pw.Text('ORDERKART OFFICIAL CATALOG',
+                      style: pw.TextStyle(
+                          fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(
+                      'Generated: ${DateTime.now().toIso8601String().substring(0, 10)}',
+                      style: const pw.TextStyle(fontSize: 10)),
                 ],
               ),
             ),
             pw.SizedBox(height: 16),
             pw.TableHelper.fromTextArray(
-              headers: ['Product Name', 'Category', 'Selling Price', 'Unit', 'Stock Status'],
+              headers: [
+                'Product Name',
+                'Category',
+                'Selling Price',
+                'Unit',
+                'Stock Status'
+              ],
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               cellAlignment: pw.Alignment.centerLeft,
               data: pdfItems.isEmpty
@@ -86,7 +97,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/OrderKart_Catalog.pdf');
       await file.writeAsBytes(await pdf.save());
-      
+
       await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Sharing OrderKart Official Product Stock & Price List Catalog',
@@ -162,14 +173,22 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: _getCategoryColor(item.category).withOpacity(0.1),
-                  backgroundImage: (item.photoPath.isNotEmpty && (item.photoPath.startsWith('http') || AppConstants.resolveFile(item.photoPath).existsSync()))
+                  backgroundColor:
+                      _getCategoryColor(item.category).withOpacity(0.1),
+                  backgroundImage: (item.photoPath.isNotEmpty &&
+                          (item.photoPath.startsWith('http') ||
+                              AppConstants.resolveFile(item.photoPath)
+                                  .existsSync()))
                       ? (item.photoPath.startsWith('http')
                           ? NetworkImage(item.photoPath) as ImageProvider
                           : FileImage(AppConstants.resolveFile(item.photoPath)))
                       : null,
-                  child: (item.photoPath.isEmpty || (!item.photoPath.startsWith('http') && !AppConstants.resolveFile(item.photoPath).existsSync()))
-                      ? Icon(_getCategoryIcon(item.category), color: _getCategoryColor(item.category))
+                  child: (item.photoPath.isEmpty ||
+                          (!item.photoPath.startsWith('http') &&
+                              !AppConstants.resolveFile(item.photoPath)
+                                  .existsSync()))
+                      ? Icon(_getCategoryIcon(item.category),
+                          color: _getCategoryColor(item.category))
                       : null,
                 ),
                 const SizedBox(width: 12),
@@ -179,11 +198,15 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                     children: [
                       Text(
                         item.name,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         item.category,
-                        style: TextStyle(color: _getCategoryColor(item.category), fontSize: 13, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            color: _getCategoryColor(item.category),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -191,29 +214,40 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
               ],
             ),
             const Divider(height: 24),
-            
+
             // Specification fields
             _buildDetailRow('Unit / Pack Size', item.unit),
-            _buildDetailRow('Price', '$currency${item.sellingPrice.toStringAsFixed(2)}'),
+            _buildDetailRow(
+                'Price', '$currency${item.sellingPrice.toStringAsFixed(2)}'),
             if (item.marketPrice > item.sellingPrice) ...[
-              _buildDetailRow('Market Price', '$currency${item.marketPrice.toStringAsFixed(2)}', isStrike: true),
-              _buildDetailRow('Instant Savings', '$currency${(item.marketPrice - item.sellingPrice).toStringAsFixed(2)}', isSavings: true),
+              _buildDetailRow('Market Price',
+                  '$currency${item.marketPrice.toStringAsFixed(2)}',
+                  isStrike: true),
+              _buildDetailRow('Instant Savings',
+                  '$currency${(item.marketPrice - item.sellingPrice).toStringAsFixed(2)}',
+                  isSavings: true),
             ],
 
             if (item.category == AppConstants.catMedicines) ...[
-              if (item.dosageInfo.isNotEmpty) _buildDetailRow('Dosage Info', item.dosageInfo),
-              if (item.expiryDate.isNotEmpty) _buildDetailRow('Expiry Date', item.expiryDate),
-              _buildDetailRow('Requires Prescription (Rx)', item.prescriptionRequired ? 'Yes' : 'No', 
+              if (item.dosageInfo.isNotEmpty)
+                _buildDetailRow('Dosage Info', item.dosageInfo),
+              if (item.expiryDate.isNotEmpty)
+                _buildDetailRow('Expiry Date', item.expiryDate),
+              _buildDetailRow('Requires Prescription (Rx)',
+                  item.prescriptionRequired ? 'Yes' : 'No',
                   isRx: item.prescriptionRequired),
             ] else if (item.category == AppConstants.catGroceries) ...[
-              if (item.bestBefore.isNotEmpty) _buildDetailRow('Best Before', item.bestBefore),
-              if (item.packDate.isNotEmpty) _buildDetailRow('Pack Date', item.packDate),
+              if (item.bestBefore.isNotEmpty)
+                _buildDetailRow('Best Before', item.bestBefore),
+              if (item.packDate.isNotEmpty)
+                _buildDetailRow('Pack Date', item.packDate),
             ],
 
             const SizedBox(height: 12),
-            _buildDetailRow('Availability', item.stock > 0 ? 'In Stock' : 'Out of Stock', 
+            _buildDetailRow(
+                'Availability', item.stock > 0 ? 'In Stock' : 'Out of Stock',
                 color: item.stock > 0 ? Colors.green : Colors.red),
-            
+
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -223,9 +257,11 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Back to Showroom', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('Back to Showroom',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -234,7 +270,11 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isStrike = false, bool isSavings = false, bool isRx = false, Color? color}) {
+  Widget _buildDetailRow(String label, String value,
+      {bool isStrike = false,
+      bool isSavings = false,
+      bool isRx = false,
+      Color? color}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -246,7 +286,11 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,
-              color: isRx ? Colors.red : (isSavings ? Colors.green : (color ?? AppColors.textPrimary)),
+              color: isRx
+                  ? Colors.red
+                  : (isSavings
+                      ? Colors.green
+                      : (color ?? AppColors.textPrimary)),
               decoration: isStrike ? TextDecoration.lineThrough : null,
             ),
           ),
@@ -284,16 +328,23 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B).withOpacity(0.4) : AppColors.white,
+                      color: isDark
+                          ? const Color(0xFF1E293B).withOpacity(0.4)
+                          : AppColors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200),
+                      border: Border.all(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.12)
+                              : AppColors.gray200),
                     ),
                     child: TextField(
                       controller: _searchController,
-                      onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                      onChanged: (val) => setState(
+                          () => _searchQuery = val.trim().toLowerCase()),
                       decoration: InputDecoration(
                         hintText: 'Search items...',
-                        prefixIcon: const Icon(Icons.search_rounded, color: Colors.grey),
+                        prefixIcon: const Icon(Icons.search_rounded,
+                            color: Colors.grey),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.close_rounded, size: 18),
@@ -304,7 +355,8 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                               )
                             : null,
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
@@ -333,18 +385,25 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                       style: TextStyle(
                         color: isSelected
                             ? (isDark ? Colors.white : catColor)
-                            : (isDark ? Colors.white70 : AppColors.textSecondary),
+                            : (isDark
+                                ? Colors.white70
+                                : AppColors.textSecondary),
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
                     ),
                     selected: isSelected,
-                    selectedColor: catColor.withOpacity(isSelected ? 0.35 : 0.8),
-                    backgroundColor: isDark ? Colors.white.withOpacity(0.08) : AppColors.gray100,
+                    selectedColor:
+                        catColor.withOpacity(isSelected ? 0.35 : 0.8),
+                    backgroundColor: isDark
+                        ? Colors.white.withOpacity(0.08)
+                        : AppColors.gray100,
                     side: BorderSide(
                       color: isSelected
                           ? catColor
-                          : (isDark ? Colors.white.withOpacity(0.1) : Colors.transparent),
+                          : (isDark
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.transparent),
                     ),
                     onSelected: (selected) {
                       if (selected) {
@@ -362,13 +421,17 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
           // Grid View of Showroom Products
           Expanded(
             child: itemsAsync.when(
-              loading: () => LoadingShimmer.grid(count: 6, childAspectRatio: 0.82),
-              error: (e, _) => Center(child: Text('Error loading showroom: $e')),
+              loading: () =>
+                  LoadingShimmer.grid(count: 6, childAspectRatio: 0.82),
+              error: (e, _) =>
+                  Center(child: Text('Error loading showroom: $e')),
               data: (itemsList) {
                 // Filter items
                 final filtered = itemsList.where((item) {
-                  final matchesCat = _selectedCategory == 'all' || item.category == _selectedCategory;
-                  final matchesSearch = item.name.toLowerCase().contains(_searchQuery);
+                  final matchesCat = _selectedCategory == 'all' ||
+                      item.category == _selectedCategory;
+                  final matchesSearch =
+                      item.name.toLowerCase().contains(_searchQuery);
                   return matchesCat && matchesSearch;
                 }).toList();
 
@@ -408,17 +471,30 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: catColor.withOpacity(0.08),
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                  image: (item.photoPath.isNotEmpty && (item.photoPath.startsWith('http') || AppConstants.resolveFile(item.photoPath).existsSync()))
+                                  borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(16)),
+                                  image: (item.photoPath.isNotEmpty &&
+                                          (item.photoPath.startsWith('http') ||
+                                              AppConstants.resolveFile(
+                                                      item.photoPath)
+                                                  .existsSync()))
                                       ? DecorationImage(
-                                          image: item.photoPath.startsWith('http')
-                                              ? NetworkImage(item.photoPath) as ImageProvider
-                                              : FileImage(AppConstants.resolveFile(item.photoPath)),
+                                          image:
+                                              item.photoPath.startsWith('http')
+                                                  ? NetworkImage(item.photoPath)
+                                                      as ImageProvider
+                                                  : FileImage(
+                                                      AppConstants.resolveFile(
+                                                          item.photoPath)),
                                           fit: BoxFit.cover,
                                         )
                                       : null,
                                 ),
-                                child: (item.photoPath.isEmpty || (!item.photoPath.startsWith('http') && !AppConstants.resolveFile(item.photoPath).existsSync()))
+                                child: (item.photoPath.isEmpty ||
+                                        (!item.photoPath.startsWith('http') &&
+                                            !AppConstants.resolveFile(
+                                                    item.photoPath)
+                                                .existsSync()))
                                     ? Center(
                                         child: Icon(
                                           _getCategoryIcon(item.category),
@@ -450,11 +526,13 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                     const SizedBox(height: 2),
                                     Text(
                                       '${item.category}  •  ${item.unit}',
-                                      style: const TextStyle(color: Colors.grey, fontSize: 10),
+                                      style: const TextStyle(
+                                          color: Colors.grey, fontSize: 10),
                                     ),
                                     const Spacer(),
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.baseline,
                                       textBaseline: TextBaseline.alphabetic,
                                       children: [
                                         Text(
@@ -465,12 +543,14 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                             color: AppColors.primary,
                                           ),
                                         ),
-                                        if (item.marketPrice > item.sellingPrice) ...[
+                                        if (item.marketPrice >
+                                            item.sellingPrice) ...[
                                           const SizedBox(width: 4),
                                           Text(
                                             '$currency${item.marketPrice.toStringAsFixed(1)}',
                                             style: TextStyle(
-                                              decoration: TextDecoration.lineThrough,
+                                              decoration:
+                                                  TextDecoration.lineThrough,
                                               color: Colors.grey,
                                               fontSize: 10,
                                             ),
@@ -481,10 +561,12 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                     const SizedBox(height: 4),
                                     if (savings > 0)
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
                                           color: Colors.green.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                         ),
                                         child: Text(
                                           'Save $currency${savings.toStringAsFixed(1)}',

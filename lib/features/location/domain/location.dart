@@ -142,7 +142,8 @@ class Location {
         parentLocationId: map['parent_location_id'] as String?,
         name: map['name'] as String? ?? '',
         description: map['description'] as String? ?? '',
-        locationKind: LocationKind.fromString(map['location_kind'] as String? ?? 'area'),
+        locationKind:
+            LocationKind.fromString(map['location_kind'] as String? ?? 'area'),
         sequenceKey: map['sequence_key'] as String? ?? '',
         depth: map['depth'] as int? ?? 0,
         materializedPath: map['materialized_path'] as String? ?? '',
@@ -150,15 +151,18 @@ class Location {
         mapsLocation: map['maps_location'] as String? ?? '',
         color: map['color'] as int? ?? 0xFF1565C0,
         createdBy: map['created_by'] as String? ?? 'owner',
-        assignedWorkerId: (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
+        assignedWorkerId:
+            (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
         workerName: map['worker_name'] as String? ?? '',
         deviceName: map['device_name'] as String? ?? '',
         isArchived: (map['is_archived'] as int? ?? 0) == 1,
         latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
         longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
         iconName: map['icon_name'] as String? ?? '',
-        createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
-        updatedAt: DateTime.tryParse(map['updated_at']?.toString() ?? '') ?? DateTime.now(),
+        createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ??
+            DateTime.now(),
+        updatedAt: DateTime.tryParse(map['updated_at']?.toString() ?? '') ??
+            DateTime.now(),
         childCount: map['child_count'] as int? ?? 0,
         customerCount: map['customer_count'] as int? ?? 0,
         orderCount: map['order_count'] as int? ?? 0,

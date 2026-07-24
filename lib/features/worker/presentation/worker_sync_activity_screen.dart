@@ -13,10 +13,13 @@ class WorkerSyncActivityScreen extends ConsumerStatefulWidget {
   const WorkerSyncActivityScreen({super.key});
 
   @override
-  ConsumerState<WorkerSyncActivityScreen> createState() => _WorkerSyncActivityScreenState();
+  ConsumerState<WorkerSyncActivityScreen> createState() =>
+      _WorkerSyncActivityScreenState();
 }
 
-class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScreen> with SingleTickerProviderStateMixin {
+class _WorkerSyncActivityScreenState
+    extends ConsumerState<WorkerSyncActivityScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _loading = true;
   List<Map<String, dynamic>> _workerCustomers = [];
@@ -45,19 +48,23 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
 
     final workers = await db.query('workers', orderBy: 'name ASC');
     final Map<String, String> workerNameMap = {
-      for (final w in workers) w['id']?.toString() ?? '': w['name']?.toString() ?? 'Worker'
+      for (final w in workers)
+        w['id']?.toString() ?? '': w['name']?.toString() ?? 'Worker'
     };
 
     // 1. Worker Customers
     final custRows = await db.query(
       'customers',
-      where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
+      where:
+          'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
       orderBy: 'created_at DESC',
     );
     final customers = custRows.map((c) {
-      final wid = c['assigned_worker_id']?.toString() ?? c['created_by']?.toString() ?? '';
-      final wName = (c['worker_name']?.toString() ?? '').isNotEmpty 
-          ? c['worker_name']!.toString() 
+      final wid = c['assigned_worker_id']?.toString() ??
+          c['created_by']?.toString() ??
+          '';
+      final wName = (c['worker_name']?.toString() ?? '').isNotEmpty
+          ? c['worker_name']!.toString()
           : (workerNameMap[wid] ?? 'Worker');
       return {
         ...c,
@@ -69,11 +76,14 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
     // 2. Worker Orders
     final orderRows = await db.query(
       'orders',
-      where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
+      where:
+          'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
       orderBy: 'created_at DESC',
     );
     final orders = orderRows.map((o) {
-      final wid = o['assigned_worker_id']?.toString() ?? o['created_by']?.toString() ?? '';
+      final wid = o['assigned_worker_id']?.toString() ??
+          o['created_by']?.toString() ??
+          '';
       final wName = (o['worker_name']?.toString() ?? '').isNotEmpty
           ? o['worker_name']!.toString()
           : (workerNameMap[wid] ?? 'Worker');
@@ -87,13 +97,16 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
     // 3. Worker Areas & Streets
     final areaRows = await db.query(
       'areas',
-      where: 'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
+      where:
+          'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
       orderBy: 'created_at DESC',
     );
     final areas = areaRows.map((a) {
-      final wid = a['assigned_worker_id']?.toString() ?? a['created_by']?.toString() ?? '';
-      final wName = (a['worker_name']?.toString() ?? '').isNotEmpty 
-          ? a['worker_name']!.toString() 
+      final wid = a['assigned_worker_id']?.toString() ??
+          a['created_by']?.toString() ??
+          '';
+      final wName = (a['worker_name']?.toString() ?? '').isNotEmpty
+          ? a['worker_name']!.toString()
           : (workerNameMap[wid] ?? 'Worker');
       return {
         ...a,
@@ -103,7 +116,8 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
     }).toList();
 
     // 4. Import Logs
-    final imports = await db.query('import_history', orderBy: 'imported_at DESC');
+    final imports =
+        await db.query('import_history', orderBy: 'imported_at DESC');
 
     if (mounted) {
       setState(() {
@@ -119,17 +133,23 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
 
   List<Map<String, dynamic>> _filteredCustomers() {
     if (_selectedWorkerId == 'all') return _workerCustomers;
-    return _workerCustomers.where((c) => c['worker_id'] == _selectedWorkerId).toList();
+    return _workerCustomers
+        .where((c) => c['worker_id'] == _selectedWorkerId)
+        .toList();
   }
 
   List<Map<String, dynamic>> _filteredOrders() {
     if (_selectedWorkerId == 'all') return _workerOrders;
-    return _workerOrders.where((o) => o['worker_id'] == _selectedWorkerId).toList();
+    return _workerOrders
+        .where((o) => o['worker_id'] == _selectedWorkerId)
+        .toList();
   }
 
   List<Map<String, dynamic>> _filteredAreas() {
     if (_selectedWorkerId == 'all') return _workerAreas;
-    return _workerAreas.where((a) => a['worker_id'] == _selectedWorkerId).toList();
+    return _workerAreas
+        .where((a) => a['worker_id'] == _selectedWorkerId)
+        .toList();
   }
 
   @override
@@ -143,9 +163,15 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         indicatorColor: AppColors.primary,
         isScrollable: true,
         tabs: const [
-          Tab(text: 'Worker Updates Log', icon: Icon(Icons.history_rounded, size: 18)),
-          Tab(text: 'Worker Customers', icon: Icon(Icons.people_alt_rounded, size: 18)),
-          Tab(text: 'Worker Orders', icon: Icon(Icons.shopping_cart_rounded, size: 18)),
+          Tab(
+              text: 'Worker Updates Log',
+              icon: Icon(Icons.history_rounded, size: 18)),
+          Tab(
+              text: 'Worker Customers',
+              icon: Icon(Icons.people_alt_rounded, size: 18)),
+          Tab(
+              text: 'Worker Orders',
+              icon: Icon(Icons.shopping_cart_rounded, size: 18)),
           Tab(text: 'Areas & Streets', icon: Icon(Icons.map_rounded, size: 18)),
         ],
       ),
@@ -155,25 +181,32 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
               children: [
                 // Filter Header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: GlassContainer(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
                       children: [
-                        const Icon(Icons.filter_list_rounded, color: AppColors.primary, size: 20),
+                        const Icon(Icons.filter_list_rounded,
+                            color: AppColors.primary, size: 20),
                         const SizedBox(width: 8),
-                        const Text('Filter Worker:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        const Text('Filter Worker:',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 13)),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).brightness == Brightness.dark
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
                                   ? Colors.white10
                                   : Colors.black.withOpacity(0.04),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: Theme.of(context).brightness == Brightness.dark
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
                                     ? Colors.white12
                                     : Colors.black12,
                               ),
@@ -183,14 +216,17 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
                                 value: _selectedWorkerId,
                                 isExpanded: true,
                                 items: [
-                                  const DropdownMenuItem(value: 'all', child: Text('All Workers')),
+                                  const DropdownMenuItem(
+                                      value: 'all', child: Text('All Workers')),
                                   ..._workers.map((w) => DropdownMenuItem(
                                         value: w['id']?.toString() ?? '',
-                                        child: Text(w['name']?.toString() ?? 'Worker'),
+                                        child: Text(
+                                            w['name']?.toString() ?? 'Worker'),
                                       )),
                                 ],
                                 onChanged: (val) {
-                                  if (val != null) setState(() => _selectedWorkerId = val);
+                                  if (val != null)
+                                    setState(() => _selectedWorkerId = val);
                                 },
                               ),
                             ),
@@ -220,13 +256,16 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
   Widget _buildImportHistoryList() {
     final logs = _selectedWorkerId == 'all'
         ? _importLogs
-        : _importLogs.where((l) => l['worker_id'] == _selectedWorkerId).toList();
+        : _importLogs
+            .where((l) => l['worker_id'] == _selectedWorkerId)
+            .toList();
 
     if (logs.isEmpty) {
       return const EmptyStateWidget(
         icon: Icons.history_rounded,
         title: 'No Worker Updates Imported Yet',
-        subtitle: 'When workers export their data packages and you import them into Owner app, detailed sync logs and record stats will appear here.',
+        subtitle:
+            'When workers export their data packages and you import them into Owner app, detailed sync logs and record stats will appear here.',
       );
     }
 
@@ -238,11 +277,15 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         final pkgId = imp['package_id']?.toString() ?? 'Package';
         final wName = imp['worker_name']?.toString() ?? 'Worker';
         final devName = imp['device_name']?.toString() ?? 'Mobile Device';
-        final importedAt = DateTime.tryParse(imp['imported_at']?.toString() ?? '') ?? DateTime.now();
+        final importedAt =
+            DateTime.tryParse(imp['imported_at']?.toString() ?? '') ??
+                DateTime.now();
         final summaryRaw = imp['summary_json']?.toString() ?? '';
         Map<String, dynamic> summary = {};
         if (summaryRaw.isNotEmpty) {
-          try { summary = jsonDecode(summaryRaw); } catch (_) {}
+          try {
+            summary = jsonDecode(summaryRaw);
+          } catch (_) {}
         }
 
         final recCount = imp['record_count'] as int? ?? 0;
@@ -252,7 +295,8 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
           child: ExpansionTile(
             leading: const CircleAvatar(
               backgroundColor: AppColors.primarySurface,
-              child: Icon(Icons.download_done_rounded, color: AppColors.primary),
+              child:
+                  Icon(Icons.download_done_rounded, color: AppColors.primary),
             ),
             title: Text(
               'Update from $wName',
@@ -260,7 +304,8 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
             ),
             subtitle: Text(
               'Imported: ${AppFormatters.dateTime(importedAt)}\nDevice: $devName • Records: $recCount',
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
             children: [
               Padding(
@@ -269,7 +314,9 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Divider(height: 16),
-                    const Text('Imported Data Breakdown:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    const Text('Imported Data Breakdown:',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 13)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -292,7 +339,9 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text('Package ID: $pkgId', style: const TextStyle(fontSize: 10, color: AppColors.textHint)),
+                    Text('Package ID: $pkgId',
+                        style: const TextStyle(
+                            fontSize: 10, color: AppColors.textHint)),
                   ],
                 ),
               ),
@@ -311,7 +360,11 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.primary.withOpacity(0.3)),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+      child: Text(label,
+          style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary)),
     );
   }
 
@@ -332,18 +385,28 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         final name = c['name']?.toString() ?? 'Customer';
         final phone = c['phone1']?.toString() ?? 'No Phone';
         final wName = c['worker_name']?.toString() ?? 'Worker';
-        final createdAt = DateTime.tryParse(c['created_at']?.toString() ?? '') ?? DateTime.now();
+        final createdAt =
+            DateTime.tryParse(c['created_at']?.toString() ?? '') ??
+                DateTime.now();
 
         return GlassContainer(
           margin: const EdgeInsets.only(bottom: 10),
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: AppColors.primarySurface,
-              child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'C', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
+              child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'C',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, color: AppColors.primary)),
             ),
-            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text('Phone: $phone • Added on ${AppFormatters.shortDate(createdAt)}'),
-            trailing: Text(wName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+            title:
+                Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: Text(
+                'Phone: $phone • Added on ${AppFormatters.shortDate(createdAt)}'),
+            trailing: Text(wName,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary)),
           ),
         );
       },
@@ -367,18 +430,28 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         final id = o['id']?.toString() ?? '';
         final amount = (o['grand_total'] as num?)?.toDouble() ?? 0.0;
         final wName = o['worker_name']?.toString() ?? 'Worker';
-        final createdAt = DateTime.tryParse(o['created_at']?.toString() ?? '') ?? DateTime.now();
+        final createdAt =
+            DateTime.tryParse(o['created_at']?.toString() ?? '') ??
+                DateTime.now();
 
         return GlassContainer(
           margin: const EdgeInsets.only(bottom: 10),
           child: ListTile(
             leading: const CircleAvatar(
               backgroundColor: AppColors.successSurface,
-              child: Icon(Icons.shopping_cart_rounded, color: AppColors.success),
+              child:
+                  Icon(Icons.shopping_cart_rounded, color: AppColors.success),
             ),
-            title: Text('Order #${id.length > 6 ? id.substring(0, 6) : id} • ${AppFormatters.currency(amount)}', style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text('Date: ${AppFormatters.shortDate(createdAt)} • Status: ${o['delivery_status']}'),
-            trailing: Text(wName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+            title: Text(
+                'Order #${id.length > 6 ? id.substring(0, 6) : id} • ${AppFormatters.currency(amount)}',
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: Text(
+                'Date: ${AppFormatters.shortDate(createdAt)} • Status: ${o['delivery_status']}'),
+            trailing: Text(wName,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary)),
           ),
         );
       },
@@ -401,7 +474,9 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
         final a = areas[i];
         final name = a['name']?.toString() ?? 'Area';
         final wName = a['worker_name']?.toString() ?? 'Worker';
-        final createdAt = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime.now();
+        final createdAt =
+            DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+                DateTime.now();
 
         return GlassContainer(
           margin: const EdgeInsets.only(bottom: 10),
@@ -410,9 +485,14 @@ class _WorkerSyncActivityScreenState extends ConsumerState<WorkerSyncActivityScr
               backgroundColor: AppColors.primarySurface,
               child: Icon(Icons.map_rounded, color: AppColors.primary),
             ),
-            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
+            title:
+                Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
             subtitle: Text('Created: ${AppFormatters.dateTime(createdAt)}'),
-            trailing: Text(wName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
+            trailing: Text(wName,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary)),
           ),
         );
       },

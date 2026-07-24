@@ -17,7 +17,8 @@ class WorkerService {
 
     await db.transaction((txn) async {
       // 1. Insert profile into workers table
-      await txn.insert('workers', worker.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+      await txn.insert('workers', worker.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace);
 
       // 2. Insert secret into worker_security table
       await txn.insert(
@@ -52,7 +53,8 @@ class WorkerService {
   /// Update an existing worker. The worker must already exist.
   static Future<void> updateWorker(Worker worker) async {
     final Database db = await DatabaseHelper.instance.database;
-    await db.update('workers', worker.toMap(), where: 'id = ?', whereArgs: [worker.id]);
+    await db.update('workers', worker.toMap(),
+        where: 'id = ?', whereArgs: [worker.id]);
   }
 
   /// Delete a worker by its [id] and clean up related data including secrets.
@@ -60,10 +62,14 @@ class WorkerService {
     final Database db = await DatabaseHelper.instance.database;
     await db.transaction((txn) async {
       await txn.delete('workers', where: 'id = ?', whereArgs: [id]);
-      await txn.delete('worker_security', where: 'worker_id = ?', whereArgs: [id]);
-      await txn.delete('worker_assignments', where: 'worker_id = ?', whereArgs: [id]);
-      await txn.delete('worker_reports', where: 'worker_id = ?', whereArgs: [id]);
-      await txn.delete('worker_permissions', where: 'worker_id = ?', whereArgs: [id]);
+      await txn
+          .delete('worker_security', where: 'worker_id = ?', whereArgs: [id]);
+      await txn.delete('worker_assignments',
+          where: 'worker_id = ?', whereArgs: [id]);
+      await txn
+          .delete('worker_reports', where: 'worker_id = ?', whereArgs: [id]);
+      await txn.delete('worker_permissions',
+          where: 'worker_id = ?', whereArgs: [id]);
     });
   }
 }

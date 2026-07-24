@@ -18,13 +18,14 @@ class VoiceSearchDialog extends StatefulWidget {
   State<VoiceSearchDialog> createState() => _VoiceSearchDialogState();
 }
 
-class _VoiceSearchDialogState extends State<VoiceSearchDialog> with SingleTickerProviderStateMixin {
+class _VoiceSearchDialogState extends State<VoiceSearchDialog>
+    with SingleTickerProviderStateMixin {
   late stt.SpeechToText _speech;
   bool _isListening = false;
   bool _speechAvailable = false;
   String _text = 'Say something...';
   double _soundLevel = 0.0;
-  
+
   // Simulated waves controller
   late AnimationController _waveController;
   final TextEditingController _fallbackController = TextEditingController();
@@ -141,7 +142,9 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> with SingleTicker
               child: AnimatedBuilder(
                 animation: _waveController,
                 builder: (context, child) {
-                  double levelScale = _speechAvailable ? (1.0 + _soundLevel * 0.2) : (1.0 + _waveController.value * 0.3);
+                  double levelScale = _speechAvailable
+                      ? (1.0 + _soundLevel * 0.2)
+                      : (1.0 + _waveController.value * 0.3);
                   return Container(
                     height: 80,
                     width: 80,
@@ -158,7 +161,8 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> with SingleTicker
                         scale: levelScale,
                         child: CircleAvatar(
                           radius: 24,
-                          backgroundColor: _isListening ? AppColors.primary : Colors.grey,
+                          backgroundColor:
+                              _isListening ? AppColors.primary : Colors.grey,
                           child: const Icon(
                             Icons.mic_rounded,
                             color: Colors.white,
@@ -183,7 +187,7 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> with SingleTicker
                 color: AppColors.textPrimary,
               ),
             ),
-            
+
             // Fallback manual simulation
             if (!_speechAvailable) ...[
               const SizedBox(height: 16),
@@ -210,13 +214,15 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog> with SingleTicker
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: Colors.grey)),
                 ),
                 if (_speechAvailable)
                   ElevatedButton(
                     onPressed: _isListening ? _stopListening : _startListening,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isListening ? Colors.red : AppColors.primary,
+                      backgroundColor:
+                          _isListening ? Colors.red : AppColors.primary,
                       foregroundColor: Colors.white,
                     ),
                     child: Text(_isListening ? 'Stop' : 'Listen'),

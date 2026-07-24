@@ -26,15 +26,15 @@ class ProfitLossScreen extends ConsumerWidget {
         loading: () => const LoadingShimmer(count: 3),
         error: (err, _) => Center(child: Text('Error calculating P&L: $err')),
         data: (pl) {
-          final double revenue      = pl['total_revenue'] ?? 0.0;
-          final double cogs         = pl['cogs'] ?? 0.0;
-          final double grossProfit  = pl['gross_profit'] ?? 0.0;
-          final double expenses     = pl['total_expenses'] ?? 0.0;
-          final double discounts    = pl['total_discounts'] ?? 0.0;
-          final double delivery     = pl['delivery_income'] ?? 0.0;
-          final double netProfit    = pl['net_profit'] ?? 0.0;
-          final double marginPct    = pl['profit_margin_pct'] ?? 0.0;
-          final bool isProfitable   = pl['is_profitable'] ?? true;
+          final double revenue = pl['total_revenue'] ?? 0.0;
+          final double cogs = pl['cogs'] ?? 0.0;
+          final double grossProfit = pl['gross_profit'] ?? 0.0;
+          final double expenses = pl['total_expenses'] ?? 0.0;
+          final double discounts = pl['total_discounts'] ?? 0.0;
+          final double delivery = pl['delivery_income'] ?? 0.0;
+          final double netProfit = pl['net_profit'] ?? 0.0;
+          final double marginPct = pl['profit_margin_pct'] ?? 0.0;
+          final bool isProfitable = pl['is_profitable'] ?? true;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -45,11 +45,19 @@ class ProfitLossScreen extends ConsumerWidget {
                 Builder(builder: (ctx) {
                   final isDark = Theme.of(ctx).brightness == Brightness.dark;
                   final bannerColor = isProfitable
-                      ? (isDark ? Colors.green.withOpacity(0.20) : Colors.green.shade100.withOpacity(0.50))
-                      : (isDark ? Colors.red.withOpacity(0.20) : Colors.red.shade100.withOpacity(0.50));
+                      ? (isDark
+                          ? Colors.green.withOpacity(0.20)
+                          : Colors.green.shade100.withOpacity(0.50))
+                      : (isDark
+                          ? Colors.red.withOpacity(0.20)
+                          : Colors.red.shade100.withOpacity(0.50));
                   final bannerBorder = isProfitable
-                      ? (isDark ? Colors.green.withOpacity(0.40) : Colors.green.shade200.withOpacity(0.60))
-                      : (isDark ? Colors.red.withOpacity(0.40) : Colors.red.shade200.withOpacity(0.60));
+                      ? (isDark
+                          ? Colors.green.withOpacity(0.40)
+                          : Colors.green.shade200.withOpacity(0.60))
+                      : (isDark
+                          ? Colors.red.withOpacity(0.40)
+                          : Colors.red.shade200.withOpacity(0.60));
                   final textColor = isProfitable
                       ? (isDark ? Colors.white : Colors.green.shade900)
                       : (isDark ? Colors.white : Colors.red.shade900);
@@ -57,8 +65,12 @@ class ProfitLossScreen extends ConsumerWidget {
                       ? (isDark ? Colors.white70 : Colors.green.shade700)
                       : (isDark ? Colors.white70 : Colors.red.shade700);
                   final badgeBgColor = isProfitable
-                      ? (isDark ? Colors.white.withOpacity(0.15) : Colors.green.shade200.withOpacity(0.60))
-                      : (isDark ? Colors.white.withOpacity(0.15) : Colors.red.shade200.withOpacity(0.60));
+                      ? (isDark
+                          ? Colors.white.withOpacity(0.15)
+                          : Colors.green.shade200.withOpacity(0.60))
+                      : (isDark
+                          ? Colors.white.withOpacity(0.15)
+                          : Colors.red.shade200.withOpacity(0.60));
                   final badgeTextColor = isProfitable
                       ? (isDark ? Colors.white : Colors.green.shade900)
                       : (isDark ? Colors.white : Colors.red.shade900);
@@ -75,7 +87,9 @@ class ProfitLossScreen extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              isProfitable ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                              isProfitable
+                                  ? Icons.trending_up_rounded
+                                  : Icons.trending_down_rounded,
                               color: textColor,
                               size: 28,
                             ),
@@ -103,7 +117,8 @@ class ProfitLossScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 10),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
                           decoration: BoxDecoration(
                             color: badgeBgColor,
                             borderRadius: BorderRadius.circular(20),
@@ -122,7 +137,94 @@ class ProfitLossScreen extends ConsumerWidget {
                   );
                 }),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
+
+                // ── Interactive Financial Profit Radar Card ───────────
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardTheme.color,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.borderColor(context)),
+                    boxShadow: AppColors.cardShadow,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.pie_chart_outline_rounded,
+                                  color: AppColors.primary, size: 20),
+                              SizedBox(width: 8),
+                              Text('Financial Radar Breakdown',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14)),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text('Live Ratio',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildRadarBar('Sales', revenue,
+                                revenue > 0 ? 1.0 : 0.0, AppColors.success),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildRadarBar(
+                                'COGS',
+                                cogs,
+                                revenue > 0
+                                    ? (cogs / revenue).clamp(0.0, 1.0)
+                                    : 0.0,
+                                Colors.orange),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildRadarBar(
+                                'Expenses',
+                                expenses,
+                                revenue > 0
+                                    ? (expenses / revenue).clamp(0.0, 1.0)
+                                    : 0.0,
+                                AppColors.error),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildRadarBar(
+                                'Net',
+                                netProfit,
+                                revenue > 0
+                                    ? (netProfit / revenue).clamp(0.0, 1.0)
+                                    : 0.0,
+                                AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
 
                 // ── Detailed Calculation Breakdown ─────────────────────────
                 Text(
@@ -170,7 +272,9 @@ class ProfitLossScreen extends ConsumerWidget {
                         subtitle: 'Revenue minus COGS',
                         amount: grossProfit,
                         isBold: true,
-                        amountColor: grossProfit >= 0 ? AppColors.primary : AppColors.error,
+                        amountColor: grossProfit >= 0
+                            ? AppColors.primary
+                            : AppColors.error,
                       ),
                       const Divider(height: 24, thickness: 1.5),
 
@@ -215,11 +319,15 @@ class ProfitLossScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: (isProfitable ? AppColors.success : AppColors.error)
+                          color: (isProfitable
+                                  ? AppColors.success
+                                  : AppColors.error)
                               .withOpacity(0.08),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: (isProfitable ? AppColors.success : AppColors.error)
+                            color: (isProfitable
+                                    ? AppColors.success
+                                    : AppColors.error)
                                 .withOpacity(0.3),
                           ),
                         ),
@@ -231,7 +339,9 @@ class ProfitLossScreen extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w900,
-                                color: isProfitable ? AppColors.success : AppColors.error,
+                                color: isProfitable
+                                    ? AppColors.success
+                                    : AppColors.error,
                               ),
                             ),
                             Text(
@@ -239,7 +349,9 @@ class ProfitLossScreen extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,
-                                color: isProfitable ? AppColors.success : AppColors.error,
+                                color: isProfitable
+                                    ? AppColors.success
+                                    : AppColors.error,
                               ),
                             ),
                           ],
@@ -346,7 +458,8 @@ class ProfitLossScreen extends ConsumerWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondaryColor(context)),
+                style: TextStyle(
+                    fontSize: 11, color: AppColors.textSecondaryColor(context)),
               ),
             ],
           ),
@@ -377,20 +490,69 @@ class ProfitLossScreen extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(label,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             Text(
               '${AppFormatters.currency(amount)} (${(pct * 100).toStringAsFixed(1)}%)',
-              style: TextStyle(fontWeight: FontWeight.w800, color: color, fontSize: 13),
+              style: TextStyle(
+                  fontWeight: FontWeight.w800, color: color, fontSize: 13),
             ),
           ],
         ),
         const SizedBox(height: 6),
         LinearProgressIndicator(
           value: pct,
-          backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : AppColors.gray200,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white12
+              : AppColors.gray200,
           color: color,
           minHeight: 8,
           borderRadius: BorderRadius.circular(4),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRadarBar(String label, double val, double ratio, Color col) {
+    return Column(
+      children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary)),
+        const SizedBox(height: 6),
+        Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(
+              height: 60,
+              width: 14,
+              decoration: BoxDecoration(
+                color: col.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              height: (60 * ratio).clamp(4.0, 60.0),
+              width: 14,
+              decoration: BoxDecoration(
+                color: col,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '${(ratio * 100).toStringAsFixed(0)}%',
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.bold, color: col),
+          ),
         ),
       ],
     );

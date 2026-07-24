@@ -53,7 +53,8 @@ class WorkerAssignmentService {
   }
 
   /// Retrieve all assignments for a worker.
-  static Future<List<WorkerAssignment>> getAssignmentsForWorker(String workerId) async {
+  static Future<List<WorkerAssignment>> getAssignmentsForWorker(
+      String workerId) async {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'worker_assignments',
@@ -64,7 +65,8 @@ class WorkerAssignmentService {
   }
 
   /// Get list of entity IDs assigned to a worker for a specific entity type.
-  static Future<List<String>> getAssignedEntityIds(String workerId, String entityType) async {
+  static Future<List<String>> getAssignedEntityIds(
+      String workerId, String entityType) async {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'worker_assignments',
@@ -76,7 +78,8 @@ class WorkerAssignmentService {
   }
 
   /// Check if a specific entity is assigned to a worker.
-  static Future<bool> isEntityAssigned(String workerId, String entityType, String entityId) async {
+  static Future<bool> isEntityAssigned(
+      String workerId, String entityType, String entityId) async {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
       'worker_assignments',

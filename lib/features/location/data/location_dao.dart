@@ -14,7 +14,7 @@ class LocationDao {
     bool showArchived = false,
   }) async {
     final db = await _db;
-    
+
     // Base query using dynamic subqueries for computed fields to match legacy stats behavior
     String sql = '''
       SELECT l.*,
@@ -91,7 +91,7 @@ class LocationDao {
   /// Insert a new location.
   Future<String> insertLocation(Location location) async {
     final db = await _db;
-    
+
     // Resolve depth and path based on parent
     int depth = 0;
     String materializedPath = '/${location.id}/';
@@ -109,49 +109,60 @@ class LocationDao {
       materializedPath: materializedPath,
     );
 
-    await db.insert('locations', toInsert.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-    
+    await db.insert('locations', toInsert.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+
     // For compatibility with legacy database backup/export triggers
     // and foreign key constraints on customer/visits tables,
     // we also synchronize into legacy areas/streets tables.
     try {
       if (location.parentLocationId == null) {
-        await db.insert('areas', {
-          'id': location.id,
-          'name': location.name,
-          'description': location.description,
-          'photo_path': location.photoPath,
-          'maps_location': location.mapsLocation,
-          'color': location.color,
-          'created_by': location.createdBy,
-          'assigned_worker_id': location.assignedWorkerId,
-          'worker_name': location.workerName,
-          'device_name': location.deviceName,
-          'created_at': location.createdAt.toIso8601String(),
-          'updated_at': location.updatedAt.toIso8601String(),
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert(
+            'areas',
+            {
+              'id': location.id,
+              'name': location.name,
+              'description': location.description,
+              'photo_path': location.photoPath,
+              'maps_location': location.mapsLocation,
+              'color': location.color,
+              'created_by': location.createdBy,
+              'assigned_worker_id': location.assignedWorkerId,
+              'worker_name': location.workerName,
+              'device_name': location.deviceName,
+              'created_at': location.createdAt.toIso8601String(),
+              'updated_at': location.updatedAt.toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
 
         // Also insert fallback street record for the root area to support direct customer assignment
-        await db.insert('streets', {
-          'id': location.id,
-          'area_id': location.id,
-          'name': location.name,
-          'description': location.description,
-          'photo_path': location.photoPath,
-          'maps_location': location.mapsLocation,
-          'created_by': location.createdBy,
-          'assigned_worker_id': location.assignedWorkerId,
-          'worker_name': location.workerName,
-          'device_name': location.deviceName,
-          'created_at': location.createdAt.toIso8601String(),
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert(
+            'streets',
+            {
+              'id': location.id,
+              'area_id': location.id,
+              'name': location.name,
+              'description': location.description,
+              'photo_path': location.photoPath,
+              'maps_location': location.mapsLocation,
+              'created_by': location.createdBy,
+              'assigned_worker_id': location.assignedWorkerId,
+              'worker_name': location.workerName,
+              'device_name': location.deviceName,
+              'created_at': location.createdAt.toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
       } else {
         // Find root area ID by walking up the parent chain
         String rootAreaId = location.parentLocationId!;
         String? currentParentId = rootAreaId;
         int maxDepth = 20;
         while (currentParentId != null && maxDepth-- > 0) {
-          final parentRows = await db.query('locations', columns: ['id', 'parent_location_id'], where: 'id = ?', whereArgs: [currentParentId], limit: 1);
+          final parentRows = await db.query('locations',
+              columns: ['id', 'parent_location_id'],
+              where: 'id = ?',
+              whereArgs: [currentParentId],
+              limit: 1);
           if (parentRows.isEmpty) break;
           final nextParent = parentRows.first['parent_location_id'] as String?;
           if (nextParent == null) {
@@ -161,19 +172,22 @@ class LocationDao {
           currentParentId = nextParent;
         }
 
-        await db.insert('streets', {
-          'id': location.id,
-          'area_id': rootAreaId,
-          'name': location.name,
-          'description': location.description,
-          'photo_path': location.photoPath,
-          'maps_location': location.mapsLocation,
-          'created_by': location.createdBy,
-          'assigned_worker_id': location.assignedWorkerId,
-          'worker_name': location.workerName,
-          'device_name': location.deviceName,
-          'created_at': location.createdAt.toIso8601String(),
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert(
+            'streets',
+            {
+              'id': location.id,
+              'area_id': rootAreaId,
+              'name': location.name,
+              'description': location.description,
+              'photo_path': location.photoPath,
+              'maps_location': location.mapsLocation,
+              'created_by': location.createdBy,
+              'assigned_worker_id': location.assignedWorkerId,
+              'worker_name': location.workerName,
+              'device_name': location.deviceName,
+              'created_at': location.createdAt.toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
     } catch (_) {
       // Ignore write errors to deprecated tables (they are fallback only)
@@ -185,12 +199,13 @@ class LocationDao {
   /// Update a location and rebuild child paths if parent changed.
   Future<void> updateLocation(Location location) async {
     final db = await _db;
-    
+
     // Check if parent changed to rebuild materialized path
     final oldLoc = await getLocationById(location.id);
     Location updated = location;
 
-    if (oldLoc != null && oldLoc.parentLocationId != location.parentLocationId) {
+    if (oldLoc != null &&
+        oldLoc.parentLocationId != location.parentLocationId) {
       int depth = 0;
       String path = '/${location.id}/';
       if (location.parentLocationId != null) {
@@ -201,12 +216,14 @@ class LocationDao {
         }
       }
       updated = location.copyWith(depth: depth, materializedPath: path);
-      
+
       // Update child materialized paths recursively
       await db.transaction((txn) async {
-        await txn.update('locations', updated.toMap(), where: 'id = ?', whereArgs: [location.id]);
-        
-        final children = await txn.query('locations', where: 'parent_location_id = ?', whereArgs: [location.id]);
+        await txn.update('locations', updated.toMap(),
+            where: 'id = ?', whereArgs: [location.id]);
+
+        final children = await txn.query('locations',
+            where: 'parent_location_id = ?', whereArgs: [location.id]);
         for (final childMap in children) {
           final child = Location.fromMap(childMap);
           final newChildPath = '$path${child.id}/';
@@ -220,34 +237,47 @@ class LocationDao {
         }
       });
     } else {
-      await db.update('locations', updated.toMap(), where: 'id = ?', whereArgs: [location.id]);
+      await db.update('locations', updated.toMap(),
+          where: 'id = ?', whereArgs: [location.id]);
     }
 
     // Keep legacy tables synchronized
     try {
       if (location.parentLocationId == null) {
-        await db.update('areas', {
-          'name': location.name,
-          'description': location.description,
-          'photo_path': location.photoPath,
-          'maps_location': location.mapsLocation,
-          'updated_at': location.updatedAt.toIso8601String(),
-        }, where: 'id = ?', whereArgs: [location.id]);
+        await db.update(
+            'areas',
+            {
+              'name': location.name,
+              'description': location.description,
+              'photo_path': location.photoPath,
+              'maps_location': location.mapsLocation,
+              'updated_at': location.updatedAt.toIso8601String(),
+            },
+            where: 'id = ?',
+            whereArgs: [location.id]);
 
         // Also update fallback street record in legacy streets table
-        await db.update('streets', {
-          'name': location.name,
-          'description': location.description,
-          'photo_path': location.photoPath,
-          'maps_location': location.mapsLocation,
-        }, where: 'id = ?', whereArgs: [location.id]);
+        await db.update(
+            'streets',
+            {
+              'name': location.name,
+              'description': location.description,
+              'photo_path': location.photoPath,
+              'maps_location': location.mapsLocation,
+            },
+            where: 'id = ?',
+            whereArgs: [location.id]);
       } else {
         // Find root area ID by walking up the parent chain
         String rootAreaId = location.parentLocationId!;
         String? currentParentId = rootAreaId;
         int maxDepth = 20;
         while (currentParentId != null && maxDepth-- > 0) {
-          final parentRows = await db.query('locations', columns: ['id', 'parent_location_id'], where: 'id = ?', whereArgs: [currentParentId], limit: 1);
+          final parentRows = await db.query('locations',
+              columns: ['id', 'parent_location_id'],
+              where: 'id = ?',
+              whereArgs: [currentParentId],
+              limit: 1);
           if (parentRows.isEmpty) break;
           final nextParent = parentRows.first['parent_location_id'] as String?;
           if (nextParent == null) {
@@ -257,20 +287,24 @@ class LocationDao {
           currentParentId = nextParent;
         }
 
-        await db.update('streets', {
-          'area_id': rootAreaId,
-          'name': location.name,
-          'description': location.description,
-          'photo_path': location.photoPath,
-          'maps_location': location.mapsLocation,
-        }, where: 'id = ?', whereArgs: [location.id]);
+        await db.update(
+            'streets',
+            {
+              'area_id': rootAreaId,
+              'name': location.name,
+              'description': location.description,
+              'photo_path': location.photoPath,
+              'maps_location': location.mapsLocation,
+            },
+            where: 'id = ?',
+            whereArgs: [location.id]);
       }
     } catch (_) {}
   }
 
   Future<void> deleteLocation(String id) async {
     final db = await _db;
-    
+
     // Clear location references for all customers belonging to this location or any child/descendant locations
     final descendantLocations = await db.query(
       'locations',
@@ -290,7 +324,7 @@ class LocationDao {
     }
 
     await db.delete('locations', where: 'id = ?', whereArgs: [id]);
-    
+
     // Also delete from legacy tables if present
     try {
       await db.delete('areas', where: 'id = ?', whereArgs: [id]);
@@ -314,18 +348,21 @@ class LocationDao {
   }
 
   /// Helper to get the neighboring sibling sequence key and calculate midpoint.
-  Future<String> getNextSequenceKey(String? parentId, {String? afterId, String? beforeId}) async {
+  Future<String> getNextSequenceKey(String? parentId,
+      {String? afterId, String? beforeId}) async {
     final db = await _db;
     String? prevKey;
     String? nextKey;
 
     if (afterId != null && afterId.isNotEmpty) {
-      final maps = await db.query('locations', columns: ['sequence_key'], where: 'id = ?', whereArgs: [afterId]);
+      final maps = await db.query('locations',
+          columns: ['sequence_key'], where: 'id = ?', whereArgs: [afterId]);
       if (maps.isNotEmpty) prevKey = maps.first['sequence_key'] as String?;
     }
 
     if (beforeId != null && beforeId.isNotEmpty) {
-      final maps = await db.query('locations', columns: ['sequence_key'], where: 'id = ?', whereArgs: [beforeId]);
+      final maps = await db.query('locations',
+          columns: ['sequence_key'], where: 'id = ?', whereArgs: [beforeId]);
       if (maps.isNotEmpty) nextKey = maps.first['sequence_key'] as String?;
     }
 
@@ -333,9 +370,18 @@ class LocationDao {
     if (prevKey == null && nextKey == null) {
       final List<Map<String, dynamic>> maps;
       if (parentId == null) {
-        maps = await db.query('locations', columns: ['sequence_key'], where: 'parent_location_id IS NULL', orderBy: 'sequence_key DESC', limit: 1);
+        maps = await db.query('locations',
+            columns: ['sequence_key'],
+            where: 'parent_location_id IS NULL',
+            orderBy: 'sequence_key DESC',
+            limit: 1);
       } else {
-        maps = await db.query('locations', columns: ['sequence_key'], where: 'parent_location_id = ?', whereArgs: [parentId], orderBy: 'sequence_key DESC', limit: 1);
+        maps = await db.query('locations',
+            columns: ['sequence_key'],
+            where: 'parent_location_id = ?',
+            whereArgs: [parentId],
+            orderBy: 'sequence_key DESC',
+            limit: 1);
       }
       if (maps.isNotEmpty) {
         prevKey = maps.first['sequence_key'] as String?;
@@ -346,10 +392,12 @@ class LocationDao {
   }
 
   /// Get count of customers under this location.
-  Future<int> getCustomerCount(String locationId, {bool recursive = false}) async {
+  Future<int> getCustomerCount(String locationId,
+      {bool recursive = false}) async {
     final db = await _db;
     if (!recursive) {
-      final res = await db.rawQuery('SELECT COUNT(*) FROM customers WHERE location_id = ?', [locationId]);
+      final res = await db.rawQuery(
+          'SELECT COUNT(*) FROM customers WHERE location_id = ?', [locationId]);
       return Sqflite.firstIntValue(res) ?? 0;
     } else {
       // Recursive: get path of this location to query matching materialized path
@@ -400,7 +448,7 @@ class LocationDao {
       if (path.isEmpty) return '';
       final ids = path.split('/').where((id) => id.isNotEmpty).toList();
       if (ids.isEmpty) return '';
-      
+
       final placeholders = List.filled(ids.length, '?').join(', ');
       final locationsRes = await db.rawQuery(
         'SELECT name FROM locations WHERE id IN ($placeholders) ORDER BY depth ASC',

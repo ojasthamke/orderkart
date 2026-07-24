@@ -64,7 +64,7 @@ class ExpenseDao {
 
   Future<String> insertExpense(Expense expense) async {
     final db = await _db;
-    final id  = expense.id.isEmpty ? _uuid.v4() : expense.id;
+    final id = expense.id.isEmpty ? _uuid.v4() : expense.id;
     final now = DateTime.now().toIso8601String();
 
     final mode = await AppModeService.getAppMode();
@@ -74,12 +74,16 @@ class ExpenseDao {
     String deviceName = '';
 
     if (mode == AppMode.worker) {
-      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      final settingsRes = await db
+          .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty
+          ? settingsRes.first['value']?.toString()
+          : null;
       if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
         createdBy = activeWorkerId;
         assignedWorkerId = activeWorkerId;
-        final workerRow = await db.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        final workerRow = await db
+            .query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
         if (workerRow.isNotEmpty) {
           workerName = workerRow.first['name']?.toString() ?? '';
         }
@@ -88,16 +92,19 @@ class ExpenseDao {
     }
 
     final map = expense.toMap();
-    await db.insert('expenses', {
-      ...map,
-      'id':                 id,
-      'created_by':         createdBy,
-      'assigned_worker_id': assignedWorkerId,
-      'worker_name':        workerName,
-      'device_name':        deviceName,
-      'created_at':         now,
-      'updated_at':         now,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'expenses',
+        {
+          ...map,
+          'id': id,
+          'created_by': createdBy,
+          'assigned_worker_id': assignedWorkerId,
+          'worker_name': workerName,
+          'device_name': deviceName,
+          'created_at': now,
+          'updated_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
     return id;
   }
 

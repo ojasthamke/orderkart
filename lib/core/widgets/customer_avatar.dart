@@ -14,8 +14,6 @@ class CustomerAvatar extends StatelessWidget {
     this.radius = 24,
   });
 
-
-
   @override
   Widget build(BuildContext context) {
     final hasPhoto = photoPath != null && photoPath!.isNotEmpty;

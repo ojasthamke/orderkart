@@ -16,7 +16,6 @@ import 'customer_provider.dart';
 import 'widgets/instant_ledger_sheet.dart';
 import '../../area/presentation/area_provider.dart';
 
-
 class CustomerListScreen extends ConsumerStatefulWidget {
   final String? streetId;
   final String? streetName;
@@ -66,7 +65,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
     });
   }
 
-  Future<void> _showMoveDialog(BuildContext context, List<String> customerIds) async {
+  Future<void> _showMoveDialog(
+      BuildContext context, List<String> customerIds) async {
     String? selectedAreaId;
     String? selectedStreetId;
 
@@ -85,11 +85,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       areasAsync.when(
-                        loading: () => const Center(child: CircularProgressIndicator()),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
                         error: (err, _) => Text('Error loading areas: $err'),
                         data: (areas) {
                           return DropdownButtonFormField<String>(
-                            decoration: const InputDecoration(labelText: 'Select Area'),
+                            decoration:
+                                const InputDecoration(labelText: 'Select Area'),
                             value: selectedAreaId,
                             items: areas.map((a) {
                               return DropdownMenuItem(
@@ -108,19 +110,36 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                       ),
                       const SizedBox(height: 16),
                       if (selectedAreaId != null)
-                        ref.watch(areaDescendantLocationsProvider(selectedAreaId!)).when(
-                              loading: () => const Center(child: CircularProgressIndicator()),
-                              error: (err, _) => Text('Error loading locations: $err'),
+                        ref
+                            .watch(areaDescendantLocationsProvider(
+                                selectedAreaId!))
+                            .when(
+                              loading: () => const Center(
+                                  child: CircularProgressIndicator()),
+                              error: (err, _) =>
+                                  Text('Error loading locations: $err'),
                               data: (locations) {
-                                final locationMap = {for (final l in locations) l.id: l};
+                                final locationMap = {
+                                  for (final l in locations) l.id: l
+                                };
                                 return DropdownButtonFormField<String>(
-                                  decoration: const InputDecoration(labelText: 'Select Street/Road'),
+                                  decoration: const InputDecoration(
+                                      labelText: 'Select Street/Road'),
                                   value: selectedStreetId,
                                   isExpanded: true,
                                   items: locations.map((s) {
-                                    final parts = s.materializedPath.split('/').where((p) => p.isNotEmpty).toList();
-                                    final names = parts.skip(1).map((id) => locationMap[id]?.name ?? id).toList();
-                                    final pathDisplay = names.isEmpty ? s.name : names.join(' ➜ ');
+                                    final parts = s.materializedPath
+                                        .split('/')
+                                        .where((p) => p.isNotEmpty)
+                                        .toList();
+                                    final names = parts
+                                        .skip(1)
+                                        .map(
+                                            (id) => locationMap[id]?.name ?? id)
+                                        .toList();
+                                    final pathDisplay = names.isEmpty
+                                        ? s.name
+                                        : names.join(' ➜ ');
                                     return DropdownMenuItem(
                                       value: s.id,
                                       child: Text(
@@ -152,12 +171,16 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                               Navigator.pop(ctx);
                               final effectiveStreetId = widget.streetId ?? '';
                               await ref
-                                  .read(customerListProvider(effectiveStreetId).notifier)
-                                  .moveCustomers(customerIds, selectedStreetId!);
+                                  .read(customerListProvider(effectiveStreetId)
+                                      .notifier)
+                                  .moveCustomers(
+                                      customerIds, selectedStreetId!);
                               _exitSelectionMode();
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Customers moved successfully')),
+                                  const SnackBar(
+                                      content:
+                                          Text('Customers moved successfully')),
                                 );
                               }
                             },
@@ -203,7 +226,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                     icon: const Icon(Icons.drive_file_move_rounded),
                     onPressed: _selectedCustomerIds.isEmpty
                         ? null
-                        : () => _showMoveDialog(context, _selectedCustomerIds.toList()),
+                        : () => _showMoveDialog(
+                            context, _selectedCustomerIds.toList()),
                     tooltip: 'Move Customers',
                   ),
                   IconButton(
@@ -224,7 +248,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.search_rounded),
-                    onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.search),
                   ),
                 ],
           floatingActionButton: widget.streetId != null && !_isSelectionMode
@@ -233,7 +258,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                   onPressed: () => Navigator.of(context).pushNamed(
                     AppRoutes.addEditCustomer,
                     arguments: {'streetId': widget.streetId},
-                  ).then((_) => ref.refresh(customerListProvider(effectiveStreetId))),
+                  ).then((_) =>
+                      ref.refresh(customerListProvider(effectiveStreetId))),
                   child: const Icon(Icons.person_add_rounded),
                 )
               : null,
@@ -241,8 +267,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
             children: [
               CustomSearchBar(
                 hint: 'Search customers, phone, house no...',
-                onChanged: (q) =>
-                    ref.read(customerListProvider(effectiveStreetId).notifier).search(q),
+                onChanged: (q) => ref
+                    .read(customerListProvider(effectiveStreetId).notifier)
+                    .search(q),
               ),
               Expanded(
                 child: customers.isEmpty
@@ -253,13 +280,11 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                         actionLabel: 'Add Customer',
                         onAction: () {
                           if (widget.streetId != null) {
-                            Navigator.of(context)
-                                .pushNamed(
-                                  AppRoutes.addEditCustomer,
-                                  arguments: {'streetId': widget.streetId},
-                                )
-                                .then((_) =>
-                                    ref.refresh(customerListProvider(effectiveStreetId)));
+                            Navigator.of(context).pushNamed(
+                              AppRoutes.addEditCustomer,
+                              arguments: {'streetId': widget.streetId},
+                            ).then((_) => ref.refresh(
+                                customerListProvider(effectiveStreetId)));
                           }
                         },
                       )
@@ -272,7 +297,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                               customer: customers[i],
                               streetId: effectiveStreetId,
                               isSelectionMode: true,
-                              isSelected: _selectedCustomerIds.contains(customers[i].id),
+                              isSelected: _selectedCustomerIds
+                                  .contains(customers[i].id),
                               onTap: () => _toggleSelection(customers[i].id),
                               onLongPress: () {},
                               index: i,
@@ -287,7 +313,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                                 newIndex -= 1;
                               }
                               ref
-                                  .read(customerListProvider(effectiveStreetId).notifier)
+                                  .read(customerListProvider(effectiveStreetId)
+                                      .notifier)
                                   .reorder(oldIndex, newIndex);
                             },
                             itemBuilder: (ctx, i) => KeyedSubtree(
@@ -297,11 +324,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                                 streetId: effectiveStreetId,
                                 isSelectionMode: false,
                                 isSelected: false,
-                                onTap: () => Navigator.of(context)
-                                    .pushNamed(AppRoutes.customerProfile,
-                                        arguments: {'customerId': customers[i].id})
-                                    .then((_) =>
-                                        ref.refresh(customerListProvider(effectiveStreetId))),
+                                onTap: () => Navigator.of(context).pushNamed(
+                                    AppRoutes.customerProfile,
+                                    arguments: {
+                                      'customerId': customers[i].id
+                                    }).then((_) => ref.refresh(
+                                    customerListProvider(effectiveStreetId))),
                                 onLongPress: () {
                                   setState(() {
                                     _isSelectionMode = true;
@@ -350,12 +378,14 @@ class _CustomerCard extends ConsumerWidget {
 
     // ── Ghost House tile — special visual ────────────────────────────────────
     if (customer.isGhostHouse) {
-      final VoidCallback ghostTap = isSelectionMode ? onTap : () {
-        Navigator.of(context).pushNamed(
-          AppRoutes.addEditCustomer,
-          arguments: {'streetId': streetId, 'customerId': customer.id},
-        ).then((_) => ref.refresh(customerListProvider(streetId)));
-      };
+      final VoidCallback ghostTap = isSelectionMode
+          ? onTap
+          : () {
+              Navigator.of(context).pushNamed(
+                AppRoutes.addEditCustomer,
+                arguments: {'streetId': streetId, 'customerId': customer.id},
+              ).then((_) => ref.refresh(customerListProvider(streetId)));
+            };
 
       cardChild = ScaleOnTap(
         onTap: ghostTap,
@@ -377,144 +407,7 @@ class _CustomerCard extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
-                children: [
-                  if (isSelectionMode) ...[
-                    Icon(
-                      isSelected
-                          ? Icons.check_circle_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      color: isSelected ? AppColors.primary : AppColors.gray400,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                  ] else ...[
-                    ReorderableDragStartListener(
-                      index: index,
-                      child: const Padding(
-                        padding: EdgeInsets.only(right: 12),
-                        child: Icon(Icons.drag_indicator_rounded, color: AppColors.gray400, size: 22),
-                      ),
-                    ),
-                  ],
-                  // Ghost icon
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.orange.withOpacity(0.12),
-                      border: Border.all(color: Colors.orange.withOpacity(0.4), width: 1.5),
-                    ),
-                    child: const Icon(Icons.home_work_outlined, color: Colors.orange, size: 26),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            if (customer.serialNo > 0) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '#${customer.serialNo}',
-                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: Colors.orange,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                            ],
-                            Text(
-                              'Blank House',
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    color: Colors.orange.withOpacity(0.85),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Tap to fill customer details',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textHint,
-                                fontStyle: FontStyle.italic,
-                              ),
-                        ),
-                        if (customer.houseNumber.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            'House No: ${customer.houseNumber}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // Three-dot menu for ghost houses — Edit & Delete only
-                  if (!isSelectionMode)
-                    PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert_rounded, color: AppColors.gray500),
-                      onSelected: (v) async {
-                        if (v == 'edit') {
-                          Navigator.of(context).pushNamed(
-                            AppRoutes.addEditCustomer,
-                            arguments: {'streetId': streetId, 'customerId': customer.id},
-                          ).then((_) => ref.refresh(customerListProvider(streetId)));
-                        } else if (v == 'delete') {
-                          final ok = await ConfirmDeleteDialog.show(
-                            context,
-                            title: 'Delete Ghost House',
-                            message: 'Remove this blank house slot #${customer.serialNo}?',
-                          );
-                          if (!ok) return;
-                          await ref.read(customerListProvider(streetId).notifier).delete(customer.id);
-                        }
-                      },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: ListTile(
-                            leading: Icon(Icons.edit_rounded),
-                            title: Text('Fill Details / Edit'),
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: ListTile(
-                            leading: Icon(Icons.delete_outline_rounded, color: Colors.red),
-                            title: Text('Delete', style: TextStyle(color: Colors.red)),
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      } else {
-        cardChild = ScaleOnTap(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          child: GlassContainer(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                  children: [
+              children: [
                 if (isSelectionMode) ...[
                   Icon(
                     isSelected
@@ -529,7 +422,166 @@ class _CustomerCard extends ConsumerWidget {
                     index: index,
                     child: const Padding(
                       padding: EdgeInsets.only(right: 12),
-                      child: Icon(Icons.drag_indicator_rounded, color: AppColors.gray400, size: 22),
+                      child: Icon(Icons.drag_indicator_rounded,
+                          color: AppColors.gray400, size: 22),
+                    ),
+                  ),
+                ],
+                // Ghost icon
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.orange.withOpacity(0.12),
+                    border: Border.all(
+                        color: Colors.orange.withOpacity(0.4), width: 1.5),
+                  ),
+                  child: const Icon(Icons.home_work_outlined,
+                      color: Colors.orange, size: 26),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (customer.serialNo > 0) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '#${customer.serialNo}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      color: Colors.orange,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Text(
+                            'Blank House',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                  color: Colors.orange.withOpacity(0.85),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap to fill customer details',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textHint,
+                              fontStyle: FontStyle.italic,
+                            ),
+                      ),
+                      if (customer.houseNumber.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'House No: ${customer.houseNumber}',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Three-dot menu for ghost houses — Edit & Delete only
+                if (!isSelectionMode)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert_rounded,
+                        color: AppColors.gray500),
+                    onSelected: (v) async {
+                      if (v == 'edit') {
+                        Navigator.of(context).pushNamed(
+                          AppRoutes.addEditCustomer,
+                          arguments: {
+                            'streetId': streetId,
+                            'customerId': customer.id
+                          },
+                        ).then(
+                            (_) => ref.refresh(customerListProvider(streetId)));
+                      } else if (v == 'delete') {
+                        final ok = await ConfirmDeleteDialog.show(
+                          context,
+                          title: 'Delete Ghost House',
+                          message:
+                              'Remove this blank house slot #${customer.serialNo}?',
+                        );
+                        if (!ok) return;
+                        await ref
+                            .read(customerListProvider(streetId).notifier)
+                            .delete(customer.id);
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_rounded),
+                          title: Text('Fill Details / Edit'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline_rounded,
+                              color: Colors.red),
+                          title: Text('Delete',
+                              style: TextStyle(color: Colors.red)),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      cardChild = ScaleOnTap(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: GlassContainer(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                if (isSelectionMode) ...[
+                  Icon(
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: isSelected ? AppColors.primary : AppColors.gray400,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                ] else ...[
+                  ReorderableDragStartListener(
+                    index: index,
+                    child: const Padding(
+                      padding: EdgeInsets.only(right: 12),
+                      child: Icon(Icons.drag_indicator_rounded,
+                          color: AppColors.gray400, size: 22),
                     ),
                   ),
                 ],
@@ -585,7 +637,8 @@ class _CustomerCard extends ConsumerWidget {
                                 Row(
                                   children: [
                                     if (customer.isVipActive)
-                                      VipGoldBadgeChip(planName: customer.vipPlan)
+                                      VipGoldBadgeChip(
+                                          planName: customer.vipPlan)
                                     else
                                       _buildTagBadge(customer.tag),
                                   ],
@@ -637,56 +690,64 @@ class _CustomerCard extends ConsumerWidget {
                       const SizedBox(height: 6),
                       Text(
                         'Phone: ${customer.phone1}',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
-                      ref.watch(customerLocationProvider(customer.streetId)).when(
-                        data: (loc) {
-                          final streetName = loc['street'] ?? '';
-                          final areaName = loc['area'] ?? '';
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (customer.houseNumber.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Text(
-                                    'House No: ${customer.houseNumber}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              if (customer.address.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Text(
-                                    'Address: ${customer.address}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(color: AppColors.textHint),
-                                    softWrap: true,
-                                  ),
-                                ),
-                              if (streetName.isNotEmpty || areaName.isNotEmpty)
-                                Text(
-                                  'Route: $streetName • Area: $areaName',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 10),
-                                ),
-                            ],
-                          );
-                        },
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
+                      ref
+                          .watch(customerLocationProvider(customer.streetId))
+                          .when(
+                            data: (loc) {
+                              final streetName = loc['street'] ?? '';
+                              final areaName = loc['area'] ?? '';
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (customer.houseNumber.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 2),
+                                      child: Text(
+                                        'House No: ${customer.houseNumber}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  if (customer.address.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 2),
+                                      child: Text(
+                                        'Address: ${customer.address}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                                color: AppColors.textHint),
+                                        softWrap: true,
+                                      ),
+                                    ),
+                                  if (streetName.isNotEmpty ||
+                                      areaName.isNotEmpty)
+                                    Text(
+                                      'Route: $streetName • Area: $areaName',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 10),
+                                    ),
+                                ],
+                              );
+                            },
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          ),
                     ],
                   ),
                 ),
@@ -702,23 +763,21 @@ class _CustomerCard extends ConsumerWidget {
                         Navigator.of(context).pushNamed(
                           AppRoutes.createOrder,
                           arguments: {
-                            'customerId':   customer.id,
+                            'customerId': customer.id,
                             'customerName': customer.name,
-                            'orderId':      null,
+                            'orderId': null,
                           },
-                        ).then((_) =>
-                            ref.refresh(customerListProvider(streetId)));
+                        ).then(
+                            (_) => ref.refresh(customerListProvider(streetId)));
                       } else if (v == 'edit') {
-                        Navigator.of(context)
-                            .pushNamed(
+                        Navigator.of(context).pushNamed(
                           AppRoutes.addEditCustomer,
                           arguments: {
-                            'streetId':   streetId,
+                            'streetId': streetId,
                             'customerId': customer.id,
                           },
-                        )
-                            .then((_) =>
-                                ref.refresh(customerListProvider(streetId)));
+                        ).then(
+                            (_) => ref.refresh(customerListProvider(streetId)));
                       } else if (v == 'ledger') {
                         InstantLedgerSheet.show(context, customer);
                       } else if (v == 'delete') {
@@ -744,36 +803,36 @@ class _CustomerCard extends ConsumerWidget {
                           )),
                       const PopupMenuItem(
                           value: 'order',
-                        child: ListTile(
-                          leading: Icon(Icons.add_shopping_cart_rounded),
-                          title: Text('Create Order'),
-                          contentPadding: EdgeInsets.zero,
-                        )),
-                    const PopupMenuItem(
-                        value: 'ledger',
-                        child: ListTile(
-                          leading: Icon(Icons.account_balance_wallet_rounded),
-                          title: Text('Instant Ledger'),
-                          contentPadding: EdgeInsets.zero,
-                        )),
-                    const PopupMenuItem(
-                        value: 'edit',
-                        child: ListTile(
-                          leading: Icon(Icons.edit_rounded),
-                          title: Text('Edit'),
-                          contentPadding: EdgeInsets.zero,
-                        )),
-                    const PopupMenuItem(
-                        value: 'delete',
-                        child: ListTile(
-                          leading: Icon(Icons.delete_outline_rounded,
-                              color: Colors.red),
-                          title: Text('Delete',
-                              style: TextStyle(color: Colors.red)),
-                          contentPadding: EdgeInsets.zero,
-                        )),
-                  ],
-                ),
+                          child: ListTile(
+                            leading: Icon(Icons.add_shopping_cart_rounded),
+                            title: Text('Create Order'),
+                            contentPadding: EdgeInsets.zero,
+                          )),
+                      const PopupMenuItem(
+                          value: 'ledger',
+                          child: ListTile(
+                            leading: Icon(Icons.account_balance_wallet_rounded),
+                            title: Text('Instant Ledger'),
+                            contentPadding: EdgeInsets.zero,
+                          )),
+                      const PopupMenuItem(
+                          value: 'edit',
+                          child: ListTile(
+                            leading: Icon(Icons.edit_rounded),
+                            title: Text('Edit'),
+                            contentPadding: EdgeInsets.zero,
+                          )),
+                      const PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: Icon(Icons.delete_outline_rounded,
+                                color: Colors.red),
+                            title: Text('Delete',
+                                style: TextStyle(color: Colors.red)),
+                            contentPadding: EdgeInsets.zero,
+                          )),
+                    ],
+                  ),
               ],
             ),
           ),

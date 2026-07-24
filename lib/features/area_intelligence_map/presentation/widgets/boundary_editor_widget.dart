@@ -32,7 +32,8 @@ class BoundaryEditorWidget extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<BoundaryEditorWidget> createState() => BoundaryEditorWidgetState();
+  ConsumerState<BoundaryEditorWidget> createState() =>
+      BoundaryEditorWidgetState();
 }
 
 class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
@@ -87,7 +88,10 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
     final mapDataAsync = ref.read(areaMapDataProvider(widget.areaId));
     mapDataAsync.whenData((data) {
       // Find all customers linked to this exact location
-      final locationCustomers = data.customers.where((c) => c.streetId == widget.locationId || c.id == widget.locationId).toList();
+      final locationCustomers = data.customers
+          .where((c) =>
+              c.streetId == widget.locationId || c.id == widget.locationId)
+          .toList();
       final points = locationCustomers
           .where((c) => c.latitude != 0.0 && c.longitude != 0.0)
           .map((c) => LatLng(c.latitude, c.longitude))
@@ -95,7 +99,9 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
 
       if (points.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No customer locations found to generate suggestion')),
+          const SnackBar(
+              content:
+                  Text('No customer locations found to generate suggestion')),
         );
         return;
       }
@@ -155,7 +161,9 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
       }),
     );
 
-    await ref.read(mapBoundaryNotifierProvider(widget.areaId).notifier).saveBoundary(boundary);
+    await ref
+        .read(mapBoundaryNotifierProvider(widget.areaId).notifier)
+        .saveBoundary(boundary);
     widget.onSaveSuccess();
   }
 
@@ -165,9 +173,12 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Boundary'),
-        content: Text('Are you sure you want to delete the boundary for "${widget.locationName}"?'),
+        content: Text(
+            'Are you sure you want to delete the boundary for "${widget.locationName}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -177,7 +188,9 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
       ),
     );
     if (confirm == true) {
-      await ref.read(mapBoundaryNotifierProvider(widget.areaId).notifier).deleteBoundary(widget.boundaryId!);
+      await ref
+          .read(mapBoundaryNotifierProvider(widget.areaId).notifier)
+          .deleteBoundary(widget.boundaryId!);
       widget.onSaveSuccess();
     }
   }
@@ -264,7 +277,8 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
                         onTap: () {
                           setState(() {
                             _strokeColor = c;
-                            _fillColor = c & 0x00FFFFFF | 0x26000000; // opacity 15%
+                            _fillColor =
+                                c & 0x00FFFFFF | 0x26000000; // opacity 15%
                           });
                         },
                         child: Container(

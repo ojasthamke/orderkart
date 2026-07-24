@@ -6,7 +6,8 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../data/pending_sync_dao.dart';
 
-final pendingSyncDaoProvider = Provider<PendingSyncDao>((ref) => PendingSyncDao());
+final pendingSyncDaoProvider =
+    Provider<PendingSyncDao>((ref) => PendingSyncDao());
 
 final pendingSyncListProvider = FutureProvider<List<PendingSyncItem>>((ref) {
   return ref.watch(pendingSyncDaoProvider).getPendingItems();
@@ -50,27 +51,35 @@ class PendingSyncScreen extends ConsumerWidget {
                   leading: CircleAvatar(
                     backgroundColor: AppColors.primarySurface,
                     child: Icon(
-                      item.actionType == 'created' ? Icons.add_circle_outline_rounded : Icons.edit_note_rounded,
+                      item.actionType == 'created'
+                          ? Icons.add_circle_outline_rounded
+                          : Icons.edit_note_rounded,
                       color: AppColors.primary,
                     ),
                   ),
                   title: Text(
                     '${item.actionType.toUpperCase()}: ${item.entityType.toUpperCase()}',
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 14),
                   ),
                   subtitle: Text(
                     'Recorded: ${AppFormatters.dateTime(item.createdAt)}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.textHint),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textHint),
                   ),
                   trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.amber.shade50,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'PENDING',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.amber.shade900),
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.amber.shade900),
                     ),
                   ),
                 ),

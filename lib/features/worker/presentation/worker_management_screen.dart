@@ -21,10 +21,12 @@ class WorkerManagementScreen extends ConsumerStatefulWidget {
   const WorkerManagementScreen({super.key});
 
   @override
-  ConsumerState<WorkerManagementScreen> createState() => _WorkerManagementScreenState();
+  ConsumerState<WorkerManagementScreen> createState() =>
+      _WorkerManagementScreenState();
 }
 
-class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen> {
+class _WorkerManagementScreenState
+    extends ConsumerState<WorkerManagementScreen> {
   String _searchQuery = '';
   String _selectedStatus = 'all'; // 'all', 'active', 'suspended', 'leave'
 
@@ -34,7 +36,8 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
     if (newWorker != null) {
       await ref.read(workerListProvider.notifier).add(newWorker);
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Worker "${newWorker.name}" added successfully');
+        SnackbarHelper.showSuccess(
+            context, 'Worker "${newWorker.name}" added successfully');
       }
     }
   }
@@ -47,16 +50,19 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
       title: 'Worker Management',
       actions: [
         IconButton(
-          icon: const Icon(Icons.admin_panel_settings_rounded, color: Colors.deepPurple),
+          icon: const Icon(Icons.admin_panel_settings_rounded,
+              color: Colors.deepPurple),
           tooltip: 'Permission Manager',
           onPressed: () {
-            SnackbarHelper.showInfo(context, 'Select any worker below to configure permissions.');
+            SnackbarHelper.showInfo(
+                context, 'Select any worker below to configure permissions.');
           },
         ),
         IconButton(
           icon: const Icon(Icons.analytics_rounded),
           tooltip: 'Worker Analytics',
-          onPressed: () => Navigator.pushNamed(context, AppRoutes.workerAnalytics),
+          onPressed: () =>
+              Navigator.pushNamed(context, AppRoutes.workerAnalytics),
         ),
       ],
       floatingActionButton: Container(
@@ -80,7 +86,10 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
           icon: const Icon(Icons.person_add_rounded, color: Colors.white),
           label: const Text(
             'Add New Worker',
-            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5),
+            style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 0.5),
           ),
         ),
       ),
@@ -101,7 +110,8 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
                     color: Colors.white.withOpacity(0.18),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 24),
+                  child: const Icon(Icons.person_add_alt_1_rounded,
+                      color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
@@ -110,7 +120,10 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
                     children: [
                       Text(
                         'Add Field Worker',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15),
                       ),
                       SizedBox(height: 2),
                       Text(
@@ -123,13 +136,17 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
                 ElevatedButton.icon(
                   onPressed: _addNewWorker,
                   icon: const Icon(Icons.add_rounded, size: 16),
-                  label: const Text('Add Worker', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                  label: const Text('Add Worker',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF1E3A8A),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                   ),
                 ),
               ],
@@ -168,18 +185,23 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
           Expanded(
             child: workersAsync.when(
               loading: () => const LoadingShimmer(count: 5),
-              error: (err, _) => Center(child: Text('Error loading workers: $err')),
+              error: (err, _) =>
+                  Center(child: Text('Error loading workers: $err')),
               data: (workers) {
                 // Filter the list based on query and status selection
                 final filtered = workers.where((w) {
-                  final matchesSearch = w.name.toLowerCase().contains(_searchQuery) ||
-                      w.employeeId.toLowerCase().contains(_searchQuery);
+                  final matchesSearch =
+                      w.name.toLowerCase().contains(_searchQuery) ||
+                          w.employeeId.toLowerCase().contains(_searchQuery);
 
                   if (!matchesSearch) return false;
 
-                  if (_selectedStatus == 'active' && w.status != 'active') return false;
-                  if (_selectedStatus == 'suspended' && w.status != 'inactive') return false;
-                  if (_selectedStatus == 'leave' && w.leaveStatus != 'leave') return false;
+                  if (_selectedStatus == 'active' && w.status != 'active')
+                    return false;
+                  if (_selectedStatus == 'suspended' && w.status != 'inactive')
+                    return false;
+                  if (_selectedStatus == 'leave' && w.leaveStatus != 'leave')
+                    return false;
 
                   return true;
                 }).toList();
@@ -188,7 +210,8 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
                   return EmptyStateWidget(
                     icon: Icons.badge_outlined,
                     title: 'No Workers Match Filters',
-                    subtitle: 'Modify search criteria or add new worker profile.',
+                    subtitle:
+                        'Modify search criteria or add new worker profile.',
                     actionLabel: 'Clear Search',
                     onAction: () {
                       setState(() {
@@ -200,7 +223,8 @@ class _WorkerManagementScreenState extends ConsumerState<WorkerManagementScreen>
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: filtered.length,
                   itemBuilder: (ctx, idx) {
                     final w = filtered[idx];
@@ -264,7 +288,8 @@ class _WorkerCard extends ConsumerWidget {
             contentPadding: const EdgeInsets.all(12),
             leading: CircleAvatar(
               radius: 26,
-              backgroundColor: isSuspended ? AppColors.gray300 : AppColors.primarySurface,
+              backgroundColor:
+                  isSuspended ? AppColors.gray300 : AppColors.primarySurface,
               child: Text(
                 worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
                 style: TextStyle(
@@ -282,7 +307,8 @@ class _WorkerCard extends ConsumerWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
-                      decoration: isSuspended ? TextDecoration.lineThrough : null,
+                      decoration:
+                          isSuspended ? TextDecoration.lineThrough : null,
                     ),
                   ),
                 ),
@@ -296,7 +322,8 @@ class _WorkerCard extends ConsumerWidget {
                   if (worker.employeeId.isNotEmpty) 'ID: ${worker.employeeId}',
                   'Rule: ${worker.commissionType.name.toUpperCase()}',
                 ].join(' · '),
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
               ),
             ),
           ),
@@ -308,9 +335,17 @@ class _WorkerCard extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _miniStat('Total Coll.', AppFormatters.currency(worker.totalCollection)),
-                _miniStat('Target %', '${targetCompletion.toStringAsFixed(0)}%'),
-                _miniStat('Last Sync', worker.joiningDate.isEmpty ? 'Never' : AppFormatters.shortDate(DateTime.tryParse(worker.joiningDate) ?? DateTime.now())),
+                _miniStat('Total Coll.',
+                    AppFormatters.currency(worker.totalCollection)),
+                _miniStat(
+                    'Target %', '${targetCompletion.toStringAsFixed(0)}%'),
+                _miniStat(
+                    'Last Sync',
+                    worker.joiningDate.isEmpty
+                        ? 'Never'
+                        : AppFormatters.shortDate(
+                            DateTime.tryParse(worker.joiningDate) ??
+                                DateTime.now())),
               ],
             ),
           ),
@@ -320,8 +355,12 @@ class _WorkerCard extends ConsumerWidget {
           ListTile(
             dense: true,
             title: const Text('Open Profile & Access Controls',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary)),
-            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary)),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded,
+                size: 12, color: AppColors.primary),
             onTap: () {
               AppHaptics.buttonClick();
               Navigator.push(
@@ -343,11 +382,17 @@ class _WorkerCard extends ConsumerWidget {
       children: [
         Text(
           value,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary),
         ),
         Text(
           label,
-          style: const TextStyle(fontSize: 9, color: AppColors.textHint, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+              fontSize: 9,
+              color: AppColors.textHint,
+              fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -376,7 +421,8 @@ class _WorkerCard extends ConsumerWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: color),
+        style:
+            TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: color),
       ),
     );
   }

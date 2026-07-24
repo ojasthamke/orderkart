@@ -64,7 +64,8 @@ class NotesListScreen extends ConsumerWidget {
             onTap: () {
               Navigator.pushNamed(context, AppRoutes.addEditNote);
             },
-            child: Icon(Icons.add_rounded, color: isDark ? Colors.white : AppColors.primary, size: 24),
+            child: Icon(Icons.add_rounded,
+                color: isDark ? Colors.white : AppColors.primary, size: 24),
           );
         }),
       ),
@@ -81,8 +82,8 @@ class _NoteCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
-    final List<Color> noteColors = isDark 
+
+    final List<Color> noteColors = isDark
         ? [
             theme.colorScheme.primaryContainer.withOpacity(0.20),
             Colors.red.withOpacity(0.12),
@@ -99,11 +100,12 @@ class _NoteCard extends ConsumerWidget {
             Colors.yellow.shade100.withOpacity(0.50),
             Colors.purple.shade100.withOpacity(0.50),
           ];
-    
+
     // Fallback to 0 if colorLabel is out of bounds
-    final colorIndex = (note.colorLabel >= 0 && note.colorLabel < noteColors.length) 
-        ? note.colorLabel 
-        : 0;
+    final colorIndex =
+        (note.colorLabel >= 0 && note.colorLabel < noteColors.length)
+            ? note.colorLabel
+            : 0;
     final color = noteColors[colorIndex];
 
     void tapAction() {
@@ -124,7 +126,7 @@ class _NoteCard extends ConsumerWidget {
         await ref.read(noteListNotifier.notifier).deleteNote(note.id);
         if (context.mounted) {
           SnackbarHelper.showWithUndo(
-            context, 
+            context,
             message: 'Note deleted',
             undoLabel: 'Undo',
           ).then((undone) async {

@@ -38,7 +38,8 @@ class AreaMapData {
 }
 
 // Combined Map Data FutureProvider
-final areaMapDataProvider = FutureProvider.family<AreaMapData, String>((ref, areaId) async {
+final areaMapDataProvider =
+    FutureProvider.family<AreaMapData, String>((ref, areaId) async {
   final mapDao = ref.read(mapDataDaoProvider);
   final boundaryDao = ref.read(geoBoundaryDaoProvider);
 
@@ -113,7 +114,9 @@ final areaMapDataProvider = FutureProvider.family<AreaMapData, String>((ref, are
 
   // Build landmark markers
   for (final loc in locations) {
-    if (loc.locationKind.name == 'landmark' && loc.latitude != 0.0 && loc.longitude != 0.0) {
+    if (loc.locationKind.name == 'landmark' &&
+        loc.latitude != 0.0 &&
+        loc.longitude != 0.0) {
       landmarkMarkers.add(MapMarkerData(
         id: loc.id,
         position: LatLng(loc.latitude, loc.longitude),
@@ -166,7 +169,8 @@ final currentLocationProvider = StreamProvider<LatLng>((ref) {
         return;
       }
 
-      serviceStatusSubscription = Geolocator.getServiceStatusStream().listen((status) {
+      serviceStatusSubscription =
+          Geolocator.getServiceStatusStream().listen((status) {
         if (status == ServiceStatus.disabled) {
           controller.addError('Location services disabled');
         }
@@ -187,7 +191,8 @@ final currentLocationProvider = StreamProvider<LatLng>((ref) {
         try {
           final lastKnown = await Geolocator.getLastKnownPosition();
           if (lastKnown != null) {
-            final initialPoint = LatLng(lastKnown.latitude, lastKnown.longitude);
+            final initialPoint =
+                LatLng(lastKnown.latitude, lastKnown.longitude);
             prevPoint = initialPoint;
             controller.add(initialPoint);
           }
@@ -239,7 +244,8 @@ class CurrentSectionState {
   });
 }
 
-final currentSectionProvider = Provider.family<CurrentSectionState, String>((ref, areaId) {
+final currentSectionProvider =
+    Provider.family<CurrentSectionState, String>((ref, areaId) {
   final gpsAsync = ref.watch(currentLocationProvider);
   final mapDataAsync = ref.watch(areaMapDataProvider(areaId));
 
@@ -254,16 +260,24 @@ final currentSectionProvider = Provider.family<CurrentSectionState, String>((ref
           // Sort boundaries by depth DESC so we match most specific child first
           final sortedBoundaries = List<GeoBoundary>.from(data.boundaries)
             ..sort((a, b) {
-              final locA = data.subLocations.firstWhere((l) => l.id == a.locationId, orElse: () => data.areaLocation);
-              final locB = data.subLocations.firstWhere((l) => l.id == b.locationId, orElse: () => data.areaLocation);
+              final locA = data.subLocations.firstWhere(
+                  (l) => l.id == a.locationId,
+                  orElse: () => data.areaLocation);
+              final locB = data.subLocations.firstWhere(
+                  (l) => l.id == b.locationId,
+                  orElse: () => data.areaLocation);
               return locB.depth.compareTo(locA.depth);
             });
 
           for (final boundary in sortedBoundaries) {
             if (boundary.geometryType == 'polygon') {
-              final pts = boundary.points.map((p) => LatLng(p.latitude, p.longitude)).toList();
+              final pts = boundary.points
+                  .map((p) => LatLng(p.latitude, p.longitude))
+                  .toList();
               if (GeoMath.isPointInPolygon(gpsPoint, pts)) {
-                foundLocation = data.subLocations.firstWhere((l) => l.id == boundary.locationId, orElse: () => data.areaLocation);
+                foundLocation = data.subLocations.firstWhere(
+                    (l) => l.id == boundary.locationId,
+                    orElse: () => data.areaLocation);
                 polygonPoints = pts;
                 break;
               }
@@ -275,7 +289,8 @@ final currentSectionProvider = Provider.family<CurrentSectionState, String>((ref
             final breadcrumbs = <Location>[];
             String? currentId = foundLocation.id;
             while (currentId != null) {
-              final loc = data.subLocations.firstWhere((l) => l.id == currentId, orElse: () => data.areaLocation);
+              final loc = data.subLocations.firstWhere((l) => l.id == currentId,
+                  orElse: () => data.areaLocation);
               breadcrumbs.insert(0, loc);
               currentId = loc.parentLocationId;
             }
@@ -283,7 +298,8 @@ final currentSectionProvider = Provider.family<CurrentSectionState, String>((ref
             // Find count of pending deliveries in this specific polygon
             final customersInPolygon = data.customers.where((c) {
               if (c.latitude == 0.0 || c.longitude == 0.0) return false;
-              return GeoMath.isPointInPolygon(LatLng(c.latitude, c.longitude), polygonPoints);
+              return GeoMath.isPointInPolygon(
+                  LatLng(c.latitude, c.longitude), polygonPoints);
             }).toList();
 
             final pendingCount = data.deliveryMarkers.where((m) {
@@ -322,10 +338,13 @@ class MapLayerVisibilityNotifier extends StateNotifier<MapLayerVisibility> {
       state = MapLayerVisibility(
         baseTiles: _prefs!.getBool('map_vis_${_areaId}_base') ?? true,
         areaBoundary: _prefs!.getBool('map_vis_${_areaId}_area') ?? true,
-        sectionBoundaries: _prefs!.getBool('map_vis_${_areaId}_section') ?? true,
+        sectionBoundaries:
+            _prefs!.getBool('map_vis_${_areaId}_section') ?? true,
         roads: _prefs!.getBool('map_vis_${_areaId}_roads') ?? true,
-        customerMarkers: _prefs!.getBool('map_vis_${_areaId}_customers') ?? true,
-        deliveryMarkers: _prefs!.getBool('map_vis_${_areaId}_deliveries') ?? true,
+        customerMarkers:
+            _prefs!.getBool('map_vis_${_areaId}_customers') ?? true,
+        deliveryMarkers:
+            _prefs!.getBool('map_vis_${_areaId}_deliveries') ?? true,
         landmarks: _prefs!.getBool('map_vis_${_areaId}_landmarks') ?? true,
         labels: _prefs!.getBool('map_vis_${_areaId}_labels') ?? true,
       );
@@ -373,7 +392,8 @@ class MapLayerVisibilityNotifier extends StateNotifier<MapLayerVisibility> {
   }
 }
 
-final mapLayerVisibilityProvider = StateNotifierProvider.family<MapLayerVisibilityNotifier, MapLayerVisibility, String>((ref, areaId) {
+final mapLayerVisibilityProvider = StateNotifierProvider.family<
+    MapLayerVisibilityNotifier, MapLayerVisibility, String>((ref, areaId) {
   return MapLayerVisibilityNotifier(areaId);
 });
 
@@ -406,6 +426,7 @@ class MapBoundaryNotifier extends StateNotifier<List<GeoBoundary>> {
   }
 }
 
-final mapBoundaryNotifierProvider = StateNotifierProvider.family<MapBoundaryNotifier, List<GeoBoundary>, String>((ref, areaId) {
+final mapBoundaryNotifierProvider = StateNotifierProvider.family<
+    MapBoundaryNotifier, List<GeoBoundary>, String>((ref, areaId) {
   return MapBoundaryNotifier(ref, areaId);
 });

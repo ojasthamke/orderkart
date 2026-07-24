@@ -24,7 +24,8 @@ class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
   @override
   void initState() {
     super.initState();
-    final initialPos = widget.initialPosition ?? const LatLng(19.076, 72.877); // default Mumbai
+    final initialPos = widget.initialPosition ??
+        const LatLng(19.076, 72.877); // default Mumbai
     _currentPositionNotifier = ValueNotifier<LatLng>(initialPos);
     _tileProvider = _initTileProvider();
   }
@@ -87,7 +88,8 @@ class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
           // 2. Centered Pin overlay (stationary)
           Center(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 36.0), // offset pin tip to exact center
+              padding: const EdgeInsets.only(
+                  bottom: 36.0), // offset pin tip to exact center
               child: Icon(
                 Icons.location_on_rounded,
                 color: Colors.red[800],
@@ -141,7 +143,8 @@ class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.blueAccent,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -151,7 +154,8 @@ class _MapPinPickerScreenState extends State<MapPinPickerScreen> {
                                 },
                                 child: Text(
                                   'Confirm Location',
-                                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                                  style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ),

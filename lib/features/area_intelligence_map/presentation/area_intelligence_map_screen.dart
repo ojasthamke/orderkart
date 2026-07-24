@@ -24,12 +24,14 @@ class AreaIntelligenceMapScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<AreaIntelligenceMapScreen> createState() => _AreaIntelligenceMapScreenState();
+  ConsumerState<AreaIntelligenceMapScreen> createState() =>
+      _AreaIntelligenceMapScreenState();
 }
 
-class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapScreen> {
+class _AreaIntelligenceMapScreenState
+    extends ConsumerState<AreaIntelligenceMapScreen> {
   final MapController _mapController = MapController();
-  
+
   // Selection and edit states
   Customer? _selectedCustomer;
   bool _isEditMode = false;
@@ -39,7 +41,8 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
   final List<LatLng> _editPoints = [];
   String _editGeometryType = 'polygon';
 
-  final GlobalKey<BoundaryEditorWidgetState> _editorKey = GlobalKey<BoundaryEditorWidgetState>();
+  final GlobalKey<BoundaryEditorWidgetState> _editorKey =
+      GlobalKey<BoundaryEditorWidgetState>();
 
   @override
   void dispose() {
@@ -74,7 +77,8 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
     );
   }
 
-  void _startEditing(String locId, String name, [List<LatLng>? pts, String? type, String? boundaryId]) {
+  void _startEditing(String locId, String name,
+      [List<LatLng>? pts, String? type, String? boundaryId]) {
     setState(() {
       _selectedCustomer = null;
       _isEditMode = true;
@@ -108,7 +112,8 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
       if (previous == null || !previous.hasValue) {
         next.whenData((pos) {
           mapDataAsync.whenData((data) {
-            final hasBoundaries = data.boundaries.any((b) => b.points.isNotEmpty);
+            final hasBoundaries =
+                data.boundaries.any((b) => b.points.isNotEmpty);
             final hasCustomers = data.customerMarkers.isNotEmpty;
             if (!hasBoundaries && !hasCustomers) {
               _mapController.move(pos, 17.0);
@@ -139,11 +144,15 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                   icon: const Icon(Icons.edit_road_rounded),
                   tooltip: 'Draw Boundary',
                   onSelected: (locId) {
-                    final loc = data.subLocations.firstWhere((l) => l.id == locId);
-                    final existing = data.boundaries.where((b) => b.locationId == locId);
+                    final loc =
+                        data.subLocations.firstWhere((l) => l.id == locId);
+                    final existing =
+                        data.boundaries.where((b) => b.locationId == locId);
                     if (existing.isNotEmpty) {
                       final b = existing.first;
-                      final pts = b.points.map((p) => LatLng(p.latitude, p.longitude)).toList();
+                      final pts = b.points
+                          .map((p) => LatLng(p.latitude, p.longitude))
+                          .toList();
                       _startEditing(locId, loc.name, pts, b.geometryType, b.id);
                     } else {
                       _startEditing(locId, loc.name);
@@ -198,7 +207,8 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                   setState(() {
                     _selectedCustomer = cust;
                   });
-                  _mapController.move(LatLng(cust.latitude, cust.longitude), 18.0);
+                  _mapController.move(
+                      LatLng(cust.latitude, cust.longitude), 18.0);
                 },
               );
             },
@@ -223,15 +233,18 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: Colors.red[900]!.withOpacity(0.85),
-                        border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                        border: Border.all(
+                            color: Colors.redAccent.withOpacity(0.3)),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.gpp_maybe_rounded, color: Colors.white, size: 20),
+                          const Icon(Icons.gpp_maybe_rounded,
+                              color: Colors.white, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -262,7 +275,8 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                           TextButton(
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 4),
                               backgroundColor: Colors.white24,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -332,7 +346,8 @@ class _AreaIntelligenceMapScreenState extends ConsumerState<AreaIntelligenceMapS
                 onSaveSuccess: () {
                   _exitEditing();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Boundary saved/updated successfully')),
+                    const SnackBar(
+                        content: Text('Boundary saved/updated successfully')),
                   );
                 },
               ),

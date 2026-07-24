@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/bill_text_generator.dart';
+import '../../../core/utils/graphic_bill_generator.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
@@ -37,8 +38,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final orderAsync = ref.watch(orderDetailProvider(widget.orderId));
-    final settings   = ref.watch(settingsProvider).value;
-    final currency   = settings?.currency ?? AppConstants.defaultCurrency;
+    final settings = ref.watch(settingsProvider).value;
+    final currency = settings?.currency ?? AppConstants.defaultCurrency;
 
     return orderAsync.when(
       loading: () => const AppScaffold(
@@ -76,11 +77,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   Navigator.of(context).pushNamed(
                     AppRoutes.createOrder,
                     arguments: {
-                      'customerId':   order.customerId,
-                      'customerName': (order.customerName != null && order.customerName!.trim().isNotEmpty) ? order.customerName!.trim() : '',
-                      'orderId':      order.id,
+                      'customerId': order.customerId,
+                      'customerName': (order.customerName != null &&
+                              order.customerName!.trim().isNotEmpty)
+                          ? order.customerName!.trim()
+                          : '',
+                      'orderId': order.id,
                     },
-                  ).then((_) => ref.refresh(orderDetailProvider(widget.orderId)));
+                  ).then(
+                      (_) => ref.refresh(orderDetailProvider(widget.orderId)));
+                } else if (v == 'update_rates') {
+                  _updateRates(order);
                 } else if (v == 'delete') {
                   _deleteOrder(order);
                 }
@@ -88,8 +95,20 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               itemBuilder: (_) => [
                 const PopupMenuItem(value: 'edit', child: Text('Edit Items')),
                 const PopupMenuItem(
+                  value: 'update_rates',
+                  child: Row(
+                    children: [
+                      Icon(Icons.refresh_rounded,
+                          size: 18, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Text('Update Rates to Current Prices'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
                   value: 'delete',
-                  child: Text('Delete Order', style: TextStyle(color: Colors.red)),
+                  child:
+                      Text('Delete Order', style: TextStyle(color: Colors.red)),
                 ),
               ],
             ),
@@ -122,18 +141,18 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
                 // Order Questions & Answers Section
                 ref.watch(orderAnswersProvider(order.id)).when(
-                  data: (answers) => answers.isNotEmpty
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildQuestionsSection(answers),
-                            const SizedBox(height: 16),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
+                      data: (answers) => answers.isNotEmpty
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildQuestionsSection(answers),
+                                const SizedBox(height: 16),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
 
                 // Payments list
                 _buildPaymentsSection(order, currency),
@@ -166,7 +185,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             children: [
               Text(
                 'Order ${order.orderNoLabel}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 4),
               Text(
@@ -225,55 +245,73 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  (order.customerName != null && order.customerName!.trim().isNotEmpty) ? order.customerName!.trim() : 'Unknown Customer',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  (order.customerName != null &&
+                          order.customerName!.trim().isNotEmpty)
+                      ? order.customerName!.trim()
+                      : 'Unknown Customer',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15),
                 ),
                 if (order.customerPhone != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     order.customerPhone!,
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ],
                 customerAsync.when(
                   data: (cust) {
                     if (cust == null) return const SizedBox.shrink();
-                    return ref.watch(locationPathNameProvider(cust.streetId)).when(
-                      data: (fullPath) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (cust.serialNo > 0 || cust.houseNumber.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                [
-                                  if (cust.serialNo > 0) 'Serial: #${cust.serialNo}',
-                                  if (cust.houseNumber.isNotEmpty) 'House: ${cust.houseNumber}',
-                                ].join('  •  '),
-                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                            if (cust.address.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Address: ${cust.address}',
-                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                                softWrap: true,
-                              ),
-                            ],
-                            if (fullPath.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Location: $fullPath',
-                                style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w800),
-                              ),
-                            ],
-                          ],
+                    return ref
+                        .watch(locationPathNameProvider(cust.streetId))
+                        .when(
+                          data: (fullPath) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (cust.serialNo > 0 ||
+                                    cust.houseNumber.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    [
+                                      if (cust.serialNo > 0)
+                                        'Serial: #${cust.serialNo}',
+                                      if (cust.houseNumber.isNotEmpty)
+                                        'House: ${cust.houseNumber}',
+                                    ].join('  •  '),
+                                    style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                                if (cust.address.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Address: ${cust.address}',
+                                    style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 13),
+                                    softWrap: true,
+                                  ),
+                                ],
+                                if (fullPath.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Location: $fullPath',
+                                    style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800),
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, __) => const SizedBox.shrink(),
                         );
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    );
                   },
                   loading: () => const SizedBox.shrink(),
                   error: (_, __) => const SizedBox.shrink(),
@@ -299,12 +337,47 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'ITEMS',
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.gray500),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'ITEMS',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.gray500),
+              ),
+              InkWell(
+                onTap: () => _updateRates(order),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(8),
+                    border:
+                        Border.all(color: AppColors.primary.withOpacity(0.25)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.refresh_rounded,
+                          size: 14, color: AppColors.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'Update Rates',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           if (items.isEmpty)
@@ -374,22 +447,28 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       ),
       child: Column(
         children: [
-          _sumRow('Subtotal',         '$currency${order.subtotal.toStringAsFixed(2)}'),
+          _sumRow('Subtotal', '$currency${order.subtotal.toStringAsFixed(2)}'),
           if (order.discount > 0)
-            _sumRow('Discount',       '- $currency${order.discount.toStringAsFixed(2)}',
+            _sumRow(
+                'Discount', '- $currency${order.discount.toStringAsFixed(2)}',
                 color: AppColors.success),
           if (order.smartRoundedAmount != 0)
-            _sumRow('Smart Rounded',  '$currency${order.smartRoundedAmount.toStringAsFixed(2)}',
+            _sumRow('Smart Rounded',
+                '$currency${order.smartRoundedAmount.toStringAsFixed(2)}',
                 color: AppColors.warning),
           if (order.deliveryCharge > 0)
-            _sumRow('Delivery Charge', '+ $currency${order.deliveryCharge.toStringAsFixed(2)}'),
+            _sumRow('Delivery Charge',
+                '+ $currency${order.deliveryCharge.toStringAsFixed(2)}'),
           const Divider(height: 20),
-          _sumRow('Grand Total',      '$currency${order.grandTotal.toStringAsFixed(2)}',
+          _sumRow(
+              'Grand Total', '$currency${order.grandTotal.toStringAsFixed(2)}',
               isBold: true, color: AppColors.primary),
-          _sumRow('Paid Amount',      '$currency${order.paidAmount.toStringAsFixed(2)}',
+          _sumRow(
+              'Paid Amount', '$currency${order.paidAmount.toStringAsFixed(2)}',
               color: AppColors.success),
           if (order.remainingAmount > 0)
-            _sumRow('Due Amount',     '$currency${order.remainingAmount.toStringAsFixed(2)}',
+            _sumRow('Due Amount',
+                '$currency${order.remainingAmount.toStringAsFixed(2)}',
                 color: AppColors.warning, isBold: true),
 
           // ── Daily Savings Banner — always shown on every receipt ──
@@ -442,12 +521,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       if (totalSavings > 0 && marketSavings > 0) ...[
                         Text(
                           '💰 Order Discount: $currency${totalSavings.toStringAsFixed(2)}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 12),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '🏷️ vs. Market Price: $currency${marketSavings.toStringAsFixed(2)}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 12),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -461,12 +542,18 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       ] else if (marketSavings > 0) ...[
                         Text(
                           'You saved $currency${marketSavings.toStringAsFixed(2)} vs. market price by shopping with us! 🥳✨',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13),
                         ),
                       ] else ...[
                         Text(
                           'You saved $currency${totalSavings.toStringAsFixed(2)} on this order by shopping with us! 🥳✨',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13),
                         ),
                       ],
                     ],
@@ -525,7 +612,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ),
             child: SelectableText(
               order.notes,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+              style:
+                  Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
             ),
           ),
         ],
@@ -578,12 +666,15 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     fontWeight: FontWeight.w700,
                     color: AppColors.gray500),
               ),
-              if (order.remainingAmount > 0 && order.deliveryStatus != AppConstants.statusCancelled)
+              if (order.remainingAmount > 0 &&
+                  order.deliveryStatus != AppConstants.statusCancelled)
                 TextButton.icon(
                   onPressed: () => _addPayment(order),
                   icon: const Icon(Icons.add_rounded, size: 16),
-                  label: const Text('Add Payment', style: TextStyle(fontSize: 12)),
-                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                  label:
+                      const Text('Add Payment', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact),
                 ),
             ],
           ),
@@ -603,11 +694,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       color: AppColors.success),
                   title: Text(
                     '$currency${p.amount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(p.method)})',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 13),
                   ),
                   subtitle: Text(
                     AppFormatters.dateTime(p.createdAt),
-                    style: const TextStyle(fontSize: 11, color: AppColors.textHint),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textHint),
                   ),
                 );
               },
@@ -627,7 +720,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         children: [
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () => _updateStatus(order.id, AppConstants.statusDelivered),
+              onPressed: () =>
+                  _updateStatus(order.id, AppConstants.statusDelivered),
               icon: const Icon(Icons.check_circle_rounded),
               label: const Text('Mark Delivered'),
               style: ElevatedButton.styleFrom(
@@ -640,7 +734,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () => _updateStatus(order.id, AppConstants.statusCancelled),
+              onPressed: () =>
+                  _updateStatus(order.id, AppConstants.statusCancelled),
               icon: Icon(Icons.cancel_rounded, color: cancelColor),
               label: const Text('Cancel Order'),
               style: OutlinedButton.styleFrom(
@@ -657,7 +752,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         children: [
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () => _updateStatus(order.id, AppConstants.statusPending),
+              onPressed: () =>
+                  _updateStatus(order.id, AppConstants.statusPending),
               icon: const Icon(Icons.history_rounded),
               label: const Text('Mark Undelivered'),
               style: ElevatedButton.styleFrom(
@@ -670,7 +766,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () => _updateStatus(order.id, AppConstants.statusCancelled),
+              onPressed: () =>
+                  _updateStatus(order.id, AppConstants.statusCancelled),
               icon: Icon(Icons.cancel_rounded, color: cancelColor),
               label: const Text('Cancel Order'),
               style: OutlinedButton.styleFrom(
@@ -687,7 +784,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         children: [
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () => _updateStatus(order.id, AppConstants.statusPending),
+              onPressed: () =>
+                  _updateStatus(order.id, AppConstants.statusPending),
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Reactivate (Undelivered)'),
               style: ElevatedButton.styleFrom(
@@ -708,9 +806,42 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           const SizedBox(height: 16),
         ],
         ElevatedButton.icon(
+          onPressed: () async {
+            final cust =
+                await ref.read(customerDetailProvider(order.customerId).future);
+            final settings = ref.read(settingsProvider).valueOrNull;
+            final itemsList = order.items
+                .map((i) => {
+                      'item_name': i.itemName,
+                      'quantity': i.quantity,
+                      'unit': i.itemUnit,
+                      'unit_price': i.unitPrice,
+                      'total_price': i.totalPrice,
+                    })
+                .toList();
+            if (context.mounted) {
+              await GraphicBillGenerator.generateAndShareGraphicBill(
+                context: context,
+                order: order,
+                customer: cust,
+                settings: settings,
+                orderItems: itemsList,
+              );
+            }
+          },
+          icon: const Icon(Icons.picture_as_pdf_rounded),
+          label: const Text('Share Graphic Invoice (PDF/WhatsApp)'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0F766E),
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 50),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
           onPressed: () => _shareBill(order, currency, isCustomer: true),
           icon: const Icon(Icons.chat_rounded),
-          label: const Text('Customer WA'),
+          label: const Text('Customer WA Text Bill'),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.success,
             foregroundColor: Colors.white,
@@ -753,29 +884,37 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
       try {
         await ref.read(orderManagementProvider.notifier).addPayment(Payment(
-              id:         const Uuid().v4(),
-              orderId:    order.id,
+              id: const Uuid().v4(),
+              orderId: order.id,
               customerId: order.customerId,
-              amount:     amount,
-              method:     method,
-              notes:      notes,
-              createdAt:  DateTime.now(),
+              amount: amount,
+              method: method,
+              notes: notes,
+              createdAt: DateTime.now(),
             ));
         ref.invalidate(orderDetailProvider(widget.orderId));
-        if (mounted) SnackbarHelper.showSuccess(context, 'Payment of $currency$amount added');
+        if (mounted)
+          SnackbarHelper.showSuccess(
+              context, 'Payment of $currency$amount added');
       } catch (e) {
-        if (mounted) SnackbarHelper.showError(context, 'Failed to add payment: $e');
+        if (mounted)
+          SnackbarHelper.showError(context, 'Failed to add payment: $e');
       }
     }
   }
 
   Future<void> _updateStatus(String orderId, String status) async {
     try {
-      await ref.read(orderManagementProvider.notifier).updateDeliveryStatus(orderId, status);
+      await ref
+          .read(orderManagementProvider.notifier)
+          .updateDeliveryStatus(orderId, status);
       ref.invalidate(orderDetailProvider(widget.orderId));
-      if (mounted) SnackbarHelper.showSuccess(context, 'Order updated to ${status.toUpperCase()}');
+      if (mounted)
+        SnackbarHelper.showSuccess(
+            context, 'Order updated to ${status.toUpperCase()}');
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Failed to update status: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Failed to update status: $e');
     }
   }
 
@@ -793,11 +932,77 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Failed to delete order: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Failed to delete order: $e');
     }
   }
 
-  Future<void> _shareBill(AppOrder order, String currency, {required bool isCustomer}) async {
+  Future<void> _updateRates(AppOrder order) async {
+    final settings = ref.read(settingsProvider).valueOrNull;
+    final currency = settings?.currency ?? '₹';
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.refresh_rounded, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Update Order Rates'),
+          ],
+        ),
+        content: Text(
+          'Do you want to update all item prices in Order ${order.orderNoLabel} to the current selling / custom prices?\n\n'
+          'This will recalculate item totals, order subtotal, and grand total.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Update Rates',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final res = await ref
+          .read(orderManagementProvider.notifier)
+          .updateOrderRates(order.id);
+
+      ref.invalidate(orderDetailProvider(widget.orderId));
+
+      if (mounted) {
+        if (res['success'] == true) {
+          final count = res['updatedCount'] ?? 0;
+          final oldTotal = (res['oldGrandTotal'] as num?)?.toDouble() ?? 0.0;
+          final newTotal = (res['newGrandTotal'] as num?)?.toDouble() ?? 0.0;
+          SnackbarHelper.showSuccess(
+            context,
+            'Updated $count items! Total: $currency${oldTotal.toStringAsFixed(2)} ➔ $currency${newTotal.toStringAsFixed(2)}',
+          );
+        } else {
+          SnackbarHelper.showError(
+            context,
+            res['message']?.toString() ?? 'Failed to update rates',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted)
+        SnackbarHelper.showError(context, 'Failed to update rates: $e');
+    }
+  }
+
+  Future<void> _shareBill(AppOrder order, String currency,
+      {required bool isCustomer}) async {
     final settings = ref.read(settingsProvider).value;
     final itemsList = ref.read(inventoryProvider).valueOrNull ?? [];
     double marketSavings = 0.0;
@@ -807,50 +1012,49 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         marketSavings += (inv.marketPrice - oi.unitPrice) * oi.quantity;
       }
     }
-    final list = order.items
-            .map((it) {
-              final matchedItem = itemsList.firstWhere(
-                (i) => i.id == it.itemId,
-                orElse: () => Item(
-                  id: '',
-                  name: '',
-                  category: 'Other',
-                  unit: 'kg',
-                  createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                ),
-              );
-              return {
-                'item_name':   it.itemName,
-                'quantity':    it.quantity,
-                'item_unit':   it.itemUnit,
-                'unit_price':  it.unitPrice,
-                'total_price': it.totalPrice,
-                'prescription_required': matchedItem.prescriptionRequired,
-              };
-            })
-            .toList();
+    final list = order.items.map((it) {
+      final matchedItem = itemsList.firstWhere(
+        (i) => i.id == it.itemId,
+        orElse: () => Item(
+          id: '',
+          name: '',
+          category: 'Other',
+          unit: 'kg',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      return {
+        'item_name': it.itemName,
+        'quantity': it.quantity,
+        'item_unit': it.itemUnit,
+        'unit_price': it.unitPrice,
+        'total_price': it.totalPrice,
+        'prescription_required': matchedItem.prescriptionRequired,
+      };
+    }).toList();
 
     final qAnswers = await OrderQuestionDao.instance.getOrderAnswers(order.id);
 
     final text = BillTextGenerator.generate(
-      businessName:    settings?.businessName ?? 'My Business',
-      customerName:    order.customerName ?? 'Walk-in Customer',
+      businessName: settings?.businessName ?? 'My Business',
+      customerName: order.customerName ?? 'Walk-in Customer',
       customerAddress: order.customerAddress ?? '',
-      orderNoLabel:    order.orderNoLabel,
-      orderDate:       order.createdAt,
-      items:           list,
-      subtotal:        order.subtotal,
-      discount:        order.discount,
-      deliveryCharge:  order.deliveryCharge,
-      grandTotal:      order.grandTotal,
-      paidAmount:      order.paidAmount,
+      orderNoLabel: order.orderNoLabel,
+      orderDate: order.createdAt,
+      items: list,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      deliveryCharge: order.deliveryCharge,
+      grandTotal: order.grandTotal,
+      paidAmount: order.paidAmount,
       remainingAmount: order.remainingAmount,
-      paymentMethod:   order.payments.firstOrNull?.method ?? 'cash',
-      ownerPhone:      settings?.phone ?? '',
-      marketSavings:   marketSavings,
-      currency:        currency,
-      notes:           order.notes,
+      paymentMethod: order.payments.firstOrNull?.method ?? 'cash',
+      ownerPhone: settings?.phone ?? '',
+      marketSavings: marketSavings,
+      currency: currency,
+      notes: order.notes,
+      disclaimer: settings?.invoiceDisclaimer ?? '',
       questionAnswers: qAnswers,
     );
 
@@ -863,7 +1067,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     } else {
       // ── Telegram Sharing ───────────────────────────────────────────
       final staffLink = settings?.staffWhatsApp ?? '';
-      
+
       // Copy to clipboard as first priority to guarantee it's on the keypad pasteboard
       await Clipboard.setData(ClipboardData(text: text));
       if (context.mounted) {

@@ -23,7 +23,8 @@ class WorkerPasscodeLockScreen extends StatefulWidget {
   });
 
   @override
-  State<WorkerPasscodeLockScreen> createState() => _WorkerPasscodeLockScreenState();
+  State<WorkerPasscodeLockScreen> createState() =>
+      _WorkerPasscodeLockScreenState();
 }
 
 class _WorkerPasscodeLockScreenState extends State<WorkerPasscodeLockScreen> {
@@ -56,17 +57,17 @@ class _WorkerPasscodeLockScreenState extends State<WorkerPasscodeLockScreen> {
         whereArgs: [widget.workerId],
       );
 
-      final String correctCode = rows.isNotEmpty
-          ? (rows.first['pin_hash']?.toString() ?? '')
-          : '';
+      final String correctCode =
+          rows.isNotEmpty ? (rows.first['pin_hash']?.toString() ?? '') : '';
 
       // Check match
       if (entered == correctCode || entered == '124357') {
         AppHaptics.success();
         final prefs = await SharedPreferences.getInstance();
         final now = DateTime.now().millisecondsSinceEpoch;
-        await prefs.setInt('last_worker_verification_time_${widget.workerId}', now);
-        
+        await prefs.setInt(
+            'last_worker_verification_time_${widget.workerId}', now);
+
         if (mounted) {
           if (widget.onUnlocked != null) {
             widget.onUnlocked!();
@@ -77,7 +78,8 @@ class _WorkerPasscodeLockScreenState extends State<WorkerPasscodeLockScreen> {
       } else {
         AppHaptics.error();
         if (mounted) {
-          SnackbarHelper.showError(context, 'Invalid security code. Please try again.');
+          SnackbarHelper.showError(
+              context, 'Invalid security code. Please try again.');
           setState(() {
             _passcodeCon.clear();
             _loading = false;
@@ -152,23 +154,29 @@ class _WorkerPasscodeLockScreenState extends State<WorkerPasscodeLockScreen> {
                   decoration: InputDecoration(
                     labelText: 'Passcode / PIN',
                     labelStyle: const TextStyle(color: Colors.white70),
-                    prefixIcon: const Icon(Icons.lock_rounded, color: Colors.white60),
+                    prefixIcon:
+                        const Icon(Icons.lock_rounded, color: Colors.white60),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        _obscureText
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
                         color: Colors.white60,
                       ),
-                      onPressed: () => setState(() => _obscureText = !_obscureText),
+                      onPressed: () =>
+                          setState(() => _obscureText = !_obscureText),
                     ),
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.06),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                      borderSide:
+                          BorderSide(color: Colors.white.withOpacity(0.2)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                      borderSide:
+                          const BorderSide(color: AppColors.primary, width: 2),
                     ),
                   ),
                   onFieldSubmitted: (_) => _verify(),
@@ -208,7 +216,7 @@ class _WorkerPasscodeLockScreenState extends State<WorkerPasscodeLockScreen> {
                         await WorkerSession.instance.clear();
                         await AppModeService.setAppMode(AppMode.owner);
                         await AppModeService.setAppInitialized(false);
-                        
+
                         if (mounted) {
                           Navigator.of(context).pushNamedAndRemoveUntil(
                             AppRoutes.modeSelection,
@@ -221,7 +229,8 @@ class _WorkerPasscodeLockScreenState extends State<WorkerPasscodeLockScreen> {
                     },
                     child: const Text(
                       'Cancel / Log Out',
-                      style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                          color: Colors.redAccent, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],

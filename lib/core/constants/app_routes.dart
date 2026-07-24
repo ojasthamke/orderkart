@@ -30,21 +30,21 @@ class AppRoutes {
   static const String quickInventoryAdjust = '/quick-inventory-adjust';
 
   // Notes
-  static const String notes         = '/notes';
-  static const String addEditNote   = '/add-edit-note';
+  static const String notes = '/notes';
+  static const String addEditNote = '/add-edit-note';
 
   // Visits
-  static const String visits        = '/visits';
-  static const String addEditVisit  = '/add-edit-visit';
+  static const String visits = '/visits';
+  static const String addEditVisit = '/add-edit-visit';
 
   // Enterprise & Security
-  static const String modeSelection   = '/mode-selection';
-  static const String workers         = '/workers';
+  static const String modeSelection = '/mode-selection';
+  static const String workers = '/workers';
   static const String workerDashboard = '/worker-dashboard';
-  static const String pendingSync     = '/pending-sync';
-  static const String importWizard    = '/import-wizard';
-  static const String syncHistory     = '/sync-history';
-  static const String activityTimeline= '/activity-timeline';
+  static const String pendingSync = '/pending-sync';
+  static const String importWizard = '/import-wizard';
+  static const String syncHistory = '/sync-history';
+  static const String activityTimeline = '/activity-timeline';
   static const String businessProfile = '/business-profile';
 
   static const String workerAnalytics = '/worker-analytics';
@@ -52,10 +52,10 @@ class AppRoutes {
   static const String workerSyncActivity = '/worker-sync-activity';
 
   // Notifications
-  static const String notifications   = '/notifications';
-  static const String pinLock         = '/pin-lock';
-  static const String welcome         = '/welcome';
-  static const String callLogs        = '/call-logs';
+  static const String notifications = '/notifications';
+  static const String pinLock = '/pin-lock';
+  static const String welcome = '/welcome';
+  static const String callLogs = '/call-logs';
   static const String workerPasscodeLock = '/worker-passcode-lock';
   static const String orderQuestionsConfig = '/order-questions-config';
   static const String groceriesHub = '/groceries-hub';

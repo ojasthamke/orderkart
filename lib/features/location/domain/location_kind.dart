@@ -12,14 +12,22 @@ enum LocationKind {
 
   String get value {
     switch (this) {
-      case LocationKind.area: return 'Area';
-      case LocationKind.road: return 'Road';
-      case LocationKind.galli: return 'Galli';
-      case LocationKind.society: return 'Society';
-      case LocationKind.building: return 'Building';
-      case LocationKind.unit: return 'Unit';
-      case LocationKind.landmark: return 'Landmark';
-      case LocationKind.other: return 'Other';
+      case LocationKind.area:
+        return 'Area';
+      case LocationKind.road:
+        return 'Road';
+      case LocationKind.galli:
+        return 'Galli';
+      case LocationKind.society:
+        return 'Society';
+      case LocationKind.building:
+        return 'Building';
+      case LocationKind.unit:
+        return 'Unit';
+      case LocationKind.landmark:
+        return 'Landmark';
+      case LocationKind.other:
+        return 'Other';
     }
   }
 

@@ -38,7 +38,8 @@ class OrderDao {
       suffix++;
     }
     if (suffix >= 10000) {
-      throw Exception('Could not generate a unique order number after 10000 attempts');
+      throw Exception(
+          'Could not generate a unique order number after 10000 attempts');
     }
     return candidate;
   }
@@ -54,8 +55,8 @@ class OrderDao {
     String? customerId,
     DateTime? startDate,
     DateTime? endDate,
-    int limit   = 30,
-    int offset  = 0,
+    int limit = 30,
+    int offset = 0,
   }) async {
     final db = await _db;
 
@@ -72,12 +73,15 @@ class OrderDao {
     }
 
     // Date filters
-    final now   = DateTime.now();
+    final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     if (startDate != null && endDate != null) {
       conditions.add('o.created_at >= ? AND o.created_at <= ?');
-      args.add(DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0).toIso8601String());
-      args.add(DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999).toIso8601String());
+      args.add(DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0)
+          .toIso8601String());
+      args.add(
+          DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999)
+              .toIso8601String());
     } else if (filter == 'today') {
       conditions.add('DATE(o.created_at) = DATE(?)');
       args.add(today.toIso8601String());
@@ -89,10 +93,10 @@ class OrderDao {
       conditions.add('o.created_at >= ?');
       args.add(today.subtract(const Duration(days: 7)).toIso8601String());
     } else if (filter == 'month') {
-      conditions.add('strftime(\'%Y-%m\', o.created_at) = strftime(\'%Y-%m\', ?)');
+      conditions
+          .add('strftime(\'%Y-%m\', o.created_at) = strftime(\'%Y-%m\', ?)');
       args.add(now.toIso8601String());
     }
-
 
     final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
 
@@ -113,7 +117,8 @@ class OrderDao {
     return maps.map(AppOrder.fromMap).toList();
   }
 
-  Future<AppOrder?> getOrderById(String id, {DatabaseExecutor? executor}) async {
+  Future<AppOrder?> getOrderById(String id,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     final maps = await db.rawQuery('''
       SELECT o.*, o.rowid AS order_number, c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone
@@ -124,14 +129,16 @@ class OrderDao {
     return AppOrder.fromMap(maps.first);
   }
 
-  Future<List<OrderItem>> getOrderItems(String orderId, {DatabaseExecutor? executor}) async {
+  Future<List<OrderItem>> getOrderItems(String orderId,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
-    final maps = await db.query('order_items',
-        where: 'order_id = ?', whereArgs: [orderId]);
+    final maps = await db
+        .query('order_items', where: 'order_id = ?', whereArgs: [orderId]);
     return maps.map(OrderItem.fromMap).toList();
   }
 
-  Future<List<Payment>> getOrderPayments(String orderId, {DatabaseExecutor? executor}) async {
+  Future<List<Payment>> getOrderPayments(String orderId,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     final maps = await db.query('payments',
         where: 'order_id = ?',
@@ -140,9 +147,10 @@ class OrderDao {
     return maps.map(Payment.fromMap).toList();
   }
 
-  Future<String> insertOrder(AppOrder order, {DatabaseExecutor? executor}) async {
+  Future<String> insertOrder(AppOrder order,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
-    final id  = order.id.isEmpty ? await generateUniqueOrderNo() : order.id;
+    final id = order.id.isEmpty ? await generateUniqueOrderNo() : order.id;
     final now = DateTime.now().toIso8601String();
 
     String workerId = order.assignedWorkerId;
@@ -150,14 +158,18 @@ class OrderDao {
     String commType = '';
 
     if (workerId.isEmpty) {
-      final cust = await db.query('customers', columns: ['assigned_worker_id'], where: 'id = ?', whereArgs: [order.customerId]);
+      final cust = await db.query('customers',
+          columns: ['assigned_worker_id'],
+          where: 'id = ?',
+          whereArgs: [order.customerId]);
       if (cust.isNotEmpty) {
         workerId = cust.first['assigned_worker_id'] as String? ?? '';
       }
     }
 
     if (workerId.isNotEmpty) {
-      final w = await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
+      final w =
+          await db.query('workers', where: 'id = ?', whereArgs: [workerId]);
       if (w.isNotEmpty) {
         commRate = (w.first['commission_value'] as num?)?.toDouble() ?? 5.0;
         commType = w.first['commission_type'] as String? ?? 'pct_order';
@@ -166,17 +178,22 @@ class OrderDao {
 
     final mode = await AppModeService.getAppMode();
     String createdBy = order.createdBy;
-    String assignedWorkerId = workerId.isNotEmpty ? workerId : order.assignedWorkerId;
+    String assignedWorkerId =
+        workerId.isNotEmpty ? workerId : order.assignedWorkerId;
     String workerName = order.workerName;
     String deviceName = order.deviceName;
 
     if (mode == AppMode.worker) {
-      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      final settingsRes = await db
+          .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty
+          ? settingsRes.first['value']?.toString()
+          : null;
       if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
         createdBy = activeWorkerId;
         assignedWorkerId = activeWorkerId;
-        final workerRow = await db.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        final workerRow = await db
+            .query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
         if (workerRow.isNotEmpty) {
           workerName = workerRow.first['name']?.toString() ?? '';
         }
@@ -186,45 +203,55 @@ class OrderDao {
 
     final map = order.toMap();
 
-    final existing = await db.query('orders', columns: ['id'], where: 'id = ?', whereArgs: [id]);
+    final existing = await db.query('orders',
+        columns: ['id'], where: 'id = ?', whereArgs: [id]);
     if (existing.isNotEmpty) {
-      await db.update('orders', {
-        ...map,
-        'assigned_worker_id': assignedWorkerId,
-        'created_by':         createdBy,
-        'worker_name':        workerName,
-        'device_name':        deviceName,
-        'commission_rate':    commRate > 0 ? commRate : 5.0,
-        'commission_type':    commType.isNotEmpty ? commType : 'pct_order',
-        'updated_at':         now,
-      }, where: 'id = ?', whereArgs: [id]);
+      await db.update(
+          'orders',
+          {
+            ...map,
+            'assigned_worker_id': assignedWorkerId,
+            'created_by': createdBy,
+            'worker_name': workerName,
+            'device_name': deviceName,
+            'commission_rate': commRate > 0 ? commRate : 5.0,
+            'commission_type': commType.isNotEmpty ? commType : 'pct_order',
+            'updated_at': now,
+          },
+          where: 'id = ?',
+          whereArgs: [id]);
     } else {
       await db.insert('orders', {
         ...map,
-        'id':                 id,
+        'id': id,
         'assigned_worker_id': assignedWorkerId,
-        'created_by':         createdBy,
-        'worker_name':        workerName,
-        'device_name':        deviceName,
-        'commission_rate':    commRate > 0 ? commRate : 5.0,
-        'commission_type':    commType.isNotEmpty ? commType : 'pct_order',
-        'created_at':         order.createdAt.toIso8601String(),
-        'updated_at':         now,
+        'created_by': createdBy,
+        'worker_name': workerName,
+        'device_name': deviceName,
+        'commission_rate': commRate > 0 ? commRate : 5.0,
+        'commission_type': commType.isNotEmpty ? commType : 'pct_order',
+        'created_at': order.createdAt.toIso8601String(),
+        'updated_at': now,
       });
     }
     return id;
   }
 
-  Future<void> insertOrderItem(OrderItem item, {DatabaseExecutor? executor}) async {
+  Future<void> insertOrderItem(OrderItem item,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     final id = item.id.isEmpty ? _uuid.v4() : item.id;
-    await db.insert('order_items', {
-      ...item.toMap(),
-      'id': id,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'order_items',
+        {
+          ...item.toMap(),
+          'id': id,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<void> deleteOrderItems(String orderId, {DatabaseExecutor? executor}) async {
+  Future<void> deleteOrderItems(String orderId,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     await db.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
   }
@@ -239,25 +266,134 @@ class OrderDao {
     );
   }
 
+  /// Update rates for all items in an order to their current selling price
+  /// (or custom customer price if defined). Recalculates subtotal, grandTotal, and remaining.
+  Future<Map<String, dynamic>> updateOrderRates(String orderId,
+      {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
+
+    final orderMaps =
+        await db.query('orders', where: 'id = ?', whereArgs: [orderId]);
+    if (orderMaps.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Order not found',
+        'updatedCount': 0
+      };
+    }
+    final order = AppOrder.fromMap(orderMaps.first);
+
+    final itemMaps = await db
+        .query('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+    final orderItems = itemMaps.map(OrderItem.fromMap).toList();
+
+    if (orderItems.isEmpty) {
+      return {
+        'success': false,
+        'message': 'No items in this order',
+        'updatedCount': 0
+      };
+    }
+
+    double newSubtotal = 0.0;
+    int updatedCount = 0;
+
+    for (final item in orderItems) {
+      if (item.itemId.isEmpty) {
+        newSubtotal += item.totalPrice;
+        continue;
+      }
+
+      final dbItems = await db.query('items',
+          columns: ['selling_price'],
+          where: 'id = ?',
+          whereArgs: [item.itemId]);
+      if (dbItems.isEmpty) {
+        newSubtotal += item.totalPrice;
+        continue;
+      }
+
+      double currentPrice = (dbItems.first['selling_price'] as num).toDouble();
+
+      try {
+        final custPrices = await db.query(
+          'customer_item_prices',
+          columns: ['custom_price'],
+          where: 'customer_id = ? AND item_id = ?',
+          whereArgs: [order.customerId, item.itemId],
+        );
+        if (custPrices.isNotEmpty) {
+          currentPrice = (custPrices.first['custom_price'] as num).toDouble();
+        }
+      } catch (_) {}
+
+      final newTotalPrice = currentPrice * item.quantity;
+
+      await db.update(
+        'order_items',
+        {
+          'unit_price': currentPrice,
+          'total_price': newTotalPrice,
+        },
+        where: 'id = ?',
+        whereArgs: [item.id],
+      );
+
+      newSubtotal += newTotalPrice;
+      updatedCount++;
+    }
+
+    final newGrandTotal =
+        math.max(0.0, newSubtotal - order.discount + order.deliveryCharge);
+    final newRemaining = math.max(0.0, newGrandTotal - order.paidAmount);
+
+    await db.update(
+      'orders',
+      {
+        'subtotal': newSubtotal,
+        'grand_total': newGrandTotal,
+        'remaining_amount': newRemaining,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+
+    return {
+      'success': true,
+      'updatedCount': updatedCount,
+      'oldSubtotal': order.subtotal,
+      'newSubtotal': newSubtotal,
+      'oldGrandTotal': order.grandTotal,
+      'newGrandTotal': newGrandTotal,
+    };
+  }
+
   Future<void> deleteOrder(String id, {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     await db.delete('order_items', where: 'order_id = ?', whereArgs: [id]);
     await db.delete('payments', where: 'order_id = ?', whereArgs: [id]);
-    await db.delete('order_question_answers', where: 'order_id = ?', whereArgs: [id]);
+    await db.delete('order_question_answers',
+        where: 'order_id = ?', whereArgs: [id]);
     await db.delete('orders', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<void> updateDeliveryStatus(String orderId, String status, {DatabaseExecutor? executor}) async {
+  Future<void> updateDeliveryStatus(String orderId, String status,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     await db.update(
       'orders',
-      {'delivery_status': status, 'updated_at': DateTime.now().toIso8601String()},
+      {
+        'delivery_status': status,
+        'updated_at': DateTime.now().toIso8601String()
+      },
       where: 'id = ?',
       whereArgs: [orderId],
     );
   }
 
-  Future<void> insertPayment(Payment payment, {DatabaseExecutor? executor}) async {
+  Future<void> insertPayment(Payment payment,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     final id = payment.id.isEmpty ? _uuid.v4() : payment.id;
 
@@ -268,12 +404,16 @@ class OrderDao {
     String deviceName = '';
 
     if (mode == AppMode.worker) {
-      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      final settingsRes = await db
+          .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty
+          ? settingsRes.first['value']?.toString()
+          : null;
       if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
         createdBy = activeWorkerId;
         assignedWorkerId = activeWorkerId;
-        final workerRow = await db.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        final workerRow = await db
+            .query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
         if (workerRow.isNotEmpty) {
           workerName = workerRow.first['name']?.toString() ?? '';
         }
@@ -281,25 +421,29 @@ class OrderDao {
       }
     }
 
-    await db.insert('payments', {
-      ...payment.toMap(),
-      'id':                 id,
-      'created_by':         createdBy,
-      'assigned_worker_id': assignedWorkerId,
-      'worker_name':        workerName,
-      'device_name':        deviceName,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'payments',
+        {
+          ...payment.toMap(),
+          'id': id,
+          'created_by': createdBy,
+          'assigned_worker_id': assignedWorkerId,
+          'worker_name': workerName,
+          'device_name': deviceName,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> updateOrderPayment(
-      String orderId, double paidAmount, double remainingAmount, {DatabaseExecutor? executor}) async {
+      String orderId, double paidAmount, double remainingAmount,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     await db.update(
       'orders',
       {
-        'paid_amount':      paidAmount,
+        'paid_amount': paidAmount,
         'remaining_amount': remainingAmount,
-        'updated_at':       DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [orderId],
@@ -310,9 +454,11 @@ class OrderDao {
     final db = await _db;
     final mode = await AppModeService.getAppMode();
     if (mode != AppMode.worker) return null;
-    
-    final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-    String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+
+    final settingsRes = await db
+        .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+    String? workerId =
+        settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
     if (workerId == null || workerId.isEmpty) {
       final workerRows = await db.query('workers', limit: 1);
       if (workerRows.isNotEmpty) {
@@ -325,9 +471,9 @@ class OrderDao {
   /// Analytics summary query
   Future<Map<String, dynamic>> getAnalyticsSummary() async {
     final db = await _db;
-    final now    = DateTime.now();
-    final today  = DateTime(now.year, now.month, now.day).toIso8601String();
-    final month  = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day).toIso8601String();
+    final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
     final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
@@ -386,8 +532,8 @@ class OrderDao {
             : "SELECT COUNT(*) AS v FROM orders WHERE delivery_status != 'cancelled'",
         isWorker ? [workerId, workerId] : null);
 
-    final itemCount = await db.rawQuery(
-        'SELECT COUNT(*) AS v FROM items WHERE is_archived = 0');
+    final itemCount = await db
+        .rawQuery('SELECT COUNT(*) AS v FROM items WHERE is_archived = 0');
 
     final vipCount = await db.rawQuery(
         isWorker
@@ -420,9 +566,12 @@ class OrderDao {
         isWorker ? [month, workerId, workerId] : [month]);
 
     final double tExp = (todayExpenses.first['v'] as num?)?.toDouble() ?? 0.0;
-    final double mExp = (monthlyExpensesRes.first['v'] as num?)?.toDouble() ?? 0.0;
-    final double tGross = (todayGrossProfit.first['v'] as num?)?.toDouble() ?? 0.0;
-    final double mGross = (monthlyGrossProfit.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double mExp =
+        (monthlyExpensesRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double tGross =
+        (todayGrossProfit.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double mGross =
+        (monthlyGrossProfit.first['v'] as num?)?.toDouble() ?? 0.0;
 
     final double todayNetProfit = tGross - tExp;
     final double monthlyNetProfit = mGross - mExp;
@@ -484,27 +633,27 @@ class OrderDao {
         isWorker ? [workerId, workerId] : null);
 
     return {
-      'today_sales':      (todaySales.first['v'] as num?)?.toDouble()    ?? 0,
+      'today_sales': (todaySales.first['v'] as num?)?.toDouble() ?? 0,
       'today_orders_count': todayOrders.first['v'] ?? 0,
-      'monthly_sales':    (monthlySales.first['v'] as num?)?.toDouble()  ?? 0,
-      'pending_payments': (pendingPayments.first['v'] as num?)?.toDouble()?? 0,
-      'cash_received':    (cashReceived.first['v'] as num?)?.toDouble()  ?? 0,
-      'online_received':  (onlineReceived.first['v'] as num?)?.toDouble()?? 0,
-      'total_expenses':   (totalExpenses.first['v'] as num?)?.toDouble() ?? 0,
-      'customer_count':   customerCount.first['v'] ?? 0,
-      'order_count':      orderCount.first['v']    ?? 0,
-      'item_count':       itemCount.first['v']     ?? 0,
-      'top_items':        topItems,
-      'low_stock':        lowStock,
-      'delivered_count':  deliveredOrders.first['v'] ?? 0,
-      'pending_count':    pendingOrders.first['v'] ?? 0,
-      'cancelled_count':  cancelledOrders.first['v'] ?? 0,
-      'all_time_sales':   (allTimeSales.first['v'] as num?)?.toDouble() ?? 0,
-      'delivery_fees':    (allTimeDelivery.first['v'] as num?)?.toDouble() ?? 0,
-      'vip_count':        vipCount.first['v'] ?? 0,
-      'today_expenses':   tExp,
-      'today_profit':     todayNetProfit,
-      'monthly_profit':   monthlyNetProfit,
+      'monthly_sales': (monthlySales.first['v'] as num?)?.toDouble() ?? 0,
+      'pending_payments': (pendingPayments.first['v'] as num?)?.toDouble() ?? 0,
+      'cash_received': (cashReceived.first['v'] as num?)?.toDouble() ?? 0,
+      'online_received': (onlineReceived.first['v'] as num?)?.toDouble() ?? 0,
+      'total_expenses': (totalExpenses.first['v'] as num?)?.toDouble() ?? 0,
+      'customer_count': customerCount.first['v'] ?? 0,
+      'order_count': orderCount.first['v'] ?? 0,
+      'item_count': itemCount.first['v'] ?? 0,
+      'top_items': topItems,
+      'low_stock': lowStock,
+      'delivered_count': deliveredOrders.first['v'] ?? 0,
+      'pending_count': pendingOrders.first['v'] ?? 0,
+      'cancelled_count': cancelledOrders.first['v'] ?? 0,
+      'all_time_sales': (allTimeSales.first['v'] as num?)?.toDouble() ?? 0,
+      'delivery_fees': (allTimeDelivery.first['v'] as num?)?.toDouble() ?? 0,
+      'vip_count': vipCount.first['v'] ?? 0,
+      'today_expenses': tExp,
+      'today_profit': todayNetProfit,
+      'monthly_profit': monthlyNetProfit,
     };
   }
 
@@ -513,7 +662,7 @@ class OrderDao {
     final db = await _db;
     final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
-    
+
     // 1. Gross Revenue
     final revenueRes = await db.rawQuery(
         isWorker
@@ -562,12 +711,14 @@ class OrderDao {
             ? "SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled'"
             : "SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE delivery_status != 'cancelled'",
         isWorker ? [workerId, workerId] : null);
-    final totalDeliveryIncome = (deliveryRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final totalDeliveryIncome =
+        (deliveryRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     // Calculations
     final grossProfit = totalRevenue - cogs;
     final netProfit = grossProfit - totalExpenses;
-    final profitMarginPct = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0.0;
+    final profitMarginPct =
+        totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0.0;
 
     return {
       'total_revenue': totalRevenue,
@@ -679,8 +830,8 @@ class OrderDao {
 
   Future<Map<String, dynamic>> getTodaysDetailedReport() async {
     final db = await _db;
-    final now    = DateTime.now();
-    final today  = DateTime(now.year, now.month, now.day).toIso8601String();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day).toIso8601String();
 
     final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
@@ -770,10 +921,14 @@ class OrderDao {
               ''',
         isWorker ? [today, workerId, workerId] : [today]);
 
-    final double totalSalesVal = (totalSales.first['v'] as num?)?.toDouble() ?? 0.0;
-    final double cashReceivedVal = (cashPayments.first['v'] as num?)?.toDouble() ?? 0.0;
-    final double onlineReceivedVal = (onlinePayments.first['v'] as num?)?.toDouble() ?? 0.0;
-    final double pendingVal = totalSalesVal - (cashReceivedVal + onlineReceivedVal);
+    final double totalSalesVal =
+        (totalSales.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double cashReceivedVal =
+        (cashPayments.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double onlineReceivedVal =
+        (onlinePayments.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double pendingVal =
+        totalSalesVal - (cashReceivedVal + onlineReceivedVal);
 
     return {
       'orders': orderMaps.map(AppOrder.fromMap).toList(),
@@ -788,8 +943,8 @@ class OrderDao {
   /// Compute customer savings: order-level discounts + market-price savings
   /// Fixes 1-to-N join multiplication bug by calculating discounts and item market savings separately.
   Future<Map<String, double>> getCustomerSavings(String customerId) async {
-    final db   = await _db;
-    final now  = DateTime.now();
+    final db = await _db;
+    final now = DateTime.now();
     final month = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
     // 1. Order discounts (all time & monthly)
@@ -834,13 +989,13 @@ class OrderDao {
       WHERE o.customer_id = ? AND o.delivery_status != 'cancelled' AND strftime('%Y-%m', o.created_at) = ?
     ''', [customerId, month]);
 
-    final allDisc   = (allDiscRes.first['v'] as num?)?.toDouble() ?? 0.0;
-    final monDisc   = (monDiscRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final allDisc = (allDiscRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final monDisc = (monDiscRes.first['v'] as num?)?.toDouble() ?? 0.0;
     final allMarket = (allMarketRes.first['v'] as num?)?.toDouble() ?? 0.0;
     final monMarket = (monMarketRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     return {
-      'total':   allDisc + allMarket,
+      'total': allDisc + allMarket,
       'monthly': monDisc + monMarket,
     };
   }

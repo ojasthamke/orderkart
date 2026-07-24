@@ -55,7 +55,8 @@ class OrderQuestionDao {
   OrderQuestionDao._();
   static final OrderQuestionDao instance = OrderQuestionDao._();
 
-  Future<void> addQuestion(String question, List<String> options, {String? customerId}) async {
+  Future<void> addQuestion(String question, List<String> options,
+      {String? customerId}) async {
     final db = await DatabaseHelper.instance.database;
     final now = DateTime.now();
     final q = OrderQuestion(
@@ -69,7 +70,8 @@ class OrderQuestionDao {
     await db.insert('order_questions', q.toMap());
   }
 
-  Future<void> updateQuestion(String id, String question, List<String> options) async {
+  Future<void> updateQuestion(
+      String id, String question, List<String> options) async {
     final db = await DatabaseHelper.instance.database;
     final now = DateTime.now();
     await db.update(
@@ -117,13 +119,15 @@ class OrderQuestionDao {
     return res.map((r) => OrderQuestion.fromMap(r)).toList();
   }
 
-  Future<List<OrderQuestion>> getAllQuestionsForCustomer(String customerId) async {
+  Future<List<OrderQuestion>> getAllQuestionsForCustomer(
+      String customerId) async {
     final commons = await getCommonQuestions();
     final specifics = await getCustomerQuestions(customerId);
     return [...commons, ...specifics];
   }
 
-  Future<void> saveCustomerAnswer(String customerId, String questionId, String answer) async {
+  Future<void> saveCustomerAnswer(
+      String customerId, String questionId, String answer) async {
     final db = await DatabaseHelper.instance.database;
     await db.insert(
       'customer_question_answers',
@@ -154,7 +158,8 @@ class OrderQuestionDao {
     return map;
   }
 
-  Future<void> saveOrderAnswers(String orderId, List<Map<String, dynamic>> answers) async {
+  Future<void> saveOrderAnswers(
+      String orderId, List<Map<String, dynamic>> answers) async {
     final db = await DatabaseHelper.instance.database;
     await db.transaction((txn) async {
       // Clear any existing answers first

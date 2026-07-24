@@ -18,12 +18,16 @@ class NoteDao {
     String deviceName = '';
 
     if (mode == AppMode.worker) {
-      final settingsRes = await database.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      final settingsRes = await database
+          .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty
+          ? settingsRes.first['value']?.toString()
+          : null;
       if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
         createdBy = activeWorkerId;
         assignedWorkerId = activeWorkerId;
-        final workerRow = await database.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        final workerRow = await database
+            .query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
         if (workerRow.isNotEmpty) {
           workerName = workerRow.first['name']?.toString() ?? '';
         }
@@ -35,10 +39,10 @@ class NoteDao {
       tableName,
       {
         ...note.toMap(),
-        'created_by':         createdBy,
+        'created_by': createdBy,
         'assigned_worker_id': assignedWorkerId,
-        'worker_name':        workerName,
-        'device_name':        deviceName,
+        'worker_name': workerName,
+        'device_name': deviceName,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -75,8 +79,11 @@ class NoteDao {
 
     final mode = await AppModeService.getAppMode();
     if (mode == AppMode.worker) {
-      final settingsRes = await database.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      final settingsRes = await database
+          .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty
+          ? settingsRes.first['value']?.toString()
+          : null;
       if (workerId == null || workerId.isEmpty) {
         final workerRows = await database.query('workers', limit: 1);
         if (workerRows.isNotEmpty) {

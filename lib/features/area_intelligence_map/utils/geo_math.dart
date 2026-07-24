@@ -13,8 +13,13 @@ class GeoMath {
       final pi = polygon[i];
       final pj = polygon[j];
 
-      final intersect = ((pi.latitude > point.latitude) != (pj.latitude > point.latitude)) &&
-          (point.longitude < (pj.longitude - pi.longitude) * (point.latitude - pi.latitude) / (pj.latitude - pi.latitude) + pi.longitude);
+      final intersect =
+          ((pi.latitude > point.latitude) != (pj.latitude > point.latitude)) &&
+              (point.longitude <
+                  (pj.longitude - pi.longitude) *
+                          (point.latitude - pi.latitude) /
+                          (pj.latitude - pi.latitude) +
+                      pi.longitude);
       if (intersect) {
         isInside = !isInside;
       }
@@ -28,15 +33,19 @@ class GeoMath {
     const double r = 6371000; // Earth radius in meters
     final double dLat = _rad(p2.latitude - p1.latitude);
     final double dLng = _rad(p2.longitude - p1.longitude);
-    
+
     final double a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_rad(p1.latitude)) * cos(_rad(p2.latitude)) * sin(dLng / 2) * sin(dLng / 2);
+        cos(_rad(p1.latitude)) *
+            cos(_rad(p2.latitude)) *
+            sin(dLng / 2) *
+            sin(dLng / 2);
     final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return r * c;
   }
 
   /// Exponential Moving Average (EMA) to smooth out GPS jitter.
-  static LatLng smoothGPS(LatLng newPoint, LatLng? prevPoint, {double alpha = 0.7}) {
+  static LatLng smoothGPS(LatLng newPoint, LatLng? prevPoint,
+      {double alpha = 0.7}) {
     if (prevPoint == null) return newPoint;
     return LatLng(
       alpha * newPoint.latitude + (1 - alpha) * prevPoint.latitude,

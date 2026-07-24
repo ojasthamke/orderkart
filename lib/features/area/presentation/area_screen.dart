@@ -52,10 +52,12 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
             ref.read(areaProvider.notifier).sort(v);
           },
           itemBuilder: (_) => [
-            const PopupMenuItem(value: 'name',          child: Text('Sort by Name')),
-            const PopupMenuItem(value: 'date',          child: Text('Sort by Date')),
-            const PopupMenuItem(value: 'street_count',  child: Text('Sort by Streets')),
-            const PopupMenuItem(value: 'customer_count',child: Text('Sort by Customers')),
+            const PopupMenuItem(value: 'name', child: Text('Sort by Name')),
+            const PopupMenuItem(value: 'date', child: Text('Sort by Date')),
+            const PopupMenuItem(
+                value: 'street_count', child: Text('Sort by Streets')),
+            const PopupMenuItem(
+                value: 'customer_count', child: Text('Sort by Customers')),
           ],
         ),
         IconButton(
@@ -129,9 +131,19 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                 var areas = rawAreas;
                 if (!isWorker) {
                   if (_filterMode == 'owner') {
-                    areas = rawAreas.where((a) => a.createdBy.toLowerCase() == 'owner' || (a.createdBy.isEmpty && a.assignedWorkerId.isEmpty)).toList();
+                    areas = rawAreas
+                        .where((a) =>
+                            a.createdBy.toLowerCase() == 'owner' ||
+                            (a.createdBy.isEmpty && a.assignedWorkerId.isEmpty))
+                        .toList();
                   } else if (_filterMode != 'all') {
-                    areas = rawAreas.where((a) => a.assignedWorkerId == _filterMode || a.createdBy == _filterMode || a.workerName.toLowerCase() == _filterMode.toLowerCase()).toList();
+                    areas = rawAreas
+                        .where((a) =>
+                            a.assignedWorkerId == _filterMode ||
+                            a.createdBy == _filterMode ||
+                            a.workerName.toLowerCase() ==
+                                _filterMode.toLowerCase())
+                        .toList();
                   }
                 }
 
@@ -139,7 +151,9 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                   return EmptyStateWidget(
                     icon: Icons.map_outlined,
                     title: 'No Areas Found',
-                    subtitle: _filterMode == 'all' ? 'Add your first area to get started' : 'No areas match the selected filter',
+                    subtitle: _filterMode == 'all'
+                        ? 'Add your first area to get started'
+                        : 'No areas match the selected filter',
                     actionLabel: 'Add Area',
                     onAction: () => _showAddEditDialog(context, null),
                   );
@@ -154,7 +168,7 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                     onTap: () => Navigator.of(context).pushNamed(
                       AppRoutes.streets,
                       arguments: {
-                        'areaId':   areas[i].id,
+                        'areaId': areas[i].id,
                         'areaName': areas[i].name,
                       },
                     ),
@@ -193,24 +207,25 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
 
           if (area == null) {
             await ref.read(areaProvider.notifier).addArea(Area(
-                  id:           areaId,
-                  name:         name,
-                  description:  description,
-                  color:        color,
-                  photoPath:    finalPhotoPath,
+                  id: areaId,
+                  name: name,
+                  description: description,
+                  color: color,
+                  photoPath: finalPhotoPath,
                   mapsLocation: mapsLocation,
-                  createdAt:    now,
-                  updatedAt:    now,
+                  createdAt: now,
+                  updatedAt: now,
                 ));
-            if (mounted) SnackbarHelper.showSuccess(context, 'Area added successfully');
+            if (mounted)
+              SnackbarHelper.showSuccess(context, 'Area added successfully');
           } else {
             await ref.read(areaProvider.notifier).updateArea(area.copyWith(
-                  name:         name,
-                  description:  description,
-                  color:        color,
-                  photoPath:    finalPhotoPath,
+                  name: name,
+                  description: description,
+                  color: color,
+                  photoPath: finalPhotoPath,
                   mapsLocation: mapsLocation,
-                  updatedAt:    now,
+                  updatedAt: now,
                 ));
             if (mounted) SnackbarHelper.showSuccess(context, 'Area updated');
           }

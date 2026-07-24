@@ -22,13 +22,12 @@ class StockAdjustmentScreen extends ConsumerStatefulWidget {
       _StockAdjustmentScreenState();
 }
 
-class _StockAdjustmentScreenState
-    extends ConsumerState<StockAdjustmentScreen> {
-  final _changeCon  = TextEditingController();
-  final _reasonCon  = TextEditingController();
-  double _change    = 0;
-  String _mode      = 'add'; // 'add', 'remove', 'wastage'
-  bool   _autoLogExpense = true;
+class _StockAdjustmentScreenState extends ConsumerState<StockAdjustmentScreen> {
+  final _changeCon = TextEditingController();
+  final _reasonCon = TextEditingController();
+  double _change = 0;
+  String _mode = 'add'; // 'add', 'remove', 'wastage'
+  bool _autoLogExpense = true;
 
   @override
   void dispose() {
@@ -80,14 +79,18 @@ class _StockAdjustmentScreenState
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: _mode == 'add' ? AppColors.success : AppColors.gray100,
+                        color: _mode == 'add'
+                            ? AppColors.success
+                            : AppColors.gray100,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
                         child: Text(
                           '+ Add',
                           style: TextStyle(
-                            color: _mode == 'add' ? Colors.white : AppColors.textSecondary,
+                            color: _mode == 'add'
+                                ? Colors.white
+                                : AppColors.textSecondary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -106,14 +109,18 @@ class _StockAdjustmentScreenState
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: _mode == 'remove' ? AppColors.error : AppColors.gray100,
+                        color: _mode == 'remove'
+                            ? AppColors.error
+                            : AppColors.gray100,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
                         child: Text(
                           '- Remove',
                           style: TextStyle(
-                            color: _mode == 'remove' ? Colors.white : AppColors.textSecondary,
+                            color: _mode == 'remove'
+                                ? Colors.white
+                                : AppColors.textSecondary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -132,14 +139,18 @@ class _StockAdjustmentScreenState
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: _mode == 'wastage' ? Colors.amber.shade800 : AppColors.gray100,
+                        color: _mode == 'wastage'
+                            ? Colors.amber.shade800
+                            : AppColors.gray100,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Center(
                         child: Text(
                           '🍏 Wastage',
                           style: TextStyle(
-                            color: _mode == 'wastage' ? Colors.white : AppColors.textSecondary,
+                            color: _mode == 'wastage'
+                                ? Colors.white
+                                : AppColors.textSecondary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -160,8 +171,14 @@ class _StockAdjustmentScreenState
                 prefixIcon: Icon(
                   _mode == 'add'
                       ? Icons.add_circle_outline_rounded
-                      : (_mode == 'wastage' ? Icons.delete_outline_rounded : Icons.remove_circle_outline_rounded),
-                  color: _mode == 'add' ? AppColors.success : (_mode == 'wastage' ? Colors.amber.shade800 : AppColors.error),
+                      : (_mode == 'wastage'
+                          ? Icons.delete_outline_rounded
+                          : Icons.remove_circle_outline_rounded),
+                  color: _mode == 'add'
+                      ? AppColors.success
+                      : (_mode == 'wastage'
+                          ? Colors.amber.shade800
+                          : AppColors.error),
                 ),
               ),
               onChanged: (v) =>
@@ -180,7 +197,10 @@ class _StockAdjustmentScreenState
               const SizedBox(height: 8),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Auto-log Expense under 🍏 Spoilage & Damaged Goods', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                title: const Text(
+                    'Auto-log Expense under 🍏 Spoilage & Damaged Goods',
+                    style:
+                        TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 value: _autoLogExpense,
                 onChanged: (v) => setState(() => _autoLogExpense = v ?? true),
                 controlAffinity: ListTileControlAffinity.leading,
@@ -194,8 +214,8 @@ class _StockAdjustmentScreenState
             const SizedBox(height: 8),
             Expanded(
               child: ref.watch(stockHistoryProvider(widget.itemId)).when(
-                    loading: () => const Center(
-                        child: CircularProgressIndicator()),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Text('Error: $e'),
                     data: (history) => ListView.builder(
                       itemCount: history.length,
@@ -212,12 +232,14 @@ class _StockAdjustmentScreenState
                           title: Text(
                             '${isAdd ? '+' : ''}${AppFormatters.quantity(h.changeAmount)}',
                             style: TextStyle(
-                                color: isAdd ? AppColors.success : AppColors.error,
+                                color:
+                                    isAdd ? AppColors.success : AppColors.error,
                                 fontWeight: FontWeight.w700),
                           ),
                           subtitle: Text(h.reason),
                           trailing: Text(
-                            AppFormatters.dateFromString(h.createdAt.toIso8601String()),
+                            AppFormatters.dateFromString(
+                                h.createdAt.toIso8601String()),
                             style: const TextStyle(
                                 fontSize: 11, color: AppColors.textHint),
                           ),
@@ -231,13 +253,24 @@ class _StockAdjustmentScreenState
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        color: Theme.of(context).cardTheme.color ?? Theme.of(context).scaffoldBackgroundColor,
+        color: Theme.of(context).cardTheme.color ??
+            Theme.of(context).scaffoldBackgroundColor,
         child: ElevatedButton.icon(
           onPressed: _change > 0 ? _adjust : null,
-          icon: Icon(_mode == 'add' ? Icons.add_rounded : (_mode == 'wastage' ? Icons.delete_outline_rounded : Icons.remove_rounded)),
-          label: Text(_mode == 'add' ? 'Add Stock' : (_mode == 'wastage' ? 'Record Wastage' : 'Remove Stock')),
+          icon: Icon(_mode == 'add'
+              ? Icons.add_rounded
+              : (_mode == 'wastage'
+                  ? Icons.delete_outline_rounded
+                  : Icons.remove_rounded)),
+          label: Text(_mode == 'add'
+              ? 'Add Stock'
+              : (_mode == 'wastage' ? 'Record Wastage' : 'Remove Stock')),
           style: ElevatedButton.styleFrom(
-            backgroundColor: _mode == 'add' ? AppColors.success : (_mode == 'wastage' ? Colors.amber.shade800 : AppColors.error),
+            backgroundColor: _mode == 'add'
+                ? AppColors.success
+                : (_mode == 'wastage'
+                    ? Colors.amber.shade800
+                    : AppColors.error),
             minimumSize: const Size(double.infinity, 52),
           ),
         ),
@@ -250,16 +283,21 @@ class _StockAdjustmentScreenState
     final currentStock = itemObj?.stock ?? 0.0;
     if ((_mode == 'wastage' || _mode == 'remove') && _change > currentStock) {
       if (mounted) {
-        SnackbarHelper.showError(context, 'Cannot adjust stock: quantity (${AppFormatters.quantity(_change)}) exceeds current stock (${AppFormatters.quantity(currentStock)})');
+        SnackbarHelper.showError(context,
+            'Cannot adjust stock: quantity (${AppFormatters.quantity(_change)}) exceeds current stock (${AppFormatters.quantity(currentStock)})');
       }
       return;
     }
 
     AppHaptics.primarySave();
     if (_mode == 'wastage') {
-      final reason = _reasonCon.text.trim().isEmpty ? 'Wastage / Spoilage loss' : _reasonCon.text.trim();
-      await ref.read(inventoryProvider.notifier).adjustStock(widget.itemId, -_change, 'Wastage: $reason');
-      
+      final reason = _reasonCon.text.trim().isEmpty
+          ? 'Wastage / Spoilage loss'
+          : _reasonCon.text.trim();
+      await ref
+          .read(inventoryProvider.notifier)
+          .adjustStock(widget.itemId, -_change, 'Wastage: $reason');
+
       if (_autoLogExpense) {
         final itemObj = await ItemDao().getItemById(widget.itemId);
         final rate = (itemObj?.costPrice != null && itemObj!.costPrice > 0)
@@ -270,7 +308,8 @@ class _StockAdjustmentScreenState
           await ExpenseDao().insertExpense(
             Expense(
               id: '',
-              name: 'Wastage: ${widget.itemName} (${AppFormatters.quantity(_change)})',
+              name:
+                  'Wastage: ${widget.itemName} (${AppFormatters.quantity(_change)})',
               category: AppConstants.expSpoilageLoss,
               amount: costLoss,
               date: DateTime.now(),
@@ -283,14 +322,14 @@ class _StockAdjustmentScreenState
         }
       }
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Wastage of ${AppFormatters.quantity(_change)} recorded');
+        SnackbarHelper.showSuccess(
+            context, 'Wastage of ${AppFormatters.quantity(_change)} recorded');
         Navigator.of(context).pop();
       }
     } else {
       final change = _mode == 'add' ? _change : -_change;
-      await ref
-          .read(inventoryProvider.notifier)
-          .adjustStock(widget.itemId, change, _mode == 'add' ? 'Stock added' : 'Stock reduced');
+      await ref.read(inventoryProvider.notifier).adjustStock(widget.itemId,
+          change, _mode == 'add' ? 'Stock added' : 'Stock reduced');
       if (mounted) {
         SnackbarHelper.showSuccess(context, 'Stock updated');
         Navigator.of(context).pop();

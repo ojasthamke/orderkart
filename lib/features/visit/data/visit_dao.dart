@@ -18,12 +18,16 @@ class VisitDao {
     String deviceName = '';
 
     if (mode == AppMode.worker) {
-      final settingsRes = await database.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      final settingsRes = await database
+          .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty
+          ? settingsRes.first['value']?.toString()
+          : null;
       if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
         createdBy = activeWorkerId;
         assignedWorkerId = activeWorkerId;
-        final workerRow = await database.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        final workerRow = await database
+            .query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
         if (workerRow.isNotEmpty) {
           workerName = workerRow.first['name']?.toString() ?? '';
         }
@@ -35,10 +39,10 @@ class VisitDao {
       tableName,
       {
         ...visit.toMap(),
-        'created_by':         createdBy,
+        'created_by': createdBy,
         'assigned_worker_id': assignedWorkerId,
-        'worker_name':        workerName,
-        'device_name':        deviceName,
+        'worker_name': workerName,
+        'device_name': deviceName,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -70,8 +74,11 @@ class VisitDao {
 
     final mode = await AppModeService.getAppMode();
     if (mode == AppMode.worker) {
-      final settingsRes = await database.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      final settingsRes = await database
+          .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty
+          ? settingsRes.first['value']?.toString()
+          : null;
       if (workerId == null || workerId.isEmpty) {
         final workerRows = await database.query('workers', limit: 1);
         if (workerRows.isNotEmpty) {
@@ -94,7 +101,8 @@ class VisitDao {
             ? List.filled(assignedAreaIds.length, '?').join(',')
             : "''";
 
-        where += ' AND (created_by = ? OR assigned_worker_id = ? OR area_id IN ($placeholders))';
+        where +=
+            ' AND (created_by = ? OR assigned_worker_id = ? OR area_id IN ($placeholders))';
         args.addAll([workerId, workerId]);
         if (assignedAreaIds.isNotEmpty) {
           args.addAll(assignedAreaIds);
@@ -127,8 +135,11 @@ class VisitDao {
 
     final mode = await AppModeService.getAppMode();
     if (mode == AppMode.worker) {
-      final settingsRes = await database.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      String? workerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      final settingsRes = await database
+          .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      String? workerId = settingsRes.isNotEmpty
+          ? settingsRes.first['value']?.toString()
+          : null;
       if (workerId == null || workerId.isEmpty) {
         final workerRows = await database.query('workers', limit: 1);
         if (workerRows.isNotEmpty) {
@@ -151,7 +162,8 @@ class VisitDao {
             ? List.filled(assignedAreaIds.length, '?').join(',')
             : "''";
 
-        where = '(created_by = ? OR assigned_worker_id = ? OR area_id IN ($placeholders))';
+        where =
+            '(created_by = ? OR assigned_worker_id = ? OR area_id IN ($placeholders))';
         args = [workerId, workerId];
         if (assignedAreaIds.isNotEmpty) {
           args.addAll(assignedAreaIds);

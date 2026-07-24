@@ -40,7 +40,8 @@ void main() {
 
     // Verify list is sorted lexicographically
     for (int i = 0; i < list.length - 1; i++) {
-      expect(list[i].compareTo(list[i + 1]) < 0, isTrue, reason: 'Failed comparing ${list[i]} and ${list[i + 1]}');
+      expect(list[i].compareTo(list[i + 1]) < 0, isTrue,
+          reason: 'Failed comparing ${list[i]} and ${list[i + 1]}');
     }
   });
 }

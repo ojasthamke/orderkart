@@ -16,7 +16,8 @@ class CustomerDao {
     return executor ?? await _db;
   }
 
-  Future<void> saveCustomerOrder(String streetId, List<String> orderedIds) async {
+  Future<void> saveCustomerOrder(
+      String streetId, List<String> orderedIds) async {
     final db = await _db;
     final val = jsonEncode(orderedIds);
     await db.insert(
@@ -36,7 +37,8 @@ class CustomerDao {
     });
   }
 
-  Future<List<Customer>> getCustomersByStreet(String streetId, {String? searchQuery}) async {
+  Future<List<Customer>> getCustomersByStreet(String streetId,
+      {String? searchQuery}) async {
     final db = await _db;
     String where = '';
     List<dynamic> args = [];
@@ -51,7 +53,6 @@ class CustomerDao {
       args.addAll([q, q, q]);
     }
 
-
     final maps = await db.query(
       'customers',
       where: where.isEmpty ? null : where,
@@ -65,8 +66,8 @@ class CustomerDao {
       final aNo = a.serialNo;
       final bNo = b.serialNo;
       if (aNo == 0 && bNo == 0) return a.createdAt.compareTo(b.createdAt);
-      if (aNo == 0) return 1;   // a goes after b
-      if (bNo == 0) return -1;  // a goes before b
+      if (aNo == 0) return 1; // a goes after b
+      if (bNo == 0) return -1; // a goes before b
       return aNo.compareTo(bNo);
     });
     return customers;
@@ -101,7 +102,6 @@ class CustomerDao {
     final db = await _db;
     final q = '%${query.trim()}%';
 
-
     final maps = await db.rawQuery('''
       SELECT c.* FROM customers c
       LEFT JOIN locations street ON c.location_id = street.id AND street.location_kind = 'road'
@@ -117,7 +117,6 @@ class CustomerDao {
   /// Fetch all customers who have an outstanding balance > 0, sorted highest first
   Future<List<Customer>> getCustomersWithDue() async {
     final db = await _db;
-
 
     final maps = await db.rawQuery('''
       SELECT * FROM customers
@@ -140,7 +139,7 @@ class CustomerDao {
 
   Future<String> insertCustomer(Customer customer) async {
     final db = await _db;
-    final id  = customer.id.isEmpty ? _uuid.v4() : customer.id;
+    final id = customer.id.isEmpty ? _uuid.v4() : customer.id;
     final now = DateTime.now().toIso8601String();
 
     final mode = await AppModeService.getAppMode();
@@ -149,37 +148,48 @@ class CustomerDao {
     String workerName = customer.workerName;
 
     if (mode == AppMode.worker) {
-      final settingsRes = await db.query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
-      final activeWorkerId = settingsRes.isNotEmpty ? settingsRes.first['value']?.toString() : null;
+      final settingsRes = await db
+          .query('settings', where: 'key = ?', whereArgs: ['active_worker_id']);
+      final activeWorkerId = settingsRes.isNotEmpty
+          ? settingsRes.first['value']?.toString()
+          : null;
       if (activeWorkerId != null && activeWorkerId.isNotEmpty) {
         createdBy = activeWorkerId;
         assignedWorkerId = activeWorkerId;
-        final workerRow = await db.query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
+        final workerRow = await db
+            .query('workers', where: 'id = ?', whereArgs: [activeWorkerId]);
         if (workerRow.isNotEmpty) {
           workerName = workerRow.first['name']?.toString() ?? '';
         }
-        await db.insert('worker_assignments', {
-          'id': const Uuid().v4(),
-          'worker_id': activeWorkerId,
-          'entity_type': 'customer',
-          'entity_id': id,
-          'created_at': now,
-        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        await db.insert(
+            'worker_assignments',
+            {
+              'id': const Uuid().v4(),
+              'worker_id': activeWorkerId,
+              'entity_type': 'customer',
+              'entity_id': id,
+              'created_at': now,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
       }
     }
 
     final map = customer.toMap();
-    await DatabaseHelper.instance.ensureLegacyStreetAndAreaExists(db, customer.streetId);
-    await db.insert('customers', {
-      ...map,
-      'id':         id,
-      'location_id': customer.streetId,
-      'created_by': createdBy,
-      'assigned_worker_id': assignedWorkerId,
-      'worker_name': workerName,
-      'created_at': now,
-      'updated_at': now,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await DatabaseHelper.instance
+        .ensureLegacyStreetAndAreaExists(db, customer.streetId);
+    await db.insert(
+        'customers',
+        {
+          ...map,
+          'id': id,
+          'location_id': customer.streetId,
+          'created_by': createdBy,
+          'assigned_worker_id': assignedWorkerId,
+          'worker_name': workerName,
+          'created_at': now,
+          'updated_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
 
     if (customer.serialNo > 0) {
       await _adjustSequences(db, customer.streetId, id, customer.serialNo);
@@ -189,7 +199,8 @@ class CustomerDao {
 
   Future<void> updateCustomer(Customer customer) async {
     final db = await _db;
-    await DatabaseHelper.instance.ensureLegacyStreetAndAreaExists(db, customer.streetId);
+    await DatabaseHelper.instance
+        .ensureLegacyStreetAndAreaExists(db, customer.streetId);
     await db.update(
       'customers',
       {
@@ -202,17 +213,19 @@ class CustomerDao {
     );
 
     if (customer.serialNo > 0) {
-      await _adjustSequences(db, customer.streetId, customer.id, customer.serialNo);
+      await _adjustSequences(
+          db, customer.streetId, customer.id, customer.serialNo);
     }
   }
 
-  Future<void> _adjustSequences(Database db, String streetId, String customerId, int newSerialNo) async {
+  Future<void> _adjustSequences(
+      Database db, String streetId, String customerId, int newSerialNo) async {
     if (newSerialNo <= 0) return;
 
     // Get all active customers on this street
     final maps = await db.query(
       'customers',
-      where: 'street_id = ? AND is_archived = 0',
+      where: 'street_id = ? AND (is_archived IS NULL OR is_archived = 0)',
       whereArgs: [streetId],
     );
 
@@ -265,37 +278,46 @@ class CustomerDao {
     final db = await _db;
     await db.transaction((txn) async {
       // 1. Delete customer's order items, payments, answers, and stock history linked to orders
-      final orders = await txn.query('orders', columns: ['id'], where: 'customer_id = ?', whereArgs: [id]);
+      final orders = await txn.query('orders',
+          columns: ['id'], where: 'customer_id = ?', whereArgs: [id]);
       for (final order in orders) {
         final orderId = order['id'] as String;
-        await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
-        await txn.delete('payments', where: 'order_id = ?', whereArgs: [orderId]);
-        await txn.delete('order_question_answers', where: 'order_id = ?', whereArgs: [orderId]);
-        await txn.delete('stock_history', where: 'order_id = ?', whereArgs: [orderId]);
+        await txn
+            .delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+        await txn
+            .delete('payments', where: 'order_id = ?', whereArgs: [orderId]);
+        await txn.delete('order_question_answers',
+            where: 'order_id = ?', whereArgs: [orderId]);
+        await txn.delete('stock_history',
+            where: 'order_id = ?', whereArgs: [orderId]);
       }
-      
+
       // 2. Delete customer's orders
       await txn.delete('orders', where: 'customer_id = ?', whereArgs: [id]);
-      
+
       // 3. Delete payments linked directly to the customer
       await txn.delete('payments', where: 'customer_id = ?', whereArgs: [id]);
-      
+
       // 4. Delete customer specific records
-      await txn.delete('customer_question_answers', where: 'customer_id = ?', whereArgs: [id]);
-      await txn.delete('customer_item_prices', where: 'customer_id = ?', whereArgs: [id]);
+      await txn.delete('customer_question_answers',
+          where: 'customer_id = ?', whereArgs: [id]);
+      await txn.delete('customer_item_prices',
+          where: 'customer_id = ?', whereArgs: [id]);
       await txn.delete('call_logs', where: 'customer_id = ?', whereArgs: [id]);
-      await txn.delete('worker_assignments', where: "entity_type = 'customer' AND entity_id = ?", whereArgs: [id]);
-      
+      await txn.delete('worker_assignments',
+          where: "entity_type = 'customer' AND entity_id = ?", whereArgs: [id]);
+
       // 5. Finally delete the customer
       await txn.delete('customers', where: 'id = ?', whereArgs: [id]);
     });
   }
 
-  Future<void> updateBalance(String customerId, {
+  Future<void> updateBalance(
+    String customerId, {
     required double outstandingBalance,
     required double totalPaid,
     required double totalPending,
-    required int    totalOrders,
+    required int totalOrders,
     required String lastOrderDate,
   }) async {
     final db = await _db;
@@ -303,11 +325,11 @@ class CustomerDao {
       'customers',
       {
         'outstanding_balance': outstandingBalance,
-        'total_paid':          totalPaid,
-        'total_pending':       totalPending,
-        'total_orders':        totalOrders,
-        'last_order_date':     lastOrderDate,
-        'updated_at':          DateTime.now().toIso8601String(),
+        'total_paid': totalPaid,
+        'total_pending': totalPending,
+        'total_orders': totalOrders,
+        'last_order_date': lastOrderDate,
+        'updated_at': DateTime.now().toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [customerId],
@@ -315,7 +337,8 @@ class CustomerDao {
   }
 
   /// Recalculates customer totals from orders and payments tables
-  Future<void> recalcCustomerTotals(String customerId, {DatabaseExecutor? executor}) async {
+  Future<void> recalcCustomerTotals(String customerId,
+      {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
 
     final ordersResult = await db.rawQuery('''
@@ -335,22 +358,27 @@ class CustomerDao {
 
     if (ordersResult.isNotEmpty) {
       final orderRow = ordersResult.first;
-      final double totalAmount = (orderRow['total_amount'] as num?)?.toDouble() ?? 0.0;
+      final double totalAmount =
+          (orderRow['total_amount'] as num?)?.toDouble() ?? 0.0;
       final int totalOrders = (orderRow['total_orders'] as num?)?.toInt() ?? 0;
       final String lastOrder = orderRow['last_order']?.toString() ?? '';
-      
-      final double totalPaid = (paymentsResult.isNotEmpty ? (paymentsResult.first['total_paid'] as num?)?.toDouble() : 0.0) ?? 0.0;
-      final double outstanding = double.parse((totalAmount - totalPaid).toStringAsFixed(2));
+
+      final double totalPaid = (paymentsResult.isNotEmpty
+              ? (paymentsResult.first['total_paid'] as num?)?.toDouble()
+              : 0.0) ??
+          0.0;
+      final double outstanding =
+          double.parse((totalAmount - totalPaid).toStringAsFixed(2));
 
       await db.update(
         'customers',
         {
-          'total_orders':        totalOrders,
-          'total_paid':          totalPaid,
-          'total_pending':       outstanding > 0 ? outstanding : 0.0,
+          'total_orders': totalOrders,
+          'total_paid': totalPaid,
+          'total_pending': outstanding > 0 ? outstanding : 0.0,
           'outstanding_balance': outstanding,
-          'last_order_date':     lastOrder,
-          'updated_at':          DateTime.now().toIso8601String(),
+          'last_order_date': lastOrder,
+          'updated_at': DateTime.now().toIso8601String(),
         },
         where: 'id = ?',
         whereArgs: [customerId],
@@ -358,7 +386,8 @@ class CustomerDao {
     }
   }
 
-  Future<void> moveCustomers(List<String> customerIds, String newStreetId) async {
+  Future<void> moveCustomers(
+      List<String> customerIds, String newStreetId) async {
     final db = await _db;
     final now = DateTime.now().toIso8601String();
     await db.transaction((txn) async {
@@ -377,7 +406,8 @@ class CustomerDao {
     });
   }
 
-  Future<void> updateCustomWelcomeMessage(String customerId, String message) async {
+  Future<void> updateCustomWelcomeMessage(
+      String customerId, String message) async {
     final db = await _db;
     await db.update(
       'customers',

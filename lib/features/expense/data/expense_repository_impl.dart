@@ -7,14 +7,17 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   ExpenseRepositoryImpl(this._dao);
 
   @override
-  Future<List<Expense>> getAllExpenses({String? searchQuery, String? category, String? month}) =>
-      _dao.getAllExpenses(searchQuery: searchQuery, category: category, month: month);
+  Future<List<Expense>> getAllExpenses(
+          {String? searchQuery, String? category, String? month}) =>
+      _dao.getAllExpenses(
+          searchQuery: searchQuery, category: category, month: month);
 
   @override
   Future<Expense?> getExpenseById(String id) => _dao.getExpenseById(id);
 
   @override
-  Future<List<Map<String, dynamic>>> getMonthlySummary() => _dao.getMonthlySummary();
+  Future<List<Map<String, dynamic>>> getMonthlySummary() =>
+      _dao.getMonthlySummary();
 
   @override
   Future<String> addExpense(Expense expense) => _dao.insertExpense(expense);

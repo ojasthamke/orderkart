@@ -28,7 +28,8 @@ class LiquidGlassButton extends StatefulWidget {
   State<LiquidGlassButton> createState() => _LiquidGlassButtonState();
 }
 
-class _LiquidGlassButtonState extends State<LiquidGlassButton> with SingleTickerProviderStateMixin {
+class _LiquidGlassButtonState extends State<LiquidGlassButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 
@@ -98,7 +99,9 @@ class _LiquidGlassButtonState extends State<LiquidGlassButton> with SingleTicker
           child: Container(
             padding: widget.padding,
             decoration: BoxDecoration(
-              gradient: isDark ? AppColors.glassGradientDark : AppColors.glassGradientLight,
+              gradient: isDark
+                  ? AppColors.glassGradientDark
+                  : AppColors.glassGradientLight,
               borderRadius: r,
               border: Border.all(
                 color: isDark ? Colors.white24 : Colors.white60,

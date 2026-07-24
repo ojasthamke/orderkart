@@ -28,7 +28,8 @@ class LoadingShimmer extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
       baseColor: isDark ? Colors.white.withOpacity(0.06) : AppColors.gray200,
-      highlightColor: isDark ? Colors.white.withOpacity(0.15) : AppColors.gray50,
+      highlightColor:
+          isDark ? Colors.white.withOpacity(0.15) : AppColors.gray50,
       child: ListView.builder(
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -57,7 +58,8 @@ class _ShimmerGrid extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
       baseColor: isDark ? Colors.white.withOpacity(0.06) : AppColors.gray200,
-      highlightColor: isDark ? Colors.white.withOpacity(0.15) : AppColors.gray50,
+      highlightColor:
+          isDark ? Colors.white.withOpacity(0.15) : AppColors.gray50,
       child: GridView.builder(
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -96,7 +98,8 @@ class ShimmerBox extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
       baseColor: isDark ? Colors.white.withOpacity(0.06) : AppColors.gray200,
-      highlightColor: isDark ? Colors.white.withOpacity(0.15) : AppColors.gray50,
+      highlightColor:
+          isDark ? Colors.white.withOpacity(0.15) : AppColors.gray50,
       child: Container(
         width: width,
         height: height,

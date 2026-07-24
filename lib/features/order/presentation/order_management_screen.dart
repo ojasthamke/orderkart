@@ -23,6 +23,7 @@ import '../domain/order.dart';
 import '../data/order_dao.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
+import '../../../core/utils/graphic_bill_generator.dart';
 import '../../location/presentation/location_provider.dart';
 
 class OrderManagementScreen extends ConsumerStatefulWidget {
@@ -33,25 +34,24 @@ class OrderManagementScreen extends ConsumerStatefulWidget {
       _OrderManagementScreenState();
 }
 
-class _OrderManagementScreenState
-    extends ConsumerState<OrderManagementScreen>
+class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _filter = 'all';
   String _sourceMode = 'all'; // 'all', 'owner', 'worker'
 
   final _tabs = [
-    {'label': 'All',       'status': 'all'},
-    {'label': 'Pending',   'status': 'pending'},
+    {'label': 'All', 'status': 'all'},
+    {'label': 'Pending', 'status': 'pending'},
     {'label': 'Delivered', 'status': 'delivered'},
     {'label': 'Cancelled', 'status': 'cancelled'},
   ];
 
   final _filters = [
-    {'label': 'All Time',   'value': 'all'},
-    {'label': 'Today',      'value': 'today'},
-    {'label': 'Yesterday',  'value': 'yesterday'},
-    {'label': 'This Week',  'value': 'week'},
+    {'label': 'All Time', 'value': 'all'},
+    {'label': 'Today', 'value': 'today'},
+    {'label': 'Yesterday', 'value': 'yesterday'},
+    {'label': 'This Week', 'value': 'week'},
     {'label': 'This Month', 'value': 'month'},
   ];
 
@@ -89,15 +89,20 @@ class _OrderManagementScreenState
           // Tab bar
           TabBar(
             controller: _tabController,
-            tabs: _tabs
-                .map((t) => Tab(text: t['label']))
-                .toList(),
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            labelColor: AppColors.primary,
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorPadding:
+                const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+            labelColor: Colors.white,
+            unselectedLabelColor:
+                Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white70
+                    : AppColors.textSecondary,
             indicatorColor: Colors.transparent,
             indicator: AppColors.tabDecoration(context),
-            unselectedLabelColor: AppColors.textSecondary,
+            tabs: _tabs.map((t) => Tab(text: t['label'])).toList(),
           ),
 
           // Source filter chips (Owner vs Worker orders)
@@ -105,18 +110,25 @@ class _OrderManagementScreenState
             padding: const EdgeInsets.only(left: 16, right: 16, top: 6),
             child: Row(
               children: [
-                const Text('Source:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                const Text('Source:',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _sourceChip('All Orders', 'all', Icons.inventory_2_rounded),
+                        _sourceChip(
+                            'All Orders', 'all', Icons.inventory_2_rounded),
                         const SizedBox(width: 6),
-                        _sourceChip('Owner Orders', 'owner', Icons.person_rounded),
+                        _sourceChip(
+                            'Owner Orders', 'owner', Icons.person_rounded),
                         const SizedBox(width: 6),
-                        _sourceChip('Worker Orders', 'worker', Icons.badge_rounded),
+                        _sourceChip(
+                            'Worker Orders', 'worker', Icons.badge_rounded),
                       ],
                     ),
                   ),
@@ -146,17 +158,21 @@ class _OrderManagementScreenState
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
                       color: selected
-                          ? AppColors.primary.withOpacity(0.3)
-                          : (isDark ? Colors.white.withOpacity(0.08) : AppColors.gray100),
+                          ? AppColors.primary
+                          : (isDark
+                              ? const Color(0xFF1E293B)
+                              : AppColors.gray100),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: selected
                             ? AppColors.primary
-                            : (isDark ? Colors.white.withOpacity(0.1) : AppColors.gray300),
+                            : (isDark
+                                ? Colors.white.withOpacity(0.12)
+                                : AppColors.gray300),
                       ),
                     ),
                     child: Text(
@@ -166,7 +182,9 @@ class _OrderManagementScreenState
                         fontWeight: FontWeight.w600,
                         color: selected
                             ? Colors.white
-                            : (isDark ? Colors.white70 : AppColors.textSecondary),
+                            : (isDark
+                                ? Colors.white70
+                                : AppColors.textSecondary),
                       ),
                     ),
                   ),
@@ -186,15 +204,20 @@ class _OrderManagementScreenState
                         data: (orders) {
                           var filtered = orders;
                           if (_sourceMode == 'owner') {
-                            filtered = orders.where((o) => o.assignedWorkerId.isEmpty).toList();
+                            filtered = orders
+                                .where((o) => o.assignedWorkerId.isEmpty)
+                                .toList();
                           } else if (_sourceMode == 'worker') {
-                            filtered = orders.where((o) => o.assignedWorkerId.isNotEmpty).toList();
+                            filtered = orders
+                                .where((o) => o.assignedWorkerId.isNotEmpty)
+                                .toList();
                           }
                           return filtered.isEmpty
                               ? const EmptyStateWidget(
                                   icon: Icons.receipt_long_rounded,
                                   title: 'No Orders Found',
-                                  subtitle: 'Try changing source or status filters',
+                                  subtitle:
+                                      'Try changing source or status filters',
                                 )
                               : _buildOrderList(filtered);
                         },
@@ -209,29 +232,42 @@ class _OrderManagementScreenState
 
   Widget _sourceChip(String label, String value, IconData icon) {
     final selected = _sourceMode == value;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () {
         setState(() => _sourceMode = value);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primarySurface : AppColors.gray100,
+          color: selected
+              ? AppColors.primary
+              : (isDark ? const Color(0xFF1E293B) : AppColors.gray100),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.gray300),
+          border: Border.all(
+            color: selected
+                ? AppColors.primary
+                : (isDark ? Colors.white.withOpacity(0.12) : AppColors.gray300),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: selected ? AppColors.primary : AppColors.gray600),
+            Icon(icon,
+                size: 14,
+                color: selected
+                    ? Colors.white
+                    : (isDark ? Colors.white70 : AppColors.gray600)),
             const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? AppColors.primary : AppColors.textSecondary,
+                color: selected
+                    ? Colors.white
+                    : (isDark ? Colors.white70 : AppColors.textSecondary),
               ),
             ),
           ],
@@ -245,19 +281,19 @@ class _OrderManagementScreenState
       padding: const EdgeInsets.only(bottom: 24),
       itemCount: orders.length,
       itemBuilder: (ctx, i) => _OrderCard(
-        order:    orders[i],
+        order: orders[i],
         onTap: () => Navigator.of(ctx).pushNamed(
           AppRoutes.orderDetail,
           arguments: {'orderId': orders[i].id},
         ).then((_) => ref.invalidate(orderManagementProvider)),
         onToggleDelivery: () => _toggleDelivery(orders[i]),
-        onAddPayment:     () => _addPayment(ctx, orders[i]),
+        onAddPayment: () => _addPayment(ctx, orders[i]),
         onEdit: () => Navigator.of(ctx).pushNamed(
           AppRoutes.createOrder,
           arguments: {
-            'customerId':   orders[i].customerId,
+            'customerId': orders[i].customerId,
             'customerName': orders[i].customerName ?? '',
-            'orderId':      orders[i].id,
+            'orderId': orders[i].id,
           },
         ).then((_) => ref.invalidate(orderManagementProvider)),
         onDelete: () => _deleteOrder(ctx, orders[i]),
@@ -277,11 +313,12 @@ class _OrderManagementScreenState
           .read(orderManagementProvider.notifier)
           .updateDeliveryStatus(order.id, newStatus);
       if (mounted) {
-        SnackbarHelper.showSuccess(
-            context, 'Order marked as ${AppFormatters.deliveryStatus(newStatus).toUpperCase()}');
+        SnackbarHelper.showSuccess(context,
+            'Order marked as ${AppFormatters.deliveryStatus(newStatus).toUpperCase()}');
       }
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Failed to update status: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Failed to update status: $e');
     }
   }
 
@@ -306,17 +343,18 @@ class _OrderManagementScreenState
 
       try {
         await ref.read(orderManagementProvider.notifier).addPayment(Payment(
-              id:         const Uuid().v4(),
-              orderId:    order.id,
+              id: const Uuid().v4(),
+              orderId: order.id,
               customerId: order.customerId,
-              amount:     amount,
-              method:     method,
-              notes:      notes,
-              createdAt:  DateTime.now(),
+              amount: amount,
+              method: method,
+              notes: notes,
+              createdAt: DateTime.now(),
             ));
-        
+
         if (context.mounted) {
-          SnackbarHelper.showSuccess(context, 'Payment of $currency$amount added');
+          SnackbarHelper.showSuccess(
+              context, 'Payment of $currency$amount added');
         }
       } catch (e) {
         if (context.mounted) {
@@ -329,7 +367,7 @@ class _OrderManagementScreenState
   Future<void> _deleteOrder(BuildContext context, AppOrder order) async {
     final ok = await ConfirmDeleteDialog.show(
       context,
-      title:   'Delete Order',
+      title: 'Delete Order',
       message: 'Delete this order? This cannot be undone.',
     );
     if (!ok || !mounted) return;
@@ -337,35 +375,38 @@ class _OrderManagementScreenState
       await ref.read(orderManagementProvider.notifier).deleteOrder(order.id);
       if (mounted) SnackbarHelper.showSuccess(context, 'Order deleted');
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Failed to delete order: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Failed to delete order: $e');
     }
   }
 
   Future<void> _duplicateOrder(AppOrder order) async {
-    final now     = DateTime.now();
-    final newId   = await OrderDao.generateUniqueOrderNo();
+    final now = DateTime.now();
+    final newId = await OrderDao.generateUniqueOrderNo();
     final duplicate = order.copyWith(
-      id:             newId,
-      paidAmount:     0,
-      remainingAmount:order.grandTotal,
+      id: newId,
+      paidAmount: 0,
+      remainingAmount: order.grandTotal,
       deliveryStatus: AppConstants.statusPending,
-      createdAt:      now,
-      updatedAt:      now,
-      payments:       const [],
+      createdAt: now,
+      updatedAt: now,
+      payments: const [],
     );
     // Get items to duplicate
     try {
-      final repo  = ref.read(orderRepositoryProvider);
+      final repo = ref.read(orderRepositoryProvider);
       final items = await repo.getOrderItems(order.id);
-      await ref
-          .read(orderManagementProvider.notifier)
-          .createOrder(duplicate, items.map((it) =>
-              it.copyWith(id: const Uuid().v4(), orderId: newId)).toList());
+      await ref.read(orderManagementProvider.notifier).createOrder(
+          duplicate,
+          items
+              .map((it) => it.copyWith(id: const Uuid().v4(), orderId: newId))
+              .toList());
       if (mounted) {
         SnackbarHelper.showSuccess(context, 'Order duplicated');
       }
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Failed to duplicate order: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Failed to duplicate order: $e');
     }
   }
 }
@@ -433,7 +474,8 @@ class _OrderCard extends ConsumerWidget {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
-                        error: (_, __) => const CustomerAvatar(photoPath: '', radius: 18),
+                        error: (_, __) =>
+                            const CustomerAvatar(photoPath: '', radius: 18),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -447,8 +489,12 @@ class _OrderCard extends ConsumerWidget {
                         },
                         child: Text(
                           '${order.orderNoLabel} · ${(order.customerName != null && order.customerName!.trim().isNotEmpty) ? order.customerName!.trim() : 'Unknown'}',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  decoration: TextDecoration.underline),
                         ),
                       ),
                     ),
@@ -457,21 +503,59 @@ class _OrderCard extends ConsumerWidget {
                     PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert_rounded,
                           color: AppColors.gray500, size: 20),
-                      onSelected: (v) {
+                      onSelected: (v) async {
                         if (v == 'profile') {
                           Navigator.of(context).pushNamed(
                             AppRoutes.customerProfile,
                             arguments: {'customerId': order.customerId},
                           );
                         }
-                        if (v == 'edit')      onEdit();
-                        if (v == 'delete')    onDelete();
+                        if (v == 'invoice') {
+                          final cust = await ref.read(
+                              customerDetailProvider(order.customerId).future);
+                          final settings =
+                              ref.read(settingsProvider).valueOrNull;
+                          final itemsList = order.items
+                              .map((i) => {
+                                    'item_name': i.itemName,
+                                    'quantity': i.quantity,
+                                    'unit': i.itemUnit,
+                                    'unit_price': i.unitPrice,
+                                    'total_price': i.totalPrice,
+                                  })
+                              .toList();
+                          if (context.mounted) {
+                            await GraphicBillGenerator
+                                .generateAndShareGraphicBill(
+                              context: context,
+                              order: order,
+                              customer: cust,
+                              settings: settings,
+                              orderItems: itemsList,
+                            );
+                          }
+                        }
+                        if (v == 'edit') onEdit();
+                        if (v == 'delete') onDelete();
                         if (v == 'duplicate') onDuplicate();
                       },
                       itemBuilder: (_) => [
-                        const PopupMenuItem(value: 'profile',   child: Text('Customer Profile')),
-                        const PopupMenuItem(value: 'edit',      child: Text('Edit')),
-                        const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
+                        const PopupMenuItem(
+                            value: 'profile', child: Text('Customer Profile')),
+                        const PopupMenuItem(
+                          value: 'invoice',
+                          child: Row(
+                            children: [
+                              Icon(Icons.picture_as_pdf_rounded,
+                                  size: 16, color: Color(0xFF0F766E)),
+                              SizedBox(width: 8),
+                              Text('Share Graphic Invoice'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        const PopupMenuItem(
+                            value: 'duplicate', child: Text('Duplicate')),
                         const PopupMenuItem(
                             value: 'delete',
                             child: Text('Delete',
@@ -487,67 +571,80 @@ class _OrderCard extends ConsumerWidget {
                 customerAsync.when(
                   data: (cust) {
                     if (cust == null) return const SizedBox.shrink();
-                    return ref.watch(locationPathNameProvider(cust.streetId)).when(
-                      data: (fullPath) {
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          margin: const EdgeInsets.only(top: 4, bottom: 4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white.withOpacity(0.05)
-                                : Colors.black.withOpacity(0.02),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.white10
-                                  : Colors.black12,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (cust.serialNo > 0 || cust.houseNumber.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Text(
-                                    [
-                                      if (cust.serialNo > 0) 'Serial: #${cust.serialNo}',
-                                      if (cust.houseNumber.isNotEmpty) 'House: ${cust.houseNumber}',
-                                    ].join('  •  '),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
-                                  ),
+                    return ref
+                        .watch(locationPathNameProvider(cust.streetId))
+                        .when(
+                          data: (fullPath) {
+                            return Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(10),
+                              margin: const EdgeInsets.only(top: 4, bottom: 4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white.withOpacity(0.05)
+                                    : Colors.black.withOpacity(0.02),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white10
+                                      : Colors.black12,
                                 ),
-                              if (cust.address.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Text(
-                                    'Address: ${cust.address}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(color: AppColors.textSecondary),
-                                    softWrap: true,
-                                  ),
-                                ),
-                              if (fullPath.isNotEmpty)
-                                Text(
-                                  'Location: $fullPath',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 11),
-                                ),
-                            ],
-                          ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (cust.serialNo > 0 ||
+                                      cust.houseNumber.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 2),
+                                      child: Text(
+                                        [
+                                          if (cust.serialNo > 0)
+                                            'Serial: #${cust.serialNo}',
+                                          if (cust.houseNumber.isNotEmpty)
+                                            'House: ${cust.houseNumber}',
+                                        ].join('  •  '),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  if (cust.address.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Text(
+                                        'Address: ${cust.address}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                                color: AppColors.textSecondary),
+                                        softWrap: true,
+                                      ),
+                                    ),
+                                  if (fullPath.isNotEmpty)
+                                    Text(
+                                      'Location: $fullPath',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 11),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, __) => const SizedBox.shrink(),
                         );
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    );
                   },
                   loading: () => const SizedBox.shrink(),
                   error: (_, __) => const SizedBox.shrink(),
@@ -557,15 +654,17 @@ class _OrderCard extends ConsumerWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.notes_rounded, size: 12, color: AppColors.textSecondary),
+                      const Icon(Icons.notes_rounded,
+                          size: 12, color: AppColors.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           order.notes,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondary,
-                                fontStyle: FontStyle.italic,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -579,17 +678,23 @@ class _OrderCard extends ConsumerWidget {
                 // Amount row
                 Row(
                   children: [
-                    _amountChip(context, 'Total',
+                    _amountChip(
+                        context,
+                        'Total',
                         '$currency${order.grandTotal.toStringAsFixed(2)}',
                         AppColors.primary),
                     const SizedBox(width: 8),
                     if (order.paidAmount > 0)
-                      _amountChip(context, 'Paid',
+                      _amountChip(
+                          context,
+                          'Paid',
                           '$currency${order.paidAmount.toStringAsFixed(2)}',
                           AppColors.success),
                     const SizedBox(width: 8),
                     if (order.remainingAmount > 0)
-                      _amountChip(context, 'Due',
+                      _amountChip(
+                          context,
+                          'Due',
                           '$currency${order.remainingAmount.toStringAsFixed(2)}',
                           AppColors.warning),
                   ],
@@ -605,22 +710,28 @@ class _OrderCard extends ConsumerWidget {
                     const SizedBox(width: 4),
                     Text(
                       AppFormatters.dateTime(order.createdAt),
-                      style: Theme.of(context).textTheme.labelSmall
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall
                           ?.copyWith(color: AppColors.textHint),
                     ),
                     const Spacer(),
                     // Delivery toggle
                     _ActionBtn(
-                      label: order.deliveryStatus == AppConstants.statusDelivered
-                          ? 'Delivered ✓'
-                          : (order.deliveryStatus == AppConstants.statusCancelled
-                              ? 'Reactivate'
-                              : 'Mark Delivered'),
-                      color: order.deliveryStatus == AppConstants.statusDelivered
-                          ? AppColors.success
-                          : (order.deliveryStatus == AppConstants.statusCancelled
-                              ? AppColors.warning
-                              : AppColors.primary),
+                      label:
+                          order.deliveryStatus == AppConstants.statusDelivered
+                              ? 'Delivered ✓'
+                              : (order.deliveryStatus ==
+                                      AppConstants.statusCancelled
+                                  ? 'Reactivate'
+                                  : 'Mark Delivered'),
+                      color:
+                          order.deliveryStatus == AppConstants.statusDelivered
+                              ? AppColors.success
+                              : (order.deliveryStatus ==
+                                      AppConstants.statusCancelled
+                                  ? AppColors.warning
+                                  : AppColors.primary),
                       onTap: onToggleDelivery,
                     ),
                     const SizedBox(width: 6),
@@ -642,6 +753,36 @@ class _OrderCard extends ConsumerWidget {
                           AppRoutes.customerProfile,
                           arguments: {'customerId': order.customerId},
                         );
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    // Invoice button
+                    _ActionBtn(
+                      label: 'Invoice',
+                      color: const Color(0xFF0F766E),
+                      onTap: () async {
+                        final cust = await ref.read(
+                            customerDetailProvider(order.customerId).future);
+                        final settings = ref.read(settingsProvider).valueOrNull;
+                        final itemsList = order.items
+                            .map((i) => {
+                                  'item_name': i.itemName,
+                                  'quantity': i.quantity,
+                                  'unit': i.itemUnit,
+                                  'unit_price': i.unitPrice,
+                                  'total_price': i.totalPrice,
+                                })
+                            .toList();
+                        if (context.mounted) {
+                          await GraphicBillGenerator
+                              .generateAndShareGraphicBill(
+                            context: context,
+                            order: order,
+                            customer: cust,
+                            settings: settings,
+                            orderItems: itemsList,
+                          );
+                        }
                       },
                     ),
                   ],
@@ -667,14 +808,10 @@ class _OrderCard extends ConsumerWidget {
         children: [
           Text(label,
               style: TextStyle(
-                  fontSize: 10,
-                  color: color,
-                  fontWeight: FontWeight.w500)),
+                  fontSize: 10, color: color, fontWeight: FontWeight.w500)),
           Text(value,
               style: TextStyle(
-                  fontSize: 13,
-                  color: color,
-                  fontWeight: FontWeight.w700)),
+                  fontSize: 13, color: color, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -683,7 +820,7 @@ class _OrderCard extends ConsumerWidget {
 
 class _ActionBtn extends StatelessWidget {
   final String label;
-  final Color  color;
+  final Color color;
   final VoidCallback onTap;
 
   const _ActionBtn(
@@ -702,8 +839,8 @@ class _ActionBtn extends StatelessWidget {
         ),
         child: Text(
           label,
-          style:
-              TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700),
+          style: TextStyle(
+              fontSize: 11, color: color, fontWeight: FontWeight.w700),
         ),
       ),
     );

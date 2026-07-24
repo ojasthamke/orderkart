@@ -42,7 +42,8 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
         ),
         IconButton(
-          icon: const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700)),
+          icon: const Icon(Icons.workspace_premium_rounded,
+              color: Color(0xFFFFD700)),
           onPressed: () => _showAddEditVipDialog(context),
         ),
       ],
@@ -51,10 +52,13 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
         error: (err, _) => Center(child: Text('Error loading VIP data: $err')),
         data: (allCustomers) {
           // Filter VIP customers
-          final vipList = allCustomers.where((c) => c.isVip || c.isVipActive).toList();
+          final vipList =
+              allCustomers.where((c) => c.isVip || c.isVipActive).toList();
           final activeVip = vipList.where((c) => c.isVipActive).toList();
-          final expiringVip = vipList.where((c) => c.isVipExpiringSoon).toList();
-          final expiredVip = vipList.where((c) => c.isVip && !c.isVipActive).toList();
+          final expiringVip =
+              vipList.where((c) => c.isVipExpiringSoon).toList();
+          final expiredVip =
+              vipList.where((c) => c.isVip && !c.isVipActive).toList();
 
           double totalSubscriptionIncome = 0;
           for (final c in vipList) {
@@ -64,7 +68,8 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
           // Apply UI Filters
           var filteredList = vipList.where((c) {
             if (_selectedFilter == 'active' && !c.isVipActive) return false;
-            if (_selectedFilter == 'expiring' && !c.isVipExpiringSoon) return false;
+            if (_selectedFilter == 'expiring' && !c.isVipExpiringSoon)
+              return false;
             if (_selectedFilter == 'expired' && c.isVipActive) return false;
 
             if (_searchQuery.isNotEmpty) {
@@ -100,7 +105,8 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                               children: [
                                 const Row(
                                   children: [
-                                    Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700), size: 28),
+                                    Icon(Icons.workspace_premium_rounded,
+                                        color: Color(0xFFFFD700), size: 28),
                                     SizedBox(width: 10),
                                     Text(
                                       'VIP CLUB DASHBOARD',
@@ -114,14 +120,18 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                                   ],
                                 ),
                                 ElevatedButton.icon(
-                                  onPressed: () => _showAddEditVipDialog(context),
+                                  onPressed: () =>
+                                      _showAddEditVipDialog(context),
                                   icon: const Icon(Icons.add_rounded, size: 16),
                                   label: const Text('Add VIP'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFFFFD700),
                                     foregroundColor: const Color(0xFF0F172A),
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                    textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 8),
+                                    textStyle: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 12),
                                   ),
                                 ),
                               ],
@@ -131,9 +141,17 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                             // KPI Grid Inside Header
                             Row(
                               children: [
-                                _kpiItem('ACTIVE MEMBERS', '${activeVip.length}', Colors.greenAccent),
-                                _kpiItem('EXPIRING SOON', '${expiringVip.length}', Colors.amberAccent),
-                                _kpiItem('MEMBERSHIP INCOME', AppFormatters.currency(totalSubscriptionIncome), Colors.lightBlueAccent),
+                                _kpiItem('ACTIVE MEMBERS',
+                                    '${activeVip.length}', Colors.greenAccent),
+                                _kpiItem(
+                                    'EXPIRING SOON',
+                                    '${expiringVip.length}',
+                                    Colors.amberAccent),
+                                _kpiItem(
+                                    'MEMBERSHIP INCOME',
+                                    AppFormatters.currency(
+                                        totalSubscriptionIncome),
+                                    Colors.lightBlueAccent),
                               ],
                             ),
                           ],
@@ -149,11 +167,13 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                           controller: _searchController,
                           onChanged: (v) => setState(() => _searchQuery = v),
                           decoration: InputDecoration(
-                            hintText: 'Search VIP members by name, phone, plan...',
+                            hintText:
+                                'Search VIP members by name, phone, plan...',
                             prefixIcon: const Icon(Icons.search_rounded),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.close_rounded, size: 18),
+                                    icon: const Icon(Icons.close_rounded,
+                                        size: 18),
                                     onPressed: () {
                                       _searchController.clear();
                                       setState(() => _searchQuery = '');
@@ -163,7 +183,8 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
                           ),
                         ),
                       ),
@@ -174,9 +195,12 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                         child: Row(
                           children: [
                             _filterChip('all', 'All (${vipList.length})'),
-                            _filterChip('active', 'Active (${activeVip.length})'),
-                            _filterChip('expiring', 'Expiring Soon (${expiringVip.length})'),
-                            _filterChip('expired', 'Expired (${expiredVip.length})'),
+                            _filterChip(
+                                'active', 'Active (${activeVip.length})'),
+                            _filterChip('expiring',
+                                'Expiring Soon (${expiringVip.length})'),
+                            _filterChip(
+                                'expired', 'Expired (${expiredVip.length})'),
                           ],
                         ),
                       ),
@@ -194,17 +218,23 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                           padding: const EdgeInsets.all(32),
                           child: Column(
                             children: [
-                              const Icon(Icons.workspace_premium_rounded, size: 64, color: AppColors.gray400),
+                              const Icon(Icons.workspace_premium_rounded,
+                                  size: 64, color: AppColors.gray400),
                               const SizedBox(height: 12),
                               Text(
-                                vipList.isEmpty ? 'No VIP Members Yet' : 'No matching VIP members found',
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                                vipList.isEmpty
+                                    ? 'No VIP Members Yet'
+                                    : 'No matching VIP members found',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 16),
                               ),
                               const SizedBox(height: 8),
                               const Text(
                                 'Upgrade loyal customers to VIP to grant free delivery & custom discounts.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13),
                               ),
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
@@ -249,12 +279,16 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 10,
+                fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900),
+            style: TextStyle(
+                color: color, fontSize: 16, fontWeight: FontWeight.w900),
           ),
         ],
       ),
@@ -284,7 +318,9 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
       borderRadius: BorderRadius.circular(20),
       borderColor: isActive
           ? const Color(0xFFFFD700).withOpacity(0.7)
-          : (Theme.of(context).brightness == Brightness.dark ? Colors.white24 : Colors.black12),
+          : (Theme.of(context).brightness == Brightness.dark
+              ? Colors.white24
+              : Colors.black12),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -306,7 +342,8 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                         children: [
                           Text(
                             customer.name,
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w900, fontSize: 16),
                             softWrap: true,
                           ),
                           const SizedBox(height: 6),
@@ -315,12 +352,16 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                           if (customer.phone1.isNotEmpty)
                             Text(
                               'Phone: ${customer.phone1}',
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold),
                             ),
                           if (customer.address.isNotEmpty)
                             Text(
                               'Address: ${customer.address}',
-                              style: const TextStyle(color: AppColors.textHint, fontSize: 12),
+                              style: const TextStyle(
+                                  color: AppColors.textHint, fontSize: 12),
                               softWrap: true,
                             ),
                         ],
@@ -345,10 +386,16 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                     }
                   },
                   itemBuilder: (ctx) => [
-                    const PopupMenuItem(value: 'profile', child: Text('View Profile')),
-                    const PopupMenuItem(value: 'edit', child: Text('Edit VIP Benefits')),
-                    const PopupMenuItem(value: 'renew', child: Text('Renew (+30 Days)')),
-                    const PopupMenuItem(value: 'cancel', child: Text('Cancel VIP Membership', style: TextStyle(color: Colors.red))),
+                    const PopupMenuItem(
+                        value: 'profile', child: Text('View Profile')),
+                    const PopupMenuItem(
+                        value: 'edit', child: Text('Edit VIP Benefits')),
+                    const PopupMenuItem(
+                        value: 'renew', child: Text('Renew (+30 Days)')),
+                    const PopupMenuItem(
+                        value: 'cancel',
+                        child: Text('Cancel VIP Membership',
+                            style: TextStyle(color: Colors.red))),
                   ],
                 ),
               ],
@@ -362,12 +409,13 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
               children: [
                 Text(
                   'Started: ${customer.vipStartDate.isNotEmpty ? AppFormatters.dateFromString(customer.vipStartDate) : "N/A"}',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary),
                 ),
                 Text(
                   'Expires: ${customer.vipExpiryDate.isNotEmpty ? AppFormatters.dateFromString(customer.vipExpiryDate) : "N/A"}',
                   style: TextStyle(
-                    fontSize: 11, 
+                    fontSize: 11,
                     color: isActive ? AppColors.textSecondary : Colors.red,
                     fontWeight: isActive ? FontWeight.normal : FontWeight.bold,
                   ),
@@ -380,11 +428,18 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
             Row(
               children: [
                 if (customer.vipFreeDelivery)
-                  _benefitBadge('Free Delivery', Icons.local_shipping_rounded, Colors.green),
+                  _benefitBadge('Free Delivery', Icons.local_shipping_rounded,
+                      Colors.green),
                 if (customer.vipDiscountPct > 0)
-                  _benefitBadge('${customer.vipDiscountPct.toStringAsFixed(0)}% Off', Icons.discount_rounded, Colors.amber),
+                  _benefitBadge(
+                      '${customer.vipDiscountPct.toStringAsFixed(0)}% Off',
+                      Icons.discount_rounded,
+                      Colors.amber),
                 if (customer.vipMarkupPct > 0)
-                  _benefitBadge('+${customer.vipMarkupPct.toStringAsFixed(0)}% Price Adjusted', Icons.balance_rounded, Colors.purple),
+                  _benefitBadge(
+                      '+${customer.vipMarkupPct.toStringAsFixed(0)}% Price Adjusted',
+                      Icons.balance_rounded,
+                      Colors.purple),
                 const Spacer(),
                 Text(
                   isActive
@@ -395,7 +450,9 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: isActive ? (isExpiring ? Colors.orange : Colors.green) : Colors.red,
+                    color: isActive
+                        ? (isExpiring ? Colors.orange : Colors.green)
+                        : Colors.red,
                   ),
                 ),
               ],
@@ -421,7 +478,8 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w800, color: color),
           ),
         ],
       ),
@@ -449,13 +507,19 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
     final updated = customer.copyWith(
       isVip: true,
       vipExpiryDate: newExpiry,
-      vipStartDate: customer.vipStartDate.isEmpty ? now.toIso8601String() : customer.vipStartDate,
+      vipStartDate: customer.vipStartDate.isEmpty
+          ? now.toIso8601String()
+          : customer.vipStartDate,
     );
 
-    await ref.read(customerListProvider(updated.streetId).notifier).update(updated);
+    await ref
+        .read(customerListProvider(updated.streetId).notifier)
+        .update(updated);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Renewed VIP Membership for ${customer.name} by $planDays days!')),
+        SnackBar(
+            content: Text(
+                'Renewed VIP Membership for ${customer.name} by $planDays days!')),
       );
     }
   }
@@ -475,10 +539,13 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
       vipMarkupPct: 0.0,
       vipPriorityDelivery: false,
     );
-    await ref.read(customerListProvider(updated.streetId).notifier).update(updated);
+    await ref
+        .read(customerListProvider(updated.streetId).notifier)
+        .update(updated);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cancelled VIP Membership for ${customer.name}')),
+        SnackBar(
+            content: Text('Cancelled VIP Membership for ${customer.name}')),
       );
     }
   }
@@ -523,7 +590,9 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
     super.initState();
     if (widget.existingCustomer != null) {
       _selectedCustomer = widget.existingCustomer;
-      _plan = widget.existingCustomer!.vipPlan.isNotEmpty ? widget.existingCustomer!.vipPlan : 'Gold VIP';
+      _plan = widget.existingCustomer!.vipPlan.isNotEmpty
+          ? widget.existingCustomer!.vipPlan
+          : 'Gold VIP';
       _fee = widget.existingCustomer!.vipSubscriptionFee;
       _discountPct = widget.existingCustomer!.vipDiscountPct;
       _markupPct = widget.existingCustomer!.vipMarkupPct;
@@ -532,10 +601,13 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
       _autoRenewal = widget.existingCustomer!.vipAutoRenewal;
       _notesCon.text = widget.existingCustomer!.vipNotes;
       if (widget.existingCustomer!.vipStartDate.isNotEmpty) {
-        _startDate = DateTime.tryParse(widget.existingCustomer!.vipStartDate) ?? DateTime.now();
+        _startDate = DateTime.tryParse(widget.existingCustomer!.vipStartDate) ??
+            DateTime.now();
       }
       if (widget.existingCustomer!.vipExpiryDate.isNotEmpty) {
-        _expiryDate = DateTime.tryParse(widget.existingCustomer!.vipExpiryDate) ?? DateTime.now().add(const Duration(days: 365));
+        _expiryDate =
+            DateTime.tryParse(widget.existingCustomer!.vipExpiryDate) ??
+                DateTime.now().add(const Duration(days: 365));
         _durationDays = _expiryDate.difference(_startDate).inDays;
       }
     }
@@ -566,7 +638,9 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
   Future<void> _selectExpiryDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _expiryDate.isAfter(_startDate) ? _expiryDate : _startDate.add(const Duration(days: 1)),
+      initialDate: _expiryDate.isAfter(_startDate)
+          ? _expiryDate
+          : _startDate.add(const Duration(days: 1)),
       firstDate: _startDate.add(const Duration(days: 1)),
       lastDate: DateTime(2050),
     );
@@ -589,7 +663,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
         color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      padding: EdgeInsets.fromLTRB(
+          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -609,11 +684,15 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
 
             Row(
               children: [
-                const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700), size: 28),
+                const Icon(Icons.workspace_premium_rounded,
+                    color: Color(0xFFFFD700), size: 28),
                 const SizedBox(width: 10),
                 Text(
-                  widget.existingCustomer == null ? 'Upgrade Customer to VIP' : 'Edit VIP Benefits',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  widget.existingCustomer == null
+                      ? 'Upgrade Customer to VIP'
+                      : 'Edit VIP Benefits',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -621,15 +700,18 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
 
             // Select Customer if new
             if (widget.existingCustomer == null) ...[
-              const Text('Search & Select Customer', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              const Text('Search & Select Customer',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               const SizedBox(height: 6),
               TextField(
                 controller: _customerSearchCon,
                 decoration: InputDecoration(
                   hintText: 'Search by name or phone...',
                   prefixIcon: const Icon(Icons.search_rounded),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   suffixIcon: _customerSearch.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear_rounded),
@@ -640,30 +722,36 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                         )
                       : null,
                 ),
-                onChanged: (v) => setState(() => _customerSearch = v.trim().toLowerCase()),
+                onChanged: (v) =>
+                    setState(() => _customerSearch = v.trim().toLowerCase()),
               ),
               const SizedBox(height: 8),
               if (_selectedCustomer != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFD700).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.5)),
+                    border: Border.all(
+                        color: const Color(0xFFFFD700).withOpacity(0.5)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded, color: Color(0xFFB45309), size: 18),
+                      const Icon(Icons.check_circle_rounded,
+                          color: Color(0xFFB45309), size: 18),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           '${_selectedCustomer!.name}  •  ${_selectedCustomer!.phone1}',
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 13),
                         ),
                       ),
                       GestureDetector(
                         onTap: () => setState(() => _selectedCustomer = null),
-                        child: const Icon(Icons.close_rounded, size: 18, color: AppColors.textSecondary),
+                        child: const Icon(Icons.close_rounded,
+                            size: 18, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -672,15 +760,21 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                 data: (list) {
                   final filtered = _customerSearch.isEmpty
                       ? <Customer>[]
-                      : list.where((c) {
-                          return c.name.toLowerCase().contains(_customerSearch) ||
-                              c.phone1.contains(_customerSearch);
-                        }).take(8).toList();
+                      : list
+                          .where((c) {
+                            return c.name
+                                    .toLowerCase()
+                                    .contains(_customerSearch) ||
+                                c.phone1.contains(_customerSearch);
+                          })
+                          .take(8)
+                          .toList();
                   if (filtered.isEmpty && _customerSearch.isNotEmpty) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text('No customers found for "$_customerSearch"',
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 13)),
                     );
                   }
                   return ListView.builder(
@@ -701,26 +795,33 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? const Color(0xFFFFD700).withOpacity(0.15)
                                 : Theme.of(context).cardTheme.color,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: isSelected ? const Color(0xFFFFD700) : AppColors.borderColor(context),
+                              color: isSelected
+                                  ? const Color(0xFFFFD700)
+                                  : AppColors.borderColor(context),
                             ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.person_rounded, size: 18, color: AppColors.textSecondary),
+                              const Icon(Icons.person_rounded,
+                                  size: 18, color: AppColors.textSecondary),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text('${c.name}  •  ${c.phone1}',
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600)),
                               ),
                               if (isSelected)
-                                const Icon(Icons.check_rounded, size: 18, color: Color(0xFFB45309)),
+                                const Icon(Icons.check_rounded,
+                                    size: 18, color: Color(0xFFB45309)),
                             ],
                           ),
                         ),
@@ -762,7 +863,9 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    value: [30, 90, 180, 365].contains(_durationDays) ? _durationDays : null,
+                    value: [30, 90, 180, 365].contains(_durationDays)
+                        ? _durationDays
+                        : null,
                     decoration: const InputDecoration(
                       labelText: 'Preset Duration',
                       border: OutlineInputBorder(),
@@ -797,7 +900,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                       decoration: const InputDecoration(
                         labelText: 'Start Date',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.calendar_today_rounded, size: 18),
+                        prefixIcon:
+                            Icon(Icons.calendar_today_rounded, size: 18),
                       ),
                       child: Text(
                         AppFormatters.date(_startDate),
@@ -818,7 +922,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                       ),
                       child: Text(
                         AppFormatters.date(_expiryDate),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -827,7 +932,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
             ),
 
             const SizedBox(height: 16),
-            const Text('Configurable Benefits & Pricing Adjustment', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            const Text('Configurable Benefits & Pricing Adjustment',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(height: 8),
 
             // Discount Preset Selector
@@ -853,7 +959,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
             Builder(
               builder: (context) {
                 final isDark = Theme.of(context).brightness == Brightness.dark;
-                final vipColor = isDark ? const Color(0xFFC084FC) : Colors.purple;
+                final vipColor =
+                    isDark ? const Color(0xFFC084FC) : Colors.purple;
                 return Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -866,13 +973,17 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                     children: [
                       Text(
                         'Item Price Adjustment: +${_markupPct.toStringAsFixed(0)}%',
-                        style: TextStyle(fontWeight: FontWeight.w700, color: vipColor, fontSize: 13),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: vipColor,
+                            fontSize: 13),
                       ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'App item prices will adjust by +5% or +10% so actual realization matches business margin while receipt displays full VIP discount.',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                  ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'App item prices will adjust by +5% or +10% so actual realization matches business margin while receipt displays full VIP discount.',
+                        style: TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
                     ],
                   ),
                 );
@@ -896,7 +1007,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
             ),
             SwitchListTile(
               title: const Text('Auto-Renew Membership'),
-              subtitle: const Text('Automatically renew subscription at expiry'),
+              subtitle:
+                  const Text('Automatically renew subscription at expiry'),
               value: _autoRenewal,
               onChanged: (v) => setState(() => _autoRenewal = v),
             ),
@@ -921,9 +1033,11 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                 backgroundColor: const Color(0xFFFFD700),
                 foregroundColor: const Color(0xFF0F172A),
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('SAVE VIP MEMBERSHIP', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+              child: const Text('SAVE VIP MEMBERSHIP',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
             ),
           ],
         ),
@@ -933,7 +1047,8 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
 
   Future<void> _saveVip() async {
     if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a customer')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a customer')));
       return;
     }
 
@@ -951,11 +1066,15 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
       vipAutoRenewal: _autoRenewal,
     );
 
-    await ref.read(customerListProvider(updated.streetId).notifier).update(updated);
+    await ref
+        .read(customerListProvider(updated.streetId).notifier)
+        .update(updated);
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('VIP Membership active for ${_selectedCustomer!.name}!')),
+        SnackBar(
+            content:
+                Text('VIP Membership active for ${_selectedCustomer!.name}!')),
       );
     }
   }

@@ -22,7 +22,8 @@ class MapDataDao {
     return res.map((m) => Location.fromMap(m)).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getCustomersWithPendingCount(String areaId) async {
+  Future<List<Map<String, dynamic>>> getCustomersWithPendingCount(
+      String areaId) async {
     final db = await _db;
     final res = await db.rawQuery(
       '''

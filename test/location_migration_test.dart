@@ -13,7 +13,9 @@ void main() {
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
-  test('Database migration from V9 to V10 works transactionally with strict validation', () async {
+  test(
+      'Database migration from V9 to V10 works transactionally with strict validation',
+      () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final dbPath = p.join(await getDatabasesPath(), 'migration_test.db');
     final dbFile = File(dbPath);
@@ -181,34 +183,51 @@ void main() {
     final dbV10 = await DatabaseHelper.instance.database;
 
     // 4. Verify new schema is present and old tables are STILL present (Phased compatibility!)
-    final areasCount = Sqflite.firstIntValue(await dbV10.rawQuery('SELECT COUNT(*) FROM areas')) ?? 0;
+    final areasCount = Sqflite.firstIntValue(
+            await dbV10.rawQuery('SELECT COUNT(*) FROM areas')) ??
+        0;
     expect(areasCount, equals(2));
 
-    final streetsCount = Sqflite.firstIntValue(await dbV10.rawQuery('SELECT COUNT(*) FROM streets')) ?? 0;
+    final streetsCount = Sqflite.firstIntValue(
+            await dbV10.rawQuery('SELECT COUNT(*) FROM streets')) ??
+        0;
     expect(streetsCount, equals(4));
 
     // Verify locations table exists and has correct counts
-    final locCount = Sqflite.firstIntValue(await dbV10.rawQuery('SELECT COUNT(*) FROM locations')) ?? 0;
+    final locCount = Sqflite.firstIntValue(
+            await dbV10.rawQuery('SELECT COUNT(*) FROM locations')) ??
+        0;
     expect(locCount, equals(4)); // 2 areas + 2 streets
 
     // Verify root locations (parent_location_id = NULL)
-    final rootCount = Sqflite.firstIntValue(await dbV10.rawQuery('SELECT COUNT(*) FROM locations WHERE parent_location_id IS NULL')) ?? 0;
+    final rootCount = Sqflite.firstIntValue(await dbV10.rawQuery(
+            'SELECT COUNT(*) FROM locations WHERE parent_location_id IS NULL')) ??
+        0;
     expect(rootCount, equals(2));
 
     // Verify child locations (parent_location_id = areaId)
-    final childCount = Sqflite.firstIntValue(await dbV10.rawQuery('SELECT COUNT(*) FROM locations WHERE parent_location_id IS NOT NULL')) ?? 0;
+    final childCount = Sqflite.firstIntValue(await dbV10.rawQuery(
+            'SELECT COUNT(*) FROM locations WHERE parent_location_id IS NOT NULL')) ??
+        0;
     expect(childCount, equals(2));
 
     // Verify customer location_id backfill
-    final cust1 = (await dbV10.query('customers', where: 'id = ?', whereArgs: [customerId1])).first;
+    final cust1 = (await dbV10
+            .query('customers', where: 'id = ?', whereArgs: [customerId1]))
+        .first;
     expect(cust1['location_id'], equals(streetId1));
-    expect(cust1['street_id'], equals(streetId1)); // Keep street_id column intact!
+    expect(
+        cust1['street_id'], equals(streetId1)); // Keep street_id column intact!
 
-    final cust2 = (await dbV10.query('customers', where: 'id = ?', whereArgs: [customerId2])).first;
+    final cust2 = (await dbV10
+            .query('customers', where: 'id = ?', whereArgs: [customerId2]))
+        .first;
     expect(cust2['location_id'], equals(streetId2));
 
     // Verify visit location_id backfill
-    final visit1 = (await dbV10.query('visits', where: 'id = ?', whereArgs: [visitId1])).first;
+    final visit1 =
+        (await dbV10.query('visits', where: 'id = ?', whereArgs: [visitId1]))
+            .first;
     expect(visit1['location_id'], equals(streetId1));
 
     // Clean up
@@ -218,7 +237,9 @@ void main() {
     }
   });
 
-  test('Nested location kinds sync to legacy streets table to satisfy FK constraint', () async {
+  test(
+      'Nested location kinds sync to legacy streets table to satisfy FK constraint',
+      () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final dbPath = p.join(await getDatabasesPath(), 'nested_sync_test.db');
     final dbFile = File(dbPath);
@@ -258,7 +279,8 @@ void main() {
     await dao.insertLocation(galliLoc);
 
     // 3. Verify that the Galli exists in the legacy 'streets' table
-    final streetRows = await db.query('streets', where: 'id = ?', whereArgs: [galliId]);
+    final streetRows =
+        await db.query('streets', where: 'id = ?', whereArgs: [galliId]);
     expect(streetRows.length, equals(1));
     expect(streetRows.first['area_id'], equals(rootId));
     expect(streetRows.first['name'], equals('Hanuman Galli'));
@@ -276,7 +298,8 @@ void main() {
     });
 
     // Verify customer inserted successfully without FK constraint failure
-    final custCheck = await db.query('customers', where: 'id = ?', whereArgs: ['cust-999']);
+    final custCheck =
+        await db.query('customers', where: 'id = ?', whereArgs: ['cust-999']);
     expect(custCheck.length, equals(1));
 
     // Clean up
@@ -286,7 +309,9 @@ void main() {
     }
   });
 
-  test('Direct customer registration under root Area syncs to streets table to satisfy FK constraint', () async {
+  test(
+      'Direct customer registration under root Area syncs to streets table to satisfy FK constraint',
+      () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final dbPath = p.join(await getDatabasesPath(), 'root_sync_test.db');
     final dbFile = File(dbPath);
@@ -313,7 +338,8 @@ void main() {
     await dao.insertLocation(rootLoc);
 
     // 2. Verify that the root Area exists as a fallback inside the legacy 'streets' table
-    final streetRows = await db.query('streets', where: 'id = ?', whereArgs: [rootId]);
+    final streetRows =
+        await db.query('streets', where: 'id = ?', whereArgs: [rootId]);
     expect(streetRows.length, equals(1));
     expect(streetRows.first['area_id'], equals(rootId));
     expect(streetRows.first['name'], equals('Rajapeth'));
@@ -331,7 +357,8 @@ void main() {
     });
 
     // Verify customer inserted successfully without FK constraint failure
-    final custCheck = await db.query('customers', where: 'id = ?', whereArgs: ['cust-888']);
+    final custCheck =
+        await db.query('customers', where: 'id = ?', whereArgs: ['cust-888']);
     expect(custCheck.length, equals(1));
 
     // Clean up
@@ -341,7 +368,9 @@ void main() {
     }
   });
 
-  test('Database startup self-healing repairs missing legacy street entries for existing locations', () async {
+  test(
+      'Database startup self-healing repairs missing legacy street entries for existing locations',
+      () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final dbPath = p.join(await getDatabasesPath(), 'self_heal_test.db');
     final dbFile = File(dbPath);
@@ -378,10 +407,12 @@ void main() {
     });
 
     // Verify it is NOT in legacy tables
-    final beforeArea = await db.query('areas', where: 'id = ?', whereArgs: [rootId]);
+    final beforeArea =
+        await db.query('areas', where: 'id = ?', whereArgs: [rootId]);
     expect(beforeArea.length, equals(0));
 
-    final beforeStreet = await db.query('streets', where: 'id = ?', whereArgs: [rootId]);
+    final beforeStreet =
+        await db.query('streets', where: 'id = ?', whereArgs: [rootId]);
     expect(beforeStreet.length, equals(0));
 
     // 2. Trigger the startup self-healing by closing and opening the database again
@@ -391,11 +422,13 @@ void main() {
     final healedDb = await DatabaseHelper.instance.database;
 
     // 3. Verify that the root Area was repaired and synced to both legacy tables
-    final afterArea = await healedDb.query('areas', where: 'id = ?', whereArgs: [rootId]);
+    final afterArea =
+        await healedDb.query('areas', where: 'id = ?', whereArgs: [rootId]);
     expect(afterArea.length, equals(1));
     expect(afterArea.first['name'], equals('Broken Area'));
 
-    final afterStreet = await healedDb.query('streets', where: 'id = ?', whereArgs: [rootId]);
+    final afterStreet =
+        await healedDb.query('streets', where: 'id = ?', whereArgs: [rootId]);
     expect(afterStreet.length, equals(1));
     expect(afterStreet.first['area_id'], equals(rootId));
     expect(afterStreet.first['name'], equals('Broken Area'));

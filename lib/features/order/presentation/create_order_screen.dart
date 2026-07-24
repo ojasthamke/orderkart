@@ -30,6 +30,7 @@ import '../data/order_dao.dart';
 import '../../location/presentation/location_provider.dart';
 import '../data/order_questions_dao.dart';
 import '../../../core/security/app_mode_service.dart';
+import '../../../core/widgets/owner_pin_dialog.dart';
 import '../../../core/localization/app_localization.dart';
 import 'widgets/item_selector_widget.dart';
 import 'widgets/smart_round_banner.dart';
@@ -51,16 +52,18 @@ class CartItem {
     required this.quantity,
   });
 
-  CartItem copyWith({double? quantity, String? unit, double? price}) => CartItem(
-        itemId:   itemId,
-        name:     name,
-        unit:     unit ?? this.unit,
-        price:    price ?? this.price,
+  CartItem copyWith({double? quantity, String? unit, double? price}) =>
+      CartItem(
+        itemId: itemId,
+        name: name,
+        unit: unit ?? this.unit,
+        price: price ?? this.price,
         quantity: quantity ?? this.quantity,
       );
 }
 
-final createOrderCartProvider = StateProvider.family<List<CartItem>, String>((ref, customerId) => []);
+final createOrderCartProvider =
+    StateProvider.family<List<CartItem>, String>((ref, customerId) => []);
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   final String customerId;
@@ -83,32 +86,35 @@ class CreateOrderScreen extends ConsumerStatefulWidget {
 class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   final List<CartItem> _cart = [];
   double _deliveryCharge = AppConstants.defaultDeliveryCharge;
-  double _discount       = 0;
-  double _paidAmount     = 0;
-  String _paymentMethod  = AppConstants.paymentCash;
-  bool   _smartRound     = true;
-  bool   _deliveryEnabled= true;
-  final _noteCon         = TextEditingController();
-  final _discountCon     = TextEditingController();
-  final _paidCon         = TextEditingController();
+  double _discount = 0;
+  double _paidAmount = 0;
+  String _paymentMethod = AppConstants.paymentCash;
+  bool _smartRound = true;
+  bool _deliveryEnabled = true;
+  final _noteCon = TextEditingController();
+  final _discountCon = TextEditingController();
+  final _paidCon = TextEditingController();
   AppOrder? _existingOrder;
-  bool   _saving         = false;
-  bool   _rxVerified     = false;
-  bool   _orderSaved     = false;
-  bool   _isDiscountManuallyEdited = false;
-  bool   _isDeliveryManuallyToggled = false;
+  bool _saving = false;
+  bool _rxVerified = false;
+  bool _orderSaved = false;
+  bool _isDiscountManuallyEdited = false;
+  bool _isDeliveryManuallyToggled = false;
 
   List<OrderQuestion> _questions = [];
   Map<String, String> _selectedAnswers = {};
 
   Future<void> _loadQuestionsAndPreferences() async {
     try {
-      final qList = await OrderQuestionDao.instance.getAllQuestionsForCustomer(widget.customerId);
-      final prefs = await OrderQuestionDao.instance.getCustomerAnswers(widget.customerId);
-      
+      final qList = await OrderQuestionDao.instance
+          .getAllQuestionsForCustomer(widget.customerId);
+      final prefs =
+          await OrderQuestionDao.instance.getCustomerAnswers(widget.customerId);
+
       Map<String, String> orderAnswers = {};
       if (widget.orderId != null) {
-        final savedOrderAns = await OrderQuestionDao.instance.getOrderAnswers(widget.orderId!);
+        final savedOrderAns =
+            await OrderQuestionDao.instance.getOrderAnswers(widget.orderId!);
         for (final row in savedOrderAns) {
           final qId = row['question_id']?.toString() ?? '';
           final opt = row['selected_option']?.toString() ?? '';
@@ -133,22 +139,25 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // Calculated
   double get _subtotal => _cart.fold(0, (s, i) => s + i.total);
-  double get _afterDiscount => (_subtotal - _discount).clamp(0, double.infinity);
+  double get _afterDiscount =>
+      (_subtotal - _discount).clamp(0, double.infinity);
   double get _smartRounded {
     if (!_smartRound) return _afterDiscount;
     return SmartRounding.round(_afterDiscount);
   }
-  double get _grandTotal => _smartRounded + (_deliveryEnabled ? _deliveryCharge : 0);
-  double get _remaining  => _grandTotal - _paidAmount;
+
+  double get _grandTotal =>
+      _smartRounded + (_deliveryEnabled ? _deliveryCharge : 0);
+  double get _remaining => _grandTotal - _paidAmount;
 
   @override
   void initState() {
     super.initState();
     final settings = ref.read(settingsProvider).value;
     if (settings != null) {
-      _deliveryCharge  = settings.deliveryCharge;
+      _deliveryCharge = settings.deliveryCharge;
       _deliveryEnabled = settings.enableDeliveryCharges;
-      _smartRound      = settings.smartRounding;
+      _smartRound = settings.smartRounding;
     }
 
     if (widget.initialDiscount != null && widget.initialDiscount! > 0) {
@@ -178,17 +187,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           _deliveryEnabled = order.deliveryCharge > 0;
           _paidAmount = order.paidAmount;
           _noteCon.text = order.notes;
-          
+
           _isDiscountManuallyEdited = true;
           _isDeliveryManuallyToggled = true;
-          
+
           if (_discount > 0) _discountCon.text = _discount.toStringAsFixed(2);
           if (_paidAmount > 0) _paidCon.text = _paidAmount.toStringAsFixed(2);
-          
+
           if (order.payments.isNotEmpty) {
             _paymentMethod = order.payments.first.method;
           }
-          
+
           _cart.clear();
           for (final item in order.items) {
             _cart.add(CartItem(
@@ -227,16 +236,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     // Auto-calculate VIP discount if not manually edited
     if (customer != null && isVip && !_isDiscountManuallyEdited) {
-      final targetDiscount = double.parse((_subtotal * (customer.vipDiscountPct / 100)).toStringAsFixed(2));
+      final targetDiscount = double.parse(
+          (_subtotal * (customer.vipDiscountPct / 100)).toStringAsFixed(2));
       if (_discount != targetDiscount) {
         _discount = targetDiscount;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && !_isDiscountManuallyEdited) {
-            _discountCon.text = _discount > 0 ? _discount.toStringAsFixed(2) : '';
+            _discountCon.text =
+                _discount > 0 ? _discount.toStringAsFixed(2) : '';
           }
         });
       }
-    } else if ((customer == null || !isVip) && !_isDiscountManuallyEdited && _discount != 0) {
+    } else if ((customer == null || !isVip) &&
+        !_isDiscountManuallyEdited &&
+        _discount != 0) {
       _discount = 0;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_isDiscountManuallyEdited) {
@@ -252,11 +265,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         _deliveryEnabled = false;
       }
     } else {
-      if (customer != null && isVip && customer.vipFreeDelivery && !_isDeliveryManuallyToggled) {
+      if (customer != null &&
+          isVip &&
+          customer.vipFreeDelivery &&
+          !_isDeliveryManuallyToggled) {
         if (_deliveryEnabled) {
           _deliveryEnabled = false;
         }
-      } else if ((customer == null || !isVip || !customer.vipFreeDelivery) && !_isDeliveryManuallyToggled) {
+      } else if ((customer == null || !isVip || !customer.vipFreeDelivery) &&
+          !_isDeliveryManuallyToggled) {
         if (!_deliveryEnabled) {
           _deliveryEnabled = true;
         }
@@ -265,148 +282,161 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     final discountCapPct = settings?.workerDiscountCap ?? 10.0;
     final isWorker = ref.watch(appModeProvider).valueOrNull == AppMode.worker;
-    final enteredDiscountPct = _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
+    final enteredDiscountPct =
+        _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
     final exceedsCap = isWorker && enteredDiscountPct > discountCapPct;
 
     return PopScope(
-      canPop: true,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop && !_orderSaved) {
-          ref.read(createOrderCartProvider(widget.customerId).notifier).state = List.from(_cart);
-        }
-      },
-      child: AppScaffold(
-        title: widget.orderId == null
-            ? AppLocalization.translate(ref, 'create_order', 'Create Order')
-            : 'Edit Order',
-        body: Column(
-          children: [
-          // Customer header
-          _buildCustomerHeader(currency),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Cart Items
-                  _buildCartSection(context, currency),
+        canPop: true,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop && !_orderSaved) {
+            ref
+                .read(createOrderCartProvider(widget.customerId).notifier)
+                .state = List.from(_cart);
+          }
+        },
+        child: AppScaffold(
+          title: widget.orderId == null
+              ? AppLocalization.translate(ref, 'create_order', 'Create Order')
+              : 'Edit Order',
+          body: Column(
+            children: [
+              // Customer header
+              _buildCustomerHeader(currency),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Cart Items
+                      _buildCartSection(context, currency),
 
-                  // Reorder from Past Orders
-                  if (widget.orderId == null) ...[
-                    OutlinedButton.icon(
-                      onPressed: () => _showPastOrdersReorderSheet(context),
-                      icon: const Icon(Icons.history_rounded, color: AppColors.primary),
-                      label: const Text('Reorder from Customer\'s Past Orders'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 46),
-                        foregroundColor: AppColors.primary,
-                        side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
+                      // Reorder from Past Orders
+                      if (widget.orderId == null) ...[
+                        OutlinedButton.icon(
+                          onPressed: () => _showPastOrdersReorderSheet(context),
+                          icon: const Icon(Icons.history_rounded,
+                              color: AppColors.primary),
+                          label: const Text(
+                              'Reorder from Customer\'s Past Orders'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 46),
+                            foregroundColor: AppColors.primary,
+                            side: BorderSide(
+                                color: AppColors.primary.withOpacity(0.5)),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
 
-                  // Add Item button
-                  OutlinedButton.icon(
-                    onPressed: () => _showItemSelector(context),
-                    icon: const Icon(Icons.add_shopping_cart_rounded),
-                    label: const Text('Add Item'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 52),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Delivery Charge
-                  _buildDeliverySection(currency),
-
-                  const SizedBox(height: 16),
-
-                  // Discount
-                  TextFormField(
-                    controller: _discountCon,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Discount',
-                      prefixText: '$currency ',
-                      prefixIcon: const Icon(Icons.discount_rounded),
-                    ),
-                    onChanged: (v) {
-                      _isDiscountManuallyEdited = true;
-                      setState(() => _discount = double.tryParse(v) ?? 0);
-                    },
-                  ),
-                  if (exceedsCap)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        '⚠️ Discount of ${enteredDiscountPct.toStringAsFixed(1)}% exceeds maximum allowed worker limit of ${discountCapPct.toStringAsFixed(0)}%',
-                        style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  if (_discount > _subtotal && _subtotal > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        '⚠️ Discount cannot exceed the subtotal amount',
-                        style: TextStyle(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFFF87171)
-                              : AppColors.error,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                      // Add Item button
+                      OutlinedButton.icon(
+                        onPressed: () => _showItemSelector(context),
+                        icon: const Icon(Icons.add_shopping_cart_rounded),
+                        label: const Text('Add Item'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 52),
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 16),
 
-                  // Smart Rounding banner
-                  if (_subtotal > 0 && SmartRounding.needsRounding(_afterDiscount))
-                    SmartRoundBanner(
-                      original:   _afterDiscount,
-                      rounded:    SmartRounding.round(_afterDiscount),
-                      enabled:    _smartRound,
-                      currency:   currency,
-                      onToggle:   (v) => setState(() => _smartRound = v),
-                    ).animate().fadeIn(),
+                      const SizedBox(height: 20),
 
-                  const SizedBox(height: 16),
+                      // Delivery Charge
+                      _buildDeliverySection(currency),
 
-                  // Order Summary card
-                  if (_cart.isNotEmpty) ...[
-                    _buildSummaryCard(currency),
-                    _buildRxVerificationSection(),
-                  ],
+                      const SizedBox(height: 16),
 
-                  const SizedBox(height: 16),
+                      // Discount
+                      TextFormField(
+                        controller: _discountCon,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Discount',
+                          prefixText: '$currency ',
+                          prefixIcon: const Icon(Icons.discount_rounded),
+                        ),
+                        onChanged: (v) {
+                          _isDiscountManuallyEdited = true;
+                          setState(() => _discount = double.tryParse(v) ?? 0);
+                        },
+                      ),
+                      if (exceedsCap)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            '⚠️ Discount of ${enteredDiscountPct.toStringAsFixed(1)}% exceeds maximum allowed worker limit of ${discountCapPct.toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                                color: AppColors.error,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      if (_discount > _subtotal && _subtotal > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            '⚠️ Discount cannot exceed the subtotal amount',
+                            style: TextStyle(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? const Color(0xFFF87171)
+                                  : AppColors.error,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
 
-                  // Payment
-                  _buildPaymentSection(currency, settings),
+                      // Smart Rounding banner
+                      if (_subtotal > 0 &&
+                          SmartRounding.needsRounding(_afterDiscount))
+                        SmartRoundBanner(
+                          original: _afterDiscount,
+                          rounded: SmartRounding.round(_afterDiscount),
+                          enabled: _smartRound,
+                          currency: currency,
+                          onToggle: (v) => setState(() => _smartRound = v),
+                        ).animate().fadeIn(),
 
-                  const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                  // Notes
-                  TextFormField(
-                    controller: _noteCon,
-                    decoration: const InputDecoration(
-                      labelText: 'Order Notes (optional)',
-                      prefixIcon: Icon(Icons.notes_rounded),
-                    ),
-                    maxLines: 2,
+                      // Order Summary card
+                      if (_cart.isNotEmpty) ...[
+                        _buildSummaryCard(currency),
+                        _buildRxVerificationSection(),
+                      ],
+
+                      const SizedBox(height: 16),
+
+                      // Payment
+                      _buildPaymentSection(currency, settings),
+
+                      const SizedBox(height: 16),
+
+                      // Notes
+                      TextFormField(
+                        controller: _noteCon,
+                        decoration: const InputDecoration(
+                          labelText: 'Order Notes (optional)',
+                          prefixIcon: Icon(Icons.notes_rounded),
+                        ),
+                        maxLines: 2,
+                      ),
+
+                      _buildQuestionsSection(),
+                    ],
                   ),
-
-                  _buildQuestionsSection(),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-      // Bottom Save bar
-      bottomNavigationBar: _cart.isNotEmpty ? _buildBottomBar(context, currency) : null,
-    ));
+          // Bottom Save bar
+          bottomNavigationBar:
+              _cart.isNotEmpty ? _buildBottomBar(context, currency) : null,
+        ));
   }
 
   // ── Customer header ──────────────────────────────────────────────────────────
@@ -418,62 +448,70 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isVip
-                ? const Color(0xFFFFD700).withOpacity(0.12)
-                : (isDark
-                    ? AppColors.primary.withOpacity(0.15)
-                    : AppColors.primarySurface),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isVip
-                  ? const Color(0xFFFFD700)
-                  : (isDark ? Colors.white.withOpacity(0.12) : AppColors.primary.withOpacity(0.2)),
-              width: isVip ? 1.5 : 1.0,
-            ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isVip
+            ? const Color(0xFFFFD700).withOpacity(0.12)
+            : (isDark
+                ? AppColors.primary.withOpacity(0.15)
+                : AppColors.primarySurface),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isVip
+              ? const Color(0xFFFFD700)
+              : (isDark
+                  ? Colors.white.withOpacity(0.12)
+                  : AppColors.primary.withOpacity(0.2)),
+          width: isVip ? 1.5 : 1.0,
+        ),
+      ),
+      child: Row(
+        children: [
+          VipGlowAvatar(
+            photoPath: customer?.photoPath ?? '',
+            isVip: isVip,
+            radius: 20,
           ),
-          child: Row(
-            children: [
-              VipGlowAvatar(
-                photoPath: customer?.photoPath ?? '',
-                isVip: isVip,
-                radius: 20,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            widget.customerName,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: isVip
-                                      ? const Color(0xFFFFD700)
-                                      : (isDark ? Colors.white : AppColors.primary),
-                                  fontWeight: FontWeight.w800,
-                                ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isVip) ...[
-                          const SizedBox(width: 6),
-                          VipGoldBadgeChip(planName: customer?.vipPlan ?? 'VIP'),
-                        ],
-                      ],
+                    Flexible(
+                      child: Text(
+                        widget.customerName,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(
+                              color: isVip
+                                  ? const Color(0xFFFFD700)
+                                  : (isDark ? Colors.white : AppColors.primary),
+                              fontWeight: FontWeight.w800,
+                            ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    if (customer != null)
-                      ref.watch(locationPathNameProvider(customer.streetId)).when(
+                    if (isVip) ...[
+                      const SizedBox(width: 6),
+                      VipGoldBadgeChip(planName: customer?.vipPlan ?? 'VIP'),
+                    ],
+                  ],
+                ),
+                if (customer != null)
+                  ref.watch(locationPathNameProvider(customer.streetId)).when(
                         data: (fullPath) {
                           if (fullPath.isEmpty) return const SizedBox.shrink();
                           return Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               fullPath,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
                                     color: AppColors.textSecondary,
                                     fontSize: 11,
                                   ),
@@ -485,33 +523,33 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         loading: () => const SizedBox.shrink(),
                         error: (_, __) => const SizedBox.shrink(),
                       ),
-                    if (isVip)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          'Benefits: ${customer!.vipFreeDelivery ? 'Free Delivery • ' : ''}${customer.vipDiscountPct.toStringAsFixed(0)}% Off',
-                          style: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFFFBBF24)
-                                : const Color(0xFFB45309),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                if (isVip)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Benefits: ${customer!.vipFreeDelivery ? 'Free Delivery • ' : ''}${customer.vipDiscountPct.toStringAsFixed(0)}% Off',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFFFBBF24)
+                            : const Color(0xFFB45309),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                       ),
-                  ],
-                ),
-              ),
-              Text(
-                '${_cart.length} items',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
                     ),
-              ),
-            ],
+                  ),
+              ],
+            ),
           ),
-        );
+          Text(
+            '${_cart.length} items',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Cart section ─────────────────────────────────────────────────────────────
@@ -521,7 +559,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       return Container(
         height: 120,
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B).withOpacity(0.4) : AppColors.gray50,
+          color: isDark
+              ? const Color(0xFF1E293B).withOpacity(0.4)
+              : AppColors.gray50,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200,
@@ -561,7 +601,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
           );
 
-          const bool canToggleUnit = true; // Allow switching unit for all items in checkout!
+          const bool canToggleUnit =
+              true; // Allow switching unit for all items in checkout!
 
           return _CartItemTile(
             cartItem: cartItem,
@@ -573,10 +614,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   context,
                   'Quantity for "${cartItem.name}" must be greater than 0',
                 );
-                setState(() => _cart[e.key] = cartItem.copyWith(quantity: 0.25));
+                setState(
+                    () => _cart[e.key] = cartItem.copyWith(quantity: 0.25));
                 return;
               }
-              final conversion = dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
+              final conversion =
+                  dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
               double maxStock = dbItem.stock;
               if (dbItem.unit == 'kg') {
                 if (cartItem.unit == 'gram') {
@@ -597,7 +640,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   context,
                   'Cannot exceed stock limit of ${AppFormatters.quantity(maxStock)} ${cartItem.unit} for "${cartItem.name}"',
                 );
-                setState(() => _cart[e.key] = cartItem.copyWith(quantity: maxStock));
+                setState(
+                    () => _cart[e.key] = cartItem.copyWith(quantity: maxStock));
                 return;
               }
               setState(() => _cart[e.key] = cartItem.copyWith(quantity: qty));
@@ -606,7 +650,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             onUnitChanged: (newUnit) {
               if (newUnit == cartItem.unit) return;
 
-              final conversion = dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
+              final conversion =
+                  dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
               double baseQty = cartItem.quantity;
               double basePrice = cartItem.price;
 
@@ -667,7 +712,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // ── Delivery section ─────────────────────────────────────────────────────────
   Widget _buildDeliverySection(String currency) {
-    final enableDelivery = ref.watch(settingsProvider).valueOrNull?.enableDeliveryCharges ?? true;
+    final enableDelivery =
+        ref.watch(settingsProvider).valueOrNull?.enableDeliveryCharges ?? true;
     if (!enableDelivery) return const SizedBox.shrink();
     return Row(
       children: [
@@ -719,7 +765,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         }
       }
       if (dbItem != null && dbItem.marketPrice > cartItem.price) {
-        marketSavings += (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
+        marketSavings +=
+            (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
       }
     }
     final totalSavings = marketSavings + _discount;
@@ -734,26 +781,35 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       ),
       child: Column(
         children: [
-          _sumRow('Subtotal',         AppFormatters.currency(_subtotal,       symbol: currency)),
+          _sumRow(
+              'Subtotal', AppFormatters.currency(_subtotal, symbol: currency)),
           if (_discount > 0)
-            _sumRow('Discount',       '- ${AppFormatters.currency(_discount, symbol: currency)}',
+            _sumRow('Discount',
+                '- ${AppFormatters.currency(_discount, symbol: currency)}',
                 color: AppColors.success),
           if (_smartRound && SmartRounding.needsRounding(_afterDiscount))
-            _sumRow('Smart Rounded',  AppFormatters.currency(_smartRounded - _afterDiscount, symbol: currency),
+            _sumRow(
+                'Smart Rounded',
+                AppFormatters.currency(_smartRounded - _afterDiscount,
+                    symbol: currency),
                 color: AppColors.warning),
           if (_deliveryEnabled && _deliveryCharge > 0)
-            _sumRow('Delivery',       AppFormatters.currency(_deliveryCharge, symbol: currency)),
+            _sumRow('Delivery',
+                AppFormatters.currency(_deliveryCharge, symbol: currency)),
           const Divider(height: 20),
-          _sumRow('Grand Total',      AppFormatters.currency(_grandTotal,     symbol: currency),
+          _sumRow('Grand Total',
+              AppFormatters.currency(_grandTotal, symbol: currency),
               isBold: true, color: AppColors.primary),
-          _sumRow('Paid',             AppFormatters.currency(_paidAmount,     symbol: currency),
+          _sumRow('Paid', AppFormatters.currency(_paidAmount, symbol: currency),
               color: AppColors.success),
-           if (_remaining > 0)
-             _sumRow('Remaining Due',  AppFormatters.currency(_remaining,      symbol: currency),
-                 color: AppColors.error, isBold: true)
-           else if (_remaining < 0)
-             _sumRow('Advance Credit', AppFormatters.currency(_remaining.abs(),  symbol: currency),
-                 color: Colors.teal, isBold: true),
+          if (_remaining > 0)
+            _sumRow('Remaining Due',
+                AppFormatters.currency(_remaining, symbol: currency),
+                color: AppColors.error, isBold: true)
+          else if (_remaining < 0)
+            _sumRow('Advance Credit',
+                AppFormatters.currency(_remaining.abs(), symbol: currency),
+                color: Colors.teal, isBold: true),
           if (totalSavings > 0) ...[
             const Divider(height: 20),
             Container(
@@ -805,8 +861,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             child: Text(label,
                 style: TextStyle(
                     fontSize: 14,
-                    fontWeight:
-                        isBold ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
                     color: AppColors.textSecondary)),
           ),
           FittedBox(
@@ -815,8 +870,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             child: Text(value,
                 style: TextStyle(
                     fontSize: 14,
-                    fontWeight:
-                        isBold ? FontWeight.w700 : FontWeight.w600,
+                    fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
                     color: color ?? AppColors.textPrimary)),
           ),
         ],
@@ -908,14 +962,16 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             _quickPayBtn('Pay None', 0, currency),
           ],
         ),
-        if (_paymentMethod == AppConstants.paymentOnline || _paymentMethod == AppConstants.paymentUPI) ...[
+        if (_paymentMethod == AppConstants.paymentOnline ||
+            _paymentMethod == AppConstants.paymentUPI) ...[
           const SizedBox(height: 16),
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text('Scan & Pay QR Code',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 if (settings != null) ...[
                   if (settings.qrCustomImage.isNotEmpty)
@@ -933,14 +989,16 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                 width: 160,
                                 height: 160,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                                errorBuilder: (_, __, ___) =>
+                                    const Text('Broken Custom QR Image'),
                               )
                             : Image.file(
                                 File(settings.qrCustomImage),
                                 width: 160,
                                 height: 160,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const Text('Broken Custom QR Image'),
+                                errorBuilder: (_, __, ___) =>
+                                    const Text('Broken Custom QR Image'),
                               ),
                       ),
                     )
@@ -967,7 +1025,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     )
                   else
                     const Text('No QR Code configured in Settings',
-                        style: TextStyle(fontSize: 12, color: AppColors.textHint))
+                        style:
+                            TextStyle(fontSize: 12, color: AppColors.textHint))
                 ] else
                   const CircularProgressIndicator(),
               ],
@@ -991,11 +1050,122 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
+  void _showVisualCartDrawer(BuildContext context, String currency) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDrawerState) => Container(
+          height: MediaQuery.of(context).size.height * 0.70,
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardTheme.color,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.shopping_bag_rounded,
+                          color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text('Visual Mini-Cart (${_cart.length} items)',
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const Divider(),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _cart.length,
+                  itemBuilder: (context, i) {
+                    final item = _cart[i];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(item.name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                      subtitle: Text(
+                          '${item.quantity} ${item.unit} x $currency${item.price.toStringAsFixed(2)}'),
+                      trailing: Text(
+                          '$currency${(item.price * item.quantity).toStringAsFixed(2)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                    );
+                  },
+                ),
+              ),
+              const Divider(),
+              Row(
+                children: [
+                  const Text('Quick Discount:',
+                      style:
+                          TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 8),
+                  Wrap(
+                    spacing: 6,
+                    children: [5.0, 10.0, 15.0].map((pct) {
+                      return ChoiceChip(
+                        label: Text('${pct.toInt()}%'),
+                        selected: false,
+                        onSelected: (_) {
+                          final discAmt = (_subtotal * pct) / 100;
+                          setState(() {
+                            _discount = discAmt;
+                            _discountCon.text = discAmt.toStringAsFixed(2);
+                          });
+                          setDrawerState(() {});
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                      'Grand Total: ${AppFormatters.currency(_grandTotal, symbol: currency)}',
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary)),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _saveOrder();
+                    },
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white),
+                    child: const Text('Confirm & Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomBar(BuildContext context, String currency) {
     final settingsVal = ref.watch(settingsProvider).valueOrNull;
     final discountCapPct = settingsVal?.workerDiscountCap ?? 10.0;
     final isWorker = ref.watch(appModeProvider).valueOrNull == AppMode.worker;
-    final enteredDiscountPct = _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
+    final enteredDiscountPct =
+        _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
     final exceedsCap = isWorker && enteredDiscountPct > discountCapPct;
 
     return Container(
@@ -1007,22 +1177,32 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Total: ${AppFormatters.currency(_grandTotal, symbol: currency)}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                if (_remaining > 0)
-                  Text('Remaining: ${AppFormatters.currency(_remaining, symbol: currency)}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: AppColors.error)),
-              ],
+            child: GestureDetector(
+              onTap: () => _showVisualCartDrawer(context, currency),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                          'Total: ${AppFormatters.currency(_grandTotal, symbol: currency)}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.keyboard_arrow_up_rounded,
+                          size: 18, color: AppColors.primary),
+                    ],
+                  ),
+                  Text('${_cart.length} item(s) • Tap to view drawer',
+                      style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700)),
+                ],
+              ),
             ),
           ),
           ElevatedButton.icon(
@@ -1049,10 +1229,22 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final settingsVal = ref.read(settingsProvider).value;
     final discountCapPct = settingsVal?.workerDiscountCap ?? 10.0;
     final isWorker = ref.read(appModeProvider).valueOrNull == AppMode.worker;
-    final enteredDiscountPct = _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
+    final enteredDiscountPct =
+        _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
     if (isWorker && enteredDiscountPct > discountCapPct) {
-      SnackbarHelper.showError(context, 'Discount of ${enteredDiscountPct.toStringAsFixed(1)}% exceeds maximum allowed worker limit of ${discountCapPct.toStringAsFixed(0)}%');
-      return;
+      final pinOk = await OwnerPinDialog.verify(
+        context,
+        title: 'Discount Exceeds Limit',
+        subtitle:
+            'Discount of ${enteredDiscountPct.toStringAsFixed(1)}% exceeds worker cap of ${discountCapPct.toStringAsFixed(0)}%. Enter Owner PIN to approve:',
+      );
+      if (!pinOk) {
+        if (mounted) {
+          SnackbarHelper.showError(context,
+              'Discount cap exceeded. Owner PIN authorization required.');
+        }
+        return;
+      }
     }
 
     // ── Pre-Save Stock Validation ───────────────────────────────────────────────
@@ -1099,7 +1291,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 createdAt: DateTime.now(),
                 updatedAt: DateTime.now(),
               ));
-      
+
       double oldQty = 0.0;
       if (_existingOrder != null) {
         final existingItem = _existingOrder!.items
@@ -1142,45 +1334,49 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     setState(() => _saving = true);
 
     final now = DateTime.now();
-    final String orderId = widget.orderId ?? await OrderDao.generateUniqueOrderNo();
+    final String orderId =
+        widget.orderId ?? await OrderDao.generateUniqueOrderNo();
 
     final roundingDiff = _smartRound ? _smartRounded - _afterDiscount : 0;
-    
+
     final List<OrderItem> items = [];
     if (_cart.isNotEmpty) {
       double distributedSum = 0;
       for (int i = 0; i < _cart.length; i++) {
         final c = _cart[i];
         double adjustedTotal = c.total;
-        
+
         if (roundingDiff != 0 && _subtotal > 0) {
           if (i == _cart.length - 1) {
-            adjustedTotal = double.parse((c.total + (roundingDiff - distributedSum)).toStringAsFixed(2));
+            adjustedTotal = double.parse(
+                (c.total + (roundingDiff - distributedSum)).toStringAsFixed(2));
           } else {
-            final share = double.parse((roundingDiff * (c.total / _subtotal)).toStringAsFixed(2));
+            final share = double.parse(
+                (roundingDiff * (c.total / _subtotal)).toStringAsFixed(2));
             adjustedTotal = double.parse((c.total + share).toStringAsFixed(2));
             distributedSum += share;
           }
         }
-        
-        final adjustedUnitPrice = c.quantity > 0 
+
+        final adjustedUnitPrice = c.quantity > 0
             ? double.parse((adjustedTotal / c.quantity).toStringAsFixed(4))
             : c.price;
-        
+
         items.add(OrderItem(
-          id:         const Uuid().v4(),
-          orderId:    orderId,
-          itemId:     c.itemId,
-          itemName:   c.name,
-          itemUnit:   c.unit,
-          quantity:   c.quantity,
-          unitPrice:  adjustedUnitPrice,
+          id: const Uuid().v4(),
+          orderId: orderId,
+          itemId: c.itemId,
+          itemName: c.name,
+          itemUnit: c.unit,
+          quantity: c.quantity,
+          unitPrice: adjustedUnitPrice,
           totalPrice: adjustedTotal,
         ));
       }
     }
 
-    final adjustedSubtotal = double.parse((_subtotal + roundingDiff).toStringAsFixed(2));
+    final adjustedSubtotal =
+        double.parse((_subtotal + roundingDiff).toStringAsFixed(2));
 
     double marketSavings = 0.0;
     for (final cartItem in _cart) {
@@ -1192,28 +1388,27 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         }
       }
       if (dbItem != null && dbItem.marketPrice > cartItem.price) {
-        marketSavings += (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
+        marketSavings +=
+            (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
       }
     }
     final totalSavings = marketSavings + _discount;
 
     final order = AppOrder(
-      id:                 orderId,
-      customerId:         widget.customerId,
-      subtotal:           adjustedSubtotal,
-      discount:           _discount,
-      deliveryCharge:     _deliveryEnabled ? _deliveryCharge : 0,
-      smartRoundedAmount: 0, 
-      grandTotal:         _grandTotal,
-      paidAmount:         _paidAmount,
-      remainingAmount:    _remaining,
-      notes:              _noteCon.text.trim(),
-      savings:            totalSavings,
-      createdAt:          _existingOrder?.createdAt ?? now,
-      updatedAt:          now,
+      id: orderId,
+      customerId: widget.customerId,
+      subtotal: adjustedSubtotal,
+      discount: _discount,
+      deliveryCharge: _deliveryEnabled ? _deliveryCharge : 0,
+      smartRoundedAmount: 0,
+      grandTotal: _grandTotal,
+      paidAmount: _paidAmount,
+      remainingAmount: _remaining,
+      notes: _noteCon.text.trim(),
+      savings: totalSavings,
+      createdAt: _existingOrder?.createdAt ?? now,
+      updatedAt: now,
     );
-
-
 
     try {
       await ref
@@ -1230,7 +1425,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             'selected_option': entry.value,
           });
         }
-        await OrderQuestionDao.instance.saveCustomerAnswer(widget.customerId, entry.key, entry.value);
+        await OrderQuestionDao.instance
+            .saveCustomerAnswer(widget.customerId, entry.key, entry.value);
       }
       await OrderQuestionDao.instance.saveOrderAnswers(orderId, orderAnsToSave);
 
@@ -1240,18 +1436,24 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       final double diff = _paidAmount - (_existingOrder?.paidAmount ?? 0.0);
       if (diff != 0) {
         await ref.read(orderManagementProvider.notifier).addPayment(Payment(
-              id:         const Uuid().v4(),
-              orderId:    orderId,
+              id: const Uuid().v4(),
+              orderId: orderId,
               customerId: widget.customerId,
-              amount:     diff,
-              method:     _paymentMethod,
-              notes:      diff < 0 ? 'Adjustment: Paid amount decreased' : (_existingOrder == null ? 'Initial payment' : 'Adjustment: Additional payment'),
-              createdAt:  now,
+              amount: diff,
+              method: _paymentMethod,
+              notes: diff < 0
+                  ? 'Adjustment: Paid amount decreased'
+                  : (_existingOrder == null
+                      ? 'Initial payment'
+                      : 'Adjustment: Additional payment'),
+              createdAt: now,
             ));
       }
 
       // Persist last delivery charge
-      ref.read(settingsProvider.notifier).updateLastDeliveryCharge(_deliveryCharge);
+      ref
+          .read(settingsProvider.notifier)
+          .updateLastDeliveryCharge(_deliveryCharge);
 
       // Clear the saved cart provider
       ref.read(createOrderCartProvider(widget.customerId).notifier).state = [];
@@ -1263,7 +1465,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         arguments: {'orderId': orderId},
       );
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Failed to save order: $e');
+      if (mounted)
+        SnackbarHelper.showError(context, 'Failed to save order: $e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1279,7 +1482,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       ),
       builder: (ctx) => Consumer(
         builder: (ctx, ref, _) {
-          final ordersAsync = ref.watch(customerOrdersProvider(widget.customerId));
+          final ordersAsync =
+              ref.watch(customerOrdersProvider(widget.customerId));
           return Container(
             height: MediaQuery.of(context).size.height * 0.65,
             padding: const EdgeInsets.all(20),
@@ -1292,7 +1496,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     Expanded(
                       child: Text(
                         'Reorder Past Order for ${widget.customerName}',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 16),
                       ),
                     ),
                     IconButton(
@@ -1304,11 +1509,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 const Divider(),
                 Expanded(
                   child: ordersAsync.when(
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Center(child: Text('Error loading past orders: $e')),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) =>
+                        Center(child: Text('Error loading past orders: $e')),
                     data: (pastOrders) {
                       if (pastOrders.isEmpty) {
-                        return const Center(child: Text('No previous orders found for this customer.'));
+                        return const Center(
+                            child: Text(
+                                'No previous orders found for this customer.'));
                       }
                       return ListView.builder(
                         itemCount: pastOrders.length,
@@ -1317,7 +1526,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
                             child: ListTile(
-                              title: Text('Order ${o.orderNoLabel} — ${AppFormatters.currency(o.grandTotal, symbol: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹')}'),
+                              title: Text(
+                                  'Order ${o.orderNoLabel} — ${AppFormatters.currency(o.grandTotal, symbol: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹')}'),
                               subtitle: Text(
                                 '${AppFormatters.date(o.createdAt)} • ${o.items.length} items (${o.items.map((it) => it.itemName).join(', ')})',
                                 maxLines: 2,
@@ -1339,7 +1549,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                                     }
                                   });
                                   Navigator.pop(ctx);
-                                  SnackbarHelper.showSuccess(context, 'Reordered ${o.items.length} items from past order');
+                                  SnackbarHelper.showSuccess(context,
+                                      'Reordered ${o.items.length} items from past order');
                                 },
                                 child: const Text('Reorder'),
                               ),
@@ -1388,19 +1599,25 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               }
               double unitPrice = price;
               if (price == item.sellingPrice) {
-                final customer = ref.read(customerDetailProvider(widget.customerId)).value;
+                final customer =
+                    ref.read(customerDetailProvider(widget.customerId)).value;
                 final settings = ref.read(settingsProvider).valueOrNull;
                 final enableMarkup = settings?.enableVipPriceMarkup ?? true;
-                if (enableMarkup && customer != null && customer.isVipActive && customer.vipMarkupPct > 0) {
-                  unitPrice = double.parse((item.sellingPrice * (1 + (customer.vipMarkupPct / 100))).toStringAsFixed(2));
+                if (enableMarkup &&
+                    customer != null &&
+                    customer.isVipActive &&
+                    customer.vipMarkupPct > 0) {
+                  unitPrice = double.parse(
+                      (item.sellingPrice * (1 + (customer.vipMarkupPct / 100)))
+                          .toStringAsFixed(2));
                 }
               }
 
               _cart.add(CartItem(
-                itemId:   item.id,
-                name:     item.name,
-                unit:     item.unit,
-                price:    unitPrice,
+                itemId: item.id,
+                name: item.name,
+                unit: item.unit,
+                price: unitPrice,
                 quantity: qty,
               ));
             }
@@ -1415,7 +1632,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isSpecific ? 'Add Specific Question' : 'Add Common Question', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+            isSpecific ? 'Add Specific Question' : 'Add Common Question',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: _AddSpecificQuestionForm(
           customerId: isSpecific ? widget.customerId : '',
@@ -1445,7 +1664,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               const SizedBox(height: 8),
               const Text(
                 'No template questions configured yet.',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+                style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontStyle: FontStyle.italic),
               ),
               const SizedBox(height: 8),
               Row(
@@ -1453,13 +1675,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   OutlinedButton.icon(
                     onPressed: () => _addQuestion(false),
                     icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add Common Q', style: TextStyle(fontSize: 11)),
+                    label: const Text('Add Common Q',
+                        style: TextStyle(fontSize: 11)),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: () => _addQuestion(true),
                     icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add Specific Q', style: TextStyle(fontSize: 11)),
+                    label: const Text('Add Specific Q',
+                        style: TextStyle(fontSize: 11)),
                   ),
                 ],
               ),
@@ -1490,12 +1714,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     TextButton.icon(
                       onPressed: () => _addQuestion(false),
                       icon: const Icon(Icons.add, size: 14),
-                      label: const Text('Common', style: TextStyle(fontSize: 11)),
+                      label:
+                          const Text('Common', style: TextStyle(fontSize: 11)),
                     ),
                     TextButton.icon(
                       onPressed: () => _addQuestion(true),
                       icon: const Icon(Icons.add, size: 14),
-                      label: const Text('Specific', style: TextStyle(fontSize: 11)),
+                      label: const Text('Specific',
+                          style: TextStyle(fontSize: 11)),
                     ),
                   ],
                 ),
@@ -1504,7 +1730,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             const Divider(),
             ..._questions.map((q) {
               final selectedValue = _selectedAnswers[q.id];
-              final isSpecific = q.customerId != null && q.customerId!.isNotEmpty;
+              final isSpecific =
+                  q.customerId != null && q.customerId!.isNotEmpty;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: Column(
@@ -1515,19 +1742,24 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         Expanded(
                           child: Text(
                             q.question,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13),
                           ),
                         ),
                         if (isSpecific)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.amber.shade100,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'Specific',
-                              style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                              style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber.shade900),
                             ),
                           ),
                       ],
@@ -1539,12 +1771,16 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       children: q.options.map((opt) {
                         final isSel = selectedValue == opt;
                         return ChoiceChip(
-                          label: Text(opt, style: const TextStyle(fontSize: 12)),
+                          label:
+                              Text(opt, style: const TextStyle(fontSize: 12)),
                           selected: isSel,
                           selectedColor: AppColors.primary.withOpacity(0.15),
                           labelStyle: TextStyle(
-                            color: isSel ? AppColors.primary : AppColors.textSecondary,
-                            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                            color: isSel
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                            fontWeight:
+                                isSel ? FontWeight.bold : FontWeight.normal,
                           ),
                           onSelected: (selected) {
                             setState(() {
@@ -1624,7 +1860,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           CheckboxListTile(
             title: Text(
               'Doctor Prescription Verified physically',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: rxColor),
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.bold, color: rxColor),
             ),
             value: _rxVerified,
             onChanged: (val) {
@@ -1668,7 +1905,9 @@ class _CartItemTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B).withOpacity(0.4) : AppColors.gray50,
+        color: isDark
+            ? const Color(0xFF1E293B).withOpacity(0.4)
+            : AppColors.gray50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200,
@@ -1698,7 +1937,8 @@ class _CartItemTile extends StatelessWidget {
                         value: cartItem.unit,
                         underline: const SizedBox(),
                         isDense: true,
-                        icon: const Icon(Icons.arrow_drop_down_rounded, size: 16, color: AppColors.primary),
+                        icon: const Icon(Icons.arrow_drop_down_rounded,
+                            size: 16, color: AppColors.primary),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
@@ -1706,13 +1946,15 @@ class _CartItemTile extends StatelessWidget {
                         items: {
                           cartItem.unit,
                           ...AppConstants.itemUnits,
-                        }.map((u) => DropdownMenuItem(
-                          value: u,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: Text(u),
-                          ),
-                        )).toList(),
+                        }
+                            .map((u) => DropdownMenuItem(
+                                  value: u,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(right: 4),
+                                    child: Text(u),
+                                  ),
+                                ))
+                            .toList(),
                         onChanged: (v) {
                           if (v != null) onUnitChanged?.call(v);
                         },
@@ -1731,8 +1973,8 @@ class _CartItemTile extends StatelessWidget {
           ),
           // Qty picker
           _QtyPicker(
-            quantity:   cartItem.quantity,
-            onChanged:  onQtyChanged,
+            quantity: cartItem.quantity,
+            onChanged: onQtyChanged,
           ),
           const SizedBox(width: 12),
           Text(
@@ -1743,7 +1985,8 @@ class _CartItemTile extends StatelessWidget {
                 ),
           ),
           IconButton(
-            icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.error),
+            icon: const Icon(Icons.close_rounded,
+                size: 18, color: AppColors.error),
             onPressed: onRemove,
             constraints: const BoxConstraints(),
             padding: const EdgeInsets.only(left: 8),
@@ -1798,8 +2041,7 @@ class _QtyPickerState extends State<_QtyPicker> {
       width: 80,
       child: TextField(
         controller: _ctrl,
-        keyboardType:
-            const TextInputType.numberWithOptions(decimal: true),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         decoration: InputDecoration(
@@ -1855,10 +2097,12 @@ class _AddSpecificQuestionForm extends StatefulWidget {
   final String customerId;
   final VoidCallback onSaved;
 
-  const _AddSpecificQuestionForm({required this.customerId, required this.onSaved});
+  const _AddSpecificQuestionForm(
+      {required this.customerId, required this.onSaved});
 
   @override
-  State<_AddSpecificQuestionForm> createState() => _AddSpecificQuestionFormState();
+  State<_AddSpecificQuestionForm> createState() =>
+      _AddSpecificQuestionFormState();
 }
 
 class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
@@ -1896,7 +2140,10 @@ class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final question = _questionCon.text.trim();
-    final options = _optionCons.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
+    final options = _optionCons
+        .map((c) => c.text.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
 
     if (options.isEmpty) {
       SnackbarHelper.showError(context, 'Please add at least 1 option');
@@ -1932,15 +2179,19 @@ class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
                 hintText: 'e.g., how should be the tomato?',
                 border: OutlineInputBorder(),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter question text' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Enter question text'
+                  : null,
             ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Options:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Options:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 IconButton(
-                  icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
+                  icon: const Icon(Icons.add_circle_outline_rounded,
+                      color: AppColors.primary),
                   onPressed: _addOption,
                 ),
               ],
@@ -1958,13 +2209,16 @@ class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
                           border: const OutlineInputBorder(),
                           isDense: true,
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter option text' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Enter option text'
+                            : null,
                       ),
                     ),
                     if (_optionCons.length > 1) ...[
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                        icon: const Icon(Icons.delete_outline_rounded,
+                            color: Colors.redAccent),
                         onPressed: () => _removeOption(idx),
                       ),
                     ],
@@ -1982,9 +2236,11 @@ class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary),
                   onPressed: _submit,
-                  child: const Text('Save', style: TextStyle(color: Colors.white)),
+                  child:
+                      const Text('Save', style: TextStyle(color: Colors.white)),
                 ),
               ],
             )

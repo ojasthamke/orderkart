@@ -13,35 +13,35 @@ class Customer {
   final String notes;
   final String mapsLocation;
   final String photoPath;
-  final int    serialNo;
+  final int serialNo;
   final double outstandingBalance;
-  final int    totalOrders;
+  final int totalOrders;
   final double totalPaid;
   final double totalPending;
   final DateTime customerSince;
-  final String  lastOrderDate;
+  final String lastOrderDate;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final String   assignedWorkerId;
-  final String   createdBy;
-  final String   workerName;
-  final String   deviceName;
-  final String   dietaryPreference; // 'veg', 'non_veg', or ''
-  final double   latitude;
-  final double   longitude;
+  final String assignedWorkerId;
+  final String createdBy;
+  final String workerName;
+  final String deviceName;
+  final String dietaryPreference; // 'veg', 'non_veg', or ''
+  final double latitude;
+  final double longitude;
 
   // VIP Membership Fields
-  final bool   isVip;
-  final String vipPlan;             // 'Gold', 'Platinum', 'Custom', etc.
-  final String vipStartDate;        // ISO string
-  final String vipExpiryDate;       // ISO string
+  final bool isVip;
+  final String vipPlan; // 'Gold', 'Platinum', 'Custom', etc.
+  final String vipStartDate; // ISO string
+  final String vipExpiryDate; // ISO string
   final double vipSubscriptionFee;
   final String vipNotes;
-  final bool   vipAutoRenewal;
-  final bool   vipFreeDelivery;
-  final double vipDiscountPct;      // 5%, 10%, 15%, 20%, or Custom %
-  final double vipMarkupPct;        // 5% price markup for 10% discount, 10% for 20%
-  final bool   vipPriorityDelivery;
+  final bool vipAutoRenewal;
+  final bool vipFreeDelivery;
+  final double vipDiscountPct; // 5%, 10%, 15%, 20%, or Custom %
+  final double vipMarkupPct; // 5% price markup for 10% discount, 10% for 20%
+  final bool vipPriorityDelivery;
   final String customWelcomeMessage;
 
   const Customer({
@@ -49,40 +49,40 @@ class Customer {
     required this.streetId,
     required this.name,
     required this.phone1,
-    this.phone2         = '',
-    this.whatsapp       = '',
-    this.houseNumber    = '',
-    this.address        = '',
-    this.notes          = '',
-    this.mapsLocation   = '',
-    this.photoPath      = '',
-    this.serialNo       = 0,
+    this.phone2 = '',
+    this.whatsapp = '',
+    this.houseNumber = '',
+    this.address = '',
+    this.notes = '',
+    this.mapsLocation = '',
+    this.photoPath = '',
+    this.serialNo = 0,
     this.outstandingBalance = 0,
-    this.totalOrders    = 0,
-    this.totalPaid      = 0,
-    this.totalPending   = 0,
+    this.totalOrders = 0,
+    this.totalPaid = 0,
+    this.totalPending = 0,
     required this.customerSince,
-    this.lastOrderDate  = '',
+    this.lastOrderDate = '',
     required this.createdAt,
     required this.updatedAt,
     this.assignedWorkerId = '',
-    this.createdBy        = 'owner',
-    this.workerName       = '',
-    this.deviceName       = '',
+    this.createdBy = 'owner',
+    this.workerName = '',
+    this.deviceName = '',
     this.dietaryPreference = '',
-    this.latitude         = 0.0,
-    this.longitude        = 0.0,
+    this.latitude = 0.0,
+    this.longitude = 0.0,
     // VIP Defaults
-    this.isVip               = false,
-    this.vipPlan             = 'Gold VIP',
-    this.vipStartDate        = '',
-    this.vipExpiryDate       = '',
-    this.vipSubscriptionFee  = 0.0,
-    this.vipNotes            = '',
-    this.vipAutoRenewal      = false,
-    this.vipFreeDelivery     = true,
-    this.vipDiscountPct      = 10.0,
-    this.vipMarkupPct        = 5.0,
+    this.isVip = false,
+    this.vipPlan = 'Gold VIP',
+    this.vipStartDate = '',
+    this.vipExpiryDate = '',
+    this.vipSubscriptionFee = 0.0,
+    this.vipNotes = '',
+    this.vipAutoRenewal = false,
+    this.vipFreeDelivery = true,
+    this.vipDiscountPct = 10.0,
+    this.vipMarkupPct = 5.0,
     this.vipPriorityDelivery = true,
     this.customWelcomeMessage = '',
   });
@@ -99,165 +99,174 @@ class Customer {
     String? notes,
     String? mapsLocation,
     String? photoPath,
-    int?    serialNo,
+    int? serialNo,
     double? outstandingBalance,
-    int?    totalOrders,
+    int? totalOrders,
     double? totalPaid,
     double? totalPending,
     DateTime? customerSince,
-    String?   lastOrderDate,
+    String? lastOrderDate,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String?   assignedWorkerId,
-    String?   createdBy,
-    String?   workerName,
-    String?   deviceName,
-    String?   dietaryPreference,
-    double?   latitude,
-    double?   longitude,
-    bool?   isVip,
+    String? assignedWorkerId,
+    String? createdBy,
+    String? workerName,
+    String? deviceName,
+    String? dietaryPreference,
+    double? latitude,
+    double? longitude,
+    bool? isVip,
     String? vipPlan,
     String? vipStartDate,
     String? vipExpiryDate,
     double? vipSubscriptionFee,
     String? vipNotes,
-    bool?   vipAutoRenewal,
-    bool?   vipFreeDelivery,
+    bool? vipAutoRenewal,
+    bool? vipFreeDelivery,
     double? vipDiscountPct,
     double? vipMarkupPct,
-    bool?   vipPriorityDelivery,
+    bool? vipPriorityDelivery,
     String? customWelcomeMessage,
   }) {
     return Customer(
-      id:                 id                 ?? this.id,
-      streetId:           streetId           ?? this.streetId,
-      name:               name               ?? this.name,
-      phone1:             phone1             ?? this.phone1,
-      phone2:             phone2             ?? this.phone2,
-      whatsapp:           whatsapp           ?? this.whatsapp,
-      houseNumber:        houseNumber        ?? this.houseNumber,
-      address:            address            ?? this.address,
-      notes:              notes              ?? this.notes,
-      mapsLocation:       mapsLocation       ?? this.mapsLocation,
-      photoPath:          photoPath          ?? this.photoPath,
-      serialNo:           serialNo           ?? this.serialNo,
+      id: id ?? this.id,
+      streetId: streetId ?? this.streetId,
+      name: name ?? this.name,
+      phone1: phone1 ?? this.phone1,
+      phone2: phone2 ?? this.phone2,
+      whatsapp: whatsapp ?? this.whatsapp,
+      houseNumber: houseNumber ?? this.houseNumber,
+      address: address ?? this.address,
+      notes: notes ?? this.notes,
+      mapsLocation: mapsLocation ?? this.mapsLocation,
+      photoPath: photoPath ?? this.photoPath,
+      serialNo: serialNo ?? this.serialNo,
       outstandingBalance: outstandingBalance ?? this.outstandingBalance,
-      totalOrders:        totalOrders        ?? this.totalOrders,
-      totalPaid:          totalPaid          ?? this.totalPaid,
-      totalPending:       totalPending       ?? this.totalPending,
-      customerSince:      customerSince      ?? this.customerSince,
-      lastOrderDate:      lastOrderDate      ?? this.lastOrderDate,
-      createdAt:          createdAt          ?? this.createdAt,
-      updatedAt:          updatedAt          ?? this.updatedAt,
-      assignedWorkerId:   assignedWorkerId   ?? this.assignedWorkerId,
-      createdBy:          createdBy          ?? this.createdBy,
-      workerName:         workerName         ?? this.workerName,
-      deviceName:         deviceName         ?? this.deviceName,
-      dietaryPreference:  dietaryPreference  ?? this.dietaryPreference,
-      latitude:           latitude           ?? this.latitude,
-      longitude:          longitude          ?? this.longitude,
-      isVip:               isVip               ?? this.isVip,
-      vipPlan:             vipPlan             ?? this.vipPlan,
-      vipStartDate:        vipStartDate        ?? this.vipStartDate,
-      vipExpiryDate:       vipExpiryDate       ?? this.vipExpiryDate,
-      vipSubscriptionFee:  vipSubscriptionFee  ?? this.vipSubscriptionFee,
-      vipNotes:            vipNotes            ?? this.vipNotes,
-      vipAutoRenewal:      vipAutoRenewal      ?? this.vipAutoRenewal,
-      vipFreeDelivery:     vipFreeDelivery     ?? this.vipFreeDelivery,
-      vipDiscountPct:      vipDiscountPct      ?? this.vipDiscountPct,
-      vipMarkupPct:        vipMarkupPct        ?? this.vipMarkupPct,
+      totalOrders: totalOrders ?? this.totalOrders,
+      totalPaid: totalPaid ?? this.totalPaid,
+      totalPending: totalPending ?? this.totalPending,
+      customerSince: customerSince ?? this.customerSince,
+      lastOrderDate: lastOrderDate ?? this.lastOrderDate,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      assignedWorkerId: assignedWorkerId ?? this.assignedWorkerId,
+      createdBy: createdBy ?? this.createdBy,
+      workerName: workerName ?? this.workerName,
+      deviceName: deviceName ?? this.deviceName,
+      dietaryPreference: dietaryPreference ?? this.dietaryPreference,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isVip: isVip ?? this.isVip,
+      vipPlan: vipPlan ?? this.vipPlan,
+      vipStartDate: vipStartDate ?? this.vipStartDate,
+      vipExpiryDate: vipExpiryDate ?? this.vipExpiryDate,
+      vipSubscriptionFee: vipSubscriptionFee ?? this.vipSubscriptionFee,
+      vipNotes: vipNotes ?? this.vipNotes,
+      vipAutoRenewal: vipAutoRenewal ?? this.vipAutoRenewal,
+      vipFreeDelivery: vipFreeDelivery ?? this.vipFreeDelivery,
+      vipDiscountPct: vipDiscountPct ?? this.vipDiscountPct,
+      vipMarkupPct: vipMarkupPct ?? this.vipMarkupPct,
       vipPriorityDelivery: vipPriorityDelivery ?? this.vipPriorityDelivery,
       customWelcomeMessage: customWelcomeMessage ?? this.customWelcomeMessage,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'id':                  id,
-        'street_id':           streetId,
-        'name':                name,
-        'phone1':              phone1,
-        'phone2':              phone2,
-        'whatsapp':            whatsapp,
-        'house_number':        houseNumber,
-        'address':             address,
-        'notes':               notes,
-        'maps_location':       mapsLocation,
-        'photo_path':          photoPath,
-        'serial_no':           serialNo,
+        'id': id,
+        'street_id': streetId,
+        'name': name,
+        'phone1': phone1,
+        'phone2': phone2,
+        'whatsapp': whatsapp,
+        'house_number': houseNumber,
+        'address': address,
+        'notes': notes,
+        'maps_location': mapsLocation,
+        'photo_path': photoPath,
+        'serial_no': serialNo,
         'outstanding_balance': outstandingBalance,
-        'total_orders':        totalOrders,
-        'total_paid':          totalPaid,
-        'total_pending':       totalPending,
-        'customer_since':      customerSince.toIso8601String(),
-        'last_order_date':     lastOrderDate,
-        'created_at':          createdAt.toIso8601String(),
-        'updated_at':          updatedAt.toIso8601String(),
-        'assigned_worker_id':  assignedWorkerId,
-        'created_by':          createdBy,
-        'worker_name':         workerName,
-        'device_name':         deviceName,
-        'dietary_preference':  dietaryPreference,
-        'latitude':            latitude,
-        'longitude':           longitude,
-        'is_vip':               isVip ? 1 : 0,
-        'vip_plan':             vipPlan,
-        'vip_start_date':       vipStartDate,
-        'vip_expiry_date':      vipExpiryDate,
+        'total_orders': totalOrders,
+        'total_paid': totalPaid,
+        'total_pending': totalPending,
+        'customer_since': customerSince.toIso8601String(),
+        'last_order_date': lastOrderDate,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+        'assigned_worker_id': assignedWorkerId,
+        'created_by': createdBy,
+        'worker_name': workerName,
+        'device_name': deviceName,
+        'dietary_preference': dietaryPreference,
+        'latitude': latitude,
+        'longitude': longitude,
+        'is_vip': isVip ? 1 : 0,
+        'vip_plan': vipPlan,
+        'vip_start_date': vipStartDate,
+        'vip_expiry_date': vipExpiryDate,
         'vip_subscription_fee': vipSubscriptionFee,
-        'vip_notes':            vipNotes,
-        'vip_auto_renewal':      vipAutoRenewal ? 1 : 0,
-        'vip_free_delivery':     vipFreeDelivery ? 1 : 0,
-        'vip_discount_pct':      vipDiscountPct,
-        'vip_markup_pct':        vipMarkupPct,
+        'vip_notes': vipNotes,
+        'vip_auto_renewal': vipAutoRenewal ? 1 : 0,
+        'vip_free_delivery': vipFreeDelivery ? 1 : 0,
+        'vip_discount_pct': vipDiscountPct,
+        'vip_markup_pct': vipMarkupPct,
         'vip_priority_delivery': vipPriorityDelivery ? 1 : 0,
         'custom_welcome_message': customWelcomeMessage,
       };
 
   factory Customer.fromMap(Map<String, dynamic> map) => Customer(
-        id:                  map['id']                  as String? ?? '',
-        streetId:            (map['street_id'] ?? map['location_id']) as String? ?? '',
-        name:                map['name']                as String? ?? '',
-        phone1:              map['phone1']              as String? ?? '',
-        phone2:              map['phone2']              as String? ?? '',
-        whatsapp:            map['whatsapp']            as String? ?? '',
-        houseNumber:         map['house_number']        as String? ?? '',
-        address:             map['address']             as String? ?? '',
-        notes:               map['notes']               as String? ?? '',
-        mapsLocation:        map['maps_location']       as String? ?? '',
-        photoPath:           map['photo_path']          as String? ?? '',
-        serialNo:            map['serial_no']           as int?    ?? 0,
-        outstandingBalance:  (map['outstanding_balance'] as num?)?.toDouble() ?? 0,
-        totalOrders:         map['total_orders']        as int?    ?? 0,
-        totalPaid:           (map['total_paid']          as num?)?.toDouble() ?? 0,
-        totalPending:        (map['total_pending']        as num?)?.toDouble() ?? 0,
-        customerSince:       DateTime.tryParse(map['customer_since']?.toString() ?? '') ?? DateTime.now(),
-        lastOrderDate:       map['last_order_date']     as String? ?? '',
-        createdAt:           DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
-        updatedAt:           DateTime.tryParse(map['updated_at']?.toString() ?? '') ?? DateTime.now(),
-        assignedWorkerId:    (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
-        createdBy:           map['created_by']          as String? ?? 'owner',
-        workerName:          map['worker_name']         as String? ?? '',
-        deviceName:          map['device_name']         as String? ?? '',
-        dietaryPreference:   map['dietary_preference']  as String? ?? '',
-        latitude:            (map['latitude'] as num?)?.toDouble() ?? 0.0,
-        longitude:           (map['longitude'] as num?)?.toDouble() ?? 0.0,
-        isVip:               (map['is_vip'] as int? ?? 0) == 1,
-        vipPlan:             map['vip_plan']            as String? ?? 'Gold VIP',
-        vipStartDate:        map['vip_start_date']       as String? ?? '',
-        vipExpiryDate:       map['vip_expiry_date']      as String? ?? '',
-        vipSubscriptionFee:  (map['vip_subscription_fee'] as num?)?.toDouble() ?? 0.0,
-        vipNotes:            map['vip_notes']           as String? ?? '',
-        vipAutoRenewal:      (map['vip_auto_renewal'] as int? ?? 0) == 1,
-        vipFreeDelivery:     (map['vip_free_delivery'] as int? ?? 1) == 1,
-        vipDiscountPct:      (map['vip_discount_pct'] as num?)?.toDouble() ?? 10.0,
-        vipMarkupPct:        (map['vip_markup_pct'] as num?)?.toDouble() ?? 5.0,
+        id: map['id'] as String? ?? '',
+        streetId: (map['street_id'] ?? map['location_id']) as String? ?? '',
+        name: map['name'] as String? ?? '',
+        phone1: map['phone1'] as String? ?? '',
+        phone2: map['phone2'] as String? ?? '',
+        whatsapp: map['whatsapp'] as String? ?? '',
+        houseNumber: map['house_number'] as String? ?? '',
+        address: map['address'] as String? ?? '',
+        notes: map['notes'] as String? ?? '',
+        mapsLocation: map['maps_location'] as String? ?? '',
+        photoPath: map['photo_path'] as String? ?? '',
+        serialNo: map['serial_no'] as int? ?? 0,
+        outstandingBalance:
+            (map['outstanding_balance'] as num?)?.toDouble() ?? 0,
+        totalOrders: map['total_orders'] as int? ?? 0,
+        totalPaid: (map['total_paid'] as num?)?.toDouble() ?? 0,
+        totalPending: (map['total_pending'] as num?)?.toDouble() ?? 0,
+        customerSince:
+            DateTime.tryParse(map['customer_since']?.toString() ?? '') ??
+                DateTime.now(),
+        lastOrderDate: map['last_order_date'] as String? ?? '',
+        createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ??
+            DateTime.now(),
+        updatedAt: DateTime.tryParse(map['updated_at']?.toString() ?? '') ??
+            DateTime.now(),
+        assignedWorkerId:
+            (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
+        createdBy: map['created_by'] as String? ?? 'owner',
+        workerName: map['worker_name'] as String? ?? '',
+        deviceName: map['device_name'] as String? ?? '',
+        dietaryPreference: map['dietary_preference'] as String? ?? '',
+        latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
+        longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
+        isVip: (map['is_vip'] as int? ?? 0) == 1,
+        vipPlan: map['vip_plan'] as String? ?? 'Gold VIP',
+        vipStartDate: map['vip_start_date'] as String? ?? '',
+        vipExpiryDate: map['vip_expiry_date'] as String? ?? '',
+        vipSubscriptionFee:
+            (map['vip_subscription_fee'] as num?)?.toDouble() ?? 0.0,
+        vipNotes: map['vip_notes'] as String? ?? '',
+        vipAutoRenewal: (map['vip_auto_renewal'] as int? ?? 0) == 1,
+        vipFreeDelivery: (map['vip_free_delivery'] as int? ?? 1) == 1,
+        vipDiscountPct: (map['vip_discount_pct'] as num?)?.toDouble() ?? 10.0,
+        vipMarkupPct: (map['vip_markup_pct'] as num?)?.toDouble() ?? 5.0,
         vipPriorityDelivery: (map['vip_priority_delivery'] as int? ?? 1) == 1,
         customWelcomeMessage: map['custom_welcome_message'] as String? ?? '',
       );
 
   String get serialLabel => serialNo > 0 ? '#$serialNo' : '';
 
-  bool get isGhostHouse => name.trim().toLowerCase() == 'ghost house' || name.trim().startsWith('[Ghost House]');
+  bool get isGhostHouse =>
+      name.trim().toLowerCase() == 'ghost house' ||
+      name.trim().startsWith('[Ghost House]');
 
   /// VIP Active Status calculation
   bool get isVipActive {
@@ -265,7 +274,8 @@ class Customer {
     if (vipExpiryDate.isEmpty) return true;
     final exp = DateTime.tryParse(vipExpiryDate);
     if (exp == null) return true;
-    return exp.isAfter(DateTime.now());
+    final endOfExpiryDay = DateTime(exp.year, exp.month, exp.day, 23, 59, 59);
+    return endOfExpiryDay.isAfter(DateTime.now());
   }
 
   /// Check if VIP membership is expiring within 7 days
@@ -306,7 +316,8 @@ class Customer {
     return 'Regular';
   }
 
-  double get advanceBalance => outstandingBalance < 0 ? outstandingBalance.abs() : 0.0;
+  double get advanceBalance =>
+      outstandingBalance < 0 ? outstandingBalance.abs() : 0.0;
 
   @override
   bool operator ==(Object other) => other is Customer && other.id == id;

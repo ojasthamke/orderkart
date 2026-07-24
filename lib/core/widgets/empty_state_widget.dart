@@ -37,9 +37,10 @@ class EmptyStateWidget extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 48, color: AppColors.primary),
-            )
-                .animate()
-                .scale(begin: const Offset(0.5, 0.5), duration: 400.ms, curve: Curves.elasticOut),
+            ).animate().scale(
+                begin: const Offset(0.5, 0.5),
+                duration: 400.ms,
+                curve: Curves.elasticOut),
             const SizedBox(height: 24),
             Text(
               title,
@@ -57,7 +58,7 @@ class EmptyStateWidget extends StatelessWidget {
                   ),
               textAlign: TextAlign.center,
             ).animate().fadeIn(delay: 300.ms),
-            if (onAction != null) ...[  
+            if (onAction != null) ...[
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: onAction,

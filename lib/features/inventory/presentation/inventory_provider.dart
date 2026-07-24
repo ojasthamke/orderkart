@@ -7,15 +7,15 @@ import '../domain/stock_history.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../search/presentation/search_provider.dart';
 
-final inventoryRepositoryProvider = Provider<InventoryRepository>(
-    (ref) => InventoryRepositoryImpl(ItemDao()));
+final inventoryRepositoryProvider =
+    Provider<InventoryRepository>((ref) => InventoryRepositoryImpl(ItemDao()));
 
 class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
   final Ref _ref;
   final InventoryRepository _repo;
   String _category = '';
-  String _search   = '';
-  String _sort     = 'name';
+  String _search = '';
+  String _sort = 'name';
 
   InventoryNotifier(this._ref, this._repo) : super(const AsyncValue.loading()) {
     load();
@@ -27,9 +27,9 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     }
     try {
       final items = await _repo.getAllItems(
-        category:    _category.isEmpty ? null : _category,
-        searchQuery: _search.isEmpty   ? null : _search,
-        sortBy:      _sort,
+        category: _category.isEmpty ? null : _category,
+        searchQuery: _search.isEmpty ? null : _search,
+        sortBy: _sort,
       );
       state = AsyncValue.data(items);
     } catch (e, st) {
@@ -89,8 +89,7 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     _invalidateAll();
   }
 
-  Future<void> adjustStock(
-      String itemId, double change, String reason) async {
+  Future<void> adjustStock(String itemId, double change, String reason) async {
     await _repo.adjustStock(itemId, change, reason);
     await load(silent: true);
     _invalidateAll();
@@ -119,8 +118,9 @@ final stockSummaryProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final items = await ref.read(inventoryRepositoryProvider).getAllItems();
   final totalItems = items.length;
   final outOfStock = items.where((i) => i.stock < 0.001).toList();
-  final lowStock = items.where((i) => i.isLowStock && i.stock >= 0.001).toList();
-  
+  final lowStock =
+      items.where((i) => i.isLowStock && i.stock >= 0.001).toList();
+
   double totalCostValue = 0;
   double totalSellingValue = 0;
   for (final item in items) {
@@ -151,6 +151,7 @@ final spillageHistoryProvider = FutureProvider<List<StockHistory>>((ref) {
   return ref.read(inventoryRepositoryProvider).getSpillageHistory();
 });
 
-final orderedItemStatsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final orderedItemStatsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   return await ItemDao().getOrderedItemStats();
 });

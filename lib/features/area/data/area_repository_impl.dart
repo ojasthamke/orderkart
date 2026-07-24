@@ -35,10 +35,10 @@ class AreaRepositoryImpl implements AreaRepository {
   Future<Map<String, dynamic>> getAreaStats(String areaId) async {
     final area = await _dao.getAreaById(areaId);
     return {
-      'streetCount':   area?.streetCount   ?? 0,
+      'streetCount': area?.streetCount ?? 0,
       'customerCount': area?.customerCount ?? 0,
-      'orderCount':    area?.orderCount    ?? 0,
-      'totalRevenue':  area?.totalRevenue  ?? 0.0,
+      'orderCount': area?.orderCount ?? 0,
+      'totalRevenue': area?.totalRevenue ?? 0.0,
     };
   }
 }

@@ -10,7 +10,8 @@ final locationRepositoryProvider = Provider<LocationRepository>((ref) {
 });
 
 // Provider for breadcrumbs of a given location
-final breadcrumbsProvider = FutureProvider.family<List<Location>, String>((ref, locationId) async {
+final breadcrumbsProvider =
+    FutureProvider.family<List<Location>, String>((ref, locationId) async {
   final repo = ref.read(locationRepositoryProvider);
   return await repo.getBreadcrumbs(locationId);
 });
@@ -23,7 +24,8 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
   String _search = '';
   String _sort = 'sequence_key';
 
-  LocationListNotifier(this._ref, this._repo, this.parentId) : super(const AsyncValue.loading()) {
+  LocationListNotifier(this._ref, this._repo, this.parentId)
+      : super(const AsyncValue.loading()) {
     loadLocations();
   }
 
@@ -59,7 +61,7 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
     // Generate next sequence key automatically before inserting
     final nextSeq = await _repo.getNextSequenceKey(parentId);
     final toInsert = location.copyWith(sequenceKey: nextSeq);
-    
+
     await _repo.addLocation(toInsert);
     await loadLocations(silent: true);
     _invalidateAll();
@@ -85,10 +87,13 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
 }
 
 // Family provider for child locations list
-final locationListProvider = StateNotifierProvider.family<LocationListNotifier, AsyncValue<List<Location>>, String?>((ref, parentId) {
-  return LocationListNotifier(ref, ref.read(locationRepositoryProvider), parentId);
+final locationListProvider = StateNotifierProvider.family<LocationListNotifier,
+    AsyncValue<List<Location>>, String?>((ref, parentId) {
+  return LocationListNotifier(
+      ref, ref.read(locationRepositoryProvider), parentId);
 });
 
-final locationPathNameProvider = FutureProvider.family<String, String>((ref, locationId) async {
+final locationPathNameProvider =
+    FutureProvider.family<String, String>((ref, locationId) async {
   return await LocationDao().getFullLocationPathName(locationId);
 });

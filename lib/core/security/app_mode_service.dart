@@ -35,17 +35,21 @@ class AppModeService {
   /// Check if first-launch initialization is complete
   static Future<bool> isAppInitialized() async {
     final db = await DatabaseHelper.instance.database;
-    final res = await db.query('settings', where: 'key = ?', whereArgs: [keyIsInitialized]);
+    final res = await db
+        .query('settings', where: 'key = ?', whereArgs: [keyIsInitialized]);
     return res.isNotEmpty && res.first['value'] == 'true';
   }
 
   /// Set app initialization status
   static Future<void> setAppInitialized(bool initialized) async {
     final db = await DatabaseHelper.instance.database;
-    await db.insert('settings', {
-      'key': keyIsInitialized,
-      'value': initialized ? 'true' : 'false',
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'settings',
+        {
+          'key': keyIsInitialized,
+          'value': initialized ? 'true' : 'false',
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   /// Get current App Mode
@@ -58,7 +62,8 @@ class AppModeService {
     // Fallback to SQLite settings table
     try {
       final db = await DatabaseHelper.instance.database;
-      final res = await db.query('settings', where: 'key = ?', whereArgs: [keyAppMode]);
+      final res =
+          await db.query('settings', where: 'key = ?', whereArgs: [keyAppMode]);
       if (res.isNotEmpty) {
         final dbVal = res.first['value'] as String?;
         return dbVal == 'worker' ? AppMode.worker : AppMode.owner;
@@ -70,22 +75,27 @@ class AppModeService {
   /// Set App Mode
   static Future<void> setAppMode(AppMode mode) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(keyAppMode, mode == AppMode.worker ? 'worker' : 'owner');
+    await prefs.setString(
+        keyAppMode, mode == AppMode.worker ? 'worker' : 'owner');
 
     // Sync to SQLite database
     try {
       final db = await DatabaseHelper.instance.database;
-      await db.insert('settings', {
-        'key': keyAppMode,
-        'value': mode == AppMode.worker ? 'worker' : 'owner',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert(
+          'settings',
+          {
+            'key': keyAppMode,
+            'value': mode == AppMode.worker ? 'worker' : 'owner',
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
     } catch (_) {}
   }
 
   /// Check if Owner PIN is set up
   static Future<bool> isOwnerPinSet() async {
     final db = await DatabaseHelper.instance.database;
-    final res = await db.query('settings', where: 'key = ?', whereArgs: [keyOwnerPinHash]);
+    final res = await db
+        .query('settings', where: 'key = ?', whereArgs: [keyOwnerPinHash]);
     return res.isNotEmpty && (res.first['value'] as String? ?? '').isNotEmpty;
   }
 
@@ -95,7 +105,8 @@ class AppModeService {
     final pinSet = await isOwnerPinSet();
     if (pinSet) return false; // Default activation code disabled after setup
     final hash = sha256.convert(utf8.encode(input.trim())).toString();
-    return hash == '460d235c0ac08c373da0a269e57569aeaa50721061ea966758f57eef78e6e946';
+    return hash ==
+        '460d235c0ac08c373da0a269e57569aeaa50721061ea966758f57eef78e6e946';
   }
 
   /// Save new Owner 6-digit PIN
@@ -128,10 +139,12 @@ class AppModeService {
     await prefs.setInt(keyFailedAttempts, currentFailed);
 
     if (currentFailed >= 10) {
-      final lockoutTime = DateTime.now().millisecondsSinceEpoch + (5 * 60 * 1000); // 5 minutes
+      final lockoutTime =
+          DateTime.now().millisecondsSinceEpoch + (5 * 60 * 1000); // 5 minutes
       await prefs.setInt(keyLockoutUntil, lockoutTime);
     } else if (currentFailed >= 5) {
-      final lockoutTime = DateTime.now().millisecondsSinceEpoch + (30 * 1000); // 30 seconds
+      final lockoutTime =
+          DateTime.now().millisecondsSinceEpoch + (30 * 1000); // 30 seconds
       await prefs.setInt(keyLockoutUntil, lockoutTime);
     }
   }
@@ -149,8 +162,10 @@ class AppModeService {
     if (remainingLock > 0) return false;
 
     final db = await DatabaseHelper.instance.database;
-    final hashRes = await db.query('settings', where: 'key = ?', whereArgs: [keyOwnerPinHash]);
-    final saltRes = await db.query('settings', where: 'key = ?', whereArgs: [keyOwnerPinSalt]);
+    final hashRes = await db
+        .query('settings', where: 'key = ?', whereArgs: [keyOwnerPinHash]);
+    final saltRes = await db
+        .query('settings', where: 'key = ?', whereArgs: [keyOwnerPinSalt]);
 
     if (hashRes.isEmpty || saltRes.isEmpty) return false;
     final storedHash = hashRes.first['value'] as String? ?? '';

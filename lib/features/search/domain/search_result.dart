@@ -27,12 +27,18 @@ class SearchResult {
 
   String get typeLabel {
     switch (type) {
-      case SearchResultType.area:     return 'Area';
-      case SearchResultType.street:   return 'Street';
-      case SearchResultType.customer: return 'Customer';
-      case SearchResultType.order:    return 'Order';
-      case SearchResultType.item:     return 'Item';
-      case SearchResultType.expense:  return 'Expense';
+      case SearchResultType.area:
+        return 'Area';
+      case SearchResultType.street:
+        return 'Street';
+      case SearchResultType.customer:
+        return 'Customer';
+      case SearchResultType.order:
+        return 'Order';
+      case SearchResultType.item:
+        return 'Item';
+      case SearchResultType.expense:
+        return 'Expense';
     }
   }
 }

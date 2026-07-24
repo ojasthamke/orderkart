@@ -10,8 +10,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
   InventoryRepositoryImpl(this._dao);
 
   @override
-  Future<List<Item>> getAllItems({String? category, String? searchQuery, String? sortBy}) =>
-      _dao.getAllItems(category: category, searchQuery: searchQuery, sortBy: sortBy);
+  Future<List<Item>> getAllItems(
+          {String? category, String? searchQuery, String? sortBy}) =>
+      _dao.getAllItems(
+          category: category, searchQuery: searchQuery, sortBy: sortBy);
 
   @override
   Future<Item?> getItemById(String id) => _dao.getItemById(id);
@@ -32,19 +34,19 @@ class InventoryRepositoryImpl implements InventoryRepository {
   Future<void> deleteItem(String id) => _dao.deleteItem(id);
 
   @override
-  Future<void> adjustStock(
-      String itemId, double change, String reason, {String? orderId}) async {
+  Future<void> adjustStock(String itemId, double change, String reason,
+      {String? orderId}) async {
     final item = await _dao.getItemById(itemId);
     await _dao.adjustStock(itemId, change);
     if (item != null) {
       await _dao.insertStockHistory(StockHistory(
-        id:           _uuid.v4(),
-        itemId:       itemId,
-        itemName:     item.name,
+        id: _uuid.v4(),
+        itemId: itemId,
+        itemName: item.name,
         changeAmount: change,
-        reason:       reason,
-        orderId:      orderId ?? '',
-        createdAt:    DateTime.now(),
+        reason: reason,
+        orderId: orderId ?? '',
+        createdAt: DateTime.now(),
       ));
     }
   }
@@ -58,6 +60,5 @@ class InventoryRepositoryImpl implements InventoryRepository {
       _dao.updateItemSequences(itemIds);
 
   @override
-  Future<List<StockHistory>> getSpillageHistory() =>
-      _dao.getSpillageHistory();
+  Future<List<StockHistory>> getSpillageHistory() => _dao.getSpillageHistory();
 }

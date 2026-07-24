@@ -5,7 +5,7 @@ class Area {
   final String id;
   final String name;
   final String description;
-  final int color;           // stored as int (Colors.blue.value)
+  final int color; // stored as int (Colors.blue.value)
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -88,46 +88,46 @@ class Area {
   }
 
   Map<String, dynamic> toMap() => {
-        'id':                 id,
-        'name':               name,
-        'description':        description,
-        'color':              color,
-        'photo_path':         photoPath,
-        'maps_location':      mapsLocation,
-        'created_by':         createdBy,
+        'id': id,
+        'name': name,
+        'description': description,
+        'color': color,
+        'photo_path': photoPath,
+        'maps_location': mapsLocation,
+        'created_by': createdBy,
         'assigned_worker_id': assignedWorkerId,
-        'worker_name':        workerName,
-        'device_name':        deviceName,
-        'latitude':           latitude,
-        'longitude':          longitude,
-        'created_at':         createdAt.toIso8601String(),
-        'updated_at':         updatedAt.toIso8601String(),
+        'worker_name': workerName,
+        'device_name': deviceName,
+        'latitude': latitude,
+        'longitude': longitude,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
       };
 
   factory Area.fromMap(Map<String, dynamic> map) => Area(
-        id:               map['id'] as String,
-        name:             map['name'] as String,
-        description:      map['description'] as String? ?? '',
-        color:            map['color'] as int? ?? 0xFF1565C0,
-        photoPath:        map['photo_path'] as String? ?? '',
-        mapsLocation:     map['maps_location'] as String? ?? '',
-        createdBy:        map['created_by'] as String? ?? 'owner',
-        assignedWorkerId: (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
-        workerName:       map['worker_name'] as String? ?? '',
-        deviceName:       map['device_name'] as String? ?? '',
-        latitude:         (map['latitude'] as num?)?.toDouble() ?? 0.0,
-        longitude:        (map['longitude'] as num?)?.toDouble() ?? 0.0,
-        createdAt:        DateTime.parse(map['created_at'] as String),
-        updatedAt:        DateTime.parse(map['updated_at'] as String),
-        streetCount:      map['street_count']   as int?    ?? 0,
-        customerCount:    map['customer_count'] as int?    ?? 0,
-        orderCount:       map['order_count']    as int?    ?? 0,
-        totalRevenue:     (map['total_revenue'] as num?)?.toDouble() ?? 0,
+        id: map['id'] as String,
+        name: map['name'] as String,
+        description: map['description'] as String? ?? '',
+        color: map['color'] as int? ?? 0xFF1565C0,
+        photoPath: map['photo_path'] as String? ?? '',
+        mapsLocation: map['maps_location'] as String? ?? '',
+        createdBy: map['created_by'] as String? ?? 'owner',
+        assignedWorkerId:
+            (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
+        workerName: map['worker_name'] as String? ?? '',
+        deviceName: map['device_name'] as String? ?? '',
+        latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
+        longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
+        createdAt: DateTime.parse(map['created_at'] as String),
+        updatedAt: DateTime.parse(map['updated_at'] as String),
+        streetCount: map['street_count'] as int? ?? 0,
+        customerCount: map['customer_count'] as int? ?? 0,
+        orderCount: map['order_count'] as int? ?? 0,
+        totalRevenue: (map['total_revenue'] as num?)?.toDouble() ?? 0,
       );
 
   @override
-  bool operator ==(Object other) =>
-      other is Area && other.id == id;
+  bool operator ==(Object other) => other is Area && other.id == id;
 
   @override
   int get hashCode => id.hashCode;
