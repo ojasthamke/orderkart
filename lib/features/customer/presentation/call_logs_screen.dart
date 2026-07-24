@@ -131,8 +131,8 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen>
         children: [
           TabBar(
             controller: _tabController,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.textSecondary,
+            labelColor: Colors.white,
+            unselectedLabelColor: AppColors.textSecondaryColor(context),
             indicatorColor: Colors.transparent,
             indicator: AppColors.tabDecoration(context),
             labelStyle:

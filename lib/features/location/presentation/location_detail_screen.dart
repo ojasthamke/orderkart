@@ -156,17 +156,16 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen>
             },
           ),
 
-          // Tab bar to switch between Sub-locations and Customers
           TabBar(
             controller: _tabController,
             tabs: const [
               Tab(text: 'Customers Here'),
               Tab(text: 'Sub-Roads / Sectors'),
             ],
-            labelColor: AppColors.primary,
+            labelColor: Colors.white,
             indicatorColor: Colors.transparent,
             indicator: AppColors.tabDecoration(context),
-            unselectedLabelColor: AppColors.textSecondary,
+            unselectedLabelColor: AppColors.textSecondaryColor(context),
           ),
 
           Expanded(
