@@ -23,6 +23,9 @@ import '../../inventory/presentation/inventory_provider.dart';
 import '../../street/presentation/street_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
 
+import 'settings_provider.dart';
+import '../../worker/presentation/worker_provider.dart';
+
 class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
 
@@ -35,6 +38,8 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   bool _loading = false;
 
   void _invalidateAllProviders() {
+    ref.invalidate(settingsProvider);
+    ref.invalidate(workerListProvider);
     ref.invalidate(areaProvider);
     ref.invalidate(streetProviderFamily);
     ref.invalidate(allCustomersProvider);

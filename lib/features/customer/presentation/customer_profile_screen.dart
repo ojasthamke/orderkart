@@ -815,9 +815,10 @@ class CustomerProfileScreen extends ConsumerWidget {
                         await launchUrl(uri,
                             mode: LaunchMode.externalApplication);
                       } else {
-                        if (context.mounted)
+                        if (context.mounted) {
                           SnackbarHelper.showError(
                               context, 'Could not open WhatsApp');
+                        }
                       }
                     },
                     icon: const Icon(Icons.share_rounded,
@@ -1833,8 +1834,9 @@ Future<void> _sendDefaultWelcomeMessage(
       );
     }
   } else {
-    if (context.mounted)
+    if (context.mounted) {
       SnackbarHelper.showError(context, 'Could not open WhatsApp');
+    }
   }
 }
 

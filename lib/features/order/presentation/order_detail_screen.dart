@@ -893,12 +893,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               createdAt: DateTime.now(),
             ));
         ref.invalidate(orderDetailProvider(widget.orderId));
-        if (mounted)
+        if (mounted) {
           SnackbarHelper.showSuccess(
               context, 'Payment of $currency$amount added');
+        }
       } catch (e) {
-        if (mounted)
+        if (mounted) {
           SnackbarHelper.showError(context, 'Failed to add payment: $e');
+        }
       }
     }
   }
@@ -909,12 +911,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           .read(orderManagementProvider.notifier)
           .updateDeliveryStatus(orderId, status);
       ref.invalidate(orderDetailProvider(widget.orderId));
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showSuccess(
             context, 'Order updated to ${status.toUpperCase()}');
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed to update status: $e');
+      }
     }
   }
 
@@ -932,8 +936,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed to delete order: $e');
+      }
     }
   }
 
@@ -996,8 +1001,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         }
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed to update rates: $e');
+      }
     }
   }
 

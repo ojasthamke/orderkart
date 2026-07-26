@@ -557,284 +557,331 @@ class _CustomerCard extends ConsumerWidget {
         ),
       );
     } else {
-      cardChild = ScaleOnTap(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: GlassContainer(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                if (isSelectionMode) ...[
-                  Icon(
-                    isSelected
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    color: isSelected ? AppColors.primary : AppColors.gray400,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                ] else ...[
-                  ReorderableDragStartListener(
-                    index: index,
-                    child: const Padding(
-                      padding: EdgeInsets.only(right: 12),
-                      child: Icon(Icons.drag_indicator_rounded,
-                          color: AppColors.gray400, size: 22),
-                    ),
-                  ),
-                ],
-                VipGlowAvatar(
-                  photoPath: customer.photoPath,
-                  isVip: customer.isVipActive,
-                  radius: 26,
-                ),
-                const SizedBox(width: 14),
-                // Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      cardChild = GlassContainer(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Expanded(
+                child: ScaleOnTap(
+                  onTap: onTap,
+                  onLongPress: onLongPress,
+                  child: Row(
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Serial number badge
-                          if (customer.serialNo > 0) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '#${customer.serialNo}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                          Expanded(
-                            child: Column(
+                      if (isSelectionMode) ...[
+                        Icon(
+                          isSelected
+                              ? Icons.check_circle_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.gray400,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                      ] else ...[
+                        ReorderableDragStartListener(
+                          index: index,
+                          child: const Padding(
+                            padding: EdgeInsets.only(right: 12),
+                            child: Icon(Icons.drag_indicator_rounded,
+                                color: AppColors.gray400, size: 22),
+                          ),
+                        ),
+                      ],
+                      VipGlowAvatar(
+                        photoPath: customer.photoPath,
+                        isVip: customer.isVipActive,
+                        radius: 26,
+                      ),
+                      const SizedBox(width: 14),
+                      // Info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  customer.name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.w800),
-                                  softWrap: true,
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    if (customer.isVipActive)
-                                      VipGoldBadgeChip(
-                                          planName: customer.vipPlan)
-                                    else
-                                      _buildTagBadge(customer.tag),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (customer.outstandingBalance > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppColors.warningSurface,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                AppFormatters.currency(
-                                    customer.outstandingBalance),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: AppColors.warning,
-                                      fontWeight: FontWeight.w700,
+                                // Serial number badge
+                                if (customer.serialNo > 0) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          AppColors.primary.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
-                              ),
-                            )
-                          else if (customer.outstandingBalance < 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: creditColor.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                'Credit: ${AppFormatters.currency(customer.outstandingBalance.abs())}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: creditColor,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Phone: ${customer.phone1}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      ref
-                          .watch(customerLocationProvider(customer.streetId))
-                          .when(
-                            data: (loc) {
-                              final streetName = loc['street'] ?? '';
-                              final areaName = loc['area'] ?? '';
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (customer.houseNumber.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(bottom: 2),
-                                      child: Text(
-                                        'House No: ${customer.houseNumber}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                                color: AppColors.textSecondary,
-                                                fontWeight: FontWeight.w600),
-                                      ),
-                                    ),
-                                  if (customer.address.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(bottom: 2),
-                                      child: Text(
-                                        'Address: ${customer.address}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                                color: AppColors.textHint),
-                                        softWrap: true,
-                                      ),
-                                    ),
-                                  if (streetName.isNotEmpty ||
-                                      areaName.isNotEmpty)
-                                    Text(
-                                      'Route: $streetName • Area: $areaName',
+                                    child: Text(
+                                      '#${customer.serialNo}',
                                       style: Theme.of(context)
                                           .textTheme
-                                          .bodySmall
+                                          .labelSmall
                                           ?.copyWith(
-                                              color: AppColors.primary,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 10),
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w800,
+                                          ),
                                     ),
+                                  ),
+                                  const SizedBox(width: 6),
                                 ],
-                              );
-                            },
-                            loading: () => const SizedBox.shrink(),
-                            error: (_, __) => const SizedBox.shrink(),
-                          ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        customer.name,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.w800),
+                                        softWrap: true,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          if (customer.isVipActive)
+                                            VipGoldBadgeChip(
+                                                planName: customer.vipPlan)
+                                          else
+                                            _buildTagBadge(customer.tag),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (customer.outstandingBalance > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        const Text(
+                                          'DUE',
+                                          style: TextStyle(
+                                            color: AppColors.error,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                        Text(
+                                          AppFormatters.currency(
+                                              customer.outstandingBalance),
+                                          style: const TextStyle(
+                                            color: AppColors.error,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                else if (customer.outstandingBalance < 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: creditColor.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'ADVANCE',
+                                          style: TextStyle(
+                                            color: creditColor,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                        Text(
+                                          AppFormatters.currency(customer
+                                              .outstandingBalance
+                                              .abs()),
+                                          style: TextStyle(
+                                            color: creditColor,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Phone: ${customer.phone1}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            ref
+                                .watch(
+                                    customerLocationProvider(customer.streetId))
+                                .when(
+                                  data: (loc) {
+                                    final streetName = loc['street'] ?? '';
+                                    final areaName = loc['area'] ?? '';
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (customer.houseNumber.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 2),
+                                            child: Text(
+                                              'House No: ${customer.houseNumber}',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                      color: AppColors
+                                                          .textSecondary,
+                                                      fontWeight:
+                                                          FontWeight.w600),
+                                            ),
+                                          ),
+                                        if (customer.address.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 2),
+                                            child: Text(
+                                              'Address: ${customer.address}',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                      color:
+                                                          AppColors.textHint),
+                                              softWrap: true,
+                                            ),
+                                          ),
+                                        if (streetName.isNotEmpty ||
+                                            areaName.isNotEmpty)
+                                          Text(
+                                            'Route: $streetName • Area: $areaName',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                    color: AppColors.primary,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 10),
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                  loading: () => const SizedBox.shrink(),
+                                  error: (_, __) => const SizedBox.shrink(),
+                                ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                // Three-dot menu
-                if (!isSelectionMode)
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert_rounded,
-                        color: AppColors.gray500),
-                    onSelected: (v) async {
-                      if (v == 'select') {
-                        onLongPress();
-                      } else if (v == 'order') {
-                        Navigator.of(context).pushNamed(
-                          AppRoutes.createOrder,
-                          arguments: {
-                            'customerId': customer.id,
-                            'customerName': customer.name,
-                            'orderId': null,
-                          },
-                        ).then(
-                            (_) => ref.refresh(customerListProvider(streetId)));
-                      } else if (v == 'edit') {
-                        Navigator.of(context).pushNamed(
-                          AppRoutes.addEditCustomer,
-                          arguments: {
-                            'streetId': streetId,
-                            'customerId': customer.id,
-                          },
-                        ).then(
-                            (_) => ref.refresh(customerListProvider(streetId)));
-                      } else if (v == 'ledger') {
-                        InstantLedgerSheet.show(context, customer);
-                      } else if (v == 'delete') {
-                        final ok = await ConfirmDeleteDialog.show(
-                          context,
-                          title: 'Delete Customer',
-                          message:
-                              'Delete "${customer.name}"? All orders will also be deleted.',
-                        );
-                        if (!ok) return;
-                        await ref
-                            .read(customerListProvider(streetId).notifier)
-                            .delete(customer.id);
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                          value: 'select',
-                          child: ListTile(
-                            leading: Icon(Icons.check_box_outlined),
-                            title: Text('Select to Move'),
-                            contentPadding: EdgeInsets.zero,
-                          )),
-                      const PopupMenuItem(
-                          value: 'order',
-                          child: ListTile(
-                            leading: Icon(Icons.add_shopping_cart_rounded),
-                            title: Text('Create Order'),
-                            contentPadding: EdgeInsets.zero,
-                          )),
-                      const PopupMenuItem(
-                          value: 'ledger',
-                          child: ListTile(
-                            leading: Icon(Icons.account_balance_wallet_rounded),
-                            title: Text('Instant Ledger'),
-                            contentPadding: EdgeInsets.zero,
-                          )),
-                      const PopupMenuItem(
-                          value: 'edit',
-                          child: ListTile(
-                            leading: Icon(Icons.edit_rounded),
-                            title: Text('Edit'),
-                            contentPadding: EdgeInsets.zero,
-                          )),
-                      const PopupMenuItem(
-                          value: 'delete',
-                          child: ListTile(
-                            leading: Icon(Icons.delete_outline_rounded,
-                                color: Colors.red),
-                            title: Text('Delete',
-                                style: TextStyle(color: Colors.red)),
-                            contentPadding: EdgeInsets.zero,
-                          )),
-                    ],
-                  ),
-              ],
-            ),
+              ),
+              // Three-dot menu
+              if (!isSelectionMode)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded,
+                      color: AppColors.gray500),
+                  onSelected: (v) async {
+                    if (v == 'select') {
+                      onLongPress();
+                    } else if (v == 'order') {
+                      Navigator.of(context).pushNamed(
+                        AppRoutes.createOrder,
+                        arguments: {
+                          'customerId': customer.id,
+                          'customerName': customer.name,
+                          'orderId': null,
+                        },
+                      ).then(
+                          (_) => ref.refresh(customerListProvider(streetId)));
+                    } else if (v == 'edit') {
+                      Navigator.of(context).pushNamed(
+                        AppRoutes.addEditCustomer,
+                        arguments: {
+                          'streetId': streetId,
+                          'customerId': customer.id,
+                        },
+                      ).then(
+                          (_) => ref.refresh(customerListProvider(streetId)));
+                    } else if (v == 'ledger') {
+                      InstantLedgerSheet.show(context, customer);
+                    } else if (v == 'delete') {
+                      final ok = await ConfirmDeleteDialog.show(
+                        context,
+                        title: 'Delete Customer',
+                        message:
+                            'Delete "${customer.name}"? All orders will also be deleted.',
+                      );
+                      if (!ok) return;
+                      await ref
+                          .read(customerListProvider(streetId).notifier)
+                          .delete(customer.id);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                        value: 'select',
+                        child: ListTile(
+                          leading: Icon(Icons.check_box_outlined),
+                          title: Text('Select to Move'),
+                          contentPadding: EdgeInsets.zero,
+                        )),
+                    const PopupMenuItem(
+                        value: 'order',
+                        child: ListTile(
+                          leading: Icon(Icons.add_shopping_cart_rounded),
+                          title: Text('Create Order'),
+                          contentPadding: EdgeInsets.zero,
+                        )),
+                    const PopupMenuItem(
+                        value: 'ledger',
+                        child: ListTile(
+                          leading: Icon(Icons.account_balance_wallet_rounded),
+                          title: Text('Instant Ledger'),
+                          contentPadding: EdgeInsets.zero,
+                        )),
+                    const PopupMenuItem(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_rounded),
+                          title: Text('Edit'),
+                          contentPadding: EdgeInsets.zero,
+                        )),
+                    const PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline_rounded,
+                              color: Colors.red),
+                          title: Text('Delete',
+                              style: TextStyle(color: Colors.red)),
+                          contentPadding: EdgeInsets.zero,
+                        )),
+                  ],
+                ),
+            ],
           ),
         ),
       );

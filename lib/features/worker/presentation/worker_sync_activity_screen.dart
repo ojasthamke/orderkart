@@ -56,7 +56,7 @@ class _WorkerSyncActivityScreenState
     final custRows = await db.query(
       'customers',
       where:
-          'assigned_worker_id IS NOT NULL AND assigned_worker_id != "" OR created_by != "owner"',
+          '(assigned_worker_id IS NOT NULL AND assigned_worker_id != "") OR created_by != "owner"',
       orderBy: 'created_at DESC',
     );
     final customers = custRows.map((c) {
@@ -225,8 +225,9 @@ class _WorkerSyncActivityScreenState
                                       )),
                                 ],
                                 onChanged: (val) {
-                                  if (val != null)
+                                  if (val != null) {
                                     setState(() => _selectedWorkerId = val);
+                                  }
                                 },
                               ),
                             ),

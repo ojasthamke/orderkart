@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/haptics.dart';
+import '../../../../core/security/app_mode_service.dart';
 import '../../domain/worker.dart';
 
 class AddEditWorkerDialog extends StatefulWidget {
@@ -108,7 +109,9 @@ class _AddEditWorkerDialogState extends State<AddEditWorkerDialog> {
       address: _addressCon.text.trim(),
       employeeId: _empIdCon.text.trim(),
       status: _status,
-      pinHash: _pinCon.text.trim(),
+      pinHash: _pinCon.text.trim().isNotEmpty
+          ? AppModeService.hashWorkerPin(_pinCon.text.trim())
+          : (widget.worker?.pinHash ?? ''),
       commissionType: _commType,
       commissionValue: double.tryParse(_commValCon.text.trim()) ?? 5.0,
       salary: double.tryParse(_salaryCon.text.trim()) ?? 0.0,

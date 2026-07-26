@@ -195,8 +195,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 validator: (v) {
                   if (v != null && v.trim().isNotEmpty) {
                     final val = int.tryParse(v.trim());
-                    if (val == null || val < 0)
+                    if (val == null || val < 0) {
                       return 'Enter a valid positive integer';
+                    }
                   }
                   return null;
                 },
@@ -256,11 +257,13 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                         'Used to switch between kg and piece during checkout',
                   ),
                   validator: (v) {
-                    if (v == null || v.isEmpty)
+                    if (v == null || v.isEmpty) {
                       return 'Enter conversion weight';
+                    }
                     final val = double.tryParse(v);
-                    if (val == null || val <= 0)
+                    if (val == null || val <= 0) {
                       return 'Enter a valid positive number';
+                    }
                     return null;
                   },
                 ),

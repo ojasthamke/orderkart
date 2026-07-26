@@ -40,23 +40,22 @@ class CustomerDao {
   Future<List<Customer>> getCustomersByStreet(String streetId,
       {String? searchQuery}) async {
     final db = await _db;
-    String where = '';
+    String where = '(is_archived IS NULL OR is_archived = 0)';
     List<dynamic> args = [];
     if (streetId.isNotEmpty) {
-      where = 'street_id = ?';
-      args.add(streetId);
+      where += ' AND (street_id = ? OR location_id = ?)';
+      args.addAll([streetId, streetId]);
     }
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      if (where.isNotEmpty) where += ' AND ';
-      where += '(name LIKE ? OR phone1 LIKE ? OR house_number LIKE ?)';
+      where += ' AND (name LIKE ? OR phone1 LIKE ? OR house_number LIKE ?)';
       final q = '%${searchQuery.trim()}%';
       args.addAll([q, q, q]);
     }
 
     final maps = await db.query(
       'customers',
-      where: where.isEmpty ? null : where,
-      whereArgs: args.isEmpty ? null : args,
+      where: where,
+      whereArgs: args,
     );
     final customers = maps.map(Customer.fromMap).toList();
 
@@ -77,6 +76,7 @@ class CustomerDao {
     final db = await _db;
     final maps = await db.query(
       'customers',
+      where: 'is_archived IS NULL OR is_archived = 0',
       orderBy: 'serial_no ASC',
     );
     final customers = maps.map(Customer.fromMap).toList();
@@ -104,11 +104,12 @@ class CustomerDao {
 
     final maps = await db.rawQuery('''
       SELECT c.* FROM customers c
-      LEFT JOIN locations street ON c.location_id = street.id AND street.location_kind = 'road'
-      LEFT JOIN locations area ON street.parent_location_id = area.id AND area.location_kind = 'area'
-      WHERE c.name LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ?
-            OR c.house_number LIKE ? OR c.address LIKE ?
-            OR street.name LIKE ? OR area.name LIKE ?
+      LEFT JOIN locations street ON (c.location_id = street.id OR c.street_id = street.id)
+      LEFT JOIN locations area ON street.parent_location_id = area.id
+      WHERE (c.is_archived IS NULL OR c.is_archived = 0)
+        AND (c.name LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ?
+             OR c.house_number LIKE ? OR c.address LIKE ?
+             OR street.name LIKE ? OR area.name LIKE ?)
       LIMIT 50
     ''', [q, q, q, q, q, q, q]);
     return maps.map(Customer.fromMap).toList();
@@ -120,7 +121,7 @@ class CustomerDao {
 
     final maps = await db.rawQuery('''
       SELECT * FROM customers
-      WHERE outstanding_balance > 0
+      WHERE outstanding_balance > 0 AND (is_archived IS NULL OR is_archived = 0)
       ORDER BY outstanding_balance DESC
     ''');
     return maps.map(Customer.fromMap).toList();
@@ -131,7 +132,7 @@ class CustomerDao {
 
     final maps = await db.rawQuery('''
       SELECT * FROM customers
-      WHERE outstanding_balance < 0
+      WHERE outstanding_balance < 0 AND (is_archived IS NULL OR is_archived = 0)
       ORDER BY outstanding_balance ASC
     ''');
     return maps.map(Customer.fromMap).toList();
@@ -347,14 +348,16 @@ class CustomerDao {
         COALESCE(SUM(grand_total), 0)  AS total_amount,
         COALESCE(MAX(created_at), '')  AS last_order
       FROM orders
-      WHERE customer_id = ? AND delivery_status != 'cancelled'
+      WHERE customer_id = ? AND (delivery_status IS NULL OR delivery_status != 'cancelled')
     ''', [customerId]);
 
     final paymentsResult = await db.rawQuery('''
-      SELECT COALESCE(SUM(amount), 0) AS total_paid
-      FROM payments
-      WHERE customer_id = ?
-    ''', [customerId]);
+      SELECT COALESCE(SUM(p.amount), 0) AS total_paid
+      FROM payments p
+      LEFT JOIN orders o ON p.order_id = o.id
+      WHERE (p.customer_id = ? OR o.customer_id = ?)
+        AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+    ''', [customerId, customerId]);
 
     if (ordersResult.isNotEmpty) {
       final orderRow = ordersResult.first;

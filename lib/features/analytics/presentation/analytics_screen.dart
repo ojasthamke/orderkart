@@ -472,8 +472,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         label: const Text('Purchase'),
                         selected: _topCustomersSort == 'purchase',
                         onSelected: (val) {
-                          if (val)
+                          if (val) {
                             setState(() => _topCustomersSort = 'purchase');
+                          }
                         },
                       ),
                       const SizedBox(width: 8),
@@ -481,7 +482,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         label: const Text('Orders'),
                         selected: _topCustomersSort == 'orders',
                         onSelected: (val) {
-                          if (val) setState(() => _topCustomersSort = 'orders');
+                          if (val) {
+                            setState(() => _topCustomersSort = 'orders');
+                          }
                         },
                       ),
                       const SizedBox(width: 8),
@@ -489,8 +492,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         label: const Text('Pending'),
                         selected: _topCustomersSort == 'pending',
                         onSelected: (val) {
-                          if (val)
+                          if (val) {
                             setState(() => _topCustomersSort = 'pending');
+                          }
                         },
                       ),
                     ],
@@ -928,8 +932,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               showTitles: true,
               getTitlesWidget: (val, meta) {
                 final int index = val.toInt();
-                if (index < 0 || index >= labels.length)
+                if (index < 0 || index >= labels.length) {
                   return const SizedBox.shrink();
+                }
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(

@@ -254,8 +254,9 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
 
       final extractedDbPath = validation.dbPath;
       if (extractedDbPath.isEmpty || !File(extractedDbPath).existsSync()) {
-        if (mounted)
+        if (mounted) {
           SnackbarHelper.showError(context, 'No database found in package');
+        }
         setState(() => _loading = false);
         return;
       }
@@ -310,8 +311,9 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
         ),
       );
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Provisioning import failed: $e');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

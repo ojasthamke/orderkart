@@ -96,6 +96,8 @@ class WorkerSession {
 
   /// Clears the session.
   Future<void> clear() async {
+    _appMode = AppMode.owner;
+    await AppModeService.setAppMode(AppMode.owner);
     await setWorker(null);
   }
 }

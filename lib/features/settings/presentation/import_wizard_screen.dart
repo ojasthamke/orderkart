@@ -19,6 +19,7 @@ import '../../inventory/presentation/inventory_provider.dart';
 import '../../street/presentation/street_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
 import '../../settings/presentation/sync_history_screen.dart';
+import '../../worker/presentation/worker_provider.dart';
 import '../../../core/security/app_mode_service.dart';
 
 class MergeConflict {
@@ -53,6 +54,8 @@ class _ImportWizardScreenState extends ConsumerState<ImportWizardScreen> {
   bool _loading = false;
 
   void _invalidateAllProviders() {
+    ref.invalidate(settingsProvider);
+    ref.invalidate(workerListProvider);
     ref.invalidate(areaProvider);
     ref.invalidate(streetProviderFamily);
     ref.invalidate(allCustomersProvider);

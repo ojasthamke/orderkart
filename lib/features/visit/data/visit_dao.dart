@@ -102,7 +102,7 @@ class VisitDao {
             : "''";
 
         where +=
-            ' AND (created_by = ? OR assigned_worker_id = ? OR area_id IN ($placeholders))';
+            ' AND (v.created_by = ? OR v.assigned_worker_id = ? OR v.area_id IN ($placeholders))';
         args.addAll([workerId, workerId]);
         if (assignedAreaIds.isNotEmpty) {
           args.addAll(assignedAreaIds);
@@ -119,7 +119,7 @@ class VisitDao {
       FROM visits v
       LEFT JOIN locations a ON v.area_id = a.id
       LEFT JOIN locations s ON v.street_id = s.id
-      WHERE v.$where
+      WHERE $where
       ORDER BY v.priority DESC, v.created_at ASC
     ''', args);
 
@@ -163,7 +163,7 @@ class VisitDao {
             : "''";
 
         where =
-            '(created_by = ? OR assigned_worker_id = ? OR area_id IN ($placeholders))';
+            '(v.created_by = ? OR v.assigned_worker_id = ? OR v.area_id IN ($placeholders))';
         args = [workerId, workerId];
         if (assignedAreaIds.isNotEmpty) {
           args.addAll(assignedAreaIds);
@@ -180,7 +180,7 @@ class VisitDao {
       FROM visits v
       LEFT JOIN locations a ON v.area_id = a.id
       LEFT JOIN locations s ON v.street_id = s.id
-      ${where != null ? 'WHERE v.$where' : ''}
+      ${where != null ? 'WHERE $where' : ''}
       ORDER BY v.date DESC
     ''', args);
 

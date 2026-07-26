@@ -247,18 +247,23 @@ class Customer {
         dietaryPreference: map['dietary_preference'] as String? ?? '',
         latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
         longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
-        isVip: (map['is_vip'] as int? ?? 0) == 1,
+        isVip: map['is_vip'] == 1 || map['is_vip'] == true,
         vipPlan: map['vip_plan'] as String? ?? 'Gold VIP',
         vipStartDate: map['vip_start_date'] as String? ?? '',
         vipExpiryDate: map['vip_expiry_date'] as String? ?? '',
         vipSubscriptionFee:
             (map['vip_subscription_fee'] as num?)?.toDouble() ?? 0.0,
         vipNotes: map['vip_notes'] as String? ?? '',
-        vipAutoRenewal: (map['vip_auto_renewal'] as int? ?? 0) == 1,
-        vipFreeDelivery: (map['vip_free_delivery'] as int? ?? 1) == 1,
+        vipAutoRenewal:
+            map['vip_auto_renewal'] == 1 || map['vip_auto_renewal'] == true,
+        vipFreeDelivery: map['vip_free_delivery'] == 1 ||
+            map['vip_free_delivery'] == true ||
+            map['vip_free_delivery'] == null,
         vipDiscountPct: (map['vip_discount_pct'] as num?)?.toDouble() ?? 10.0,
         vipMarkupPct: (map['vip_markup_pct'] as num?)?.toDouble() ?? 5.0,
-        vipPriorityDelivery: (map['vip_priority_delivery'] as int? ?? 1) == 1,
+        vipPriorityDelivery: map['vip_priority_delivery'] == 1 ||
+            map['vip_priority_delivery'] == true ||
+            map['vip_priority_delivery'] == null,
         customWelcomeMessage: map['custom_welcome_message'] as String? ?? '',
       );
 
@@ -282,17 +287,18 @@ class Customer {
   bool get isVipExpiringSoon {
     if (!isVipActive) return false;
     if (vipExpiryDate.isEmpty) return false;
-    final exp = DateTime.tryParse(vipExpiryDate);
-    if (exp == null) return false;
-    final diff = exp.difference(DateTime.now()).inDays;
-    return diff >= 0 && diff <= 7;
+    final days = daysUntilVipExpiry;
+    return days >= 0 && days <= 7;
   }
 
   int get daysUntilVipExpiry {
     if (vipExpiryDate.isEmpty) return 999;
     final exp = DateTime.tryParse(vipExpiryDate);
     if (exp == null) return 999;
-    return exp.difference(DateTime.now()).inDays;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final expDate = DateTime(exp.year, exp.month, exp.day);
+    return expDate.difference(today).inDays;
   }
 
   /// Tag Badge (VIP, Expired, Loyal, Regular, New, Inactive)

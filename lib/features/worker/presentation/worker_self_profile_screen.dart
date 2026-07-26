@@ -496,22 +496,25 @@ class _WorkerSelfProfileScreenState
                         final val =
                             await PackageValidator.validatePackage(path);
                         if (!val.isValid) {
-                          if (context.mounted)
+                          if (context.mounted) {
                             SnackbarHelper.showError(context,
                                 'Invalid Package: ${val.errorMessage}');
+                          }
                           return;
                         }
                         await DatabaseHelper.instance.mergeDatabaseFromPath(
                             val.dbPath,
                             selectedModules: ['entire_db']);
                         _invalidateAllProviders();
-                        if (context.mounted)
+                        if (context.mounted) {
                           SnackbarHelper.showSuccess(context,
                               '✅ Owner package imported successfully!');
+                        }
                       } catch (e) {
-                        if (context.mounted)
+                        if (context.mounted) {
                           SnackbarHelper.showError(
                               context, 'Import failed: $e');
+                        }
                       }
                     },
                     icon: const Icon(Icons.file_download_rounded),
@@ -562,9 +565,10 @@ class _WorkerSelfProfileScreenState
                                   '✅ Full Backup "$customName" exported!');
                             }
                           } catch (e) {
-                            if (context.mounted)
+                            if (context.mounted) {
                               SnackbarHelper.showError(
                                   context, 'Export failed: $e');
+                            }
                           }
                         },
                         icon: const Icon(Icons.inventory_2_rounded),
@@ -613,9 +617,10 @@ class _WorkerSelfProfileScreenState
                                   '✅ Data update "$customName" shared with Owner!');
                             }
                           } catch (e) {
-                            if (context.mounted)
+                            if (context.mounted) {
                               SnackbarHelper.showError(
                                   context, 'Export failed: $e');
+                            }
                           }
                         },
                         icon: const Icon(Icons.sync_alt_rounded),

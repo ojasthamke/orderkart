@@ -137,8 +137,9 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     _supplierNameCon.clear();
     _supplierPhoneCon.clear();
     await _loadAllData();
-    if (mounted)
+    if (mounted) {
       SnackbarHelper.showSuccess(context, 'Supplier registered successfully');
+    }
   }
 
   Future<void> _showSupplierAdjustmentDialog(
@@ -255,8 +256,9 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
 
     _customFieldNameCon.clear();
     await _loadAllData();
-    if (mounted)
+    if (mounted) {
       SnackbarHelper.showSuccess(context, 'Custom customer field added');
+    }
   }
 
   // --- 3. Multi-Store Config ---
@@ -447,8 +449,9 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
         text: 'Sharing OrderKart Official Product Stock & Price List Catalog',
       );
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'PDF Generation failed: $e');
+      }
     }
   }
 
@@ -595,24 +598,13 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       } else {
         throw Exception('Unsupported entity rollback type: $entityType');
       }
-
-      // Log the rollback action
-      final rollbackId = const Uuid().v4();
-      await db.insert('audit_logs', {
-        'id': rollbackId,
-        'user_type': 'owner',
-        'action': 'Rollback: Reverted $entityType modification (ID: $entityId)',
-        'entity_type': entityType,
-        'entity_id': entityId,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-
-      await _loadAllData();
-      if (mounted)
-        SnackbarHelper.showSuccess(
-            context, 'Rollback successful! Entity restored.');
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Entity restored successfully');
+      }
     } catch (e) {
-      if (mounted) SnackbarHelper.showError(context, 'Rollback failed: $e');
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Rollback failed: $e');
+      }
     }
   }
 

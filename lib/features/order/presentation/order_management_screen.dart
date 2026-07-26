@@ -202,20 +202,26 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
                         loading: () => const LoadingShimmer(),
                         error: (e, _) => Center(child: Text('Error: $e')),
                         data: (orders) {
+                          final statusKey = t['status']!;
                           var filtered = orders;
+                          if (statusKey != 'all') {
+                            filtered = filtered
+                                .where((o) => o.deliveryStatus == statusKey)
+                                .toList();
+                          }
                           if (_sourceMode == 'owner') {
-                            filtered = orders
+                            filtered = filtered
                                 .where((o) => o.assignedWorkerId.isEmpty)
                                 .toList();
                           } else if (_sourceMode == 'worker') {
-                            filtered = orders
+                            filtered = filtered
                                 .where((o) => o.assignedWorkerId.isNotEmpty)
                                 .toList();
                           }
                           return filtered.isEmpty
-                              ? const EmptyStateWidget(
+                              ? EmptyStateWidget(
                                   icon: Icons.receipt_long_rounded,
-                                  title: 'No Orders Found',
+                                  title: 'No ${t['label']} Orders',
                                   subtitle:
                                       'Try changing source or status filters',
                                 )
@@ -296,7 +302,7 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
             'orderId': orders[i].id,
           },
         ).then((_) => ref.invalidate(orderManagementProvider)),
-        onDelete: () => _deleteOrder(ctx, orders[i]),
+        onDelete: () => _deleteOrder(orders[i]),
         onDuplicate: () => _duplicateOrder(orders[i]),
       ).animate(delay: (i * 40).ms).fadeIn(),
     );
@@ -317,8 +323,9 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
             'Order marked as ${AppFormatters.deliveryStatus(newStatus).toUpperCase()}');
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed to update status: $e');
+      }
     }
   }
 
@@ -364,19 +371,21 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
     }
   }
 
-  Future<void> _deleteOrder(BuildContext context, AppOrder order) async {
+  Future<void> _deleteOrder(AppOrder order) async {
     final ok = await ConfirmDeleteDialog.show(
       context,
       title: 'Delete Order',
-      message: 'Delete this order? This cannot be undone.',
+      message: 'Delete this order permanently?',
     );
-    if (!ok || !mounted) return;
+    if (!ok) return;
+
     try {
       await ref.read(orderManagementProvider.notifier).deleteOrder(order.id);
       if (mounted) SnackbarHelper.showSuccess(context, 'Order deleted');
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed to delete order: $e');
+      }
     }
   }
 
@@ -405,8 +414,9 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
         SnackbarHelper.showSuccess(context, 'Order duplicated');
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed to duplicate order: $e');
+      }
     }
   }
 }

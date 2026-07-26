@@ -21,7 +21,6 @@ class OrderManagementNotifier
     extends StateNotifier<AsyncValue<List<AppOrder>>> {
   final Ref _ref;
   final OrderRepository _repo;
-  String _status = 'all';
   String _filter = 'all';
   final String? _customerId;
 
@@ -37,7 +36,7 @@ class OrderManagementNotifier
     }
     try {
       final orders = await _repo.getAllOrders(
-        status: _status == 'all' ? null : _status,
+        status: null,
         filter: _filter == 'all' ? null : _filter,
         customerId: _customerId,
       );
@@ -76,7 +75,6 @@ class OrderManagementNotifier
   }
 
   void setStatus(String status) {
-    _status = status;
     load();
   }
 

@@ -101,8 +101,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         await ref.read(settingsProvider.notifier).update(
               current.copyWith(qrCustomImage: savedPath),
             );
-        if (mounted)
+        if (mounted) {
           SnackbarHelper.showSuccess(context, 'QR Code image uploaded');
+        }
       }
     }
   }

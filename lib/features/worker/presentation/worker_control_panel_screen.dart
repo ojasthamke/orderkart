@@ -181,9 +181,10 @@ class _WorkerControlPanelScreenState
     );
 
     if (rows.isEmpty) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showInfo(context,
             'No customers found for ${_currentWorker.name} to export.');
+      }
       return;
     }
 
@@ -465,7 +466,7 @@ class _WorkerControlPanelScreenState
       final createdAtStr = row['created_at']?.toString() ?? '';
 
       double commAmount = 0.0;
-      if (commType == 'fixed_order') {
+      if (commType == 'fixed' || commType == 'fixed_order') {
         commAmount = commRate;
       } else {
         commAmount = grandTotal * (commRate / 100.0);
@@ -503,7 +504,7 @@ class _WorkerControlPanelScreenState
         final rate = (o['commission_rate'] as num?)?.toDouble() ?? 0.0;
         final type = o['commission_type']?.toString() ?? 'pct_order';
 
-        if (type == 'fixed_order') {
+        if (type == 'fixed' || type == 'fixed_order') {
           wComm += rate;
         } else {
           wComm += total * (rate / 100.0);

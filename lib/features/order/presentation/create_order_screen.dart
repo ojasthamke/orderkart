@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:io';
+import 'dart:math' as math;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
@@ -359,7 +360,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         ),
                         onChanged: (v) {
                           _isDiscountManuallyEdited = true;
-                          setState(() => _discount = double.tryParse(v) ?? 0);
+                          setState(() => _discount =
+                              math.max(0.0, double.tryParse(v) ?? 0));
                         },
                       ),
                       if (exceedsCap)
@@ -730,7 +732,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
             onChanged: (v) {
               _isDeliveryManuallyToggled = true;
-              setState(() => _deliveryCharge = double.tryParse(v) ?? 0);
+              setState(() =>
+                  _deliveryCharge = math.max(0.0, double.tryParse(v) ?? 0));
             },
           ),
         ),
@@ -1387,9 +1390,20 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           break;
         }
       }
-      if (dbItem != null && dbItem.marketPrice > cartItem.price) {
-        marketSavings +=
-            (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
+      if (dbItem != null && dbItem.marketPrice > 0) {
+        final cUnit = cartItem.unit.toLowerCase();
+        final dbUnit = dbItem.unit.toLowerCase();
+        if (cUnit == dbUnit || cUnit.isEmpty) {
+          if (dbItem.marketPrice > cartItem.price) {
+            marketSavings +=
+                (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
+          }
+        } else if (cUnit == 'gram' && dbUnit == 'kg') {
+          final marketCost = dbItem.marketPrice * (cartItem.quantity / 1000.0);
+          if (marketCost > cartItem.total) {
+            marketSavings += (marketCost - cartItem.total);
+          }
+        }
       }
     }
     final totalSavings = marketSavings + _discount;
@@ -1465,8 +1479,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         arguments: {'orderId': orderId},
       );
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed to save order: $e');
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

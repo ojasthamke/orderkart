@@ -92,16 +92,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       if (filePath == null) return;
       final validation = await PackageValidator.validatePackage(filePath);
       if (!validation.isValid) {
-        if (mounted)
+        if (mounted) {
           SnackbarHelper.showError(
               context, 'Invalid Package: ${validation.errorMessage}');
+        }
         return;
       }
 
       final extractedDbPath = validation.dbPath;
       if (extractedDbPath.isEmpty || !File(extractedDbPath).existsSync()) {
-        if (mounted)
+        if (mounted) {
           SnackbarHelper.showError(context, 'No database found in package');
+        }
         return;
       }
 
@@ -116,8 +118,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
             context, '✅ Official Owner Stock & Price List updated!');
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Price List import failed: $e');
+      }
     }
   }
 
@@ -311,6 +314,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               return RefreshIndicator(
                 onRefresh: () async => ref.refresh(inventoryProvider),
                 child: ReorderableListView.builder(
+                  buildDefaultDragHandles: false,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: items.length,
@@ -328,6 +332,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   },
                   itemBuilder: (_, i) => _ItemTile(
                     key: ValueKey(items[i].id),
+                    index: i,
                     item: items[i],
                     isWorker: isWorker,
                     onEdit: () => _handleEditItem(items[i]),
@@ -1375,6 +1380,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 }
 
 class _ItemTile extends StatelessWidget {
+  final int index;
   final Item item;
   final bool isWorker;
   final VoidCallback onEdit;
@@ -1383,6 +1389,7 @@ class _ItemTile extends StatelessWidget {
 
   const _ItemTile({
     super.key,
+    required this.index,
     required this.item,
     required this.isWorker,
     required this.onEdit,
@@ -1397,29 +1404,46 @@ class _ItemTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       borderColor: item.isLowStock ? AppColors.error : null,
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.primarySurface,
-            borderRadius: BorderRadius.circular(8),
-            image: (item.photoPath.isNotEmpty &&
-                    (item.photoPath.startsWith('http') ||
-                        AppConstants.resolveFile(item.photoPath).existsSync()))
-                ? DecorationImage(
-                    image: item.photoPath.startsWith('http')
-                        ? NetworkImage(item.photoPath) as ImageProvider
-                        : FileImage(AppConstants.resolveFile(item.photoPath)),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-          ),
-          child: (item.photoPath.isEmpty ||
-                  (!item.photoPath.startsWith('http') &&
-                      !AppConstants.resolveFile(item.photoPath).existsSync()))
-              ? const Icon(Icons.image_outlined, color: AppColors.primary)
-              : null,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isWorker)
+              ReorderableDragStartListener(
+                index: index,
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Icon(Icons.drag_indicator_rounded,
+                      color: AppColors.gray400, size: 20),
+                ),
+              ),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(8),
+                image: (item.photoPath.isNotEmpty &&
+                        (item.photoPath.startsWith('http') ||
+                            AppConstants.resolveFile(item.photoPath)
+                                .existsSync()))
+                    ? DecorationImage(
+                        image: item.photoPath.startsWith('http')
+                            ? NetworkImage(item.photoPath) as ImageProvider
+                            : FileImage(
+                                AppConstants.resolveFile(item.photoPath)),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: (item.photoPath.isEmpty ||
+                      (!item.photoPath.startsWith('http') &&
+                          !AppConstants.resolveFile(item.photoPath)
+                              .existsSync()))
+                  ? const Icon(Icons.image_outlined, color: AppColors.primary)
+                  : null,
+            ),
+          ],
         ),
         title: Row(
           children: [

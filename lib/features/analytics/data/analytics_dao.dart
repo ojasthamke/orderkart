@@ -31,15 +31,15 @@ class AnalyticsDao {
       SELECT 
         a.id AS area_id,
         a.name AS area_name,
-        COUNT(o.id) AS total_orders,
+        COUNT(DISTINCT o.id) AS total_orders,
         COALESCE(SUM(o.grand_total), 0) AS total_sales,
         COALESCE(SUM(o.paid_amount), 0) AS total_collection,
         COALESCE(SUM(o.remaining_amount), 0) AS total_outstanding
       FROM locations a
-      LEFT JOIN locations s ON s.parent_location_id = a.id AND s.location_kind = 'road' AND s.is_archived = 0
-      LEFT JOIN customers c ON c.location_id = s.id
+      LEFT JOIN locations s ON s.parent_location_id = a.id AND (s.is_archived IS NULL OR s.is_archived = 0)
+      LEFT JOIN customers c ON (c.location_id = s.id OR c.location_id = a.id OR c.street_id = s.id OR c.street_id = a.id) AND (c.is_archived IS NULL OR c.is_archived = 0)
       LEFT JOIN orders o ON o.customer_id = c.id AND o.delivery_status != 'cancelled'
-      WHERE a.location_kind = 'area' AND a.is_archived = 0
+      WHERE a.location_kind = 'area' AND (a.is_archived IS NULL OR a.is_archived = 0)
       GROUP BY a.id
       ORDER BY total_sales DESC
     ''');
@@ -53,15 +53,15 @@ class AnalyticsDao {
         s.id AS street_id,
         s.name AS street_name,
         a.name AS area_name,
-        COUNT(o.id) AS total_orders,
+        COUNT(DISTINCT o.id) AS total_orders,
         COALESCE(SUM(o.grand_total), 0) AS total_sales,
         COALESCE(SUM(o.paid_amount), 0) AS total_collection,
         COALESCE(SUM(o.remaining_amount), 0) AS total_outstanding
       FROM locations s
-      JOIN locations a ON s.parent_location_id = a.id AND a.location_kind = 'area' AND a.is_archived = 0
-      LEFT JOIN customers c ON c.location_id = s.id
+      LEFT JOIN locations a ON s.parent_location_id = a.id AND (a.is_archived IS NULL OR a.is_archived = 0)
+      LEFT JOIN customers c ON (c.location_id = s.id OR c.street_id = s.id) AND (c.is_archived IS NULL OR c.is_archived = 0)
       LEFT JOIN orders o ON o.customer_id = c.id AND o.delivery_status != 'cancelled'
-      WHERE s.location_kind = 'road' AND s.is_archived = 0
+      WHERE (s.location_kind = 'road' OR s.location_kind = 'street') AND (s.is_archived IS NULL OR s.is_archived = 0)
       GROUP BY s.id
       ORDER BY total_sales DESC
     ''');
@@ -75,7 +75,7 @@ class AnalyticsDao {
         DATE(created_at) AS date,
         COUNT(id) AS new_customers_count
       FROM customers
-      WHERE is_archived = 0
+      WHERE (is_archived IS NULL OR is_archived = 0)
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     ''');
@@ -88,12 +88,16 @@ class AnalyticsDao {
     // Sum of sales and item costs
     final salesRes = await db.rawQuery('''
       SELECT 
-        (SELECT COALESCE(SUM(grand_total), 0) FROM orders WHERE delivery_status != 'cancelled') AS total_sales,
-        (SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0.0)), 0) 
+        (SELECT COALESCE(SUM(o.grand_total), 0)
+         FROM orders o
+         LEFT JOIN customers c ON o.customer_id = c.id
+         WHERE o.delivery_status != 'cancelled' AND (c.is_archived IS NULL OR c.is_archived = 0)) AS total_sales,
+        (SELECT COALESCE(SUM(oi.quantity * COALESCE(NULLIF(oi.cost_price, 0.0), i.cost_price, 0.0)), 0) 
          FROM order_items oi
          JOIN orders o ON oi.order_id = o.id
+         LEFT JOIN customers c ON o.customer_id = c.id
          LEFT JOIN items i ON oi.item_id = i.id
-         WHERE o.delivery_status != 'cancelled') AS total_cost
+         WHERE o.delivery_status != 'cancelled' AND (c.is_archived IS NULL OR c.is_archived = 0)) AS total_cost
     ''');
 
     final double sales =

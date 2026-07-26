@@ -804,8 +804,9 @@ class WorkerPackageService {
     }
     for (final i in itemsRows) {
       final pathStr = i['photo_path']?.toString() ?? '';
-      if (pathStr.isNotEmpty && !pathStr.startsWith('http'))
+      if (pathStr.isNotEmpty && !pathStr.startsWith('http')) {
         assignedPhotoNames.add(p.basename(pathStr));
+      }
     }
     for (final e in expensesRows) {
       final pathStr = e['receipt_photo_path']?.toString() ?? '';

@@ -216,8 +216,9 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                   createdAt: now,
                   updatedAt: now,
                 ));
-            if (mounted)
+            if (mounted) {
               SnackbarHelper.showSuccess(context, 'Area added successfully');
+            }
           } else {
             await ref.read(areaProvider.notifier).updateArea(area.copyWith(
                   name: name,
@@ -227,7 +228,9 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                   mapsLocation: mapsLocation,
                   updatedAt: now,
                 ));
-            if (mounted) SnackbarHelper.showSuccess(context, 'Area updated');
+            if (mounted) {
+              SnackbarHelper.showSuccess(context, 'Area updated');
+            }
           }
         },
       ),

@@ -68,8 +68,9 @@ class _VipDashboardScreenState extends ConsumerState<VipDashboardScreen> {
           // Apply UI Filters
           var filteredList = vipList.where((c) {
             if (_selectedFilter == 'active' && !c.isVipActive) return false;
-            if (_selectedFilter == 'expiring' && !c.isVipExpiringSoon)
+            if (_selectedFilter == 'expiring' && !c.isVipExpiringSoon) {
               return false;
+            }
             if (_selectedFilter == 'expired' && c.isVipActive) return false;
 
             if (_searchQuery.isNotEmpty) {
@@ -947,7 +948,10 @@ class VipEditModalState extends ConsumerState<VipEditModal> {
                   onSelected: (_) => setState(() {
                     _discountPct = d;
                     // Auto set custom markup based on formula (markup = discount / 2)
-                    _markupPct = d / 2;
+                    _markupPct = (d < 100)
+                        ? double.parse(
+                            ((d / (100 - d)) * 100).toStringAsFixed(1))
+                        : 0.0;
                   }),
                 );
               }).toList(),

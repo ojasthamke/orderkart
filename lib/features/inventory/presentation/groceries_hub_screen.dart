@@ -131,8 +131,9 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
         });
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Failed logging spoilage: $e');
+      }
     } finally {
       if (mounted) setState(() => _submittingSpoilage = false);
     }
@@ -407,8 +408,9 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Enter quantity';
                 final numVal = double.tryParse(v);
-                if (numVal == null || numVal <= 0)
+                if (numVal == null || numVal <= 0) {
                   return 'Enter a positive quantity';
+                }
                 if (_selectedSpoilageItem != null &&
                     numVal > _selectedSpoilageItem!.stock) {
                   return 'Cannot exceed current stock (${_selectedSpoilageItem!.stock})';

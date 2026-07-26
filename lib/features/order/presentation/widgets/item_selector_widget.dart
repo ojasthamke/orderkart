@@ -515,8 +515,9 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                           final choice =
                                               await _showPriceScopeDialog(
                                                   context, _selected!.name);
-                                          if (choice == null)
+                                          if (choice == null) {
                                             return; // user cancelled
+                                          }
 
                                           if (choice == 1) {
                                             // This Customer Only

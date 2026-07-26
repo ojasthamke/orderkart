@@ -1256,8 +1256,9 @@ class _WorkerStatsDashboard extends ConsumerWidget {
               showTitles: true,
               getTitlesWidget: (val, meta) {
                 final int index = val.toInt();
-                if (index < 0 || index >= labels.length)
+                if (index < 0 || index >= labels.length) {
                   return const SizedBox.shrink();
+                }
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(

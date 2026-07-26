@@ -214,10 +214,7 @@ class OrderRepositoryImpl implements OrderRepository {
             }
           }
         }
-        // Void payments for the order
-        await txn
-            .delete('payments', where: 'order_id = ?', whereArgs: [orderId]);
-        // Set order paid and remaining to 0
+        // Set order paid and remaining to 0 upon cancellation
         await txn.update(
           'orders',
           {'paid_amount': 0.0, 'remaining_amount': 0.0},
@@ -250,10 +247,16 @@ class OrderRepositoryImpl implements OrderRepository {
             }
           }
         }
-        // Set order remaining amount back to grand_total
+        // Re-calculate actual paid amount from existing payment records for this order
+        final existingPayments =
+            await _orderDao.getOrderPayments(orderId, executor: txn);
+        final sumPaid =
+            existingPayments.fold<double>(0.0, (sum, p) => sum + p.amount);
+        final remaining =
+            (order.grandTotal - sumPaid).clamp(0.0, double.infinity);
         await txn.update(
           'orders',
-          {'paid_amount': 0.0, 'remaining_amount': order.grandTotal},
+          {'paid_amount': sumPaid, 'remaining_amount': remaining},
           where: 'id = ?',
           whereArgs: [orderId],
         );

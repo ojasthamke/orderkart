@@ -135,8 +135,9 @@ class HotspotSyncService {
         }));
 
         for (final res in results) {
-          if (res != null)
+          if (res != null) {
             return res; // Return immediately on first found device (N5)
+          }
         }
       }
     } catch (_) {

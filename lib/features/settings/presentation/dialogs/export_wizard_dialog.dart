@@ -144,7 +144,8 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
         List<dynamic> args = [];
         if (_selectedAreaId != null) {
           where +=
-              ' AND street_id IN (SELECT id FROM streets WHERE area_id = ?)';
+              ' AND (location_id = ? OR street_id IN (SELECT id FROM locations WHERE parent_location_id = ?))';
+          args.add(_selectedAreaId);
           args.add(_selectedAreaId);
         }
         customers = Sqflite.firstIntValue(await db.rawQuery(
@@ -155,11 +156,12 @@ class _ExportWizardDialogState extends State<ExportWizardDialog> {
       // Count matching orders
       int orders = 0;
       if (_exportOrders || _exportEntireDb) {
-        String where = 'is_archived = 0';
+        String where = '1 = 1';
         List<dynamic> args = [];
         if (_selectedAreaId != null) {
           where +=
-              ' AND customer_id IN (SELECT id FROM customers WHERE street_id IN (SELECT id FROM streets WHERE area_id = ?))';
+              ' AND customer_id IN (SELECT id FROM customers WHERE location_id = ? OR street_id IN (SELECT id FROM locations WHERE parent_location_id = ?))';
+          args.add(_selectedAreaId);
           args.add(_selectedAreaId);
         }
         if (_filterByDate) {

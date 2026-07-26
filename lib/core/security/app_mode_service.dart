@@ -32,6 +32,11 @@ class AppModeService {
     return sha256.convert(bytes).toString();
   }
 
+  /// Hash a worker PIN
+  static String hashWorkerPin(String pin) {
+    return _hashPin(pin.trim(), 'orderkart_worker_salt_2026');
+  }
+
   /// Check if first-launch initialization is complete
   static Future<bool> isAppInitialized() async {
     final db = await DatabaseHelper.instance.database;

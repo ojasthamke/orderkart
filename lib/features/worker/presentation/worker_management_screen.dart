@@ -196,12 +196,16 @@ class _WorkerManagementScreenState
 
                   if (!matchesSearch) return false;
 
-                  if (_selectedStatus == 'active' && w.status != 'active')
+                  if (_selectedStatus == 'active' && w.status != 'active') {
                     return false;
-                  if (_selectedStatus == 'suspended' && w.status != 'inactive')
+                  }
+                  if (_selectedStatus == 'suspended' &&
+                      w.status != 'inactive') {
                     return false;
-                  if (_selectedStatus == 'leave' && w.leaveStatus != 'leave')
+                  }
+                  if (_selectedStatus == 'leave' && w.leaveStatus != 'leave') {
                     return false;
+                  }
 
                   return true;
                 }).toList();

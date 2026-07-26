@@ -321,15 +321,27 @@ class LocationDao {
         where: "street_id IN ($placeholders) OR location_id IN ($placeholders)",
         whereArgs: [...descIds, ...descIds],
       );
+
+      // Cascade delete target location and all child/descendant nodes
+      await db.delete(
+        'locations',
+        where: "id IN ($placeholders)",
+        whereArgs: descIds,
+      );
+
+      for (final descId in descIds) {
+        try {
+          await db.delete('areas', where: 'id = ?', whereArgs: [descId]);
+          await db.delete('streets', where: 'id = ?', whereArgs: [descId]);
+        } catch (_) {}
+      }
+    } else {
+      await db.delete('locations', where: 'id = ?', whereArgs: [id]);
+      try {
+        await db.delete('areas', where: 'id = ?', whereArgs: [id]);
+        await db.delete('streets', where: 'id = ?', whereArgs: [id]);
+      } catch (_) {}
     }
-
-    await db.delete('locations', where: 'id = ?', whereArgs: [id]);
-
-    // Also delete from legacy tables if present
-    try {
-      await db.delete('areas', where: 'id = ?', whereArgs: [id]);
-      await db.delete('streets', where: 'id = ?', whereArgs: [id]);
-    } catch (_) {}
   }
 
   /// Fetch full hierarchical breadcrumb path for a given location ID.

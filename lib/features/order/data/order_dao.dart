@@ -6,6 +6,7 @@ import '../../../core/security/app_mode_service.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
 import '../domain/payment.dart';
+import '../../customer/data/customer_dao.dart';
 
 class OrderDao {
   final _uuid = const Uuid();
@@ -100,6 +101,8 @@ class OrderDao {
 
     final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
 
+    args.addAll([limit, offset]);
+
     final maps = await db.rawQuery('''
       SELECT
         o.*,
@@ -111,7 +114,7 @@ class OrderDao {
       LEFT JOIN customers c ON o.customer_id = c.id
       $where
       ORDER BY o.created_at DESC
-      LIMIT $limit OFFSET $offset
+      LIMIT ? OFFSET ?
     ''', args);
 
     return maps.map(AppOrder.fromMap).toList();
@@ -359,6 +362,10 @@ class OrderDao {
       whereArgs: [orderId],
     );
 
+    try {
+      await CustomerDao().recalcCustomerTotals(order.customerId, executor: db);
+    } catch (_) {}
+
     return {
       'success': true,
       'updatedCount': updatedCount,
@@ -375,6 +382,7 @@ class OrderDao {
     await db.delete('payments', where: 'order_id = ?', whereArgs: [id]);
     await db.delete('order_question_answers',
         where: 'order_id = ?', whereArgs: [id]);
+    await db.delete('stock_history', where: 'order_id = ?', whereArgs: [id]);
     await db.delete('orders', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -964,8 +972,10 @@ class OrderDao {
     final allMarketRes = await db.rawQuery('''
       SELECT COALESCE(SUM(
         CASE
-          WHEN oi.item_id != '' AND i.market_price > oi.unit_price
+          WHEN oi.item_id != '' AND i.market_price > oi.unit_price AND (LOWER(COALESCE(oi.item_unit, '')) = LOWER(COALESCE(i.unit, '')) OR oi.item_unit IS NULL OR oi.item_unit = '')
           THEN (i.market_price - oi.unit_price) * oi.quantity
+          WHEN oi.item_id != '' AND i.market_price > 0 AND LOWER(COALESCE(oi.item_unit, '')) = 'gram' AND LOWER(COALESCE(i.unit, '')) = 'kg'
+          THEN MAX(0, (i.market_price * (oi.quantity / 1000.0)) - oi.total_price)
           ELSE 0
         END
       ), 0) AS v
@@ -978,8 +988,10 @@ class OrderDao {
     final monMarketRes = await db.rawQuery('''
       SELECT COALESCE(SUM(
         CASE
-          WHEN oi.item_id != '' AND i.market_price > oi.unit_price
+          WHEN oi.item_id != '' AND i.market_price > oi.unit_price AND (LOWER(COALESCE(oi.item_unit, '')) = LOWER(COALESCE(i.unit, '')) OR oi.item_unit IS NULL OR oi.item_unit = '')
           THEN (i.market_price - oi.unit_price) * oi.quantity
+          WHEN oi.item_id != '' AND i.market_price > 0 AND LOWER(COALESCE(oi.item_unit, '')) = 'gram' AND LOWER(COALESCE(i.unit, '')) = 'kg'
+          THEN MAX(0, (i.market_price * (oi.quantity / 1000.0)) - oi.total_price)
           ELSE 0
         END
       ), 0) AS v

@@ -74,8 +74,9 @@ class _CallLogsScreenState extends ConsumerState<CallLogsScreen>
     if (await canLaunchUrl(telUri)) {
       await launchUrl(telUri);
     } else {
-      if (mounted)
+      if (mounted) {
         SnackbarHelper.showError(context, 'Could not open phone app');
+      }
     }
 
     _loadLogs(); // Refresh log list
