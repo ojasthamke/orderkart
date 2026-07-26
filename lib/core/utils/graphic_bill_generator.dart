@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
+import '../widgets/snackbar_helper.dart';
 import '../../features/order/domain/order.dart';
 import '../../features/customer/domain/customer.dart';
 import '../../features/settings/domain/app_settings.dart';
@@ -264,11 +266,35 @@ class GraphicBillGenerator {
       final file = File('${tempDir.path}/Order_${order.id}_Bill.pdf');
       await file.writeAsBytes(await pdf.save());
 
+      final custName = (customer?.name.isNotEmpty == true)
+          ? customer!.name
+          : (order.customerName?.isNotEmpty == true
+              ? order.customerName!
+              : 'Customer');
+      final custPhone = (customer?.phone1.isNotEmpty == true)
+          ? customer!.phone1
+          : (order.customerPhone ?? '');
+
+      if (custPhone.isNotEmpty) {
+        final cleanPhone = custPhone.replaceAll(RegExp(r'\D'), '');
+        if (cleanPhone.isNotEmpty) {
+          await Clipboard.setData(ClipboardData(text: cleanPhone));
+        }
+      }
+
+      final shareText = custPhone.isNotEmpty
+          ? '📄 Tax Invoice Bill: Order ${order.orderNoLabel}\n👤 Customer: $custName ($custPhone)\n🏪 Store: $businessName'
+          : '📄 Tax Invoice Bill: Order ${order.orderNoLabel}\n👤 Customer: $custName\n🏪 Store: $businessName';
+
       await Share.shareXFiles(
         [XFile(file.path)],
-        text:
-            'Order ${order.orderNoLabel} Graphic Tax Invoice Bill from $businessName',
+        text: shareText,
       );
+
+      if (context.mounted && custPhone.isNotEmpty) {
+        SnackbarHelper.showInfo(
+            context, 'Customer contact copied for quick WhatsApp search');
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
