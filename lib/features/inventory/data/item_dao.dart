@@ -333,8 +333,16 @@ class ItemDao {
     return maps.map(StockHistory.fromMap).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getOrderedItemStats() async {
+  Future<List<Map<String, dynamic>>> getOrderedItemStats(
+      {String status = 'all'}) async {
     final db = await _db;
+    String whereClause =
+        "(o.delivery_status IS NULL OR o.delivery_status != 'cancelled')";
+    List<dynamic> args = [];
+    if (status != 'all' && status.isNotEmpty) {
+      whereClause += " AND o.delivery_status = ?";
+      args.add(status);
+    }
     return await db.rawQuery('''
       SELECT 
         COALESCE(i.name, oi.item_name) AS item_name,
@@ -347,9 +355,9 @@ class ItemDao {
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN items i ON oi.item_id = i.id
-      WHERE o.delivery_status != 'cancelled'
+      WHERE $whereClause
       GROUP BY oi.item_id, item_name, item_unit, cost_price
       ORDER BY total_profit DESC, total_quantity DESC
-      ''');
+      ''', args);
   }
 }

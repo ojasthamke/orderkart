@@ -152,6 +152,7 @@ final spillageHistoryProvider = FutureProvider<List<StockHistory>>((ref) {
 });
 
 final orderedItemStatsProvider =
-    FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  return await ItemDao().getOrderedItemStats();
+    FutureProvider.family<List<Map<String, dynamic>>, String>(
+        (ref, status) async {
+  return await ItemDao().getOrderedItemStats(status: status);
 });
