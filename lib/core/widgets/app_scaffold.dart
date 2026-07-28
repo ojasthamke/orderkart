@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/settings/presentation/settings_provider.dart';
+import '../utils/haptics.dart';
+import 'app_drawer.dart';
 
 class FloatingGlassAppBar extends StatelessWidget
     implements PreferredSizeWidget {
@@ -154,6 +156,9 @@ class AppScaffold extends ConsumerWidget {
         ref.watch(settingsProvider).valueOrNull?.meshTheme ?? 'sunset';
     final colors = MeshColors.resolve(meshTheme);
 
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+    final bool shouldShowBack = showBack && canPop;
+
     return Stack(
       children: [
         // Base solid background layer to prevent black window bleed
@@ -248,19 +253,20 @@ class AppScaffold extends ConsumerWidget {
           extendBody: true,
           appBar: FloatingGlassAppBar(
             title: title,
-            leading: showBack
+            leading: shouldShowBack
                 ? IconButton(
                     icon:
                         const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                    tooltip: 'Back',
                     onPressed: onBack ?? () => Navigator.of(context).pop(),
                   )
                 : Builder(
                     builder: (ctx) => IconButton(
                       icon: const Icon(Icons.menu_rounded),
+                      tooltip: 'Open Menu',
                       onPressed: () {
-                        try {
-                          Scaffold.of(ctx).openDrawer();
-                        } catch (_) {}
+                        AppHaptics.buttonClick();
+                        Scaffold.of(ctx).openDrawer();
                       },
                     ),
                   ),
@@ -268,7 +274,7 @@ class AppScaffold extends ConsumerWidget {
             bottom: bottom,
           ),
           body: body != null ? SafeArea(child: body!) : null,
-          drawer: drawer,
+          drawer: drawer ?? const AppDrawer(),
           floatingActionButton: floatingActionButton,
           bottomNavigationBar: bottomNavigationBar,
           bottomSheet: bottomSheet,
