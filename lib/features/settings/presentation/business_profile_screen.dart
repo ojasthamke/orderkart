@@ -10,6 +10,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/models/business_profile.dart';
 import '../../../core/services/business_profile_service.dart';
+import '../../../core/services/worker_session.dart';
 import '../../../core/utils/image_utils.dart';
 
 class BusinessProfileScreen extends ConsumerStatefulWidget {
@@ -59,6 +60,16 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
+    if (WorkerSession.instance.isWorker) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          SnackbarHelper.showError(
+              context, 'Only the Owner can edit the Business Profile');
+          Navigator.of(context).pop();
+        }
+      });
+      return;
+    }
     try {
       final p = await BusinessProfileService.getProfile();
       if (mounted) {
@@ -107,18 +118,24 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
   }
 
   Future<void> _pickLogo() async {
-    final img = await ImageUtils.pickAndCompress(source: ImageSource.gallery);
-    if (img != null) {
-      final savedPath = await ImageUtils.saveImagePermanently(
-        sourcePath: img.path,
-        subFolder: 'business_branding',
-        fileName: 'logo_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (savedPath != null) {
-        setState(() {
-          _logoPath = savedPath;
-        });
-        SnackbarHelper.showSuccess(context, 'Logo selected successfully');
+    try {
+      final img = await ImageUtils.pickAndCompress(source: ImageSource.gallery);
+      if (img != null) {
+        final savedPath = await ImageUtils.saveImagePermanently(
+          sourcePath: img.path,
+          subFolder: 'business_branding',
+          fileName: 'logo_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        if (savedPath != null && mounted) {
+          setState(() {
+            _logoPath = savedPath;
+          });
+          SnackbarHelper.showSuccess(context, 'Logo selected successfully');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Failed to pick logo: $e');
       }
     }
   }

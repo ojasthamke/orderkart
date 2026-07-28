@@ -24,11 +24,16 @@ class AppValidators {
     return phone(value);
   }
 
-  static String? positiveNumber(String? value, {String field = 'Amount'}) {
-    if (value == null || value.trim().isEmpty) return '$field is required';
-    final n = double.tryParse(value);
+  static String? positiveNumber(String? value,
+      {String field = 'Amount', bool allowZero = true, bool isRequired = false}) {
+    if (value == null || value.trim().isEmpty) {
+      return isRequired ? '$field is required' : null;
+    }
+    final n = double.tryParse(value.trim());
     if (n == null) return 'Enter a valid number';
-    if (n < 0) return '$field cannot be negative';
+    if (allowZero ? n < 0 : n <= 0) {
+      return '$field must be ${allowZero ? "non-negative" : "greater than 0"}';
+    }
     return null;
   }
 

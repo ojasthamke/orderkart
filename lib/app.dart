@@ -113,220 +113,253 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(const AppStartupScreen(), settings);
 
       case AppRoutes.areas:
-        return _slide(const AreaScreen());
+        return _slide(const AreaScreen(), settings);
 
       case AppRoutes.streets:
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};
-        return _slide(LocationDetailScreen(
-          locationId: args['areaId'] as String? ?? '',
-          locationName: args['areaName'] as String? ?? 'Location Details',
-        ));
+        return _slide(
+            LocationDetailScreen(
+              locationId: args['areaId'] as String? ?? '',
+              locationName: args['areaName'] as String? ?? 'Location Details',
+            ),
+            settings);
 
       case AppRoutes.customers:
         final args = settings.arguments as Map<String, dynamic>?;
-        return _slide(CustomerListScreen(
-          streetId: args?['streetId'] as String?,
-          streetName: args?['streetName'] as String?,
-        ));
+        return _slide(
+            CustomerListScreen(
+              streetId: args?['streetId'] as String?,
+              streetName: args?['streetName'] as String?,
+            ),
+            settings);
 
       case AppRoutes.customerProfile:
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};
-        return _slide(CustomerProfileScreen(
-          customerId: args['customerId'] as String? ?? '',
-        ));
+        return _slide(
+            CustomerProfileScreen(
+              customerId: args['customerId'] as String? ?? '',
+            ),
+            settings);
 
       case AppRoutes.addEditCustomer:
         final args = settings.arguments as Map<String, dynamic>?;
-        return _slide(AddEditCustomerScreen(
-          streetId: args?['streetId'] as String?,
-          customerId: args?['customerId'] as String?,
-        ));
+        return _slide(
+            AddEditCustomerScreen(
+              streetId: args?['streetId'] as String?,
+              customerId: args?['customerId'] as String?,
+            ),
+            settings);
 
       case AppRoutes.createOrder:
         final args = settings.arguments as Map<String, dynamic>?;
-        return _slide(CreateOrderScreen(
-          customerId: args?['customerId'] as String? ?? '',
-          customerName: args?['customerName'] as String? ?? '',
-          orderId: args?['orderId'] as String?,
-          initialDiscount: (args?['initialDiscount'] as num?)?.toDouble(),
-        ));
+        return _slide(
+            CreateOrderScreen(
+              customerId: args?['customerId'] as String? ?? '',
+              customerName: args?['customerName'] as String? ?? '',
+              orderId: args?['orderId'] as String?,
+              initialDiscount: (args?['initialDiscount'] as num?)?.toDouble(),
+            ),
+            settings);
 
       case AppRoutes.orderManagement:
-        return _slide(const OrderManagementScreen());
+        return _slide(const OrderManagementScreen(), settings);
 
       case AppRoutes.orderDetail:
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};
-        return _slide(OrderDetailScreen(
-          orderId: args['orderId'] as String? ?? '',
-        ));
+        return _slide(
+            OrderDetailScreen(
+              orderId: args['orderId'] as String? ?? '',
+            ),
+            settings);
 
       case AppRoutes.paymentDetails:
         final args = settings.arguments as Map<String, dynamic>? ?? {};
-        return _slide(PaymentDetailsScreen(
-          customerId: args['customerId'] as String? ?? '',
-          remainingAmount: (args['remainingAmount'] as num?)?.toDouble() ?? 0.0,
-          grandTotal: (args['grandTotal'] as num?)?.toDouble() ?? 0.0,
-          currency: args['currency'] as String? ?? '₹',
-        ));
+        return _slide(
+            PaymentDetailsScreen(
+              customerId: args['customerId'] as String? ?? '',
+              remainingAmount:
+                  (args['remainingAmount'] as num?)?.toDouble() ?? 0.0,
+              grandTotal: (args['grandTotal'] as num?)?.toDouble() ?? 0.0,
+              currency: args['currency'] as String? ?? '₹',
+            ),
+            settings);
 
       case AppRoutes.inventory:
-        return _slide(const InventoryScreen());
+        return _slide(const InventoryScreen(), settings);
 
       case AppRoutes.quickInventoryAdjust:
-        return _slide(const QuickInventoryAdjustScreen());
+        return _slide(const QuickInventoryAdjustScreen(), settings);
 
       case AppRoutes.addEditItem:
         final args = settings.arguments as Map<String, dynamic>?;
-        return _slide(AddEditItemScreen(
-          itemId: args?['itemId'] as String?,
-        ));
+        return _slide(
+            AddEditItemScreen(
+              itemId: args?['itemId'] as String?,
+            ),
+            settings);
 
       case AppRoutes.stockAdjustment:
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};
-        return _slide(StockAdjustmentScreen(
-          itemId: args['itemId'] as String? ?? '',
-          itemName: args['itemName'] as String? ?? 'Item',
-        ));
+        return _slide(
+            StockAdjustmentScreen(
+              itemId: args['itemId'] as String? ?? '',
+              itemName: args['itemName'] as String? ?? 'Item',
+            ),
+            settings);
 
       case AppRoutes.expenses:
-        return _slide(const ExpenseScreen());
+        return _slide(const ExpenseScreen(), settings);
 
       case AppRoutes.addEditExpense:
         final args = settings.arguments as Map<String, dynamic>?;
-        return _slide(AddEditExpenseScreen(
-          expenseId: args?['expenseId'] as String?,
-        ));
+        return _slide(
+            AddEditExpenseScreen(
+              expenseId: args?['expenseId'] as String?,
+            ),
+            settings);
 
       case AppRoutes.analytics:
-        return _slide(const AnalyticsScreen());
+        return _slide(const AnalyticsScreen(), settings);
 
       case AppRoutes.profitLoss:
-        return _slide(const ProfitLossScreen());
+        return _slide(const ProfitLossScreen(), settings);
 
       case AppRoutes.settings:
-        return _slide(const SettingsScreen());
+        return _slide(const SettingsScreen(), settings);
 
       case AppRoutes.backupRestore:
-        return _slide(const BackupRestoreScreen());
+        return _slide(const BackupRestoreScreen(), settings);
 
       case AppRoutes.search:
-        return _slide(const SearchScreen());
+        return _slide(const SearchScreen(), settings);
 
       case AppRoutes.qrPreview:
         final args = settings.arguments as Map<String, dynamic>? ?? {};
-        return _slide(QrFullScreenPreview(
-          qrCustomImage: args['qrCustomImage'] as String?,
-          qrContent: args['qrContent'] as String?,
-        ));
+        return _slide(
+            QrFullScreenPreview(
+              qrCustomImage: args['qrCustomImage'] as String?,
+              qrContent: args['qrContent'] as String?,
+            ),
+            settings);
 
       case AppRoutes.notifications:
-        return _slide(const NotificationCenterScreen());
+        return _slide(const NotificationCenterScreen(), settings);
 
       case AppRoutes.vipDashboard:
-        return _slide(const VipDashboardScreen());
+        return _slide(const VipDashboardScreen(), settings);
 
       case AppRoutes.notes:
-        return _slide(const NotesListScreen());
+        return _slide(const NotesListScreen(), settings);
 
       case AppRoutes.addEditNote:
         final args = settings.arguments as Map<String, dynamic>?;
         return _slide(
-            AddEditNoteScreen(existingNote: args?['note'] as AppNote?));
+            AddEditNoteScreen(existingNote: args?['note'] as AppNote?),
+            settings);
 
       case AppRoutes.visits:
-        return _slide(const VisitListScreen());
+        return _slide(const VisitListScreen(), settings);
 
       case AppRoutes.addEditVisit:
         final args = settings.arguments as Map<String, dynamic>?;
-        return _slide(AddEditVisitScreen(visit: args?['visit'] as AppVisit?));
+        return _slide(
+            AddEditVisitScreen(visit: args?['visit'] as AppVisit?), settings);
 
       // Enterprise & Security
       case AppRoutes.modeSelection:
-        return _slide(const ModeSelectionScreen());
+        return _slide(const ModeSelectionScreen(), settings);
 
       case AppRoutes.pinLock:
-        return _slide(const PinLockScreen());
+        return _slide(const PinLockScreen(), settings);
 
       case AppRoutes.welcome:
         final args = settings.arguments is WelcomeSplashScreenArgs
             ? settings.arguments as WelcomeSplashScreenArgs
             : WelcomeSplashScreenArgs(
                 name: 'Owner', nextRoute: AppRoutes.dashboard);
-        return _slide(WelcomeSplashScreen(args: args));
+        return _slide(WelcomeSplashScreen(args: args), settings);
 
       case AppRoutes.workers:
-        return _slide(const WorkerManagementScreen());
+        return _slide(const WorkerManagementScreen(), settings);
 
       case AppRoutes.workerDashboard:
         return _slide(const WorkerDashboardScreen(), settings);
 
       case AppRoutes.pendingSync:
-        return _slide(const PendingSyncScreen());
+        return _slide(const PendingSyncScreen(), settings);
 
       case AppRoutes.importWizard:
-        return _slide(const ImportWizardScreen());
+        return _slide(const ImportWizardScreen(), settings);
 
       case AppRoutes.syncHistory:
-        return _slide(const SyncHistoryScreen());
+        return _slide(const SyncHistoryScreen(), settings);
 
       case AppRoutes.activityTimeline:
-        return _slide(const ActivityTimelineScreen());
+        return _slide(const ActivityTimelineScreen(), settings);
 
       case AppRoutes.businessProfile:
-        return _slide(const BusinessProfileScreen());
+        return _slide(const BusinessProfileScreen(), settings);
 
       case AppRoutes.workerAnalytics:
-        return _slide(const WorkerAnalyticsScreen());
+        return _slide(const WorkerAnalyticsScreen(), settings);
 
       case AppRoutes.workerSelfProfile:
-        return _slide(const WorkerSelfProfileScreen());
+        return _slide(const WorkerSelfProfileScreen(), settings);
 
       case AppRoutes.workerSyncActivity:
-        return _slide(const WorkerSyncActivityScreen());
+        return _slide(const WorkerSyncActivityScreen(), settings);
 
       case AppRoutes.callLogs:
-        return _slide(const CallLogsScreen());
+        return _slide(const CallLogsScreen(), settings);
 
       case AppRoutes.workerPasscodeLock:
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};
-        return _slide(WorkerPasscodeLockScreen(
-          workerId: args['workerId'] as String? ?? '',
-          workerName: args['workerName'] as String? ?? 'Worker',
-          forceLogoutOnCancel: args['forceLogoutOnCancel'] as bool? ?? false,
-        ));
+        return _slide(
+            WorkerPasscodeLockScreen(
+              workerId: args['workerId'] as String? ?? '',
+              workerName: args['workerName'] as String? ?? 'Worker',
+              forceLogoutOnCancel:
+                  args['forceLogoutOnCancel'] as bool? ?? false,
+            ),
+            settings);
 
       case AppRoutes.orderQuestionsConfig:
-        return _slide(const OrderQuestionsConfigScreen());
+        return _slide(const OrderQuestionsConfigScreen(), settings);
 
       case AppRoutes.groceriesHub:
-        return _slide(const GroceriesHubScreen());
+        return _slide(const GroceriesHubScreen(), settings);
 
       case AppRoutes.medicinesHub:
-        return _slide(const MedicinesHubScreen());
+        return _slide(const MedicinesHubScreen(), settings);
 
       case AppRoutes.ownerFeaturesHub:
         final args = settings.arguments as Map<String, dynamic>?;
         final initialTab = args?['initialTab'] as int? ?? 0;
-        return _slide(OwnerFeaturesHubScreen(initialTab: initialTab));
+        return _slide(
+            OwnerFeaturesHubScreen(initialTab: initialTab), settings);
 
       case AppRoutes.catalogShowroom:
-        return _slide(const CatalogShowroomScreen());
+        return _slide(const CatalogShowroomScreen(), settings);
 
       case AppRoutes.churnRisk:
-        return _slide(const ChurnRiskScreen());
+        return _slide(const ChurnRiskScreen(), settings);
 
       case AppRoutes.areaIntelligenceMap:
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};
-        return _slide(AreaIntelligenceMapScreen(
-          areaId: args['areaId']?.toString() ?? '',
-          areaName: args['areaName']?.toString() ?? 'Area Map',
-        ));
+        return _slide(
+            AreaIntelligenceMapScreen(
+              areaId: args['areaId']?.toString() ?? '',
+              areaName: args['areaName']?.toString() ?? 'Area Map',
+            ),
+            settings);
 
       case AppRoutes.mapPinPicker:
         final args = settings.arguments as Map<String, dynamic>?;
-        return _slide(MapPinPickerScreen(
-          initialPosition: args?['initialPosition'] as LatLng?,
-        ));
+        return _slide(
+            MapPinPickerScreen(
+              initialPosition: args?['initialPosition'] as LatLng?,
+            ),
+            settings);
 
       default:
         return _slide(const AppStartupScreen(), settings);
@@ -445,6 +478,35 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
         };
       }(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded,
+                        color: AppColors.error, size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Initialization Error:\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => setState(() {}),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Colors.white,

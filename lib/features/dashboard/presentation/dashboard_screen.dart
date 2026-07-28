@@ -961,6 +961,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ? DateTimeRange(start: _startDate!, end: _endDate!)
           : null,
     );
+    if (!mounted) return;
     if (picked != null) {
       setState(() {
         _startDate = picked.start;

@@ -107,10 +107,9 @@ class AppDrawer extends ConsumerWidget {
                         final target = isWorker
                             ? AppRoutes.workerDashboard
                             : AppRoutes.dashboard;
-                        Navigator.pop(context);
-                        if (ModalRoute.of(context)?.settings.name != target) {
-                          Navigator.pushNamed(context, target);
-                        }
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamedAndRemoveUntil(target, (route) => false);
                       },
                     ),
 
@@ -119,8 +118,9 @@ class AppDrawer extends ConsumerWidget {
                       icon: Icons.shopping_cart_rounded,
                       title: isWorker ? 'My Orders & Sales' : 'Orders & Sales',
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.orderManagement);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.orderManagement);
                       },
                     ),
 
@@ -129,8 +129,9 @@ class AppDrawer extends ConsumerWidget {
                       icon: Icons.people_alt_rounded,
                       title: isWorker ? 'My Customers' : 'Customers',
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.customers);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.customers);
                       },
                     ),
 
@@ -139,8 +140,9 @@ class AppDrawer extends ConsumerWidget {
                       icon: Icons.inventory_rounded,
                       title: 'Inventory Catalog',
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.inventory);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.inventory);
                       },
                     ),
 
@@ -150,8 +152,9 @@ class AppDrawer extends ConsumerWidget {
                       title: 'Catalog Showroom',
                       iconColor: Colors.deepPurple,
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.catalogShowroom);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.catalogShowroom);
                       },
                     ),
 
@@ -161,9 +164,9 @@ class AppDrawer extends ConsumerWidget {
                       title: 'Area Intelligence Map',
                       iconColor: Colors.orange,
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(
-                            context, AppRoutes.areaIntelligenceMap);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.areaIntelligenceMap);
                       },
                     ),
 
@@ -173,8 +176,9 @@ class AppDrawer extends ConsumerWidget {
                         icon: Icons.workspace_premium_rounded,
                         title: 'VIP Membership Club',
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, AppRoutes.vipDashboard);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.vipDashboard);
                         },
                       ),
 
@@ -191,8 +195,9 @@ class AppDrawer extends ConsumerWidget {
                       title: 'Field Visits Schedule',
                       iconColor: Colors.blueAccent,
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.visits);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.visits);
                       },
                     ),
 
@@ -202,8 +207,9 @@ class AppDrawer extends ConsumerWidget {
                       title: 'Expenses Tracker',
                       iconColor: Colors.redAccent,
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.expenses);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.expenses);
                       },
                     ),
 
@@ -213,8 +219,9 @@ class AppDrawer extends ConsumerWidget {
                       title: 'Groceries Hub',
                       iconColor: Colors.green,
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.groceriesHub);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.groceriesHub);
                       },
                     ),
 
@@ -224,8 +231,9 @@ class AppDrawer extends ConsumerWidget {
                       title: 'Medicines Hub',
                       iconColor: Colors.pink,
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.medicinesHub);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.medicinesHub);
                       },
                     ),
 
@@ -241,8 +249,9 @@ class AppDrawer extends ConsumerWidget {
                         icon: Icons.analytics_rounded,
                         title: 'Analytics & Reports',
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, AppRoutes.analytics);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.analytics);
                         },
                       ),
                       _DrawerItem(
@@ -250,9 +259,9 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Worker Analytics',
                         iconColor: AppColors.primary,
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(
-                              context, AppRoutes.workerAnalytics);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.workerAnalytics);
                         },
                       ),
                       _DrawerItem(
@@ -260,17 +269,18 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Churn Risk Analyzer',
                         iconColor: Colors.red,
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, AppRoutes.churnRisk);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.churnRisk);
                         },
                       ),
                       _DrawerItem(
                         icon: Icons.history_rounded,
                         title: 'Activity Timeline',
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(
-                              context, AppRoutes.activityTimeline);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.activityTimeline);
                         },
                       ),
                       _DrawerItem(
@@ -278,8 +288,9 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Call Logs & Directory',
                         iconColor: Colors.blue,
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, AppRoutes.callLogs);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.callLogs);
                         },
                       ),
                     ],
@@ -290,8 +301,9 @@ class AppDrawer extends ConsumerWidget {
                       title: 'Notifications & Alerts',
                       iconColor: Colors.amber,
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.notifications);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.notifications);
                       },
                     ),
 
@@ -306,8 +318,9 @@ class AppDrawer extends ConsumerWidget {
                       icon: Icons.settings_rounded,
                       title: 'Settings',
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.settings);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.settings);
                       },
                     ),
                     if (!isWorker) ...[
@@ -315,9 +328,9 @@ class AppDrawer extends ConsumerWidget {
                         icon: Icons.question_answer_rounded,
                         title: 'Order Notes Questions',
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(
-                              context, AppRoutes.orderQuestionsConfig);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.orderQuestionsConfig);
                         },
                       ),
                       _DrawerItem(
@@ -325,9 +338,9 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Worker Sync Activity',
                         iconColor: Colors.teal,
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(
-                              context, AppRoutes.workerSyncActivity);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.workerSyncActivity);
                         },
                       ),
                       _DrawerItem(
@@ -335,9 +348,9 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Advanced Operations Control',
                         iconColor: Colors.blueAccent,
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(
-                              context, AppRoutes.ownerFeaturesHub);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.ownerFeaturesHub);
                         },
                       ),
                       _DrawerItem(
@@ -345,8 +358,9 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Worker Management',
                         iconColor: AppColors.primary,
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, AppRoutes.workers);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.workers);
                         },
                       ),
                       _DrawerItem(
@@ -354,8 +368,9 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Areas & Routes (Area → Street)',
                         iconColor: Colors.orange,
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, AppRoutes.areas);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.areas);
                         },
                       ),
                     ],
@@ -366,17 +381,18 @@ class AppDrawer extends ConsumerWidget {
                         title: 'My Worker Profile',
                         iconColor: AppColors.primary,
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(
-                              context, AppRoutes.workerSelfProfile);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.workerSelfProfile);
                         },
                       ),
                       _DrawerItem(
                         icon: Icons.note_alt_rounded,
                         title: 'Field Visit Notes',
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, AppRoutes.notes);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.notes);
                         },
                       ),
                     ],
@@ -394,8 +410,9 @@ class AppDrawer extends ConsumerWidget {
                       title:
                           isWorker ? 'Sync & Export' : 'Import & Export Data',
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.backupRestore);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.backupRestore);
                       },
                     ),
                     _DrawerItem(
@@ -403,8 +420,9 @@ class AppDrawer extends ConsumerWidget {
                       title: 'Sync Log History',
                       iconColor: const Color(0xFF8B5CF6),
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, AppRoutes.syncHistory);
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.syncHistory);
                       },
                     ),
                     if (!isWorker) ...[
@@ -413,8 +431,9 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Import Wizard (Merge)',
                         iconColor: const Color(0xFF0284C7),
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, AppRoutes.importWizard);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.importWizard);
                         },
                       ),
                       _DrawerItem(
@@ -422,9 +441,9 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Business Profile',
                         iconColor: const Color(0xFF10B981),
                         onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(
-                              context, AppRoutes.businessProfile);
+                          final nav = Navigator.of(context);
+                          nav.pop();
+                          nav.pushNamed(AppRoutes.businessProfile);
                         },
                       ),
                     ],

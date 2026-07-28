@@ -802,7 +802,6 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       }
 
       if (!mounted) return;
-      if (!mounted) return;
       if (_isEdit) {
         SnackbarHelper.showSuccess(context, 'Customer details updated');
         Navigator.of(context).pop();
@@ -862,7 +861,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           final telUri = Uri.parse('tel:$cleanPhone');
           if (await canLaunchUrl(telUri)) {
             await launchUrl(telUri);
-          } else {
+          } else if (mounted) {
             SnackbarHelper.showError(context, 'Could not open dialpad');
           }
         }

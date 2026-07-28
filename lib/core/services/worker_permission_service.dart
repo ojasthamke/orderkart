@@ -1,33 +1,29 @@
-// lib/core/services/worker_permission_service.dart
-
 import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../models/worker_permission.dart';
 import '../error/failures.dart';
+import 'worker_session.dart';
 
 class WorkerPermissionService {
   WorkerPermissionService._();
 
-  /// Retrieve the permission set for a given worker (always returns full access).
+  /// Retrieve the permission set for a given worker from DB.
   static Future<WorkerPermission> getPermissionsForWorker(
       String workerId) async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final res = await db.query(
+        'worker_permissions',
+        where: 'worker_id = ?',
+        whereArgs: [workerId],
+      );
+      if (res.isNotEmpty) {
+        return WorkerPermission.fromMap(res.first);
+      }
+    } catch (_) {}
+
     return WorkerPermission(
       workerId: workerId,
-      customers: PermissionLevel.full,
-      orders: PermissionLevel.full,
-      payments: PermissionLevel.full,
-      expenses: PermissionLevel.full,
-      sellingPrice: PermissionLevel.full,
-      costPrice: PermissionLevel.full,
-      stock: PermissionLevel.full,
-      items: PermissionLevel.full,
-      vip: PermissionLevel.full,
-      reports: PermissionLevel.full,
-      notes: PermissionLevel.full,
-      export: PermissionLevel.full,
-      import: PermissionLevel.full,
-      settings: PermissionLevel.full,
-      analytics: PermissionLevel.full,
       updatedAt: DateTime.now(),
     );
   }
@@ -42,14 +38,24 @@ class WorkerPermissionService {
     );
   }
 
-  /// Check if a worker has a specific permission (always returns true).
+  /// Check if a worker has a specific permission field level.
   static Future<bool> hasPermission(String workerId, String permissionField,
       {int requiredLevel = 2}) async {
-    return true;
+    if (WorkerSession.instance.isOwner) return true;
+    final perm = await getPermissionsForWorker(workerId);
+    final map = perm.toMap();
+    final val = map[permissionField] as int? ?? 0;
+    return val >= requiredLevel;
   }
 
-  /// Check if a worker has a specific permission, throwing a [PermissionFailure] if they do not (no-op).
+  /// Check if a worker has a specific permission, throwing a [PermissionFailure] if they do not.
   static Future<void> checkPermissionOrThrow(
       String workerId, String permissionField, String actionName,
-      {int requiredLevel = 2}) async {}
+      {int requiredLevel = 2}) async {
+    final allowed = await hasPermission(workerId, permissionField,
+        requiredLevel: requiredLevel);
+    if (!allowed) {
+      throw PermissionFailure('You do not have permission to $actionName.');
+    }
+  }
 }

@@ -298,6 +298,25 @@ class OrderDao {
       };
     }
 
+    final custRes = await db.query('customers',
+        where: 'id = ?', whereArgs: [order.customerId], limit: 1);
+    bool isVipActive = false;
+    double vipMarkupPct = 0.0;
+    if (custRes.isNotEmpty) {
+      final c = custRes.first;
+      final isVip = (c['is_vip'] as int? ?? 0) == 1;
+      final expiryStr = c['vip_expiry_date'] as String? ?? '';
+      if (isVip) {
+        if (expiryStr.isEmpty) {
+          isVipActive = true;
+        } else {
+          final expiry = DateTime.tryParse(expiryStr);
+          isVipActive = expiry != null && expiry.isAfter(DateTime.now());
+        }
+      }
+      vipMarkupPct = (c['vip_markup_pct'] as num?)?.toDouble() ?? 0.0;
+    }
+
     double newSubtotal = 0.0;
     int updatedCount = 0;
 
@@ -317,6 +336,7 @@ class OrderDao {
       }
 
       double currentPrice = (dbItems.first['selling_price'] as num).toDouble();
+      bool hasCustomPrice = false;
 
       try {
         final custPrices = await db.query(
@@ -327,8 +347,13 @@ class OrderDao {
         );
         if (custPrices.isNotEmpty) {
           currentPrice = (custPrices.first['custom_price'] as num).toDouble();
+          hasCustomPrice = true;
         }
       } catch (_) {}
+
+      if (!hasCustomPrice && isVipActive && vipMarkupPct > 0) {
+        currentPrice = currentPrice * (1.0 + (vipMarkupPct / 100.0));
+      }
 
       final newTotalPrice = currentPrice * item.quantity;
 

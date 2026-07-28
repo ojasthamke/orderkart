@@ -73,23 +73,31 @@ void main() {
       await SecurityHelper.getOrInitializeOwnerSecret();
 
       // Seed worker with PIN details
-      await db.insert('workers', {
-        'id': workerId,
-        'name': workerName,
-        'phone': '1234567890',
-        'status': 'active',
-        'pin_hash': SecurityHelper.hashPin('123456'),
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await db.insert(
+        'workers',
+        {
+          'id': workerId,
+          'name': workerName,
+          'phone': '1234567890',
+          'status': 'active',
+          'pin_hash': SecurityHelper.hashPin('123456'),
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
 
       final workerSecret = SecurityHelper.generateOwnerSecret();
-      await db.insert('worker_security', {
-        'worker_id': workerId,
-        'worker_secret': workerSecret,
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await db.insert(
+        'worker_security',
+        {
+          'worker_id': workerId,
+          'worker_secret': workerSecret,
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
 
       // Seed mock business profile
       await db.insert('business_profile', {

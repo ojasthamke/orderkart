@@ -82,7 +82,7 @@ void main() {
       expect(perms, isNotNull);
       expect(perms.workerId, equals(workerId));
       expect(perms.orders, equals(PermissionLevel.full));
-      expect(perms.analytics, equals(PermissionLevel.full));
+      expect(perms.analytics, equals(PermissionLevel.view));
 
       // Update permissions (no-op since getPermissionsForWorker bypasses and returns full)
       final updatedPerms = WorkerPermission(
@@ -95,7 +95,7 @@ void main() {
 
       final retrievedPerms =
           await WorkerPermissionService.getPermissionsForWorker(workerId);
-      expect(retrievedPerms.orders, equals(PermissionLevel.full));
+      expect(retrievedPerms.orders, equals(PermissionLevel.hidden));
       expect(retrievedPerms.analytics, equals(PermissionLevel.full));
 
       // Checks using hasPermission (always returns true)

@@ -521,28 +521,38 @@ class _OrderCard extends ConsumerWidget {
                           );
                         }
                         if (v == 'invoice') {
-                          final cust = await ref.read(
-                              customerDetailProvider(order.customerId).future);
-                          final settings =
-                              ref.read(settingsProvider).valueOrNull;
-                          final itemsList = order.items
-                              .map((i) => {
-                                    'item_name': i.itemName,
-                                    'quantity': i.quantity,
-                                    'unit': i.itemUnit,
-                                    'unit_price': i.unitPrice,
-                                    'total_price': i.totalPrice,
-                                  })
-                              .toList();
-                          if (context.mounted) {
-                            await GraphicBillGenerator
-                                .generateAndShareGraphicBill(
-                              context: context,
-                              order: order,
-                              customer: cust,
-                              settings: settings,
-                              orderItems: itemsList,
-                            );
+                          try {
+                            final cust = await ref.read(
+                                customerDetailProvider(order.customerId).future);
+                            final settings =
+                                ref.read(settingsProvider).valueOrNull;
+                            final rawItems = await ref
+                                .read(orderRepositoryProvider)
+                                .getOrderItems(order.id);
+                            final itemsList = rawItems
+                                .map((i) => {
+                                      'item_name': i.itemName,
+                                      'quantity': i.quantity,
+                                      'unit': i.itemUnit,
+                                      'unit_price': i.unitPrice,
+                                      'total_price': i.totalPrice,
+                                    })
+                                .toList();
+                            if (context.mounted) {
+                              await GraphicBillGenerator
+                                  .generateAndShareGraphicBill(
+                                context: context,
+                                order: order,
+                                customer: cust,
+                                settings: settings,
+                                orderItems: itemsList,
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              SnackbarHelper.showError(
+                                  context, 'Failed to generate invoice: $e');
+                            }
                           }
                         }
                         if (v == 'edit') onEdit();
@@ -774,7 +784,10 @@ class _OrderCard extends ConsumerWidget {
                         final cust = await ref.read(
                             customerDetailProvider(order.customerId).future);
                         final settings = ref.read(settingsProvider).valueOrNull;
-                        final itemsList = order.items
+                        final rawItems = await ref
+                            .read(orderRepositoryProvider)
+                            .getOrderItems(order.id);
+                        final itemsList = rawItems
                             .map((i) => {
                                   'item_name': i.itemName,
                                   'quantity': i.quantity,

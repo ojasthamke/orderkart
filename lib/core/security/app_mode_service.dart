@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
+import '../services/worker_permission_service.dart';
+import '../services/worker_session.dart';
 
 enum AppMode { owner, worker }
 
@@ -190,7 +192,10 @@ class AppModeService {
 
   /// Check specific worker permission configured by Owner
   static Future<bool> hasWorkerPermission(String permissionKey) async {
-    return true;
+    if (isOwnerSessionActive) return true;
+    final workerId = WorkerSession.instance.currentWorkerId;
+    if (workerId == null || workerId.isEmpty) return false;
+    return WorkerPermissionService.hasPermission(workerId, permissionKey);
   }
 }
 

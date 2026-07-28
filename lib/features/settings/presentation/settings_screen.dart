@@ -15,6 +15,7 @@ import '../domain/app_settings.dart';
 import 'settings_provider.dart';
 import '../../../core/utils/image_utils.dart';
 import '../../../core/localization/app_localization.dart';
+import '../../../core/widgets/owner_pin_dialog.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -79,31 +80,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _pickQrImage(AppSettings current) async {
-    final img = await ImageUtils.pickAndCompress(source: ImageSource.gallery);
-    if (img != null) {
-      // Delete old QR image to prevent bloat
-      if (current.qrCustomImage.isNotEmpty) {
-        final oldFile = File(current.qrCustomImage);
-        if (oldFile.existsSync()) {
-          try {
-            oldFile.deleteSync();
-          } catch (_) {}
+    try {
+      final img =
+          await ImageUtils.pickAndCompress(source: ImageSource.gallery);
+      if (img != null) {
+        // Delete old QR image to prevent bloat
+        if (current.qrCustomImage.isNotEmpty) {
+          final oldFile = File(current.qrCustomImage);
+          if (oldFile.existsSync()) {
+            try {
+              oldFile.deleteSync();
+            } catch (_) {}
+          }
+        }
+
+        final savedPath = await ImageUtils.saveImagePermanently(
+          sourcePath: img.path,
+          subFolder: 'qr_codes',
+          fileName: 'qr_custom_image',
+        );
+
+        if (savedPath != null) {
+          await ref.read(settingsProvider.notifier).update(
+                current.copyWith(qrCustomImage: savedPath),
+              );
+          if (mounted) {
+            SnackbarHelper.showSuccess(context, 'QR Code image uploaded');
+          }
         }
       }
-
-      final savedPath = await ImageUtils.saveImagePermanently(
-        sourcePath: img.path,
-        subFolder: 'qr_codes',
-        fileName: 'qr_custom_image',
-      );
-
-      if (savedPath != null) {
-        await ref.read(settingsProvider.notifier).update(
-              current.copyWith(qrCustomImage: savedPath),
-            );
-        if (mounted) {
-          SnackbarHelper.showSuccess(context, 'QR Code image uploaded');
-        }
+    } catch (e) {
+      if (mounted) {
+        SnackbarHelper.showError(
+            context, 'Failed to upload QR image: ${e.toString()}');
       }
     }
   }
@@ -213,11 +222,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       controller: _deliveryChargeCon,
                       onChanged: (v) {
                         final d = double.tryParse(v);
-                        if (d != null) {
-                          ref
-                              .read(settingsProvider.notifier)
-                              .update(settings.copyWith(deliveryCharge: d));
-                        }
+                        ref.read(settingsProvider.notifier).update(
+                              settings.copyWith(deliveryCharge: d ?? 0.0),
+                            );
                       },
                       decoration: InputDecoration(
                         border: InputBorder.none,
@@ -282,10 +289,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       controller: _workerDiscountCapCon,
                       onChanged: (v) {
                         final val = double.tryParse(v);
-                        if (val != null) {
-                          ref.read(settingsProvider.notifier).update(
-                              settings.copyWith(workerDiscountCap: val));
-                        }
+                        ref.read(settingsProvider.notifier).update(
+                              settings.copyWith(workerDiscountCap: val ?? 0.0),
+                            );
                       },
                       decoration: const InputDecoration(
                         border: InputBorder.none,
@@ -652,6 +658,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       style: TextStyle(color: AppColors.error)),
                   subtitle: const Text('Delete all data permanently'),
                   onTap: () async {
+                    if (WorkerSession.instance.isWorker) {
+                      SnackbarHelper.showError(
+                          context, 'Only the Owner can reset the app');
+                      return;
+                    }
+                    final verified = await OwnerPinDialog.verify(context,
+                        title: 'Owner Verification',
+                        subtitle: 'Enter Owner PIN to reset all app data');
+                    if (!verified || !mounted) return;
                     final ok = await ConfirmDeleteDialog.show(
                       context,
                       title: 'Reset App',

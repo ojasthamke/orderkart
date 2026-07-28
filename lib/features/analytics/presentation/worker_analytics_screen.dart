@@ -39,7 +39,7 @@ final workerAnalyticsProvider =
       LEFT JOIN customers c ON o.customer_id = c.id
       WHERE (o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR c.assigned_worker_id = ? OR o.id IN (
         SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
-      )) AND o.delivery_status != 'cancelled'
+      )) AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
     ''', [wid, wid, wid, wid, wid]);
 
     final totalSales =
@@ -55,7 +55,7 @@ final workerAnalyticsProvider =
       WHERE (o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
              c.assigned_worker_id = ? OR o.id IN (
                SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
-             )) AND LOWER(p.method) = 'cash' AND o.delivery_status != 'cancelled'
+             )) AND LOWER(p.method) = 'cash' AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
     ''', [wid, wid, wid, wid, wid]);
 
     final onlineRes = await db.rawQuery('''
@@ -66,7 +66,7 @@ final workerAnalyticsProvider =
       WHERE (o.assigned_worker_id = ? OR o.created_by = ? OR o.worker_id = ? OR 
              c.assigned_worker_id = ? OR o.id IN (
                SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'order'
-             )) AND LOWER(p.method) != 'cash' AND o.delivery_status != 'cancelled'
+             )) AND LOWER(p.method) != 'cash' AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
     ''', [wid, wid, wid, wid, wid]);
 
     final cashColl = (cashRes.first['sum'] as num?)?.toDouble() ?? 0.0;
@@ -164,7 +164,7 @@ final singleWorkerStatsProvider =
   final salesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(grand_total), 0) as total_sales, COUNT(id) as order_count 
     FROM orders 
-    WHERE (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
+    WHERE (assigned_worker_id = ? OR created_by = ?) AND (delivery_status IS NULL OR delivery_status != 'cancelled')
   ''', [workerId, workerId]);
   final totalSales = (salesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
   final orderCount = (salesRes.first['order_count'] as num?)?.toInt() ?? 0;
@@ -176,7 +176,7 @@ final singleWorkerStatsProvider =
   final todaySalesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(grand_total), 0) as total_sales 
     FROM orders 
-    WHERE DATE(created_at) = DATE(?) AND (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
+    WHERE DATE(created_at) = DATE(?) AND (assigned_worker_id = ? OR created_by = ?) AND (delivery_status IS NULL OR delivery_status != 'cancelled')
   ''', [todayStr, workerId, workerId]);
   final todaySales =
       (todaySalesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
@@ -184,7 +184,7 @@ final singleWorkerStatsProvider =
   final monthlySalesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(grand_total), 0) as total_sales 
     FROM orders 
-    WHERE strftime('%Y-%m', created_at) = ? AND (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
+    WHERE strftime('%Y-%m', created_at) = ? AND (assigned_worker_id = ? OR created_by = ?) AND (delivery_status IS NULL OR delivery_status != 'cancelled')
   ''', [monthStr, workerId, workerId]);
   final monthlySales =
       (monthlySalesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
@@ -192,7 +192,7 @@ final singleWorkerStatsProvider =
   final duesRes = await db.rawQuery('''
     SELECT COALESCE(SUM(remaining_amount), 0) as pending_dues 
     FROM orders 
-    WHERE remaining_amount > 0 AND (assigned_worker_id = ? OR created_by = ?) AND delivery_status != 'cancelled'
+    WHERE remaining_amount > 0 AND (assigned_worker_id = ? OR created_by = ?) AND (delivery_status IS NULL OR delivery_status != 'cancelled')
   ''', [workerId, workerId]);
   final pendingDues =
       (duesRes.first['pending_dues'] as num?)?.toDouble() ?? 0.0;
@@ -202,7 +202,7 @@ final singleWorkerStatsProvider =
     SELECT COALESCE(SUM(p.amount), 0) as sum 
     FROM payments p
     JOIN orders o ON p.order_id = o.id
-    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) = 'cash' AND o.delivery_status != 'cancelled'
+    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) = 'cash' AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
   ''', [workerId, workerId]);
   final cashColl = (cashRes.first['sum'] as num?)?.toDouble() ?? 0.0;
 
@@ -210,7 +210,7 @@ final singleWorkerStatsProvider =
     SELECT COALESCE(SUM(p.amount), 0) as sum 
     FROM payments p
     JOIN orders o ON p.order_id = o.id
-    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) != 'cash' AND o.delivery_status != 'cancelled'
+    WHERE (o.assigned_worker_id = ? OR o.created_by = ?) AND LOWER(p.method) != 'cash' AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
   ''', [workerId, workerId]);
   final onlineColl = (onlineRes.first['sum'] as num?)?.toDouble() ?? 0.0;
   final totalColl = cashColl + onlineColl;

@@ -37,7 +37,7 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog>
     _waveController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
+    );
     _initSpeech();
   }
 
@@ -53,9 +53,12 @@ class _VoiceSearchDialogState extends State<VoiceSearchDialog>
     try {
       bool available = await _speech.initialize(
         onStatus: (status) {
+          if (!mounted) return;
           if (status == 'listening') {
+            _waveController.repeat(reverse: true);
             setState(() => _isListening = true);
           } else {
+            _waveController.stop();
             setState(() => _isListening = false);
           }
         },

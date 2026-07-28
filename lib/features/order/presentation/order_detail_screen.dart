@@ -807,26 +807,33 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         ],
         ElevatedButton.icon(
           onPressed: () async {
-            final cust =
-                await ref.read(customerDetailProvider(order.customerId).future);
-            final settings = ref.read(settingsProvider).valueOrNull;
-            final itemsList = order.items
-                .map((i) => {
-                      'item_name': i.itemName,
-                      'quantity': i.quantity,
-                      'unit': i.itemUnit,
-                      'unit_price': i.unitPrice,
-                      'total_price': i.totalPrice,
-                    })
-                .toList();
-            if (context.mounted) {
-              await GraphicBillGenerator.generateAndShareGraphicBill(
-                context: context,
-                order: order,
-                customer: cust,
-                settings: settings,
-                orderItems: itemsList,
-              );
+            try {
+              final cust = await ref
+                  .read(customerDetailProvider(order.customerId).future);
+              final settings = ref.read(settingsProvider).valueOrNull;
+              final itemsList = order.items
+                  .map((i) => {
+                        'item_name': i.itemName,
+                        'quantity': i.quantity,
+                        'unit': i.itemUnit,
+                        'unit_price': i.unitPrice,
+                        'total_price': i.totalPrice,
+                      })
+                  .toList();
+              if (context.mounted) {
+                await GraphicBillGenerator.generateAndShareGraphicBill(
+                  context: context,
+                  order: order,
+                  customer: cust,
+                  settings: settings,
+                  orderItems: itemsList,
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                SnackbarHelper.showError(
+                    context, 'Failed to share graphic invoice: $e');
+              }
             }
           },
           icon: const Icon(Icons.picture_as_pdf_rounded),

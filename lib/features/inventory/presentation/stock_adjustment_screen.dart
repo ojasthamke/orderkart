@@ -279,60 +279,67 @@ class _StockAdjustmentScreenState extends ConsumerState<StockAdjustmentScreen> {
   }
 
   Future<void> _adjust() async {
-    final itemObj = await ItemDao().getItemById(widget.itemId);
-    final currentStock = itemObj?.stock ?? 0.0;
-    if ((_mode == 'wastage' || _mode == 'remove') && _change > currentStock) {
-      if (mounted) {
-        SnackbarHelper.showError(context,
-            'Cannot adjust stock: quantity (${AppFormatters.quantity(_change)}) exceeds current stock (${AppFormatters.quantity(currentStock)})');
+    try {
+      final itemObj = await ItemDao().getItemById(widget.itemId);
+      final currentStock = itemObj?.stock ?? 0.0;
+      if ((_mode == 'wastage' || _mode == 'remove') &&
+          _change > currentStock) {
+        if (mounted) {
+          SnackbarHelper.showError(context,
+              'Cannot adjust stock: quantity (${AppFormatters.quantity(_change)}) exceeds current stock (${AppFormatters.quantity(currentStock)})');
+        }
+        return;
       }
-      return;
-    }
 
-    AppHaptics.primarySave();
-    if (_mode == 'wastage') {
-      final reason = _reasonCon.text.trim().isEmpty
-          ? 'Wastage / Spoilage loss'
-          : _reasonCon.text.trim();
-      await ref
-          .read(inventoryProvider.notifier)
-          .adjustStock(widget.itemId, -_change, 'Wastage: $reason');
+      AppHaptics.primarySave();
+      if (_mode == 'wastage') {
+        final reason = _reasonCon.text.trim().isEmpty
+            ? 'Wastage / Spoilage loss'
+            : _reasonCon.text.trim();
+        await ref
+            .read(inventoryProvider.notifier)
+            .adjustStock(widget.itemId, -_change, 'Wastage: $reason');
 
-      if (_autoLogExpense) {
-        final itemObj = await ItemDao().getItemById(widget.itemId);
-        final rate = (itemObj?.costPrice != null && itemObj!.costPrice > 0)
-            ? itemObj.costPrice
-            : (itemObj?.sellingPrice ?? 0.0);
-        final costLoss = _change * rate;
-        if (costLoss > 0) {
-          await ExpenseDao().insertExpense(
-            Expense(
-              id: '',
-              name:
-                  'Wastage: ${widget.itemName} (${AppFormatters.quantity(_change)})',
-              category: AppConstants.expSpoilageLoss,
-              amount: costLoss,
-              date: DateTime.now(),
-              notes: 'Item wastage recorded: $reason',
-              paymentMethod: 'cash',
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            ),
-          );
+        if (_autoLogExpense) {
+          final itemObj = await ItemDao().getItemById(widget.itemId);
+          final rate = (itemObj?.costPrice != null && itemObj!.costPrice > 0)
+              ? itemObj.costPrice
+              : (itemObj?.sellingPrice ?? 0.0);
+          final costLoss = _change * rate;
+          if (costLoss > 0) {
+            await ExpenseDao().insertExpense(
+              Expense(
+                id: '',
+                name:
+                    'Wastage: ${widget.itemName} (${AppFormatters.quantity(_change)})',
+                category: AppConstants.expSpoilageLoss,
+                amount: costLoss,
+                date: DateTime.now(),
+                notes: 'Item wastage recorded: $reason',
+                paymentMethod: 'cash',
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            );
+          }
+        }
+        if (mounted) {
+          SnackbarHelper.showSuccess(context,
+              'Wastage of ${AppFormatters.quantity(_change)} recorded');
+          Navigator.of(context).pop();
+        }
+      } else {
+        final change = _mode == 'add' ? _change : -_change;
+        await ref.read(inventoryProvider.notifier).adjustStock(widget.itemId,
+            change, _mode == 'add' ? 'Stock added' : 'Stock reduced');
+        if (mounted) {
+          SnackbarHelper.showSuccess(context, 'Stock updated');
+          Navigator.of(context).pop();
         }
       }
+    } catch (e) {
       if (mounted) {
-        SnackbarHelper.showSuccess(
-            context, 'Wastage of ${AppFormatters.quantity(_change)} recorded');
-        Navigator.of(context).pop();
-      }
-    } else {
-      final change = _mode == 'add' ? _change : -_change;
-      await ref.read(inventoryProvider.notifier).adjustStock(widget.itemId,
-          change, _mode == 'add' ? 'Stock added' : 'Stock reduced');
-      if (mounted) {
-        SnackbarHelper.showSuccess(context, 'Stock updated');
-        Navigator.of(context).pop();
+        SnackbarHelper.showError(context, 'Failed to adjust stock: $e');
       }
     }
   }

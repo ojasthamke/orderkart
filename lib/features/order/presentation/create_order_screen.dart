@@ -13,6 +13,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/unit_converter.dart';
 import '../../../core/utils/smart_rounding.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -1295,18 +1296,22 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 updatedAt: DateTime.now(),
               ));
 
-      double oldQty = 0.0;
+      double oldQtyBase = 0.0;
       if (_existingOrder != null) {
         final existingItem = _existingOrder!.items
             .where((dynamic oi) => oi.itemId == cartItem.itemId)
             .firstOrNull;
         if (existingItem != null) {
-          oldQty = (existingItem.quantity as num).toDouble();
+          final oldQty = (existingItem.quantity as num).toDouble();
+          oldQtyBase = UnitConverter.toBase(oldQty, existingItem.unit);
         }
       }
-      final double availableStock = dbItem.stock + oldQty;
+      final double availableStockBase =
+          UnitConverter.toBase(dbItem.stock, dbItem.unit) + oldQtyBase;
+      final double requestedQtyBase =
+          UnitConverter.toBase(cartItem.quantity, cartItem.unit);
 
-      if (cartItem.quantity > availableStock) {
+      if (requestedQtyBase > availableStockBase) {
         if (!mounted) return;
         showDialog(
           context: context,
@@ -1319,7 +1324,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               ],
             ),
             content: Text(
-              'Item "${cartItem.name}" has only ${AppFormatters.quantity(availableStock)} ${dbItem.unit} available (including current order), but ${AppFormatters.quantity(cartItem.quantity)} was requested.\n\nPlease adjust quantity before saving.',
+              'Item "${cartItem.name}" has only ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit} available, but ${AppFormatters.quantity(cartItem.quantity)} ${cartItem.unit} was requested.\n\nPlease adjust quantity before saving.',
             ),
             actions: [
               TextButton(
@@ -1595,20 +1600,33 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           setState(() {
             final existing = _cart.indexWhere((c) => c.itemId == item.id);
             if (existing >= 0) {
-              final newTotal = _cart[existing].quantity + qty;
-              if (newTotal > item.stock) {
+              final cartItem = _cart[existing];
+              final existingQtyInAddedUnit = UnitConverter.convert(
+                quantity: cartItem.quantity,
+                fromUnit: cartItem.unit,
+                toUnit: item.unit,
+              );
+              final newTotalInAddedUnit = existingQtyInAddedUnit + qty;
+              final newTotalInBase =
+                  UnitConverter.toBase(newTotalInAddedUnit, item.unit);
+              final stockInBase = UnitConverter.toBase(item.stock, item.unit);
+
+              if (newTotalInBase > stockInBase) {
                 SnackbarHelper.showError(
                   context,
-                  'Cannot add more "${item.name}". Stock limit is ${AppFormatters.quantity(item.stock)}',
+                  'Cannot add more "${item.name}". Stock limit is ${AppFormatters.quantity(item.stock)} ${item.unit}',
                 );
                 return;
               }
-              _cart[existing] = _cart[existing].copyWith(quantity: newTotal);
+              _cart[existing] =
+                  cartItem.copyWith(quantity: newTotalInAddedUnit, unit: item.unit);
             } else {
-              if (qty > item.stock) {
+              final qtyInBase = UnitConverter.toBase(qty, item.unit);
+              final stockInBase = UnitConverter.toBase(item.stock, item.unit);
+              if (qtyInBase > stockInBase) {
                 SnackbarHelper.showError(
                   context,
-                  'Cannot add ${AppFormatters.quantity(qty)} of "${item.name}". Stock limit is ${AppFormatters.quantity(item.stock)}',
+                  'Cannot add ${AppFormatters.quantity(qty)} ${item.unit} of "${item.name}". Stock limit is ${AppFormatters.quantity(item.stock)} ${item.unit}',
                 );
                 return;
               }

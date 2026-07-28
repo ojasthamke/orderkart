@@ -17,8 +17,25 @@ class OwnerPinDialog extends StatefulWidget {
   /// Static helper method to prompt for PIN anywhere in the app
   static Future<bool> verify(BuildContext context,
       {String? title, String? subtitle}) async {
-    AppModeService.loginOwnerSuccess();
-    return true; // Password disabled for now per user request
+    final pinSet = await AppModeService.isOwnerPinSet();
+    if (!pinSet) {
+      AppModeService.loginOwnerSuccess();
+      return true; // Password not configured yet
+    }
+    if (AppModeService.isOwnerSessionActive) return true; // Already verified in session
+    if (!context.mounted) return false;
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => OwnerPinDialog(
+        title: title ?? 'Owner Verification',
+        subtitle: subtitle ?? 'Enter 6-digit Owner PIN to proceed',
+      ),
+    );
+    if (result == true) {
+      AppModeService.loginOwnerSuccess();
+    }
+    return result ?? false;
   }
 
   @override
