@@ -195,6 +195,23 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
     }
   }
 
+  String get _metricsText {
+    if (_points.isEmpty) return 'Tap map to place vertices';
+    final length = GeoMath.calculatePathLength(_points,
+        isClosed: _geometryType == 'polygon');
+    final lengthStr = length >= 1000
+        ? '${(length / 1000).toStringAsFixed(2)} km'
+        : '${length.toStringAsFixed(0)} m';
+    if (_geometryType == 'polygon' && _points.length >= 3) {
+      final areaSqM = GeoMath.calculatePolygonArea(_points);
+      final areaStr = areaSqM >= 10000
+          ? '${(areaSqM / 1000000).toStringAsFixed(3)} sq km'
+          : '${areaSqM.toStringAsFixed(0)} m²';
+      return 'Area: $areaStr  •  Perimeter: $lengthStr';
+    }
+    return 'Length: $lengthStr';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -209,139 +226,238 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
           )
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Draw Boundary: ${widget.locationName}',
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                '${_points.length} Points',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              ChoiceChip(
-                label: const Text('Polygon (Zone)'),
-                selected: _geometryType == 'polygon',
-                onSelected: (val) {
-                  if (val) setState(() => _geometryType = 'polygon');
-                },
-              ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Polyline (Road/Path)'),
-                selected: _geometryType == 'polyline',
-                onSelected: (val) {
-                  if (val) setState(() => _geometryType = 'polyline');
-                },
-              ),
-              const Spacer(),
-              TextButton.icon(
-                icon: const Icon(Icons.auto_awesome, size: 14),
-                label: const Text('Auto-Suggest'),
-                onPressed: _autoSuggest,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text('Stroke Color:', style: GoogleFonts.inter(fontSize: 12)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 32,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _colors.length,
-                    itemBuilder: (ctx, i) {
-                      final c = _colors[i];
-                      final isSelected = _strokeColor == c;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _strokeColor = c;
-                            _fillColor =
-                                c & 0x00FFFFFF | 0x26000000; // opacity 15%
-                          });
-                        },
-                        child: Container(
-                          width: 24,
-                          height: 24,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            color: Color(c),
-                            shape: BoxShape.circle,
-                            border: isSelected
-                                ? Border.all(color: Colors.black, width: 2)
-                                : null,
-                          ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      child: SafeArea(
+        top: false,
+        bottom: true,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Draw Boundary: ${widget.locationName}',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                      );
-                    },
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _metricsText,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: Colors.blueGrey.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.undo_rounded),
-                onPressed: _points.isEmpty ? null : undoLastPoint,
-                tooltip: 'Undo point',
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_sweep_rounded, color: Colors.red),
-                onPressed: _points.isEmpty ? null : clearPoints,
-                tooltip: 'Clear all points',
-              ),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: widget.onCancel,
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 8),
-              if (widget.boundaryId != null) ...[
-                ElevatedButton.icon(
-                  onPressed: _delete,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
-                  icon: const Icon(Icons.delete_forever_rounded, size: 16),
-                  label: const Text('Delete'),
                 ),
                 const SizedBox(width: 8),
-              ],
-              ElevatedButton(
-                onPressed: _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_points.length} Points',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade900,
+                    ),
+                  ),
                 ),
-                child: const Text('Save Boundary'),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Mode selector & Auto-Suggest Bar
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('Polygon (Zone)'),
+                    selected: _geometryType == 'polygon',
+                    onSelected: (val) {
+                      if (val) setState(() => _geometryType = 'polygon');
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text('Polyline (Road/Path)'),
+                    selected: _geometryType == 'polyline',
+                    onSelected: (val) {
+                      if (val) setState(() => _geometryType = 'polyline');
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.withOpacity(0.1),
+                      foregroundColor: Colors.blue.shade900,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                    ),
+                    icon: const Icon(Icons.auto_awesome, size: 14),
+                    label: const Text('Auto-Suggest Boundary'),
+                    onPressed: _autoSuggest,
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 10),
+
+            // Color & Line Weight Row
+            Row(
+              children: [
+                Text('Stroke Color:',
+                    style: GoogleFonts.inter(
+                        fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 32,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _colors.length,
+                      itemBuilder: (ctx, i) {
+                        final c = _colors[i];
+                        final isSelected = _strokeColor == c;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _strokeColor = c;
+                              _fillColor = c & 0x00FFFFFF | 0x26000000;
+                            });
+                          },
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: Color(c),
+                              shape: BoxShape.circle,
+                              border: isSelected
+                                  ? Border.all(color: Colors.black, width: 2)
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                PopupMenuButton<double>(
+                  tooltip: 'Stroke Width',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.line_weight, size: 14),
+                        const SizedBox(width: 4),
+                        Text('${_strokeWidth.toInt()}px',
+                            style: const TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  onSelected: (w) => setState(() => _strokeWidth = w),
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 2.0, child: Text('Thin (2px)')),
+                    const PopupMenuItem(value: 3.0, child: Text('Medium (3px)')),
+                    const PopupMenuItem(value: 5.0, child: Text('Thick (5px)')),
+                    const PopupMenuItem(
+                        value: 8.0, child: Text('Extra Thick (8px)')),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Controls & Actions Bar
+            Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _points.isEmpty ? null : undoLastPoint,
+                  icon: const Icon(Icons.undo_rounded, size: 16),
+                  label: const Text('Undo'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: _points.isEmpty ? null : clearPoints,
+                  style:
+                      OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                  icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+                  label: const Text('Clear'),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: widget.onCancel,
+                  child: const Text('Cancel'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Submit / Delete Row
+            Row(
+              children: [
+                if (widget.boundaryId != null) ...[
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _delete,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.delete_forever_rounded, size: 18),
+                      label: const Text('Delete'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.check_circle_rounded, size: 18),
+                    label: const Text('Save Boundary'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

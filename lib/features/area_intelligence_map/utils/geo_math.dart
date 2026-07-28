@@ -92,5 +92,34 @@ class GeoMath {
         (a.latitude - o.latitude) * (b.longitude - o.longitude);
   }
 
+  /// Geodesic area calculation for polygon in square meters.
+  static double calculatePolygonArea(List<LatLng> polygon) {
+    if (polygon.length < 3) return 0.0;
+    const double r = 6371000; // Earth radius in meters
+    double area = 0.0;
+    for (int i = 0; i < polygon.length; i++) {
+      final p1 = polygon[i];
+      final p2 = polygon[(i + 1) % polygon.length];
+      area += _rad(p2.longitude - p1.longitude) *
+          (2 + sin(_rad(p1.latitude)) + sin(_rad(p2.latitude)));
+    }
+    area = (area.abs() * r * r / 2.0);
+    return area;
+  }
+
+  /// Total perimeter or path length in meters for points.
+  static double calculatePathLength(List<LatLng> points,
+      {bool isClosed = false}) {
+    if (points.length < 2) return 0.0;
+    double total = 0.0;
+    for (int i = 0; i < points.length - 1; i++) {
+      total += calculateDistance(points[i], points[i + 1]);
+    }
+    if (isClosed && points.length >= 3) {
+      total += calculateDistance(points.last, points.first);
+    }
+    return total;
+  }
+
   static double _rad(double deg) => deg * pi / 180.0;
 }
