@@ -134,12 +134,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       title: 'Inventory & Prices',
       showBack: widget.showBack,
       actions: [
-        if (!isWorker) ...[
-          IconButton(
-            icon: const Icon(Icons.share_rounded),
-            tooltip: 'Export Stock & Price List (Owner)',
-            onPressed: _exportPriceList,
-          ),
+        if (!isWorker)
           IconButton(
             icon: const Icon(Icons.edit_note_rounded),
             tooltip: 'Quick Adjust Inventory',
@@ -148,24 +143,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               Navigator.of(context).pushNamed(AppRoutes.quickInventoryAdjust);
             },
           ),
-        ],
-        IconButton(
-          icon: const Icon(Icons.download_rounded),
-          tooltip: 'Import Stock & Price List (Worker)',
-          onPressed: _importOwnerPriceList,
-        ),
-        IconButton(
-          icon: const Icon(Icons.shuffle_rounded),
-          tooltip: 'Shuffle Items',
-          onPressed: () {
-            AppHaptics.buttonClick();
-            ref.read(inventoryProvider.notifier).sort('shuffle');
-            SnackbarHelper.showSuccess(context, 'Inventory items shuffled!');
-          },
-        ),
         PopupMenuButton<String>(
-          icon: const Icon(Icons.sort_rounded),
-          onSelected: (v) => ref.read(inventoryProvider.notifier).sort(v),
+          icon: const Icon(Icons.more_vert_rounded),
+          onSelected: (v) {
+            if (v == 'export') {
+              _exportPriceList();
+            } else if (v == 'import') {
+              _importOwnerPriceList();
+            } else {
+              ref.read(inventoryProvider.notifier).sort(v);
+              if (v == 'shuffle') {
+                SnackbarHelper.showSuccess(context, 'Inventory items shuffled!');
+              }
+            }
+          },
           itemBuilder: (_) => [
             const PopupMenuItem(value: 'name', child: Text('Sort by Name')),
             const PopupMenuItem(
@@ -176,6 +167,25 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 value: 'category', child: Text('Sort by Category')),
             const PopupMenuItem(
                 value: 'shuffle', child: Text('Shuffle / Randomize')),
+            if (!isWorker)
+              const PopupMenuItem(
+                  value: 'export',
+                  child: Row(
+                    children: [
+                      Icon(Icons.share_rounded, size: 18),
+                      SizedBox(width: 8),
+                      Text('Export Price List'),
+                    ],
+                  )),
+            const PopupMenuItem(
+                value: 'import',
+                child: Row(
+                  children: [
+                    Icon(Icons.download_rounded, size: 18),
+                    SizedBox(width: 8),
+                    Text('Import Price List'),
+                  ],
+                )),
           ],
         ),
       ],

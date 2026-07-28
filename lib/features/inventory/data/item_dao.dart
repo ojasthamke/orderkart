@@ -347,16 +347,16 @@ class ItemDao {
       SELECT 
         COALESCE(i.name, oi.item_name) AS item_name,
         COALESCE(i.unit, oi.item_unit) AS item_unit,
-        COALESCE(NULLIF(oi.cost_price, 0.0), i.cost_price, 0) AS cost_price,
+        COALESCE(i.cost_price, 0) AS cost_price,
         SUM(oi.quantity) AS total_quantity,
-        SUM(oi.quantity * COALESCE(NULLIF(oi.cost_price, 0.0), i.cost_price, 0)) AS total_cost_price,
+        SUM(oi.quantity * COALESCE(i.cost_price, 0)) AS total_cost_price,
         SUM(oi.total_price) AS total_selling_price,
-        SUM(oi.total_price) - SUM(oi.quantity * COALESCE(NULLIF(oi.cost_price, 0.0), i.cost_price, 0)) AS total_profit
+        SUM(oi.total_price) - SUM(oi.quantity * COALESCE(i.cost_price, 0)) AS total_profit
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN items i ON oi.item_id = i.id
       WHERE $whereClause
-      GROUP BY oi.item_id, item_name, item_unit, cost_price
+      GROUP BY oi.item_id, item_name, item_unit, i.cost_price
       ORDER BY total_profit DESC, total_quantity DESC
       ''', args);
   }
