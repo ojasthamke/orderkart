@@ -51,88 +51,196 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
     for (final item in pdfItems) {
       final cat = item.category.trim().isEmpty ? 'General' : item.category.trim();
       categoryGrouped.putIfAbsent(cat, () => []).add(item);
+    }    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: pw.Font.helvetica(),
+        bold: pw.Font.helveticaBold(),
+      ),
+    );
+    int totalPdfItems = 0;
+    for (final l in categoryGrouped.values) {
+      totalPdfItems += l.length;
     }
 
-    final pdf = pw.Document();
+    const primaryTeal = PdfColor.fromInt(0xFF004D40);
+    const accentGold = PdfColor.fromInt(0xFFFFB300);
+    const bgTealLight = PdfColor.fromInt(0xFFE0F2F1);
+    const priceBg = PdfColor.fromInt(0xFFE8EAF6);
+    const greenBg = PdfColor.fromInt(0xFFE8F5E9);
+    const greenText = PdfColor.fromInt(0xFF1B5E20);
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 22, vertical: 20),
         header: (pw.Context context) {
           return pw.Column(
             children: [
+              // ── Premium Modern Header Banner ──
               pw.Container(
-                padding: const pw.EdgeInsets.all(12),
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.teal800, width: 1.5),
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-                  color: PdfColors.teal50,
+                decoration: const pw.BoxDecoration(
+                  color: primaryTeal,
+                  borderRadius: pw.BorderRadius.all(pw.Radius.circular(10)),
                 ),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                child: pw.Column(
                   children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          bName.toUpperCase(),
-                          style: pw.TextStyle(
-                            fontSize: 16,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.teal900,
-                          ),
+                    pw.Container(
+                      height: 5,
+                      decoration: const pw.BoxDecoration(
+                        color: accentGold,
+                        borderRadius: pw.BorderRadius.only(
+                          topLeft: pw.Radius.circular(10),
+                          topRight: pw.Radius.circular(10),
                         ),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          'Quality Products Delivered Direct to Your Doorstep',
-                          style: const pw.TextStyle(
-                            fontSize: 9,
-                            color: PdfColors.grey700,
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(16),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(
+                                bName.toUpperCase(),
+                                style: pw.TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.white,
+                                ),
+                              ),
+                              if (phone.isNotEmpty || whatsApp.isNotEmpty) ...[
+                                pw.SizedBox(height: 8),
+                                pw.Container(
+                                  padding: const pw.EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  decoration: const pw.BoxDecoration(
+                                    color: PdfColor.fromInt(0xFF00695C),
+                                    borderRadius: pw.BorderRadius.all(
+                                        pw.Radius.circular(5)),
+                                  ),
+                                  child: pw.Text(
+                                    [
+                                      if (phone.isNotEmpty) 'Phone: $phone',
+                                      if (whatsApp.isNotEmpty)
+                                        'WhatsApp: $whatsApp',
+                                    ].join('  |  '),
+                                    style: pw.TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        ),
-                        if (phone.isNotEmpty || whatsApp.isNotEmpty) ...[
-                          pw.SizedBox(height: 4),
-                          pw.Text(
-                            [
-                              if (phone.isNotEmpty) 'Phone: $phone',
-                              if (whatsApp.isNotEmpty) 'WhatsApp: $whatsApp',
-                            ].join('  |  '),
-                            style: pw.TextStyle(
-                              fontSize: 9,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.teal800,
-                            ),
+                          pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.end,
+                            children: [
+                              pw.Container(
+                                padding: const pw.EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 7),
+                                decoration: const pw.BoxDecoration(
+                                  color: accentGold,
+                                  borderRadius: pw.BorderRadius.all(
+                                      pw.Radius.circular(6)),
+                                ),
+                                child: pw.Text(
+                                  'OFFICIAL CATALOG',
+                                  style: pw.TextStyle(
+                                    color: primaryTeal,
+                                    fontSize: 10.5,
+                                    fontWeight: pw.FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              pw.SizedBox(height: 6),
+                              pw.Text(
+                                'Date: ${DateTime.now().toIso8601String().substring(0, 10)}',
+                                style: const pw.TextStyle(
+                                    fontSize: 9.5, color: PdfColors.teal50),
+                              ),
+                            ],
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 10),
+
+              // ── Summary KPI Dashboard Box ──
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 9),
+                decoration: pw.BoxDecoration(
+                  color: bgTealLight,
+                  borderRadius:
+                      const pw.BorderRadius.all(pw.Radius.circular(8)),
+                  border: pw.Border.all(color: PdfColors.teal200, width: 1.0),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                  children: [
+                    pw.Row(
                       children: [
                         pw.Container(
-                          padding: const pw.EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                          width: 9,
+                          height: 9,
                           decoration: const pw.BoxDecoration(
-                            color: PdfColors.teal800,
-                            borderRadius:
-                                pw.BorderRadius.all(pw.Radius.circular(4)),
-                          ),
-                          child: pw.Text(
-                            'PRODUCT CATALOG',
-                            style: pw.TextStyle(
-                              color: PdfColors.white,
-                              fontSize: 9,
-                              fontWeight: pw.FontWeight.bold,
-                            ),
-                          ),
+                              color: primaryTeal, shape: pw.BoxShape.circle),
                         ),
-                        pw.SizedBox(height: 4),
+                        pw.SizedBox(width: 6),
                         pw.Text(
-                          'Date: ${DateTime.now().toIso8601String().substring(0, 10)}',
-                          style: const pw.TextStyle(
-                              fontSize: 8, color: PdfColors.grey700),
+                          'Total Categories: ${categoryGrouped.length}',
+                          style: pw.TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: pw.FontWeight.bold,
+                              color: primaryTeal),
+                        ),
+                      ],
+                    ),
+                    pw.Text('•',
+                        style: const pw.TextStyle(color: PdfColors.teal300)),
+                    pw.Row(
+                      children: [
+                        pw.Container(
+                          width: 9,
+                          height: 9,
+                          decoration: const pw.BoxDecoration(
+                              color: greenText, shape: pw.BoxShape.circle),
+                        ),
+                        pw.SizedBox(width: 6),
+                        pw.Text(
+                          'Total Products: $totalPdfItems',
+                          style: pw.TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: pw.FontWeight.bold,
+                              color: greenText),
+                        ),
+                      ],
+                    ),
+                    pw.Text('•',
+                        style: const pw.TextStyle(color: PdfColors.teal300)),
+                    pw.Row(
+                      children: [
+                        pw.Container(
+                          width: 9,
+                          height: 9,
+                          decoration: const pw.BoxDecoration(
+                              color: accentGold, shape: pw.BoxShape.circle),
+                        ),
+                        pw.SizedBox(width: 6),
+                        pw.Text(
+                          'Best Market Rates & Direct Delivery',
+                          style: pw.TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.grey900),
                         ),
                       ],
                     ),
@@ -146,29 +254,29 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
         footer: (pw.Context context) {
           return pw.Column(
             children: [
-              pw.Divider(color: PdfColors.grey400, thickness: 0.5),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                'Disclaimer: Prices may change according to market rates.',
-                style: pw.TextStyle(
-                  fontSize: 8,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.grey800,
-                ),
+              pw.Container(
+                height: 2.0,
+                color: primaryTeal,
               ),
-              pw.SizedBox(height: 2),
+              pw.SizedBox(height: 6),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'Official Product Catalog  •  Thank You for Shopping with Us!',
-                    style: const pw.TextStyle(
-                        fontSize: 8, color: PdfColors.grey600),
+                    'Disclaimer: Prices may change according to market rates.',
+                    style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.grey800,
+                    ),
                   ),
                   pw.Text(
                     'Page ${context.pageNumber} of ${context.pagesCount}',
-                    style: const pw.TextStyle(
-                        fontSize: 8, color: PdfColors.grey600),
+                    style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                      color: primaryTeal,
+                    ),
                   ),
                 ],
               ),
@@ -181,83 +289,231 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
           if (categoryGrouped.isEmpty) {
             widgets.add(
               pw.Center(
-                child: pw.Text('No products available in catalog',
-                    style: const pw.TextStyle(fontSize: 12)),
+                child: pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 40),
+                  child: pw.Text(
+                    'No products available in catalog',
+                    style: pw.TextStyle(fontSize: 12, color: PdfColors.grey600),
+                  ),
+                ),
               ),
             );
           } else {
             categoryGrouped.forEach((categoryName, catItems) {
               widgets.add(
                 pw.Container(
-                  margin: const pw.EdgeInsets.only(top: 8, bottom: 4),
+                  margin: const pw.EdgeInsets.only(top: 12, bottom: 6),
                   padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
-                  decoration: const pw.BoxDecoration(
-                    color: PdfColors.grey200,
-                    borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
+                      horizontal: 12, vertical: 7),
+                  decoration: pw.BoxDecoration(
+                    color: bgTealLight,
+                    borderRadius:
+                        const pw.BorderRadius.all(pw.Radius.circular(6)),
+                    border:
+                        pw.Border.all(color: PdfColors.teal300, width: 1.0),
                   ),
-                  child: pw.Text(
-                    categoryName.toUpperCase(),
-                    style: pw.TextStyle(
-                      fontSize: 11,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.teal900,
-                    ),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Row(
+                        children: [
+                          pw.Container(
+                            width: 5,
+                            height: 16,
+                            decoration: const pw.BoxDecoration(
+                              color: primaryTeal,
+                              borderRadius:
+                                  pw.BorderRadius.all(pw.Radius.circular(2)),
+                            ),
+                          ),
+                          pw.SizedBox(width: 8),
+                          pw.Text(
+                            categoryName.toUpperCase(),
+                            style: pw.TextStyle(
+                              fontSize: 13,
+                              fontWeight: pw.FontWeight.bold,
+                              color: primaryTeal,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 3),
+                        decoration: const pw.BoxDecoration(
+                          color: primaryTeal,
+                          borderRadius:
+                              pw.BorderRadius.all(pw.Radius.circular(10)),
+                        ),
+                        child: pw.Text(
+                          '${catItems.length} ITEM(S)',
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
 
               widgets.add(
-                pw.TableHelper.fromTextArray(
-                  border: pw.TableBorder.all(
-                      color: PdfColors.grey300, width: 0.5),
-                  headerStyle: pw.TextStyle(
-                    fontWeight: pw.FontWeight.bold,
-                    fontSize: 9,
-                    color: PdfColors.white,
+                pw.Table(
+                  border: const pw.TableBorder(
+                    horizontalInside: pw.BorderSide(
+                        color: PdfColors.grey300, width: 0.6),
+                    verticalInside: pw.BorderSide(
+                        color: PdfColors.grey200, width: 0.6),
+                    top: pw.BorderSide(color: primaryTeal, width: 1.5),
+                    bottom: pw.BorderSide(color: primaryTeal, width: 1.5),
+                    left: pw.BorderSide(color: PdfColors.grey300, width: 0.6),
+                    right: pw.BorderSide(color: PdfColors.grey300, width: 0.6),
                   ),
-                  headerDecoration:
-                      const pw.BoxDecoration(color: PdfColors.teal800),
-                  cellStyle: const pw.TextStyle(fontSize: 8),
-                  cellAlignment: pw.Alignment.centerLeft,
-                  cellPadding: const pw.EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 5),
-                  headers: [
-                    'PRODUCT NAME',
-                    'MARKET PRICE',
-                    'ORDERKART PRICE',
-                    'MONEY SAVED',
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(3.2),
+                    1: const pw.FlexColumnWidth(1.8),
+                    2: const pw.FlexColumnWidth(2.2),
+                    3: const pw.FlexColumnWidth(3.4),
+                  },
+                  children: [
+                    pw.TableRow(
+                      decoration: const pw.BoxDecoration(color: primaryTeal),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 7),
+                          child: pw.Text('PRODUCT NAME',
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold,
+                                  fontSize: 10,
+                                  color: PdfColors.white)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 7),
+                          child: pw.Text('MARKET PRICE',
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold,
+                                  fontSize: 10,
+                                  color: PdfColors.white)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 7),
+                          child: pw.Text('ORDERKART PRICE',
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold,
+                                  fontSize: 10,
+                                  color: PdfColors.white)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 7),
+                          child: pw.Text('MONEY SAVED',
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold,
+                                  fontSize: 10,
+                                  color: PdfColors.white)),
+                        ),
+                      ],
+                    ),
+                    ...catItems.map((i) {
+                      final savings = i.marketPrice > i.sellingPrice
+                          ? i.marketPrice - i.sellingPrice
+                          : 0.0;
+                      final pct = i.marketPrice > 0
+                          ? ((savings / i.marketPrice) * 100)
+                              .toStringAsFixed(0)
+                          : '0';
+
+                      final nameWithUnit = i.unit.isNotEmpty
+                          ? '${i.name} (${i.unit})'
+                          : i.name;
+                      final mktPriceStr = i.marketPrice > 0
+                          ? '$safeCurrency ${i.marketPrice.toStringAsFixed(2)}'
+                          : '-';
+                      final sellPriceStr =
+                          '$safeCurrency ${i.sellingPrice.toStringAsFixed(2)}';
+                      final savedStr = savings > 0
+                          ? 'SAVE $safeCurrency ${savings.toStringAsFixed(2)} ($pct% OFF)'
+                          : '-';
+
+                      return pw.TableRow(
+                        children: [
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 7),
+                            child: pw.Text(nameWithUnit,
+                                style: pw.TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: pw.FontWeight.bold)),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 7),
+                            child: pw.Text(mktPriceStr,
+                                style: const pw.TextStyle(
+                                    fontSize: 9.5, color: PdfColors.grey700)),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 5),
+                            child: pw.Container(
+                              padding: const pw.EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: const pw.BoxDecoration(
+                                color: priceBg,
+                                borderRadius:
+                                    pw.BorderRadius.all(pw.Radius.circular(4)),
+                              ),
+                              child: pw.Text(
+                                sellPriceStr,
+                                style: pw.TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: primaryTeal,
+                                ),
+                              ),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 5),
+                            child: savings > 0
+                                ? pw.Container(
+                                    padding: const pw.EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: pw.BoxDecoration(
+                                      color: greenBg,
+                                      border: pw.Border.all(
+                                          color: PdfColors.green400,
+                                          width: 0.8),
+                                      borderRadius: const pw.BorderRadius.all(
+                                          pw.Radius.circular(4)),
+                                    ),
+                                    child: pw.Text(
+                                      savedStr,
+                                      style: pw.TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: greenText,
+                                      ),
+                                    ),
+                                  )
+                                : pw.Text('-',
+                                    style: const pw.TextStyle(fontSize: 9.5)),
+                          ),
+                        ],
+                      );
+                    }),
                   ],
-                  data: catItems.map((i) {
-                    final savings = i.marketPrice > i.sellingPrice
-                        ? i.marketPrice - i.sellingPrice
-                        : 0.0;
-                    final pct = i.marketPrice > 0
-                        ? ((savings / i.marketPrice) * 100).toStringAsFixed(0)
-                        : '0';
-
-                    final nameWithUnit =
-                        i.unit.isNotEmpty ? '${i.name} (${i.unit})' : i.name;
-                    final mktPriceStr = i.marketPrice > 0
-                        ? '$safeCurrency ${i.marketPrice.toStringAsFixed(2)}'
-                        : '-';
-                    final sellPriceStr =
-                        '$safeCurrency ${i.sellingPrice.toStringAsFixed(2)}';
-                    final savedStr = savings > 0
-                        ? 'SAVE $safeCurrency ${savings.toStringAsFixed(2)} ($pct% OFF)'
-                        : '-';
-
-                    return [
-                      nameWithUnit,
-                      mktPriceStr,
-                      sellPriceStr,
-                      savedStr,
-                    ];
-                  }).toList(),
                 ),
               );
 
-              widgets.add(pw.SizedBox(height: 10));
+              widgets.add(pw.SizedBox(height: 12));
             });
           }
 

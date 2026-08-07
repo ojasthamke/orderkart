@@ -43,9 +43,8 @@ class CustomerDao {
     String where = '(is_archived IS NULL OR is_archived = 0)';
     List<dynamic> args = [];
     if (streetId.isNotEmpty) {
-      where +=
-          ' AND (street_id = ? OR location_id = ? OR street_id IN (SELECT id FROM locations WHERE parent_location_id = ?) OR location_id IN (SELECT id FROM locations WHERE parent_location_id = ?))';
-      args.addAll([streetId, streetId, streetId, streetId]);
+      where += ' AND (street_id = ? OR location_id = ?)';
+      args.addAll([streetId, streetId]);
     }
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
       where += ' AND (name LIKE ? OR phone1 LIKE ? OR house_number LIKE ?)';
