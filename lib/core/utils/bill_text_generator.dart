@@ -138,4 +138,102 @@ class BillTextGenerator {
 
     return buf.toString();
   }
+
+  /// Generates a standardized monospaced receipt text ready for ESC/POS Thermal Bluetooth/USB Printers
+  /// Supports both 58mm (32 cols) and 80mm (48 cols) formats.
+  static String generateThermalReceipt({
+    required String businessName,
+    required String customerName,
+    required String customerAddress,
+    required String orderNoLabel,
+    required DateTime orderDate,
+    required List<Map<String, dynamic>> items,
+    required double subtotal,
+    required double discount,
+    required double deliveryCharge,
+    required double grandTotal,
+    required double paidAmount,
+    required double remainingAmount,
+    required String paymentMethod,
+    bool is58mm = true,
+    bool enableGst = false,
+    double gstRate = 5.0,
+    String gstin = '',
+    String currency = '₹',
+  }) {
+    final int width = is58mm ? 32 : 42;
+    final sep = '-' * width;
+    final dSep = '=' * width;
+    final buf = StringBuffer();
+
+    String center(String s) {
+      if (s.length >= width) return s.substring(0, width);
+      final pad = (width - s.length) ~/ 2;
+      return ' ' * pad + s;
+    }
+
+    String twoCol(String left, String right) {
+      final maxL = width - right.length - 1;
+      final cleanL = left.length > maxL ? left.substring(0, maxL) : left;
+      final spaces = width - cleanL.length - right.length;
+      return cleanL + (' ' * (spaces > 0 ? spaces : 1)) + right;
+    }
+
+    buf.writeln(dSep);
+    buf.writeln(center(businessName.toUpperCase()));
+    if (gstin.isNotEmpty) buf.writeln(center('GSTIN: $gstin'));
+    buf.writeln(center('ORDER RECEIPT'));
+    buf.writeln(dSep);
+    buf.writeln(twoCol('Order #:', orderNoLabel));
+    buf.writeln(twoCol('Date:', AppFormatters.date(orderDate)));
+    buf.writeln(twoCol('Cust:', customerName));
+    if (customerAddress.isNotEmpty) {
+      buf.writeln('Addr: $customerAddress');
+    }
+    buf.writeln(sep);
+    buf.writeln(twoCol('ITEM / QTY', 'TOTAL'));
+    buf.writeln(sep);
+
+    for (final it in items) {
+      final name = it['item_name']?.toString() ?? 'Item';
+      final qty = (it['quantity'] as num?)?.toDouble() ?? 0.0;
+      final unit = it['item_unit']?.toString() ?? '';
+      final price = (it['unit_price'] as num?)?.toDouble() ?? 0.0;
+      final total = (it['total_price'] as num?)?.toDouble() ?? (qty * price);
+
+      buf.writeln(name);
+      buf.writeln(twoCol(
+        '  ${AppFormatters.quantity(qty, unit: unit)} @ $price',
+        total.toStringAsFixed(2),
+      ));
+    }
+
+    buf.writeln(sep);
+    buf.writeln(twoCol('Subtotal:', '$currency${subtotal.toStringAsFixed(2)}'));
+    if (discount > 0) {
+      buf.writeln(twoCol('Discount:', '-$currency${discount.toStringAsFixed(2)}'));
+    }
+    if (deliveryCharge > 0) {
+      buf.writeln(twoCol('Delivery:', '+$currency${deliveryCharge.toStringAsFixed(2)}'));
+    }
+    if (enableGst && gstRate > 0) {
+      final cgst = (subtotal * (gstRate / 200.0));
+      final sgst = (subtotal * (gstRate / 200.0));
+      buf.writeln(twoCol('CGST (${(gstRate / 2).toStringAsFixed(1)}%):', '+$currency${cgst.toStringAsFixed(2)}'));
+      buf.writeln(twoCol('SGST (${(gstRate / 2).toStringAsFixed(1)}%):', '+$currency${sgst.toStringAsFixed(2)}'));
+    }
+    buf.writeln(dSep);
+    buf.writeln(twoCol('GRAND TOTAL:', '$currency${grandTotal.toStringAsFixed(2)}'));
+    buf.writeln(twoCol('PAID (${paymentMethod.toUpperCase()}):', '$currency${paidAmount.toStringAsFixed(2)}'));
+    if (remainingAmount > 0) {
+      buf.writeln(twoCol('DUE BALANCE:', '$currency${remainingAmount.toStringAsFixed(2)}'));
+    } else if (remainingAmount < 0) {
+      buf.writeln(twoCol('ADVANCE CREDIT:', '$currency${remainingAmount.abs().toStringAsFixed(2)}'));
+    }
+    buf.writeln(dSep);
+    buf.writeln(center('Thank you for your business!'));
+    buf.writeln(center('Please visit again'));
+    buf.writeln('\n\n');
+    return buf.toString();
+  }
 }

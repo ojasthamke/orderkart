@@ -24,6 +24,7 @@ import 'features/inventory/presentation/inventory_screen.dart';
 import 'features/inventory/presentation/add_edit_item_screen.dart';
 import 'features/inventory/presentation/stock_adjustment_screen.dart';
 import 'features/expense/presentation/expense_screen.dart';
+import 'features/cash_drawer/presentation/cash_drawer_screen.dart';
 import 'features/expense/presentation/add_edit_expense_screen.dart';
 import 'features/analytics/presentation/analytics_screen.dart';
 import 'features/analytics/presentation/profit_loss_screen.dart';
@@ -80,13 +81,15 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
+    final settingsVal = ref.watch(settingsProvider).valueOrNull;
+    final isOled = settingsVal?.themeMode == 'oled';
 
     return MaterialApp(
       navigatorKey: OrderKartApp.navigatorKey,
       title: 'OrderKart',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      darkTheme: isOled ? AppTheme.oledTheme : AppTheme.darkTheme,
       themeMode: themeMode,
       builder: (context, child) {
         final mediaQuery = MediaQuery.of(context);
@@ -213,6 +216,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
 
       case AppRoutes.expenses:
         return _slide(const ExpenseScreen(), settings);
+
+      case AppRoutes.cashDrawer:
+        return _slide(const CashDrawerScreen(), settings);
 
       case AppRoutes.addEditExpense:
         final args = settings.arguments as Map<String, dynamic>?;

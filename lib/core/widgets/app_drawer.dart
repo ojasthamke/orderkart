@@ -213,6 +213,18 @@ class AppDrawer extends ConsumerWidget {
                       },
                     ),
 
+                    // 10. Daily Cash Register (Closing Reconciliation)
+                    _DrawerItem(
+                      icon: Icons.point_of_sale_rounded,
+                      title: 'Daily Cash Register (Float)',
+                      iconColor: const Color(0xFF10B981),
+                      onTap: () {
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.cashDrawer);
+                      },
+                    ),
+
                     // 10. Groceries Hub
                     _DrawerItem(
                       icon: Icons.local_grocery_store_rounded,

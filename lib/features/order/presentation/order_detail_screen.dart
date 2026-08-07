@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/services.dart';
@@ -891,11 +890,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         ),
         const SizedBox(height: 12),
         ElevatedButton.icon(
-          onPressed: () => _shareBill(order, currency, isCustomer: false),
-          icon: const Icon(Icons.send_rounded),
-          label: const Text('Share to Staff Telegram'),
+          onPressed: () => _printThermalReceipt(order, currency),
+          icon: const Icon(Icons.print_rounded),
+          label: const Text('Print Thermal Receipt (58mm / 80mm)'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF229ED9), // Telegram Blue
+            backgroundColor: const Color(0xFF334155), // Slate Dark
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 50),
           ),
@@ -919,24 +918,44 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     );
 
     if (result != null && result is Map<String, dynamic>) {
-      final amount = result['amount'] as double;
-      final method = result['method'] as String;
-      final notes = result['notes'] as String;
+      final isSplit = result['isSplit'] == true;
+      final totalAmount = (result['amount'] as num?)?.toDouble() ?? 0.0;
+      final notes = (result['notes'] as String?) ?? '';
 
       try {
-        await ref.read(orderManagementProvider.notifier).addPayment(Payment(
-              id: const Uuid().v4(),
-              orderId: order.id,
-              customerId: order.customerId,
-              amount: amount,
-              method: method,
-              notes: notes,
-              createdAt: DateTime.now(),
-            ));
+        if (isSplit && result['splits'] is List) {
+          final splits = result['splits'] as List;
+          for (final s in splits) {
+            final sAmount = (s['amount'] as num?)?.toDouble() ?? 0.0;
+            final sMethod = s['method']?.toString() ?? 'cash';
+            if (sAmount > 0) {
+              await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+                    id: const Uuid().v4(),
+                    orderId: order.id,
+                    customerId: order.customerId,
+                    amount: sAmount,
+                    method: sMethod,
+                    notes: notes.isNotEmpty ? notes : 'Split: $sMethod',
+                    createdAt: DateTime.now(),
+                  ));
+            }
+          }
+        } else {
+          final method = result['method'] as String;
+          await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+                id: const Uuid().v4(),
+                orderId: order.id,
+                customerId: order.customerId,
+                amount: totalAmount,
+                method: method,
+                notes: notes,
+                createdAt: DateTime.now(),
+              ));
+        }
         ref.invalidate(orderDetailProvider(widget.orderId));
         if (mounted) {
           SnackbarHelper.showSuccess(
-              context, 'Payment of $currency$amount added');
+              context, 'Payment of $currency$totalAmount added');
         }
       } catch (e) {
         if (mounted) {
@@ -1208,12 +1227,96 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
       try {
         await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
-      } catch (e) {
-        // Last resort: OS share sheet
-        Share.share(text);
-      }
+      } catch (_) {}
       return;
     }
+  }
+
+  void _printThermalReceipt(AppOrder order, String currency) {
+    final settings = ref.read(settingsProvider).valueOrNull;
+    final itemsList = order.items
+        .map((it) => {
+              'item_name': it.itemName,
+              'quantity': it.quantity,
+              'item_unit': it.itemUnit,
+              'unit_price': it.unitPrice,
+              'total_price': it.totalPrice,
+            })
+        .toList();
+
+    final thermalText = BillTextGenerator.generateThermalReceipt(
+      businessName: settings?.businessName ?? 'OrderKart Store',
+      customerName: order.customerName ?? 'Walk-in Customer',
+      customerAddress: order.customerAddress ?? '',
+      orderNoLabel: order.orderNoLabel,
+      orderDate: order.createdAt,
+      items: itemsList,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      deliveryCharge: order.deliveryCharge,
+      grandTotal: order.grandTotal,
+      paidAmount: order.paidAmount,
+      remainingAmount: order.remainingAmount,
+      paymentMethod: order.payments.firstOrNull?.method ?? 'cash',
+      is58mm: true,
+      enableGst: settings?.enableGstTax ?? false,
+      gstRate: settings?.gstRate ?? 5.0,
+      gstin: settings?.gstinNumber ?? '',
+      currency: currency,
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.print_rounded, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Thermal ESC/POS Receipt', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          constraints: const BoxConstraints(maxHeight: 380),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF0F172A)
+                : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.gray300),
+          ),
+          child: SingleChildScrollView(
+            child: Text(
+              thermalText,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 11,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: thermalText));
+              if (mounted) {
+                Navigator.pop(ctx);
+                SnackbarHelper.showSuccess(context, 'Thermal receipt copied to clipboard');
+              }
+            },
+            icon: const Icon(Icons.copy_rounded, size: 16),
+            label: const Text('Copy Thermal Text'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildQuestionsSection(List<Map<String, dynamic>> answers) {

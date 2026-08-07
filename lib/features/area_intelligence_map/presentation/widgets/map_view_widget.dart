@@ -391,12 +391,42 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget>
       initialCenter = const LatLng(19.076, 72.877); // Default fallback Mumbai
     }
 
+    // 5. Prepare Heatmap Circle Markers
+    final List<CircleMarker> circles = [];
+    if (widget.visibility.salesHeatmap) {
+      for (final m in widget.mapData.customerMarkers) {
+        circles.add(CircleMarker(
+          point: m.position,
+          radius: 35,
+          color: const Color(0xFF10B981).withOpacity(0.26),
+          borderColor: const Color(0xFF10B981).withOpacity(0.60),
+          borderStrokeWidth: 2,
+          useRadiusInMeter: true,
+        ));
+      }
+    }
+    if (widget.visibility.dueHeatmap) {
+      for (final m in widget.mapData.customerMarkers) {
+        final c = Customer.fromMap(m.rawData);
+        if (c.outstandingBalance > 0) {
+          circles.add(CircleMarker(
+            point: m.position,
+            radius: 30 + (c.outstandingBalance > 500 ? 20 : 8),
+            color: const Color(0xFFEF4444).withOpacity(0.30),
+            borderColor: const Color(0xFFEF4444).withOpacity(0.75),
+            borderStrokeWidth: 2,
+            useRadiusInMeter: true,
+          ));
+        }
+      }
+    }
+
     return FlutterMap(
       mapController: widget.mapController,
       options: MapOptions(
         initialCenter: initialCenter,
-        initialZoom: 16.0,
-        minZoom: 11.0,
+        initialZoom: 16.5,
+        minZoom: 4.0,
         maxZoom: 19.0,
         onTap: (tapCtx, point) => widget.onMapTap(point),
         onPositionChanged: (camera, hasGesture) {
@@ -413,6 +443,9 @@ class _MapViewWidgetState extends ConsumerState<MapViewWidget>
             userAgentPackageName: 'com.orderkart.app',
             tileProvider: _tileProvider,
           ),
+
+        // Heatmap Layer (Glowing density halos)
+        CircleLayer(circles: circles),
 
         // Polygons (Area & Sections)
         PolygonLayer(polygons: polygons),

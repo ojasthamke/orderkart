@@ -101,10 +101,34 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                 ),
                 const SizedBox(height: 8),
 
-                // Search bar
-                CustomSearchBar(
-                  hint: 'Search items...',
-                  onChanged: (q) => setState(() => _search = q),
+                // Search bar + Barcode Scanner
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: CustomSearchBar(
+                          hint: 'Search or scan items...',
+                          onChanged: (q) => setState(() => _search = q),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySurface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: AppColors.primary.withOpacity(0.3)),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.qr_code_scanner_rounded,
+                              color: AppColors.primary),
+                          tooltip: 'Scan Barcode / QR',
+                          onPressed: () => _openBarcodeScanner(context, inventoryAsync.value ?? []),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
                 // Category tabs
@@ -673,6 +697,120 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
             child: const Text('For General (All)'),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openBarcodeScanner(BuildContext context, List<Item> items) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SizedBox(
+        height: 450,
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white30,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.qr_code_scanner_rounded, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        'Scan Item Barcode / QR',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Scanner viewport or manual barcode lookup field
+                  Container(
+                    margin: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.primary, width: 2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.barcode_reader, size: 64, color: AppColors.primaryLight),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Point camera at product barcode\nor enter product code:',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                          const SizedBox(height: 16),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: TextField(
+                              autofocus: true,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              decoration: InputDecoration(
+                                hintText: 'Enter SKU / Code',
+                                hintStyle: const TextStyle(color: Colors.white38),
+                                fillColor: const Color(0xFF1E293B),
+                                filled: true,
+                                suffixIcon: const Icon(Icons.search, color: Colors.white70),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onSubmitted: (code) {
+                                final matched = items.where((it) =>
+                                    it.name.toLowerCase().contains(code.toLowerCase()) ||
+                                    it.id.toLowerCase() == code.toLowerCase()).firstOrNull;
+                                if (matched != null) {
+                                  Navigator.pop(ctx);
+                                  setState(() {
+                                    _selected = matched;
+                                    _loadCustomPrice(matched.id, matched.sellingPrice);
+                                  });
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Item "$code" not found in inventory')),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

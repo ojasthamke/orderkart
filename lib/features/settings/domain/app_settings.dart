@@ -28,6 +28,10 @@ class AppSettings {
   final bool enableDeliveryCharges;
   final String meshTheme;
   final String invoiceDisclaimer;
+  final bool enableGstTax;
+  final double gstRate;
+  final String gstinNumber;
+  final double cashDrawerOpeningFloat;
 
   const AppSettings({
     this.businessName = 'My Business',
@@ -56,6 +60,10 @@ class AppSettings {
     this.meshTheme = 'sunset',
     this.invoiceDisclaimer =
         'Thank you for shopping with us! Fresh quality items delivered directly to your doorstep. Please inspect your order upon delivery.',
+    this.enableGstTax = false,
+    this.gstRate = 5.0,
+    this.gstinNumber = '',
+    this.cashDrawerOpeningFloat = 1000.0,
   });
 
   AppSettings copyWith({
@@ -84,6 +92,10 @@ class AppSettings {
     bool? enableDeliveryCharges,
     String? meshTheme,
     String? invoiceDisclaimer,
+    bool? enableGstTax,
+    double? gstRate,
+    String? gstinNumber,
+    double? cashDrawerOpeningFloat,
   }) {
     return AppSettings(
       businessName: businessName ?? this.businessName,
@@ -113,6 +125,11 @@ class AppSettings {
           enableDeliveryCharges ?? this.enableDeliveryCharges,
       meshTheme: meshTheme ?? this.meshTheme,
       invoiceDisclaimer: invoiceDisclaimer ?? this.invoiceDisclaimer,
+      enableGstTax: enableGstTax ?? this.enableGstTax,
+      gstRate: gstRate ?? this.gstRate,
+      gstinNumber: gstinNumber ?? this.gstinNumber,
+      cashDrawerOpeningFloat:
+          cashDrawerOpeningFloat ?? this.cashDrawerOpeningFloat,
     );
   }
 }

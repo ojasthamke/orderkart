@@ -61,6 +61,12 @@ class SettingsDao {
       meshTheme: m[AppConstants.keyMeshTheme] ?? 'sunset',
       invoiceDisclaimer: m[AppConstants.keyInvoiceDisclaimer] ??
           'Thank you for shopping with us! Fresh quality items delivered directly to your doorstep. Please inspect your order upon delivery.',
+      enableGstTax: (m[AppConstants.keyEnableGstTax] ?? 'false') == 'true',
+      gstRate: double.tryParse(m[AppConstants.keyGstRate] ?? '5') ?? 5.0,
+      gstinNumber: m[AppConstants.keyGstinNumber] ?? '',
+      cashDrawerOpeningFloat:
+          double.tryParse(m[AppConstants.keyCashDrawerOpeningFloat] ?? '1000') ??
+              1000.0,
     );
   }
 }

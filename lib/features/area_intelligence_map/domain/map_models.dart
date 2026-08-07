@@ -42,6 +42,8 @@ class MapLayerVisibility {
   final bool deliveryMarkers;
   final bool landmarks;
   final bool labels;
+  final bool salesHeatmap;
+  final bool dueHeatmap;
 
   const MapLayerVisibility({
     this.baseTiles = true,
@@ -52,6 +54,8 @@ class MapLayerVisibility {
     this.deliveryMarkers = true,
     this.landmarks = true,
     this.labels = true,
+    this.salesHeatmap = false,
+    this.dueHeatmap = false,
   });
 
   MapLayerVisibility copyWith({
@@ -63,6 +67,8 @@ class MapLayerVisibility {
     bool? deliveryMarkers,
     bool? landmarks,
     bool? labels,
+    bool? salesHeatmap,
+    bool? dueHeatmap,
   }) {
     return MapLayerVisibility(
       baseTiles: baseTiles ?? this.baseTiles,
@@ -73,6 +79,8 @@ class MapLayerVisibility {
       deliveryMarkers: deliveryMarkers ?? this.deliveryMarkers,
       landmarks: landmarks ?? this.landmarks,
       labels: labels ?? this.labels,
+      salesHeatmap: salesHeatmap ?? this.salesHeatmap,
+      dueHeatmap: dueHeatmap ?? this.dueHeatmap,
     );
   }
 }

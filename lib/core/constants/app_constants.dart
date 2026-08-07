@@ -238,6 +238,10 @@ class AppConstants {
   static const String keyEnableDeliveryCharges = 'enable_delivery_charges';
   static const String keyMeshTheme = 'mesh_theme';
   static const String keyInvoiceDisclaimer = 'invoice_disclaimer';
+  static const String keyEnableGstTax = 'enable_gst_tax';
+  static const String keyGstRate = 'gst_rate';
+  static const String keyGstinNumber = 'gstin_number';
+  static const String keyCashDrawerOpeningFloat = 'cash_drawer_opening_float';
 
   // Pagination
   static const int pageSize = 30;

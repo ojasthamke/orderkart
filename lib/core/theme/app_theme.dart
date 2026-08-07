@@ -399,6 +399,130 @@ class AppTheme {
     );
   }
 
+  // ── Pitch Black OLED AMOLED Theme ──────────────────────────────────────────
+  static ThemeData get oledTheme {
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorSchemeSeed: const Color(0xFF10B981),
+      splashFactory: InkRipple.splashFactory,
+    );
+
+    return base.copyWith(
+      scaffoldBackgroundColor: const Color(0xFF000000), // Pure OLED Black
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF10B981),
+        brightness: Brightness.dark,
+        primary: const Color(0xFF10B981),
+        onPrimary: Colors.white,
+        secondary: const Color(0xFF34D399),
+        surface: const Color(0xFF0A0A0A),
+        error: const Color(0xFFEF4444),
+      ),
+      textTheme: _buildTextTheme(Colors.white),
+      appBarTheme: AppBarTheme(
+        backgroundColor: const Color(0xFF000000),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      cardTheme: CardTheme(
+        color: const Color(0xFF080808),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withOpacity(0.14), width: 1),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF0D0D0D),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.18)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.18)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: GoogleFonts.inter(
+          color: Colors.white70,
+          fontSize: 14,
+        ),
+        hintStyle: GoogleFonts.inter(
+          color: Colors.white38,
+          fontSize: 14,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF10B981),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF34D399),
+          backgroundColor: const Color(0xFF10B981).withOpacity(0.08),
+          side: BorderSide(color: const Color(0xFF10B981).withOpacity(0.35)),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: Colors.white.withOpacity(0.10),
+        thickness: 1,
+        space: 1,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Color(0xFF000000),
+        selectedItemColor: Color(0xFF10B981),
+        unselectedItemColor: Colors.white54,
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+      ),
+      dialogTheme: DialogTheme(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: const Color(0xFF0A0A0A),
+        elevation: 8,
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Color(0xFF000000),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+      ),
+    );
+  }
+
   // ── Text Theme ───────────────────────────────────────────────────────────────
   static TextTheme _buildTextTheme(Color textColor) {
     return TextTheme(

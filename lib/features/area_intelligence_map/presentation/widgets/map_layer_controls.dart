@@ -211,6 +211,27 @@ class MapLayerControls extends ConsumerWidget {
                         setState(() {});
                       },
                     ),
+                    const Divider(height: 12),
+                    CheckboxListTile(
+                      value: vis.salesHeatmap,
+                      title: const Text('🟢 Sales Density Heatmap (Glow)'),
+                      subtitle: const Text('Highlights revenue density areas'),
+                      secondary: const Icon(Icons.blur_on_rounded, color: Colors.green),
+                      onChanged: (_) {
+                        notifier.toggleSalesHeatmap();
+                        setState(() {});
+                      },
+                    ),
+                    CheckboxListTile(
+                      value: vis.dueHeatmap,
+                      title: const Text('🔴 Due Balances Heatmap (Glow)'),
+                      subtitle: const Text('Highlights credit risk zones'),
+                      secondary: const Icon(Icons.radar_rounded, color: Colors.redAccent),
+                      onChanged: (_) {
+                        notifier.toggleDueHeatmap();
+                        setState(() {});
+                      },
+                    ),
                   ],
                 ),
               ),

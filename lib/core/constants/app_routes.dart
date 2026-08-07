@@ -21,6 +21,7 @@ class AppRoutes {
   static const String stockAdjustment = '/stock-adjustment';
   static const String expenses = '/expenses';
   static const String addEditExpense = '/add-edit-expense';
+  static const String cashDrawer = '/cash-drawer';
   static const String analytics = '/analytics';
   static const String profitLoss = '/profit-loss';
   static const String settings = '/settings';

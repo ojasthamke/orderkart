@@ -84,6 +84,13 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     await _dao.setValue(AppConstants.keyEnableDeliveryCharges,
         settings.enableDeliveryCharges.toString());
     await _dao.setValue(AppConstants.keyMeshTheme, settings.meshTheme);
+    await _dao.setValue(
+        AppConstants.keyEnableGstTax, settings.enableGstTax.toString());
+    await _dao.setValue(
+        AppConstants.keyGstRate, settings.gstRate.toString());
+    await _dao.setValue(AppConstants.keyGstinNumber, settings.gstinNumber);
+    await _dao.setValue(AppConstants.keyCashDrawerOpeningFloat,
+        settings.cashDrawerOpeningFloat.toString());
     state = AsyncValue.data(settings);
     _invalidateAll();
   }

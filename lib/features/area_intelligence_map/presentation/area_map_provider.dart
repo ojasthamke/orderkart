@@ -390,6 +390,14 @@ class MapLayerVisibilityNotifier extends StateNotifier<MapLayerVisibility> {
     state = state.copyWith(labels: !state.labels);
     _prefs?.setBool('map_vis_${_areaId}_labels', state.labels);
   }
+
+  void toggleSalesHeatmap() {
+    state = state.copyWith(salesHeatmap: !state.salesHeatmap);
+  }
+
+  void toggleDueHeatmap() {
+    state = state.copyWith(dueHeatmap: !state.dueHeatmap);
+  }
 }
 
 final mapLayerVisibilityProvider = StateNotifierProvider.family<

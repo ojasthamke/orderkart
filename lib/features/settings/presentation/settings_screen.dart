@@ -33,6 +33,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _deliveryChargeCon = TextEditingController();
   final _workerDiscountCapCon = TextEditingController();
   final _disclaimerCon = TextEditingController();
+  final _gstRateCon = TextEditingController();
+  final _gstinCon = TextEditingController();
+  final _cashDrawerFloatCon = TextEditingController();
   bool _initialized = false;
 
   @override
@@ -46,6 +49,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _deliveryChargeCon.dispose();
     _workerDiscountCapCon.dispose();
     _disclaimerCon.dispose();
+    _gstRateCon.dispose();
+    _gstinCon.dispose();
+    _cashDrawerFloatCon.dispose();
     super.dispose();
   }
 
@@ -60,6 +66,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _deliveryChargeCon.text = s.deliveryCharge.toString();
     _workerDiscountCapCon.text = s.workerDiscountCap.toString();
     _disclaimerCon.text = s.invoiceDisclaimer;
+    _gstRateCon.text = s.gstRate.toString();
+    _gstinCon.text = s.gstinNumber;
+    _cashDrawerFloatCon.text = s.cashDrawerOpeningFloat.toString();
     _initialized = true;
   }
 
@@ -75,6 +84,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             staffWhatsApp: _staffWaCon.text.trim(),
             qrContent: _qrCon.text.trim(),
             invoiceDisclaimer: _disclaimerCon.text.trim(),
+            gstRate: double.tryParse(_gstRateCon.text.trim()) ?? current.gstRate,
+            gstinNumber: _gstinCon.text.trim(),
+            cashDrawerOpeningFloat:
+                double.tryParse(_cashDrawerFloatCon.text.trim()) ??
+                    current.cashDrawerOpeningFloat,
           ),
         );
   }
@@ -303,30 +317,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 20),
 
               // ── Theme & Appearance ──────────────────────────────────
+              // ── Theme & Appearance ──────────────────────────────────
               _sectionHeader('Theme & Appearance', Icons.palette_rounded),
               _card([
                 ListTile(
                   leading: Icon(
-                    settings.themeMode == 'dark'
-                        ? Icons.dark_mode_rounded
-                        : Icons.light_mode_rounded,
+                    settings.themeMode == 'oled'
+                        ? Icons.contrast_rounded
+                        : settings.themeMode == 'dark'
+                            ? Icons.dark_mode_rounded
+                            : Icons.light_mode_rounded,
                     color: AppColors.primary,
                   ),
                   title: const Text('App Theme'),
                   subtitle: Text(
-                    settings.themeMode == 'dark'
-                        ? 'Midnight Dark'
-                        : settings.themeMode == 'light'
-                            ? 'Sunny Light'
-                            : 'System Default',
+                    settings.themeMode == 'oled'
+                        ? 'Pitch Black OLED (AMOLED)'
+                        : settings.themeMode == 'dark'
+                            ? 'Midnight Dark'
+                            : settings.themeMode == 'light'
+                                ? 'Sunny Light'
+                                : 'System Default',
                   ),
                   trailing: DropdownButton<String>(
                     value: settings.themeMode,
                     underline: const SizedBox.shrink(),
                     items: const [
                       DropdownMenuItem(
-                          value: 'light', child: Text('Light Mode')),
-                      DropdownMenuItem(value: 'dark', child: Text('Dark Mode')),
+                          value: 'light', child: Text('Sunny Light')),
+                      DropdownMenuItem(
+                          value: 'dark', child: Text('Midnight Dark')),
+                      DropdownMenuItem(
+                          value: 'oled', child: Text('Pitch Black OLED 🌙')),
                       DropdownMenuItem(
                           value: 'system', child: Text('System Default')),
                     ],
@@ -371,6 +393,103 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             .update(settings.copyWith(meshTheme: v));
                       }
                     },
+                  ),
+                ),
+              ]),
+
+              const SizedBox(height: 20),
+
+              // ── GST & Tax Invoicing ─────────────────────────────────
+              _sectionHeader('GST & Tax Invoicing', Icons.receipt_long_rounded),
+              _card([
+                SwitchListTile(
+                  secondary: const Icon(Icons.calculate_rounded, color: AppColors.primary),
+                  title: const Text('Enable GST / Tax on Invoices'),
+                  subtitle: Text(settings.enableGstTax
+                      ? 'Itemized CGST + SGST (${settings.gstRate}%) added to invoices'
+                      : 'Tax disabled (Standard receipts)'),
+                  value: settings.enableGstTax,
+                  onChanged: (v) {
+                    ref.read(settingsProvider.notifier).update(
+                          settings.copyWith(enableGstTax: v),
+                        );
+                  },
+                ),
+                if (settings.enableGstTax) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.percent_rounded),
+                    title: const Text('GST Tax Rate'),
+                    trailing: DropdownButton<double>(
+                      value: [5.0, 12.0, 18.0, 28.0].contains(settings.gstRate)
+                          ? settings.gstRate
+                          : 5.0,
+                      underline: const SizedBox.shrink(),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 5.0, child: Text('5% (2.5% CGST + 2.5% SGST)')),
+                        DropdownMenuItem(
+                            value: 12.0, child: Text('12% (6% CGST + 6% SGST)')),
+                        DropdownMenuItem(
+                            value: 18.0, child: Text('18% (9% CGST + 9% SGST)')),
+                        DropdownMenuItem(
+                            value: 28.0, child: Text('28% (14% CGST + 14% SGST)')),
+                      ],
+                      onChanged: (v) {
+                        if (v != null) {
+                          _gstRateCon.text = v.toString();
+                          ref.read(settingsProvider.notifier).update(
+                                settings.copyWith(gstRate: v),
+                              );
+                        }
+                      },
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.badge_outlined),
+                    title: const Text('Business GSTIN Number'),
+                    trailing: SizedBox(
+                      width: 170,
+                      child: TextField(
+                        controller: _gstinCon,
+                        textAlign: TextAlign.right,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'e.g. 27AAAAA0000A1Z5',
+                        ),
+                        onSubmitted: (_) => _autoSave(),
+                        onChanged: (_) => _autoSave(),
+                      ),
+                    ),
+                  ),
+                ],
+              ]),
+
+              const SizedBox(height: 20),
+
+              // ── Cash Register Drawer Settings ───────────────────────
+              _sectionHeader('Cash Register & Float', Icons.point_of_sale_rounded),
+              _card([
+                ListTile(
+                  leading: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary),
+                  title: const Text('Default Daily Cash Float'),
+                  subtitle: const Text('Opening cash buffer in register'),
+                  trailing: SizedBox(
+                    width: 120,
+                    child: TextField(
+                      controller: _cashDrawerFloatCon,
+                      textAlign: TextAlign.right,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        prefixText: '${settings.currency} ',
+                        hintText: '1000',
+                      ),
+                      onSubmitted: (_) => _autoSave(),
+                      onChanged: (_) => _autoSave(),
+                    ),
                   ),
                 ),
               ]),
