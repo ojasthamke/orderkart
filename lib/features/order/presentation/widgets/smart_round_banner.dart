@@ -61,6 +61,21 @@ class SmartRoundBanner extends StatelessWidget {
               ],
             ),
           ),
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: accentCol,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: () => onToggle(!enabled),
+            icon: Icon(
+                enabled ? Icons.undo_rounded : Icons.check_circle_outline_rounded,
+                size: 14),
+            label: Text(enabled ? 'Undo Round Off' : 'Apply Round Off',
+                style:
+                    const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+          ),
           Switch(
             value: enabled,
             onChanged: onToggle,

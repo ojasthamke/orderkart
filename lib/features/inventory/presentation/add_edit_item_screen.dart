@@ -57,9 +57,11 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final mode = ref.read(appModeProvider).value;
       if (mode == AppMode.worker) {
-        SnackbarHelper.showError(
-            context, 'Access Denied: Workers cannot manage items.');
-        Navigator.pop(context);
+        if (mounted) {
+          SnackbarHelper.showError(
+              context, 'Access Denied: Workers cannot manage items.');
+          Navigator.pop(context);
+        }
       }
     });
     if (widget.itemId != null) {
@@ -82,7 +84,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _barcodeCon.text = item.barcode;
         _sequenceCon.text = item.sequenceNo > 0 ? '${item.sequenceNo}' : '';
         _category = item.category;
-        _unit = item.unit;
+        _unit = AppConstants.itemUnits.contains(item.unit)
+            ? item.unit
+            : AppConstants.unitKg;
         _expiryCon.text = item.expiryDate;
         _batchCon.text = item.batchNumber;
         _dosageCon.text = item.dosageInfo;
@@ -640,11 +644,14 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               prefixIcon: Icon(Icons.calendar_today_rounded),
             ),
             onTap: () async {
+              DateTime initial = _expiryCon.text.isNotEmpty
+                  ? (DateTime.tryParse(_expiryCon.text) ?? DateTime.now())
+                  : DateTime.now();
+              if (initial.isBefore(DateTime(2000))) initial = DateTime(2000);
+              if (initial.isAfter(DateTime(2100))) initial = DateTime(2100);
               final date = await showDatePicker(
                 context: context,
-                initialDate: _expiryCon.text.isNotEmpty
-                    ? (DateTime.tryParse(_expiryCon.text) ?? DateTime.now())
-                    : DateTime.now(),
+                initialDate: initial,
                 firstDate: DateTime(2000),
                 lastDate: DateTime(2100),
               );
@@ -687,11 +694,14 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               prefixIcon: Icon(Icons.date_range_rounded),
             ),
             onTap: () async {
+              DateTime initial = _packCon.text.isNotEmpty
+                  ? (DateTime.tryParse(_packCon.text) ?? DateTime.now())
+                  : DateTime.now();
+              if (initial.isBefore(DateTime(2000))) initial = DateTime(2000);
+              if (initial.isAfter(DateTime(2100))) initial = DateTime(2100);
               final date = await showDatePicker(
                 context: context,
-                initialDate: _packCon.text.isNotEmpty
-                    ? (DateTime.tryParse(_packCon.text) ?? DateTime.now())
-                    : DateTime.now(),
+                initialDate: initial,
                 firstDate: DateTime(2000),
                 lastDate: DateTime(2100),
               );
@@ -710,12 +720,15 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               prefixIcon: Icon(Icons.timer_rounded),
             ),
             onTap: () async {
+              DateTime initial = _bestBeforeCon.text.isNotEmpty
+                  ? (DateTime.tryParse(_bestBeforeCon.text) ??
+                      DateTime.now().add(const Duration(days: 30)))
+                  : DateTime.now().add(const Duration(days: 30));
+              if (initial.isBefore(DateTime(2000))) initial = DateTime(2000);
+              if (initial.isAfter(DateTime(2100))) initial = DateTime(2100);
               final date = await showDatePicker(
                 context: context,
-                initialDate: _bestBeforeCon.text.isNotEmpty
-                    ? (DateTime.tryParse(_bestBeforeCon.text) ??
-                        DateTime.now().add(const Duration(days: 30)))
-                    : DateTime.now().add(const Duration(days: 30)),
+                initialDate: initial,
                 firstDate: DateTime(2000),
                 lastDate: DateTime(2100),
               );

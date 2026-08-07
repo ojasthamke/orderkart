@@ -17,11 +17,14 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
   String _search = '';
   String _sort = 'name';
 
+  int _loadToken = 0;
+
   InventoryNotifier(this._ref, this._repo) : super(const AsyncValue.loading()) {
     load();
   }
 
   Future<void> load({bool silent = false}) async {
+    final currentToken = ++_loadToken;
     if (!silent && state.valueOrNull == null) {
       state = const AsyncValue.loading();
     }
@@ -31,10 +34,12 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
         searchQuery: _search.isEmpty ? null : _search,
         sortBy: _sort,
       );
-      state = AsyncValue.data(items);
+      if (currentToken == _loadToken) {
+        state = AsyncValue.data(items);
+      }
     } catch (e, st) {
-      if (state.valueOrNull == null) {
-        state = AsyncValue.error(e, st);
+      if (currentToken == _loadToken) {
+        state = AsyncValue<List<Item>>.error(e, st).copyWithPrevious(state);
       }
     }
   }
@@ -66,39 +71,63 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
   }
 
   Future<void> addItem(Item item) async {
-    await _repo.addItem(item);
-    await load(silent: true);
-    _invalidateAll();
+    try {
+      await _repo.addItem(item);
+      await load(silent: true);
+      _invalidateAll();
+    } catch (e, st) {
+      state = AsyncValue<List<Item>>.error(e, st).copyWithPrevious(state);
+    }
   }
 
   Future<void> updateItem(Item item) async {
-    await _repo.updateItem(item);
-    await load(silent: true);
-    _invalidateAll();
+    try {
+      await _repo.updateItem(item);
+      await load(silent: true);
+      _invalidateAll();
+    } catch (e, st) {
+      state = AsyncValue<List<Item>>.error(e, st).copyWithPrevious(state);
+    }
   }
 
   Future<void> updateItems(List<Item> items) async {
-    await _repo.updateItems(items);
-    await load(silent: true);
-    _invalidateAll();
+    try {
+      await _repo.updateItems(items);
+      await load(silent: true);
+      _invalidateAll();
+    } catch (e, st) {
+      state = AsyncValue<List<Item>>.error(e, st).copyWithPrevious(state);
+    }
   }
 
   Future<void> deleteItem(String id) async {
-    await _repo.deleteItem(id);
-    await load(silent: true);
-    _invalidateAll();
+    try {
+      await _repo.deleteItem(id);
+      await load(silent: true);
+      _invalidateAll();
+    } catch (e, st) {
+      state = AsyncValue<List<Item>>.error(e, st).copyWithPrevious(state);
+    }
   }
 
   Future<void> adjustStock(String itemId, double change, String reason) async {
-    await _repo.adjustStock(itemId, change, reason);
-    await load(silent: true);
-    _invalidateAll();
+    try {
+      await _repo.adjustStock(itemId, change, reason);
+      await load(silent: true);
+      _invalidateAll();
+    } catch (e, st) {
+      state = AsyncValue<List<Item>>.error(e, st).copyWithPrevious(state);
+    }
   }
 
   Future<void> reorderItems(List<String> itemIds) async {
-    await _repo.updateItemSequences(itemIds);
-    await load();
-    _invalidateAll();
+    try {
+      await _repo.updateItemSequences(itemIds);
+      await load();
+      _invalidateAll();
+    } catch (e, st) {
+      state = AsyncValue<List<Item>>.error(e, st).copyWithPrevious(state);
+    }
   }
 }
 

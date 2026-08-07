@@ -25,6 +25,7 @@ import 'inventory_provider.dart';
 import '../data/item_dao.dart';
 import '../../expense/domain/expense.dart';
 import '../../expense/data/expense_dao.dart';
+import '../../order/presentation/order_provider.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final bool showBack;
@@ -331,6 +332,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: items.length,
                   onReorder: (oldIndex, newIndex) async {
+                    if (_category != 'All') {
+                      SnackbarHelper.showInfo(context,
+                          'Clear category filter to reorder items');
+                      return;
+                    }
                     if (newIndex > oldIndex) {
                       newIndex -= 1;
                     }
@@ -472,21 +478,27 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Text(
-                                    'MRP: ${AppFormatters.currency(item.marketPrice > 0 ? item.marketPrice : item.sellingPrice)}/${item.unit}',
-                                    style: const TextStyle(
-                                      decoration: TextDecoration.lineThrough,
-                                      color: AppColors.textSecondary,
-                                      fontSize: 12,
+                                  Flexible(
+                                    child: Text(
+                                      'MRP: ${AppFormatters.currency(item.marketPrice > 0 ? item.marketPrice : item.sellingPrice)}/${item.unit}',
+                                      style: const TextStyle(
+                                        decoration: TextDecoration.lineThrough,
+                                        color: AppColors.textSecondary,
+                                        fontSize: 12,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   const SizedBox(width: 10),
-                                  Text(
-                                    'Our Price: ${AppFormatters.currency(item.sellingPrice)}/${item.unit}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.primary,
-                                      fontSize: 13,
+                                  Flexible(
+                                    child: Text(
+                                      'Our Price: ${AppFormatters.currency(item.sellingPrice)}/${item.unit}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.primary,
+                                        fontSize: 13,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
@@ -560,26 +572,33 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('HISTORICAL PRICE LOG & REPORT',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.textSecondary)),
-                        const SizedBox(height: 4),
-                        Text(
-                          hasRange
-                              ? '${AppFormatters.date(_priceHistoryRange!.start)} - ${AppFormatters.date(_priceHistoryRange!.end)}'
-                              : AppFormatters.date(_selectedHistoryDate),
-                          style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primary),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('HISTORICAL PRICE LOG & REPORT',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
+                          Text(
+                            hasRange
+                                ? '${AppFormatters.date(_priceHistoryRange!.start)} - ${AppFormatters.date(_priceHistoryRange!.end)}'
+                                : AppFormatters.date(_selectedHistoryDate),
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: () async {
                         AppHaptics.buttonClick();
@@ -781,21 +800,26 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(name,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(name,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                  Text(
+                                    AppFormatters.dateFromString(dateVal),
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14)),
-                                Text(
-                                  AppFormatters.dateFromString(dateVal),
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary),
-                                ),
-                              ],
+                                        fontSize: 11,
+                                        color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
                             ),
+                            const SizedBox(width: 8),
                             Row(
                               children: [
                                 if (mktPrice > 0)
@@ -914,6 +938,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     const SizedBox(height: 12),
                     TextField(
                       controller: reasonCon,
+                      maxLines: 3,
+                      minLines: 1,
                       decoration: const InputDecoration(
                         labelText: 'Wastage Reason (Optional)',
                         hintText: 'e.g. Rotten mandi batch, Transport damage',
@@ -1008,6 +1034,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                           updatedAt: DateTime.now(),
                         ),
                       );
+                      ref.invalidate(analyticsSummaryProvider);
                     }
                     if (ctx.mounted) {
                       SnackbarHelper.showSuccess(context,
@@ -1266,14 +1293,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                         ),
                                   ),
                                   const SizedBox(height: 6),
-                                  Text(
-                                    AppFormatters.currency(overallCost),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      AppFormatters.currency(overallCost),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1298,14 +1328,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                         ),
                                   ),
                                   const SizedBox(height: 6),
-                                  Text(
-                                    AppFormatters.currency(overallRevenue),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      AppFormatters.currency(overallRevenue),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1330,17 +1363,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                         ),
                                   ),
                                   const SizedBox(height: 6),
-                                  Text(
-                                    AppFormatters.currency(overallProfit),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: overallProfit >= 0
-                                              ? AppColors.success
-                                              : AppColors.error,
-                                        ),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      AppFormatters.currency(overallProfit),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: overallProfit >= 0
+                                                ? AppColors.success
+                                                : AppColors.error,
+                                          ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1567,6 +1603,8 @@ class _ItemTile extends StatelessWidget {
                 '${item.sequenceNo > 0 ? "#${item.sequenceNo} " : ""}${item.name}',
                 style:
                     const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (item.isLowStock)

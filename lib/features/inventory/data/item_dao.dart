@@ -43,6 +43,9 @@ class ItemDao {
           if (sortBy == 'category') {
             final catComp = a.category.compareTo(b.category);
             if (catComp != 0) return catComp;
+            final nameComp =
+                a.name.toLowerCase().compareTo(b.name.toLowerCase());
+            if (nameComp != 0) return nameComp;
           } else if (sortBy == 'name') {
             final nameComp =
                 a.name.toLowerCase().compareTo(b.name.toLowerCase());
@@ -76,7 +79,7 @@ class ItemDao {
   Future<List<Item>> getLowStockItems() async {
     final db = await _db;
     final maps = await db.rawQuery(
-        'SELECT * FROM items WHERE min_stock > 0 AND stock <= min_stock ORDER BY stock ASC');
+        'SELECT * FROM items WHERE min_stock > 0 AND stock <= min_stock AND stock > 0 ORDER BY stock ASC');
     return maps.map(Item.fromMap).toList();
   }
 
@@ -85,30 +88,48 @@ class ItemDao {
     final id = item.id.isEmpty ? _uuid.v4() : item.id;
     final now = DateTime.now().toIso8601String();
     final itemWithId = item.copyWith(id: id);
-    await db.insert(
-        'items',
-        {
-          ...itemWithId.toMap(),
-          'id': id,
-          'created_at': now,
-          'updated_at': now,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace);
 
-    if (itemWithId.stock > 0) {
-      await insertStockHistory(StockHistory(
-        id: _uuid.v4(),
-        itemId: id,
-        itemName: itemWithId.name,
-        changeAmount: itemWithId.stock,
-        reason: 'Initial Stock Allocation',
-        orderId: '',
-        createdAt: DateTime.now(),
-      ));
-    }
+    await db.transaction((txn) async {
+      await txn.insert(
+          'items',
+          {
+            ...itemWithId.toMap(),
+            'id': id,
+            'created_at': now,
+            'updated_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
 
-    await _recordDailyPriceSnapshot(itemWithId);
-    await _checkAndTriggerLowStock(id, db);
+      if (itemWithId.stock > 0) {
+        await insertStockHistory(
+            StockHistory(
+              id: _uuid.v4(),
+              itemId: id,
+              itemName: itemWithId.name,
+              changeAmount: itemWithId.stock,
+              reason: 'Initial Stock Allocation',
+              orderId: '',
+              createdAt: DateTime.now(),
+            ),
+            executor: txn);
+      }
+
+      final dateKey = now.substring(0, 10);
+      await txn.rawInsert('''
+        INSERT OR REPLACE INTO item_price_history (id, item_id, date, selling_price, cost_price, market_price, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      ''', [
+        '${itemWithId.id}_$dateKey',
+        itemWithId.id,
+        dateKey,
+        itemWithId.sellingPrice,
+        itemWithId.costPrice,
+        itemWithId.marketPrice,
+        now,
+      ]);
+    });
+
+    await _checkAndTriggerLowStock(id, db, previousStock: 999999);
     return id;
   }
 
@@ -240,10 +261,12 @@ class ItemDao {
 
   Future<void> deleteItem(String id) async {
     final db = await _db;
-    await db.delete('stock_history', where: 'item_id = ?', whereArgs: [id]);
-    await db
-        .delete('item_price_history', where: 'item_id = ?', whereArgs: [id]);
-    await db.delete('items', where: 'id = ?', whereArgs: [id]);
+    await db.transaction((txn) async {
+      await txn.delete('stock_history', where: 'item_id = ?', whereArgs: [id]);
+      await txn
+          .delete('item_price_history', where: 'item_id = ?', whereArgs: [id]);
+      await txn.delete('items', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   Future<void> adjustStock(String itemId, double change,
@@ -279,7 +302,7 @@ class ItemDao {
   }
 
   Future<void> _checkAndTriggerLowStock(
-      String itemId, DatabaseExecutor db) async {
+      String itemId, DatabaseExecutor db, {double? previousStock}) async {
     try {
       final itemRes = await db.query(
         'items',
@@ -293,7 +316,8 @@ class ItemDao {
         final stock = (item['stock'] as num?)?.toDouble() ?? 0.0;
         final minStock = (item['min_stock'] as num?)?.toDouble() ?? 0.0;
         final unit = item['unit'] as String? ?? 'pcs';
-        if (minStock > 0 && stock <= minStock) {
+        final prev = previousStock ?? (stock + 1);
+        if (minStock > 0 && stock <= minStock && prev > minStock) {
           await NotificationService.instance.showNotification(
             id: itemId.hashCode,
             title: '⚠️ Low Stock Alert: $name',

@@ -194,10 +194,13 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                           ),
                           if (item.batchNumber.isNotEmpty) ...[
                             const SizedBox(width: 8),
-                            Text(
-                              'Batch: ${item.batchNumber}',
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.textSecondary),
+                            Flexible(
+                              child: Text(
+                                'Batch: ${item.batchNumber}',
+                                style: const TextStyle(
+                                    fontSize: 11, color: AppColors.textSecondary),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ],
                         ],
@@ -209,9 +212,9 @@ class _MedicinesHubScreenState extends ConsumerState<MedicinesHubScreen>
                   children: [
                     IconButton.filledTonal(
                       icon: const Icon(Icons.remove_rounded),
-                      onPressed: item.stock < 0.001
+                      onPressed: item.stock <= 0
                           ? null
-                          : () => _adjustStock(item, -1),
+                          : () => _adjustStock(item, item.stock < 1 ? -item.stock : -1),
                     ),
                     const SizedBox(width: 4),
                     IconButton.filledTonal(

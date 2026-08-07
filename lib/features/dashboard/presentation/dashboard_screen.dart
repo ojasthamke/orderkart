@@ -14,6 +14,9 @@ import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/smart_business_pulse_widget.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../customer/domain/customer.dart';
+import '../../customer/data/customer_dao.dart';
+import '../../../core/database/database_helper.dart';
+import 'package:uuid/uuid.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../order/domain/order.dart';
@@ -1235,27 +1238,51 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              AppFormatters.currency(returnAmount,
-                                  symbol: ref
-                                          .watch(settingsProvider)
-                                          .valueOrNull
-                                          ?.currency ??
-                                      '₹'),
-                              style: const TextStyle(
-                                color: Color(0xFF0284C7),
-                                fontWeight: FontWeight.w900,
-                                fontSize: 15,
-                              ),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  AppFormatters.currency(returnAmount,
+                                      symbol: ref
+                                              .watch(settingsProvider)
+                                              .valueOrNull
+                                              ?.currency ??
+                                          '₹'),
+                                  style: const TextStyle(
+                                    color: Color(0xFF0284C7),
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const Text(
+                                  'Return Change',
+                                  style: TextStyle(
+                                      fontSize: 10, color: Color(0xFF0284C7)),
+                                ),
+                              ],
                             ),
-                            const Text(
-                              'Return Change',
-                              style: TextStyle(
-                                  fontSize: 10, color: Color(0xFF0284C7)),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0284C7),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _showSettleOverpaymentDialog(context, c);
+                              },
+                              child: const Text('Settle',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),
@@ -1266,6 +1293,198 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showSettleOverpaymentDialog(
+      BuildContext context, Customer c) async {
+    final currency = ref.read(settingsProvider).valueOrNull?.currency ?? '₹';
+    final amountCon =
+        TextEditingController(text: c.advanceBalance.toStringAsFixed(2));
+    final notesCon =
+        TextEditingController(text: 'Refunded overpaid change to customer');
+    String method = 'cash';
+    bool isSubmitting = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.account_balance_wallet_rounded,
+                    color: Color(0xFF0284C7), size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Settle Overpayment',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(c.name,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: const Color(0xFF0284C7).withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Advance Available:',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600)),
+                      Text(
+                        AppFormatters.currency(c.advanceBalance,
+                            symbol: currency),
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0284C7)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: amountCon,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Settlement / Refund Amount ($currency)',
+                    prefixIcon: const Icon(Icons.money_rounded),
+                    suffixIcon: TextButton(
+                      onPressed: () {
+                        amountCon.text = c.advanceBalance.toStringAsFixed(2);
+                        setStateDialog(() {});
+                      },
+                      child: const Text('FULL'),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text('Settlement Method:',
+                    style:
+                        TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                        value: 'cash',
+                        label: Text('Cash'),
+                        icon: Icon(Icons.payments_rounded, size: 16)),
+                    ButtonSegment(
+                        value: 'online',
+                        label: Text('Online'),
+                        icon: Icon(Icons.qr_code_rounded, size: 16)),
+                    ButtonSegment(
+                        value: 'adjustment',
+                        label: Text('Adjust'),
+                        icon: Icon(Icons.tune_rounded, size: 16)),
+                  ],
+                  selected: {method},
+                  onSelectionChanged: (s) =>
+                      setStateDialog(() => method = s.first),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: notesCon,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes / Remarks',
+                    prefixIcon: Icon(Icons.note_alt_rounded),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0284C7),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      final amount = double.tryParse(amountCon.text) ?? 0.0;
+                      if (amount <= 0) {
+                        SnackbarHelper.showError(
+                            context, 'Please enter a valid amount > 0');
+                        return;
+                      }
+                      setStateDialog(() => isSubmitting = true);
+                      try {
+                        final db = await DatabaseHelper.instance.database;
+                        final uuid = const Uuid().v4();
+                        final now = DateTime.now().toIso8601String();
+                        await db.insert('payments', {
+                          'id': uuid,
+                          'customer_id': c.id,
+                          'order_id': '',
+                          'amount': -amount,
+                          'method': method,
+                          'notes': notesCon.text.trim(),
+                          'created_at': now,
+                          'updated_at': now,
+                        });
+                        await CustomerDao().recalcCustomerTotals(c.id);
+                        ref.invalidate(overpaidCustomersProvider);
+                        ref.invalidate(allCustomersProvider);
+                        ref.invalidate(analyticsSummaryProvider);
+                        if (context.mounted) {
+                          Navigator.pop(dialogCtx);
+                          SnackbarHelper.showSuccess(context,
+                              'Settled ${AppFormatters.currency(amount, symbol: currency)} for ${c.name}');
+                        }
+                      } catch (e) {
+                        setStateDialog(() => isSubmitting = false);
+                        if (context.mounted) {
+                          SnackbarHelper.showError(
+                              context, 'Error settling payment: $e');
+                        }
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Confirm Settlement'),
+            ),
+          ],
         ),
       ),
     );

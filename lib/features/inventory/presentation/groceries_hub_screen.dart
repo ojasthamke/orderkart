@@ -241,10 +241,13 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                           ),
                           const SizedBox(width: 8),
                           if (item.bestBefore.isNotEmpty)
-                            Text(
-                              'Expiry: ${item.bestBefore}',
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.textSecondary),
+                            Flexible(
+                              child: Text(
+                                'Expiry: ${item.bestBefore}',
+                                style: const TextStyle(
+                                    fontSize: 11, color: AppColors.textSecondary),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                         ],
                       ),
@@ -256,9 +259,9 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                   children: [
                     IconButton.filledTonal(
                       icon: const Icon(Icons.remove_rounded),
-                      onPressed: item.stock < 0.001
+                      onPressed: item.stock <= 0
                           ? null
-                          : () => _adjustStock(item, -1),
+                          : () => _adjustStock(item, item.stock < 1 ? -item.stock : -1),
                     ),
                     const SizedBox(width: 4),
                     IconButton.filledTonal(

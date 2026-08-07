@@ -245,18 +245,26 @@ class _QuickInventoryAdjustScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStatMini(
-                  'Monthly Expenses',
-                  AppFormatters.currency(monthlyExpenses, symbol: _currency),
-                  context),
-              _buildStatMini(
-                  'Est. Stock Cost',
-                  AppFormatters.currency(totalInventoryCost, symbol: _currency),
-                  context),
-              _buildStatMini(
-                  'Req. Selling Multiplier',
-                  '${safeMultiplier.toStringAsFixed(2)}x (+$markupPct%)',
-                  context),
+              Expanded(
+                child: _buildStatMini(
+                    'Monthly Expenses',
+                    AppFormatters.currency(monthlyExpenses, symbol: _currency),
+                    context),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildStatMini(
+                    'Est. Stock Cost',
+                    AppFormatters.currency(totalInventoryCost, symbol: _currency),
+                    context),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildStatMini(
+                    'Req. Selling Multiplier',
+                    '${safeMultiplier.toStringAsFixed(2)}x (+$markupPct%)',
+                    context),
+              ),
             ],
           ),
           const SizedBox(height: 10),
