@@ -34,7 +34,6 @@ class AreaNotifier extends StateNotifier<AsyncValue<List<Area>>> {
   }
 
   void _invalidateAll() {
-    _ref.invalidate(areaProvider);
     _ref.invalidate(analyticsSummaryProvider);
     _ref.invalidate(allCustomersProvider);
     _ref.invalidate(pendingCustomersProvider);

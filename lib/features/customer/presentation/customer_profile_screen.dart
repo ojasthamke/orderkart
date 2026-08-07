@@ -107,7 +107,6 @@ class CustomerProfileScreen extends ConsumerWidget {
                         'initialHouseNumber': customer.houseNumber,
                         'initialAddress': customer.address,
                         'initialMapsLocation': customer.mapsLocation,
-                        'initialSerialNo': customer.serialNo,
                       },
                     ).then((_) =>
                         ref.invalidate(customerDetailProvider(customerId)));
@@ -655,7 +654,13 @@ class CustomerProfileScreen extends ConsumerWidget {
                           loading: () => const SizedBox.shrink(),
                           error: (_, __) => const SizedBox.shrink(),
                         ),
-                    ref.watch(sameHouseCustomersProvider(customer)).when(
+                    ref
+                        .watch(sameHouseCustomersProvider((
+                          houseNumber: customer.houseNumber,
+                          streetId: customer.streetId,
+                          customerId: customer.id,
+                        )))
+                        .when(
                           data: (families) {
                             if (families.isEmpty) {
                               return const SizedBox.shrink();
@@ -678,12 +683,15 @@ class CustomerProfileScreen extends ConsumerWidget {
                                       const Icon(Icons.home_work_rounded,
                                           color: Colors.blue, size: 18),
                                       const SizedBox(width: 6),
-                                      Text(
-                                        '🏠 Household (${families.length + 1} Families in House #${customer.houseNumber})',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: Colors.blue,
+                                      Expanded(
+                                        child: Text(
+                                          '🏠 Household (${families.length + 1} Families in House #${customer.houseNumber})',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                            color: Colors.blue,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],

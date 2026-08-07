@@ -74,7 +74,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
+          builder: (dialogContext, setStateDialog) {
             return Consumer(
               builder: (context, ref, child) {
                 final areasAsync = ref.watch(areaProvider);
@@ -793,7 +793,13 @@ class _CustomerCard extends ConsumerWidget {
                                   error: (_, __) => const SizedBox.shrink(),
                                 ),
                             // ── Multi-Family Household Badge ─────────────
-                            ref.watch(sameHouseCustomersProvider(customer)).when(
+                            ref
+                                .watch(sameHouseCustomersProvider((
+                                  houseNumber: customer.houseNumber,
+                                  streetId: customer.streetId,
+                                  customerId: customer.id,
+                                )))
+                                .when(
                                   data: (families) {
                                     if (families.isEmpty) {
                                       return const SizedBox.shrink();
@@ -857,7 +863,6 @@ class _CustomerCard extends ConsumerWidget {
                           'initialHouseNumber': customer.houseNumber,
                           'initialAddress': customer.address,
                           'initialMapsLocation': customer.mapsLocation,
-                          'initialSerialNo': customer.serialNo,
                         },
                       ).then(
                           (_) => ref.refresh(customerListProvider(streetId)));

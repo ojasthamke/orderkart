@@ -140,9 +140,7 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                     areas = rawAreas
                         .where((a) =>
                             a.assignedWorkerId == _filterMode ||
-                            a.createdBy == _filterMode ||
-                            a.workerName.toLowerCase() ==
-                                _filterMode.toLowerCase())
+                            a.createdBy == _filterMode)
                         .toList();
                   }
                 }
@@ -242,7 +240,7 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
       context,
       title: 'Delete Area',
       message:
-          'Delete "${area.name}"? This will also delete all streets and customers inside it.',
+          'Delete "${area.name}"? This will also delete all streets inside it and unassign its customers.',
     );
     if (!confirmed || !mounted) return;
 

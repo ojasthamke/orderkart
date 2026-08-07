@@ -151,14 +151,19 @@ final allCustomersProvider = FutureProvider<List<Customer>>((ref) async {
 });
 
 // Same house / multi-family customers provider
-final sameHouseCustomersProvider =
-    FutureProvider.family<List<Customer>, Customer>((ref, customer) async {
-  if (customer.houseNumber.trim().isEmpty) return [];
+final sameHouseCustomersProvider = FutureProvider.family<
+    List<Customer>,
+    ({
+      String houseNumber,
+      String streetId,
+      String customerId
+    })>((ref, args) async {
+  if (args.houseNumber.trim().isEmpty) return [];
   final dao = CustomerDao();
   return dao.getCustomersInSameHouse(
-    customer.houseNumber,
-    streetId: customer.streetId,
-    excludeCustomerId: customer.id,
+    args.houseNumber,
+    streetId: args.streetId,
+    excludeCustomerId: args.customerId,
   );
 });
 

@@ -211,9 +211,13 @@ class AreaDao {
     await db.transaction((txn) async {
       await txn.execute('PRAGMA foreign_keys = OFF');
 
-      // 1. Find all street IDs belonging to this area in locations and legacy streets tables
-      final locationsStreets = await txn.query('locations',
-          columns: ['id'], where: 'parent_location_id = ?', whereArgs: [id]);
+      // 1. Find all street/sub-street IDs belonging to this area in locations and legacy streets tables
+      final locationsStreets = await txn.query(
+        'locations',
+        columns: ['id'],
+        where: 'parent_location_id = ? OR materialized_path LIKE ?',
+        whereArgs: [id, '%/$id/%'],
+      );
       final streetIds =
           locationsStreets.map((s) => s['id'] as String).toList();
 
@@ -267,9 +271,12 @@ class AreaDao {
         } catch (_) {}
       }
 
-      // Delete child streets from locations & streets
-      await txn.delete('locations',
-          where: 'parent_location_id = ?', whereArgs: [id]);
+      // Delete child streets and sub-streets from locations & streets
+      await txn.delete(
+        'locations',
+        where: 'parent_location_id = ? OR materialized_path LIKE ?',
+        whereArgs: [id, '%/$id/%'],
+      );
       try {
         await txn.delete('streets', where: 'area_id = ?', whereArgs: [id]);
       } catch (_) {}

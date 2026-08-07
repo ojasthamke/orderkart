@@ -146,12 +146,13 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         .read(customerRepositoryProvider)
         .getCustomerById(widget.customerId!);
     if (customer != null && mounted) {
-      final ghost = customer.isGhostHouse;
+      // If editing a ghost house (e.g. from customer list prompt), auto-convert so input fields are visible
+      final wasGhost = customer.isGhostHouse;
       setState(() {
         _streetId = customer.streetId;
-        _isGhostHouse = ghost;
-        _nameCon.text = ghost ? '' : customer.name;
-        _phone1Con.text = ghost ? '' : customer.phone1;
+        _isGhostHouse = false; // Auto reveal fields when converting/editing ghost house
+        _nameCon.text = wasGhost ? '' : customer.name;
+        _phone1Con.text = wasGhost ? '' : customer.phone1;
         _phone2Con.text = customer.phone2;
         _waCon.text = customer.whatsapp;
         _serialNoCon.text = customer.serialNo > 0 ? '${customer.serialNo}' : '';
@@ -385,8 +386,11 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                       ),
                       validator: (v) {
                         if (v != null && v.trim().isNotEmpty) {
-                          if (int.tryParse(v.trim()) == null ||
-                              int.parse(v.trim()) < 1) {
+                          final parsed = int.tryParse(v.trim());
+                          if (parsed == null) {
+                            return 'Invalid number';
+                          }
+                          if (parsed < 1) {
                             return 'Must be ≥ 1';
                           }
                         }

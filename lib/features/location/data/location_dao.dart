@@ -19,9 +19,9 @@ class LocationDao {
     String sql = '''
       SELECT l.*,
         (SELECT COUNT(*) FROM locations c WHERE c.parent_location_id = l.id AND c.is_archived = 0) AS child_count,
-        (SELECT COUNT(*) FROM customers cust WHERE cust.location_id = l.id) AS customer_count,
-        (SELECT COUNT(*) FROM orders o JOIN customers cust ON o.customer_id = cust.id WHERE cust.location_id = l.id) AS order_count,
-        COALESCE((SELECT SUM(o.grand_total) FROM orders o JOIN customers cust ON o.customer_id = cust.id WHERE cust.location_id = l.id), 0.0) AS total_revenue
+        (SELECT COUNT(*) FROM customers cust LEFT JOIN locations st ON cust.location_id = st.id WHERE cust.location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%') AS customer_count,
+        (SELECT COUNT(*) FROM orders o JOIN customers cust ON o.customer_id = cust.id LEFT JOIN locations st ON cust.location_id = st.id WHERE cust.location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%') AS order_count,
+        COALESCE((SELECT SUM(o.grand_total) FROM orders o JOIN customers cust ON o.customer_id = cust.id LEFT JOIN locations st ON cust.location_id = st.id WHERE cust.location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%'), 0.0) AS total_revenue
       FROM locations l
       WHERE 1=1
     ''';
@@ -77,9 +77,9 @@ class LocationDao {
     const sql = '''
       SELECT l.*,
         (SELECT COUNT(*) FROM locations c WHERE c.parent_location_id = l.id AND c.is_archived = 0) AS child_count,
-        (SELECT COUNT(*) FROM customers cust WHERE cust.location_id = l.id) AS customer_count,
-        (SELECT COUNT(*) FROM orders o JOIN customers cust ON o.customer_id = cust.id WHERE cust.location_id = l.id) AS order_count,
-        COALESCE((SELECT SUM(o.grand_total) FROM orders o JOIN customers cust ON o.customer_id = cust.id WHERE cust.location_id = l.id), 0.0) AS total_revenue
+        (SELECT COUNT(*) FROM customers cust LEFT JOIN locations st ON cust.location_id = st.id WHERE cust.location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%') AS customer_count,
+        (SELECT COUNT(*) FROM orders o JOIN customers cust ON o.customer_id = cust.id LEFT JOIN locations st ON cust.location_id = st.id WHERE cust.location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%') AS order_count,
+        COALESCE((SELECT SUM(o.grand_total) FROM orders o JOIN customers cust ON o.customer_id = cust.id LEFT JOIN locations st ON cust.location_id = st.id WHERE cust.location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%'), 0.0) AS total_revenue
       FROM locations l
       WHERE l.id = ?
     ''';
@@ -217,22 +217,38 @@ class LocationDao {
       }
       updated = location.copyWith(depth: depth, materializedPath: path);
 
-      // Update child materialized paths recursively
+      // Update child & descendant materialized paths recursively
       await db.transaction((txn) async {
         await txn.update('locations', updated.toMap(),
             where: 'id = ?', whereArgs: [location.id]);
 
-        final children = await txn.query('locations',
-            where: 'parent_location_id = ?', whereArgs: [location.id]);
-        for (final childMap in children) {
-          final child = Location.fromMap(childMap);
-          final newChildPath = '$path${child.id}/';
-          final newChildDepth = depth + 1;
+        final oldPrefix = oldLoc.materializedPath;
+        final newPrefix = path;
+        final depthDelta = depth - oldLoc.depth;
+
+        // Query all descendants (depth >= 1 below this node)
+        final descendants = await txn.query(
+          'locations',
+          columns: ['id', 'materialized_path', 'depth'],
+          where: 'materialized_path LIKE ? AND id != ?',
+          whereArgs: ['$oldPrefix%', location.id],
+        );
+
+        for (final desc in descendants) {
+          final descId = desc['id'] as String;
+          final currentPath = desc['materialized_path'] as String;
+          final currentDepth = desc['depth'] as int;
+
+          final updatedPath = currentPath.startsWith(oldPrefix)
+              ? newPrefix + currentPath.substring(oldPrefix.length)
+              : currentPath;
+          final updatedDepth = currentDepth + depthDelta;
+
           await txn.update(
             'locations',
-            {'materialized_path': newChildPath, 'depth': newChildDepth},
+            {'materialized_path': updatedPath, 'depth': updatedDepth},
             where: 'id = ?',
-            whereArgs: [child.id],
+            whereArgs: [descId],
           );
         }
       });

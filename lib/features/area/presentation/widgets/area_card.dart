@@ -37,49 +37,48 @@ class AreaCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
+            // Color / Image avatar
+            GestureDetector(
+              onTap: () {
+                final resolvedFile =
+                    AppConstants.resolveFile(area.photoPath);
+                if (area.photoPath.isNotEmpty &&
+                    resolvedFile.existsSync()) {
+                  FullScreenImageViewer.show(context, resolvedFile.path,
+                      title: area.name);
+                } else {
+                  onTap();
+                }
+              },
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  image: (area.photoPath.isNotEmpty &&
+                          AppConstants.resolveFile(area.photoPath)
+                              .existsSync())
+                      ? DecorationImage(
+                          image: FileImage(
+                              AppConstants.resolveFile(area.photoPath)),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: (area.photoPath.isEmpty ||
+                        !AppConstants.resolveFile(area.photoPath)
+                            .existsSync())
+                    ? Icon(Icons.map_rounded, color: color, size: 26)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Info
             Expanded(
               child: ScaleOnTap(
                 onTap: onTap,
-                child: Row(
-                  children: [
-                    // Color / Image avatar
-                    GestureDetector(
-                      onTap: () {
-                        final resolvedFile =
-                            AppConstants.resolveFile(area.photoPath);
-                        if (area.photoPath.isNotEmpty &&
-                            resolvedFile.existsSync()) {
-                          FullScreenImageViewer.show(context, resolvedFile.path,
-                              title: area.name);
-                        }
-                      },
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(14),
-                          image: (area.photoPath.isNotEmpty &&
-                                  AppConstants.resolveFile(area.photoPath)
-                                      .existsSync())
-                              ? DecorationImage(
-                                  image: FileImage(
-                                      AppConstants.resolveFile(area.photoPath)),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child: (area.photoPath.isEmpty ||
-                                !AppConstants.resolveFile(area.photoPath)
-                                    .existsSync())
-                            ? Icon(Icons.map_rounded, color: color, size: 26)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    // Info
-                    Expanded(
-                      child: Column(
+                child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
@@ -150,9 +149,6 @@ class AreaCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ),
             // Trailing menu

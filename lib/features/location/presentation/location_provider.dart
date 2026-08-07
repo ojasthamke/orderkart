@@ -67,10 +67,20 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
     _invalidateAll();
   }
 
-  Future<void> updateLocation(Location location) async {
+  Future<void> updateLocation(Location location, {String? oldParentId}) async {
     await _repo.updateLocation(location);
     await loadLocations(silent: true);
     _invalidateAll();
+    if (oldParentId != null && oldParentId != parentId) {
+      _ref.invalidate(locationListProvider(oldParentId));
+      _ref.invalidate(breadcrumbsProvider(oldParentId));
+    }
+    if (location.parentLocationId != parentId) {
+      _ref.invalidate(locationListProvider(location.parentLocationId));
+      if (location.parentLocationId != null) {
+        _ref.invalidate(breadcrumbsProvider(location.parentLocationId!));
+      }
+    }
   }
 
   Future<void> delete(String id) async {
@@ -83,6 +93,7 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
     if (parentId != null) {
       _ref.invalidate(breadcrumbsProvider(parentId!));
     }
+    _ref.invalidate(locationPathNameProvider);
   }
 }
 

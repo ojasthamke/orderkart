@@ -10,7 +10,7 @@ import 'package:latlong2/latlong.dart';
 
 class AddEditAreaDialog extends StatefulWidget {
   final Area? area;
-  final void Function(String name, String description, int color,
+  final Future<void> Function(String name, String description, int color,
       String photoPath, String mapsLocation) onSave;
 
   const AddEditAreaDialog({super.key, this.area, required this.onSave});
@@ -258,16 +258,20 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
     );
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    widget.onSave(
-      _nameCon.text.trim(),
-      _descCon.text.trim(),
-      _color,
-      _photoPath,
-      _locationCon.text.trim(),
-    );
-    Navigator.of(context).pop();
+    try {
+      await widget.onSave(
+        _nameCon.text.trim(),
+        _descCon.text.trim(),
+        _color,
+        _photoPath,
+        _locationCon.text.trim(),
+      );
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }
