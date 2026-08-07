@@ -279,10 +279,9 @@ class OrderRepositoryImpl implements OrderRepository {
       if (order != null) {
         final totalPaid =
             allPayments.fold<double>(0, (sum, p) => sum + p.amount);
-        final remaining =
-            (order.grandTotal - totalPaid).clamp(0, double.infinity);
+        final remaining = order.grandTotal - totalPaid;
         await _orderDao.updateOrderPayment(
-            payment.orderId, totalPaid, remaining.toDouble(),
+            payment.orderId, totalPaid, remaining,
             executor: txn);
         await _customerDao.recalcCustomerTotals(payment.customerId,
             executor: txn);

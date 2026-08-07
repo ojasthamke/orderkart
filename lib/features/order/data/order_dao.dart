@@ -390,7 +390,7 @@ class OrderDao {
       roundingDiff = newGrandTotal - unroundedGrandTotal;
     }
 
-    final newRemaining = math.max(0.0, newGrandTotal - order.paidAmount);
+    final newRemaining = newGrandTotal - order.paidAmount;
 
     await db.update(
       'orders',

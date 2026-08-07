@@ -438,11 +438,15 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     for (final oi in order.items) {
       final inv = itemsList.where((i) => i.id == oi.itemId).firstOrNull;
       if (inv != null && inv.marketPrice > 0) {
-        final baseMarketPrice = UnitConverter.toBase(inv.marketPrice, inv.unit);
-        final baseUnitPrice = UnitConverter.toBase(oi.unitPrice, oi.itemUnit);
-        final baseQty = UnitConverter.toBase(oi.quantity, oi.itemUnit);
-        if (baseMarketPrice > baseUnitPrice) {
-          marketSavings += (baseMarketPrice - baseUnitPrice) * baseQty;
+        final qtyInInvUnit = UnitConverter.convert(
+          quantity: oi.quantity,
+          fromUnit: oi.itemUnit,
+          toUnit: inv.unit,
+        );
+        final totalMarketCost = inv.marketPrice * qtyInInvUnit;
+        final totalOrderCost = oi.totalPrice > 0 ? oi.totalPrice : (oi.unitPrice * oi.quantity);
+        if (totalMarketCost > totalOrderCost) {
+          marketSavings += (totalMarketCost - totalOrderCost);
         }
       }
     }
@@ -1099,8 +1103,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     double marketSavings = 0.0;
     for (final oi in order.items) {
       final inv = itemsList.where((i) => i.id == oi.itemId).firstOrNull;
-      if (inv != null && inv.marketPrice > oi.unitPrice) {
-        marketSavings += (inv.marketPrice - oi.unitPrice) * oi.quantity;
+      if (inv != null && inv.marketPrice > 0) {
+        final qtyInInvUnit = UnitConverter.convert(
+          quantity: oi.quantity,
+          fromUnit: oi.itemUnit,
+          toUnit: inv.unit,
+        );
+        final totalMarketCost = inv.marketPrice * qtyInInvUnit;
+        final totalOrderCost = oi.totalPrice > 0 ? oi.totalPrice : (oi.unitPrice * oi.quantity);
+        if (totalMarketCost > totalOrderCost) {
+          marketSavings += (totalMarketCost - totalOrderCost);
+        }
       }
     }
     final list = order.items.map((it) {

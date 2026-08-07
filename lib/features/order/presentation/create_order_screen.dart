@@ -778,9 +778,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           break;
         }
       }
-      if (dbItem != null && dbItem.marketPrice > cartItem.price) {
-        marketSavings +=
-            (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
+      if (dbItem != null && dbItem.marketPrice > 0) {
+        final qtyInInvUnit = UnitConverter.convert(
+          quantity: cartItem.quantity,
+          fromUnit: cartItem.unit,
+          toUnit: dbItem.unit,
+        );
+        final totalMarketCost = dbItem.marketPrice * qtyInInvUnit;
+        final totalOrderCost = cartItem.total > 0 ? cartItem.total : (cartItem.price * cartItem.quantity);
+        if (totalMarketCost > totalOrderCost) {
+          marketSavings += (totalMarketCost - totalOrderCost);
+        }
       }
     }
     final totalSavings = marketSavings + _discount;
@@ -1386,18 +1394,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         }
       }
       if (dbItem != null && dbItem.marketPrice > 0) {
-        final cUnit = cartItem.unit.toLowerCase();
-        final dbUnit = dbItem.unit.toLowerCase();
-        if (cUnit == dbUnit || cUnit.isEmpty) {
-          if (dbItem.marketPrice > cartItem.price) {
-            marketSavings +=
-                (dbItem.marketPrice - cartItem.price) * cartItem.quantity;
-          }
-        } else if (cUnit == 'gram' && dbUnit == 'kg') {
-          final marketCost = dbItem.marketPrice * (cartItem.quantity / 1000.0);
-          if (marketCost > cartItem.total) {
-            marketSavings += (marketCost - cartItem.total);
-          }
+        final qtyInInvUnit = UnitConverter.convert(
+          quantity: cartItem.quantity,
+          fromUnit: cartItem.unit,
+          toUnit: dbItem.unit,
+        );
+        final totalMarketCost = dbItem.marketPrice * qtyInInvUnit;
+        final totalOrderCost = cartItem.total > 0 ? cartItem.total : (cartItem.price * cartItem.quantity);
+        if (totalMarketCost > totalOrderCost) {
+          marketSavings += (totalMarketCost - totalOrderCost);
         }
       }
     }
