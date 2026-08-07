@@ -119,7 +119,7 @@ class MeshColors {
   }
 }
 
-class AppScaffold extends ConsumerWidget {
+class AppScaffold extends ConsumerStatefulWidget {
   final String title;
   final Widget? body;
   final Widget? floatingActionButton;
@@ -148,7 +148,14 @@ class AppScaffold extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppScaffold> createState() => _AppScaffoldState();
+}
+
+class _AppScaffoldState extends ConsumerState<AppScaffold> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -157,14 +164,14 @@ class AppScaffold extends ConsumerWidget {
     final colors = MeshColors.resolve(meshTheme);
 
     final canPop = ModalRoute.of(context)?.canPop ?? false;
-    final bool shouldShowBack = showBack && canPop;
+    final bool shouldShowBack = widget.showBack && canPop;
 
     return Stack(
       children: [
         // Base solid background layer to prevent black window bleed
         Positioned.fill(
           child: Container(
-            color: backgroundColor ??
+            color: widget.backgroundColor ??
                 (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
           ),
         ),
@@ -249,35 +256,34 @@ class AppScaffold extends ConsumerWidget {
 
         // Scaffold with transparent background overlaying the mesh background
         Scaffold(
+          key: _scaffoldKey,
           backgroundColor: Colors.transparent,
           extendBody: true,
           appBar: FloatingGlassAppBar(
-            title: title,
+            title: widget.title,
             leading: shouldShowBack
                 ? IconButton(
                     icon:
                         const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                     tooltip: 'Back',
-                    onPressed: onBack ?? () => Navigator.of(context).pop(),
+                    onPressed: widget.onBack ?? () => Navigator.of(context).pop(),
                   )
-                : Builder(
-                    builder: (ctx) => IconButton(
-                      icon: const Icon(Icons.menu_rounded),
-                      tooltip: 'Open Menu',
-                      onPressed: () {
-                        AppHaptics.buttonClick();
-                        Scaffold.of(ctx).openDrawer();
-                      },
-                    ),
+                : IconButton(
+                    icon: const Icon(Icons.menu_rounded),
+                    tooltip: 'Open Menu',
+                    onPressed: () {
+                      AppHaptics.buttonClick();
+                      _scaffoldKey.currentState?.openDrawer();
+                    },
                   ),
-            actions: actions,
-            bottom: bottom,
+            actions: widget.actions,
+            bottom: widget.bottom,
           ),
-          body: body != null ? SafeArea(child: body!) : null,
-          drawer: drawer ?? const AppDrawer(),
-          floatingActionButton: floatingActionButton,
-          bottomNavigationBar: bottomNavigationBar,
-          bottomSheet: bottomSheet,
+          body: widget.body != null ? SafeArea(child: widget.body!) : null,
+          drawer: widget.drawer ?? const AppDrawer(),
+          floatingActionButton: widget.floatingActionButton,
+          bottomNavigationBar: widget.bottomNavigationBar,
+          bottomSheet: widget.bottomSheet,
         ),
       ],
     );
