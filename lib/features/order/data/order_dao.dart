@@ -421,17 +421,52 @@ class OrderDao {
 
   Future<void> deleteOrder(String id, {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
+    
+    final orderMaps = await db.query('orders',
+        columns: ['customer_id', 'delivery_status'],
+        where: 'id = ?',
+        whereArgs: [id]);
+    String? customerId;
+    if (orderMaps.isNotEmpty) {
+      customerId = orderMaps.first['customer_id'] as String?;
+      final deliveryStatus = orderMaps.first['delivery_status'] as String?;
+      if (deliveryStatus != 'cancelled') {
+        final items = await getOrderItems(id, executor: db);
+        for (final item in items) {
+          if (item.itemId.isNotEmpty) {
+            await db.rawUpdate(
+                'UPDATE items SET stock = stock + ? WHERE id = ?',
+                [item.quantity, item.itemId]);
+          }
+        }
+      }
+    }
+
     await db.delete('order_items', where: 'order_id = ?', whereArgs: [id]);
     await db.delete('payments', where: 'order_id = ?', whereArgs: [id]);
     await db.delete('order_question_answers',
         where: 'order_id = ?', whereArgs: [id]);
     await db.delete('stock_history', where: 'order_id = ?', whereArgs: [id]);
     await db.delete('orders', where: 'id = ?', whereArgs: [id]);
+
+    if (customerId != null && customerId.isNotEmpty) {
+      try {
+        await CustomerDao().recalcCustomerTotals(customerId, executor: db);
+      } catch (_) {}
+    }
   }
 
   Future<void> updateDeliveryStatus(String orderId, String status,
       {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
+    final orderMaps = await db.query('orders',
+        columns: ['customer_id', 'delivery_status'],
+        where: 'id = ?',
+        whereArgs: [orderId]);
+    if (orderMaps.isEmpty) return;
+    final oldStatus = orderMaps.first['delivery_status'] as String?;
+    final customerId = orderMaps.first['customer_id'] as String?;
+
     await db.update(
       'orders',
       {
@@ -441,6 +476,35 @@ class OrderDao {
       where: 'id = ?',
       whereArgs: [orderId],
     );
+
+    if (oldStatus != 'cancelled' && status == 'cancelled') {
+      final items = await getOrderItems(orderId, executor: db);
+      for (final item in items) {
+        if (item.itemId.isNotEmpty) {
+          await db.rawUpdate(
+              'UPDATE items SET stock = stock + ? WHERE id = ?',
+              [item.quantity, item.itemId]);
+        }
+      }
+    } else if (oldStatus == 'cancelled' && status != 'cancelled') {
+      final items = await getOrderItems(orderId, executor: db);
+      for (final item in items) {
+        if (item.itemId.isNotEmpty) {
+          await db.rawUpdate(
+              'UPDATE items SET stock = stock - ? WHERE id = ?',
+              [item.quantity, item.itemId]);
+        }
+      }
+    }
+
+    if ((oldStatus == 'cancelled' && status != 'cancelled') ||
+        (oldStatus != 'cancelled' && status == 'cancelled')) {
+      if (customerId != null && customerId.isNotEmpty) {
+        try {
+          await CustomerDao().recalcCustomerTotals(customerId, executor: db);
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> insertPayment(Payment payment,

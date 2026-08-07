@@ -291,7 +291,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return PopScope(
         canPop: true,
         onPopInvokedWithResult: (didPop, result) {
-          if (didPop && !_orderSaved) {
+          if (didPop && !_orderSaved && widget.orderId == null) {
             ref
                 .read(createOrderCartProvider(widget.customerId).notifier)
                 .state = List.from(_cart);
@@ -1359,27 +1359,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     final List<OrderItem> items = [];
     if (_cart.isNotEmpty) {
-      double distributedSum = 0;
       for (int i = 0; i < _cart.length; i++) {
         final c = _cart[i];
-        double adjustedTotal = c.total;
-
-        if (roundingDiff != 0 && _subtotal > 0) {
-          if (i == _cart.length - 1) {
-            adjustedTotal = double.parse(
-                (c.total + (roundingDiff - distributedSum)).toStringAsFixed(2));
-          } else {
-            final share = double.parse(
-                (roundingDiff * (c.total / _subtotal)).toStringAsFixed(2));
-            adjustedTotal = double.parse((c.total + share).toStringAsFixed(2));
-            distributedSum += share;
-          }
-        }
-
-        final adjustedUnitPrice = c.quantity > 0
-            ? double.parse((adjustedTotal / c.quantity).toStringAsFixed(4))
-            : c.price;
-
         items.add(OrderItem(
           id: const Uuid().v4(),
           orderId: orderId,
@@ -1387,14 +1368,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           itemName: c.name,
           itemUnit: c.unit,
           quantity: c.quantity,
-          unitPrice: adjustedUnitPrice,
-          totalPrice: adjustedTotal,
+          unitPrice: c.price,
+          totalPrice: c.total,
         ));
       }
     }
 
-    final adjustedSubtotal =
-        double.parse((_subtotal + roundingDiff).toStringAsFixed(2));
+    final adjustedSubtotal = double.parse(_subtotal.toStringAsFixed(2));
 
     double marketSavings = 0.0;
     for (final cartItem in _cart) {
@@ -1608,6 +1588,22 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         customerId: widget.customerId,
         onItemSelected: (item, qty, price) {
           setState(() {
+            double unitPrice = price;
+            if (price == item.sellingPrice) {
+              final customer =
+                  ref.read(customerDetailProvider(widget.customerId)).value;
+              final settings = ref.read(settingsProvider).valueOrNull;
+              final enableMarkup = settings?.enableVipPriceMarkup ?? true;
+              if (enableMarkup &&
+                  customer != null &&
+                  customer.isVipActive &&
+                  customer.vipMarkupPct > 0) {
+                unitPrice = double.parse(
+                    (item.sellingPrice * (1 + (customer.vipMarkupPct / 100)))
+                        .toStringAsFixed(2));
+              }
+            }
+
             final existing = _cart.indexWhere((c) => c.itemId == item.id);
             if (existing >= 0) {
               final cartItem = _cart[existing];
@@ -1628,8 +1624,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 );
                 return;
               }
-              _cart[existing] =
-                  cartItem.copyWith(quantity: newTotalInAddedUnit, unit: item.unit);
+              _cart[existing] = cartItem.copyWith(
+                quantity: newTotalInAddedUnit,
+                unit: item.unit,
+                price: unitPrice,
+              );
             } else {
               final qtyInBase = UnitConverter.toBase(qty, item.unit);
               final stockInBase = UnitConverter.toBase(item.stock, item.unit);
@@ -1639,21 +1638,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   'Cannot add ${AppFormatters.quantity(qty)} ${item.unit} of "${item.name}". Stock limit is ${AppFormatters.quantity(item.stock)} ${item.unit}',
                 );
                 return;
-              }
-              double unitPrice = price;
-              if (price == item.sellingPrice) {
-                final customer =
-                    ref.read(customerDetailProvider(widget.customerId)).value;
-                final settings = ref.read(settingsProvider).valueOrNull;
-                final enableMarkup = settings?.enableVipPriceMarkup ?? true;
-                if (enableMarkup &&
-                    customer != null &&
-                    customer.isVipActive &&
-                    customer.vipMarkupPct > 0) {
-                  unitPrice = double.parse(
-                      (item.sellingPrice * (1 + (customer.vipMarkupPct / 100)))
-                          .toStringAsFixed(2));
-                }
               }
 
               _cart.add(CartItem(

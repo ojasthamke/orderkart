@@ -281,7 +281,9 @@ final singleWorkerStatsProvider =
   final weeklySales = await db.rawQuery('''
     SELECT DATE(created_at) AS day, COALESCE(SUM(grand_total), 0) AS total
     FROM orders
-    WHERE created_at >= datetime('now', '-7 days') AND (assigned_worker_id = ? OR created_by = ?)
+    WHERE created_at >= datetime('now', '-7 days') 
+      AND (assigned_worker_id = ? OR created_by = ?)
+      AND (delivery_status IS NULL OR delivery_status != 'cancelled')
     GROUP BY DATE(created_at)
     ORDER BY day ASC
   ''', [workerId, workerId]);
@@ -290,7 +292,11 @@ final singleWorkerStatsProvider =
   final topItems = await db.rawQuery('''
     SELECT item_name, SUM(total_price) AS revenue, SUM(quantity) AS qty
     FROM order_items
-    WHERE order_id IN (SELECT id FROM orders WHERE assigned_worker_id = ? OR created_by = ?)
+    WHERE order_id IN (
+      SELECT id FROM orders 
+      WHERE (assigned_worker_id = ? OR created_by = ?)
+        AND (delivery_status IS NULL OR delivery_status != 'cancelled')
+    )
     GROUP BY item_name
     ORDER BY revenue DESC
     LIMIT 5
@@ -301,7 +307,8 @@ final singleWorkerStatsProvider =
     SELECT c.name, c.photo_path, COUNT(o.id) as total_orders, SUM(o.grand_total) as total_purchase, SUM(o.remaining_amount) as pending_amount
     FROM orders o
     JOIN customers c ON o.customer_id = c.id
-    WHERE o.assigned_worker_id = ? OR o.created_by = ?
+    WHERE (o.assigned_worker_id = ? OR o.created_by = ?)
+      AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
     GROUP BY c.id
     ORDER BY total_purchase DESC
     LIMIT 5
@@ -396,6 +403,7 @@ class WorkerAnalyticsScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(workerAnalyticsProvider);
+              await ref.read(workerAnalyticsProvider.future);
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -977,7 +985,7 @@ class _WorkerStatsDashboard extends ConsumerWidget {
                 GlassContainer(
                   height: 220,
                   padding: const EdgeInsets.fromLTRB(8, 16, 24, 8),
-                  child: weeklySalesData.isEmpty
+                  child: weeklySalesData.length < 2
                       ? const Center(child: Text('Not enough sales trend data'))
                       : _buildLineChart(context, weeklySalesData),
                 ),
@@ -1247,6 +1255,8 @@ class _WorkerStatsDashboard extends ConsumerWidget {
       LineChartData(
         gridData: const FlGridData(show: false),
         titlesData: FlTitlesData(
+          leftTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles:
               const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           topTitles:

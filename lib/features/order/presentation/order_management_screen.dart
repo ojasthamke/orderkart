@@ -395,8 +395,8 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
     try {
       final repo = ref.read(orderRepositoryProvider);
       final items = await repo.getOrderItems(order.id);
-      final inventoryAsync = ref.read(inventoryProvider);
-      final inventoryList = inventoryAsync.value ?? [];
+      final inventoryList =
+          await ref.read(inventoryRepositoryProvider).getAllItems();
 
       for (final it in items) {
         final dbItem = inventoryList.firstWhere(
@@ -531,6 +531,8 @@ class _OrderCard extends ConsumerWidget {
                               ?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   decoration: TextDecoration.underline),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -807,30 +809,37 @@ class _OrderCard extends ConsumerWidget {
                       label: 'Invoice',
                       color: const Color(0xFF0F766E),
                       onTap: () async {
-                        final cust = await ref.read(
-                            customerDetailProvider(order.customerId).future);
-                        final settings = ref.read(settingsProvider).valueOrNull;
-                        final rawItems = await ref
-                            .read(orderRepositoryProvider)
-                            .getOrderItems(order.id);
-                        final itemsList = rawItems
-                            .map((i) => {
-                                  'item_name': i.itemName,
-                                  'quantity': i.quantity,
-                                  'unit': i.itemUnit,
-                                  'unit_price': i.unitPrice,
-                                  'total_price': i.totalPrice,
-                                })
-                            .toList();
-                        if (context.mounted) {
-                          await GraphicBillGenerator
-                              .generateAndShareGraphicBill(
-                            context: context,
-                            order: order,
-                            customer: cust,
-                            settings: settings,
-                            orderItems: itemsList,
-                          );
+                        try {
+                          final cust = await ref.read(
+                              customerDetailProvider(order.customerId).future);
+                          final settings = ref.read(settingsProvider).valueOrNull;
+                          final rawItems = await ref
+                              .read(orderRepositoryProvider)
+                              .getOrderItems(order.id);
+                          final itemsList = rawItems
+                              .map((i) => {
+                                    'item_name': i.itemName,
+                                    'quantity': i.quantity,
+                                    'unit': i.itemUnit,
+                                    'unit_price': i.unitPrice,
+                                    'total_price': i.totalPrice,
+                                  })
+                              .toList();
+                          if (context.mounted) {
+                            await GraphicBillGenerator
+                                .generateAndShareGraphicBill(
+                              context: context,
+                              order: order,
+                              customer: cust,
+                              settings: settings,
+                              orderItems: itemsList,
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            SnackbarHelper.showError(
+                                context, 'Failed to generate invoice: $e');
+                          }
                         }
                       },
                     ),

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -58,13 +57,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _waCon.text = s.whatsApp;
     _staffWaCon.text = s.staffWhatsApp;
     _qrCon.text = s.qrContent;
-    _deliveryChargeCon.text = s.deliveryCharge.toStringAsFixed(0);
-    _workerDiscountCapCon.text = s.workerDiscountCap.toStringAsFixed(0);
+    _deliveryChargeCon.text = s.deliveryCharge.toString();
+    _workerDiscountCapCon.text = s.workerDiscountCap.toString();
     _disclaimerCon.text = s.invoiceDisclaimer;
     _initialized = true;
   }
 
-  void _autoSave(AppSettings current) {
+  void _autoSave() {
+    final current = ref.read(settingsProvider).valueOrNull;
+    if (current == null) return;
     ref.read(settingsProvider.notifier).update(
           current.copyWith(
             businessName: _bizNameCon.text.trim(),
@@ -85,7 +86,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (img != null) {
         // Delete old QR image to prevent bloat
         if (current.qrCustomImage.isNotEmpty) {
-          final oldFile = File(current.qrCustomImage);
+          final oldFile = AppConstants.resolveFile(current.qrCustomImage);
           if (oldFile.existsSync()) {
             try {
               oldFile.deleteSync();
@@ -163,23 +164,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _card([
                 _textTile(
                     'Business Name', _bizNameCon, Icons.storefront_rounded,
-                    onChanged: (_) => _autoSave(settings)),
+                    onChanged: (_) => _autoSave()),
                 _textTile('Owner Name', _ownerCon, Icons.person_rounded,
-                    onChanged: (_) => _autoSave(settings)),
+                    onChanged: (_) => _autoSave()),
                 _textTile('Phone', _phoneCon, Icons.phone_rounded,
                     keyboardType: TextInputType.phone,
-                    onChanged: (_) => _autoSave(settings)),
+                    onChanged: (_) => _autoSave()),
                 _textTile('WhatsApp', _waCon, Icons.chat_rounded,
                     keyboardType: TextInputType.phone,
-                    onChanged: (_) => _autoSave(settings)),
+                    onChanged: (_) => _autoSave()),
                 _textTile('Staff Telegram Link / Username', _staffWaCon,
                     Icons.send_rounded,
                     keyboardType: TextInputType.text,
-                    onChanged: (_) => _autoSave(settings)),
+                    onChanged: (_) => _autoSave()),
                 _textTile('Invoice & WhatsApp Bill Terms / Disclaimer',
                     _disclaimerCon, Icons.gavel_rounded,
                     maxLines: 3,
-                    onChanged: (_) => _autoSave(settings)),
+                    onChanged: (_) => _autoSave()),
               ]),
 
               const SizedBox(height: 20),
@@ -383,7 +384,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   leading: const Icon(Icons.payment_rounded),
                   title: const Text('UPI ID (for payments)'),
                   trailing: SizedBox(
-                    width: 180,
+                    width: 130,
                     child: TextField(
                       controller: _qrCon,
                       textAlign: TextAlign.right,
@@ -391,8 +392,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         border: InputBorder.none,
                         hintText: 'merchant@upi',
                       ),
-                      onSubmitted: (_) => _autoSave(settings),
-                      onChanged: (_) => _autoSave(settings),
+                      onSubmitted: (_) => _autoSave(),
+                      onChanged: (_) => _autoSave(),
                     ),
                   ),
                 ),

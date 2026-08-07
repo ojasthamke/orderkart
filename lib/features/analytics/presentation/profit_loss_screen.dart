@@ -35,8 +35,8 @@ class ProfitLossScreen extends ConsumerWidget {
           final double expenses = (pl['total_expenses'])?.toDouble() ?? 0.0;
           final double discounts = (pl['total_discounts'])?.toDouble() ?? 0.0;
           final double delivery = (pl['delivery_income'])?.toDouble() ?? 0.0;
-          final double netProfit =
-              (pl['net_profit'])?.toDouble() ?? (grossProfit - expenses);
+          final double netProfit = (pl['net_profit'])?.toDouble() ??
+              (grossProfit - expenses - discounts + delivery);
           final double marginPct = (pl['profit_margin_pct'])?.toDouble() ??
               (revenue > 0 ? (netProfit / revenue) * 100 : 0.0);
           final bool isProfitable = pl['is_profitable'] ?? (netProfit >= 0);
@@ -203,9 +203,7 @@ class ProfitLossScreen extends ConsumerWidget {
                             child: _buildRadarBar(
                                 'COGS',
                                 cogs,
-                                revenue > 0
-                                    ? (cogs / revenue).clamp(0.0, 1.0)
-                                    : 0.0,
+                                revenue > 0 ? (cogs / revenue) : 0.0,
                                 Colors.orange),
                           ),
                           const SizedBox(width: 8),
@@ -213,9 +211,7 @@ class ProfitLossScreen extends ConsumerWidget {
                             child: _buildRadarBar(
                                 'Expenses',
                                 expenses,
-                                revenue > 0
-                                    ? (expenses / revenue).clamp(0.0, 1.0)
-                                    : 0.0,
+                                revenue > 0 ? (expenses / revenue) : 0.0,
                                 AppColors.error),
                           ),
                           const SizedBox(width: 8),
@@ -223,9 +219,7 @@ class ProfitLossScreen extends ConsumerWidget {
                             child: _buildRadarBar(
                                 'Net',
                                 netProfit,
-                                revenue > 0
-                                    ? (netProfit / revenue).clamp(0.0, 1.0)
-                                    : 0.0,
+                                revenue > 0 ? (netProfit / revenue) : 0.0,
                                 AppColors.primary),
                           ),
                         ],
@@ -563,7 +557,7 @@ class ProfitLossScreen extends ConsumerWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-            '${(safeRatio * 100).toStringAsFixed(0)}%',
+            '${(ratio * 100).toStringAsFixed(0)}%',
             style: TextStyle(
                 fontSize: 10, fontWeight: FontWeight.bold, color: col),
           ),

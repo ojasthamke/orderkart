@@ -821,7 +821,7 @@ class _CustomerCard extends ConsumerWidget {
                                           const Icon(Icons.family_restroom_rounded,
                                               size: 13, color: Colors.indigo),
                                           const SizedBox(width: 4),
-                                          Expanded(
+                                          Flexible(
                                             child: Text(
                                               'Shared Household (${families.length + 1} Families: ${customer.name}, ${families.map((f) => f.name).join(", ")})',
                                               style: const TextStyle(

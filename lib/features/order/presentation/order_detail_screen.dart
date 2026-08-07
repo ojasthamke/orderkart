@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/services.dart';
 import '../../../core/utils/external_launcher.dart';
+import '../../../core/utils/unit_converter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
@@ -436,8 +437,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     double marketSavings = 0.0;
     for (final oi in order.items) {
       final inv = itemsList.where((i) => i.id == oi.itemId).firstOrNull;
-      if (inv != null && inv.marketPrice > oi.unitPrice) {
-        marketSavings += (inv.marketPrice - oi.unitPrice) * oi.quantity;
+      if (inv != null && inv.marketPrice > 0) {
+        final baseMarketPrice = UnitConverter.toBase(inv.marketPrice, inv.unit);
+        final baseUnitPrice = UnitConverter.toBase(oi.unitPrice, oi.itemUnit);
+        final baseQty = UnitConverter.toBase(oi.quantity, oi.itemUnit);
+        if (baseMarketPrice > baseUnitPrice) {
+          marketSavings += (baseMarketPrice - baseUnitPrice) * baseQty;
+        }
       }
     }
 
@@ -979,8 +985,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     final double rounded = SmartRounding.round(unrounded);
     final double newSmartRounded = enable ? (rounded - unrounded) : 0.0;
     final double newGrandTotal = enable ? rounded : unrounded;
-    final double newRemaining =
-        (newGrandTotal - order.paidAmount).clamp(0.0, double.infinity);
+    final double newRemaining = newGrandTotal - order.paidAmount;
 
     final db = await DatabaseHelper.instance.database;
     await db.update(

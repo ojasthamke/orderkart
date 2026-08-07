@@ -29,7 +29,6 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
   }
 
   void _invalidateAll() {
-    _ref.invalidate(settingsProvider);
     _ref.invalidate(themeModeProvider);
     _ref.invalidate(analyticsSummaryProvider);
     _ref.invalidate(areaProvider);
@@ -51,6 +50,8 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     await _dao.setValue(AppConstants.keyOwnerName, settings.ownerName);
     await _dao.setValue(AppConstants.keyPhone, settings.phone);
     await _dao.setValue(AppConstants.keyWhatsApp, settings.whatsApp);
+    await _dao.setValue(
+        AppConstants.keyInvoiceDisclaimer, settings.invoiceDisclaimer);
     await _dao.setValue(
         AppConstants.keyDeliveryCharge, settings.deliveryCharge.toString());
     await _dao.setValue(

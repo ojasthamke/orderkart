@@ -76,6 +76,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               ref.invalidate(weeklyChartProvider);
               ref.invalidate(monthlyChartProvider);
               ref.invalidate(topCustomersProvider);
+              await ref.read(analyticsSummaryProvider.future);
             },
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -253,7 +254,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
                       error: (e, _) => Center(child: Text('Chart error: $e')),
-                      data: (chartData) => chartData.isEmpty
+                      data: (chartData) => chartData.length < 2
                           ? const Center(child: Text('Not enough sales data'))
                           : _buildLineChart(chartData,
                               isMonthly: _chartRange == 'monthly'),
@@ -813,18 +814,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                       separatorBuilder: (_, __) =>
                                           const Divider(height: 1),
                                       itemBuilder: (_, idx) {
-                                        final item = outList[idx];
+                                        final item = outList[idx] as Map<String, dynamic>;
                                         return ListTile(
                                           dense: true,
                                           leading: const Icon(
                                               Icons.error_outline_rounded,
                                               color: AppColors.error,
                                               size: 20),
-                                          title: Text(item.name,
+                                          title: Text(item['name']?.toString() ?? '',
                                               style: const TextStyle(
                                                   fontWeight: FontWeight.w700)),
                                           subtitle: Text(
-                                              '${item.category} • Unit: ${item.unit}'),
+                                              '${item['category'] ?? 'General'} • Unit: ${item['unit'] ?? 'pcs'}'),
                                           trailing: const Text(
                                             '0 in stock',
                                             style: TextStyle(
@@ -867,20 +868,22 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                       separatorBuilder: (_, __) =>
                                           const Divider(height: 1),
                                       itemBuilder: (_, idx) {
-                                        final item = lowList[idx];
+                                        final item = lowList[idx] as Map<String, dynamic>;
+                                        final double minStock = (item['min_stock'] as num?)?.toDouble() ?? 0.0;
+                                        final double stock = (item['stock'] as num?)?.toDouble() ?? 0.0;
                                         return ListTile(
                                           dense: true,
                                           leading: const Icon(
                                               Icons.warning_amber_rounded,
                                               color: AppColors.warning,
                                               size: 20),
-                                          title: Text(item.name,
+                                          title: Text(item['name']?.toString() ?? '',
                                               style: const TextStyle(
                                                   fontWeight: FontWeight.w700)),
                                           subtitle: Text(
-                                              'Min Threshold: ${AppFormatters.quantity(item.minStock)} ${item.unit}'),
+                                              'Min Threshold: ${AppFormatters.quantity(minStock)} ${item['unit'] ?? 'pcs'}'),
                                           trailing: Text(
-                                            '${AppFormatters.quantity(item.stock)} left',
+                                            '${AppFormatters.quantity(stock)} left',
                                             style: const TextStyle(
                                                 color: AppColors.warning,
                                                 fontWeight: FontWeight.w800),

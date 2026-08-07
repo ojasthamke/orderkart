@@ -150,7 +150,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       final wasGhost = customer.isGhostHouse;
       setState(() {
         _streetId = customer.streetId;
-        _isGhostHouse = false; // Auto reveal fields when converting/editing ghost house
+        _isGhostHouse = wasGhost;
         _nameCon.text = wasGhost ? '' : customer.name;
         _phone1Con.text = wasGhost ? '' : customer.phone1;
         _phone2Con.text = customer.phone2;
@@ -364,11 +364,11 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
+                            const Text(
                               'Adding a new family to this house. Existing families residing here:',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.textSecondaryColor(context),
+                                color: AppColors.textSecondary,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -433,13 +433,15 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _houseCon,
-                      readOnly: widget.initialHouseNumber != null &&
-                          widget.initialHouseNumber!.isNotEmpty,
+                      readOnly: (_isEdit && _existingHouseFamilies.isNotEmpty) ||
+                          (widget.initialHouseNumber != null &&
+                              widget.initialHouseNumber!.isNotEmpty),
                       decoration: InputDecoration(
                         labelText: 'House / Flat Number',
                         prefixIcon: const Icon(Icons.home_rounded),
-                        suffixIcon: (widget.initialHouseNumber != null &&
-                                widget.initialHouseNumber!.isNotEmpty)
+                        suffixIcon: ((_isEdit && _existingHouseFamilies.isNotEmpty) ||
+                                (widget.initialHouseNumber != null &&
+                                    widget.initialHouseNumber!.isNotEmpty))
                             ? const Tooltip(
                                 message: 'House Number is locked for shared household',
                                 child: Icon(Icons.lock_outline_rounded,

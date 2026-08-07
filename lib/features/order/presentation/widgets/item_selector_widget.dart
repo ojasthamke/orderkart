@@ -220,12 +220,14 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                 );
                                 return;
                               }
-                              setState(() {
-                                _selected = item;
-                                _qty = 0.25.clamp(0.01, item.stock);
-                                _qtyController.text =
-                                    AppFormatters.quantity(_qty);
-                              });
+                                setState(() {
+                                  _selected = item;
+                                  _qty = 0.25.clamp(
+                                      item.stock < 0.01 ? item.stock : 0.01,
+                                      item.stock);
+                                  _qtyController.text =
+                                      AppFormatters.quantity(_qty);
+                                });
                               _loadCustomPrice(item.id, item.sellingPrice);
                             },
                             child: GlassContainer(
