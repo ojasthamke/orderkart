@@ -334,7 +334,7 @@ class ItemDao {
   }
 
   Future<List<Map<String, dynamic>>> getOrderedItemStats(
-      {String status = 'all'}) async {
+      {String status = 'all', String dateFilter = 'all'}) async {
     final db = await _db;
     String whereClause =
         "(o.delivery_status IS NULL OR o.delivery_status != 'cancelled')";
@@ -343,6 +343,25 @@ class ItemDao {
       whereClause += " AND o.delivery_status = ?";
       args.add(status);
     }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (dateFilter == 'today') {
+      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      args.add(today.toIso8601String());
+    } else if (dateFilter == 'yesterday') {
+      final yesterday = today.subtract(const Duration(days: 1));
+      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      args.add(yesterday.toIso8601String());
+    } else if (dateFilter == 'week') {
+      whereClause += " AND o.created_at >= ?";
+      args.add(today.subtract(const Duration(days: 7)).toIso8601String());
+    } else if (dateFilter == 'month') {
+      whereClause +=
+          " AND strftime('%Y-%m', o.created_at) = strftime('%Y-%m', ?)";
+      args.add(now.toIso8601String());
+    }
+
     return await db.rawQuery('''
       SELECT 
         COALESCE(i.name, oi.item_name) AS item_name,

@@ -40,55 +40,228 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
     final settingsVal = ref.read(settingsProvider).valueOrNull;
     final currency = settingsVal?.currency ?? '₹';
     final safeCurrency = currency == '₹' ? 'Rs.' : currency;
+    final bName = (settingsVal?.businessName.trim().isNotEmpty ?? false)
+        ? settingsVal!.businessName.trim()
+        : 'OrderKart Store';
+    final phone = settingsVal?.phone.trim() ?? '';
+    final whatsApp = settingsVal?.whatsApp.trim() ?? '';
+
+    // Group items by category
+    final Map<String, List<Item>> categoryGrouped = {};
+    for (final item in pdfItems) {
+      final cat = item.category.trim().isEmpty ? 'General' : item.category.trim();
+      categoryGrouped.putIfAbsent(cat, () => []).add(item);
+    }
 
     final pdf = pw.Document();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (pw.Context context) {
-          return [
-            pw.Header(
-              level: 0,
-              child: pw.Row(
+        margin: const pw.EdgeInsets.all(24),
+        header: (pw.Context context) {
+          return pw.Column(
+            children: [
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.teal800, width: 1.5),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                  color: PdfColors.teal50,
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          bName.toUpperCase(),
+                          style: pw.TextStyle(
+                            fontSize: 16,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.teal900,
+                          ),
+                        ),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          'Quality Products Delivered Direct to Your Doorstep',
+                          style: const pw.TextStyle(
+                            fontSize: 9,
+                            color: PdfColors.grey700,
+                          ),
+                        ),
+                        if (phone.isNotEmpty || whatsApp.isNotEmpty) ...[
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            [
+                              if (phone.isNotEmpty) 'Phone: $phone',
+                              if (whatsApp.isNotEmpty) 'WhatsApp: $whatsApp',
+                            ].join('  |  '),
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.teal800,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: const pw.BoxDecoration(
+                            color: PdfColors.teal800,
+                            borderRadius:
+                                pw.BorderRadius.all(pw.Radius.circular(4)),
+                          ),
+                          child: pw.Text(
+                            'PRODUCT CATALOG',
+                            style: pw.TextStyle(
+                              color: PdfColors.white,
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          'Date: ${DateTime.now().toIso8601String().substring(0, 10)}',
+                          style: const pw.TextStyle(
+                              fontSize: 8, color: PdfColors.grey700),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 12),
+            ],
+          );
+        },
+        footer: (pw.Context context) {
+          return pw.Column(
+            children: [
+              pw.Divider(color: PdfColors.grey400, thickness: 0.5),
+              pw.SizedBox(height: 4),
+              pw.Text(
+                'Disclaimer: Prices may change according to market rates.',
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.grey800,
+                ),
+              ),
+              pw.SizedBox(height: 2),
+              pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('ORDERKART OFFICIAL CATALOG',
-                      style: pw.TextStyle(
-                          fontSize: 20, fontWeight: pw.FontWeight.bold)),
                   pw.Text(
-                      'Generated: ${DateTime.now().toIso8601String().substring(0, 10)}',
-                      style: const pw.TextStyle(fontSize: 10)),
+                    'Official Product Catalog  •  Thank You for Shopping with Us!',
+                    style: const pw.TextStyle(
+                        fontSize: 8, color: PdfColors.grey600),
+                  ),
+                  pw.Text(
+                    'Page ${context.pageNumber} of ${context.pagesCount}',
+                    style: const pw.TextStyle(
+                        fontSize: 8, color: PdfColors.grey600),
+                  ),
                 ],
               ),
-            ),
-            pw.SizedBox(height: 16),
-            pw.TableHelper.fromTextArray(
-              headers: [
-                'Product Name',
-                'Category',
-                'Selling Price',
-                'Unit',
-                'Stock Status'
-              ],
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-              cellAlignment: pw.Alignment.centerLeft,
-              data: pdfItems.isEmpty
-                  ? [
-                      ['No products available', '', '', '', '']
-                    ]
-                  : pdfItems.map((i) {
-                      return [
-                        i.name,
-                        i.category,
-                        '$safeCurrency ${i.sellingPrice.toStringAsFixed(2)}',
-                        i.unit,
-                        i.stock > 0 ? 'In Stock (${i.stock})' : 'Out of Stock'
-                      ];
-                    }).toList(),
-            ),
-          ];
+            ],
+          );
+        },
+        build: (pw.Context context) {
+          final List<pw.Widget> widgets = [];
+
+          if (categoryGrouped.isEmpty) {
+            widgets.add(
+              pw.Center(
+                child: pw.Text('No products available in catalog',
+                    style: const pw.TextStyle(fontSize: 12)),
+              ),
+            );
+          } else {
+            categoryGrouped.forEach((categoryName, catItems) {
+              widgets.add(
+                pw.Container(
+                  margin: const pw.EdgeInsets.only(top: 8, bottom: 4),
+                  padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey200,
+                    borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
+                  ),
+                  child: pw.Text(
+                    categoryName.toUpperCase(),
+                    style: pw.TextStyle(
+                      fontSize: 11,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.teal900,
+                    ),
+                  ),
+                ),
+              );
+
+              widgets.add(
+                pw.TableHelper.fromTextArray(
+                  border: pw.TableBorder.all(
+                      color: PdfColors.grey300, width: 0.5),
+                  headerStyle: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 9,
+                    color: PdfColors.white,
+                  ),
+                  headerDecoration:
+                      const pw.BoxDecoration(color: PdfColors.teal800),
+                  cellStyle: const pw.TextStyle(fontSize: 8),
+                  cellAlignment: pw.Alignment.centerLeft,
+                  cellPadding: const pw.EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 5),
+                  headers: [
+                    'PRODUCT NAME',
+                    'MARKET PRICE',
+                    'ORDERKART PRICE',
+                    'MONEY SAVED',
+                  ],
+                  data: catItems.map((i) {
+                    final savings = i.marketPrice > i.sellingPrice
+                        ? i.marketPrice - i.sellingPrice
+                        : 0.0;
+                    final pct = i.marketPrice > 0
+                        ? ((savings / i.marketPrice) * 100).toStringAsFixed(0)
+                        : '0';
+
+                    final nameWithUnit =
+                        i.unit.isNotEmpty ? '${i.name} (${i.unit})' : i.name;
+                    final mktPriceStr = i.marketPrice > 0
+                        ? '$safeCurrency ${i.marketPrice.toStringAsFixed(2)}'
+                        : '-';
+                    final sellPriceStr =
+                        '$safeCurrency ${i.sellingPrice.toStringAsFixed(2)}';
+                    final savedStr = savings > 0
+                        ? 'SAVE $safeCurrency ${savings.toStringAsFixed(2)} ($pct% OFF)'
+                        : '-';
+
+                    return [
+                      nameWithUnit,
+                      mktPriceStr,
+                      sellPriceStr,
+                      savedStr,
+                    ];
+                  }).toList(),
+                ),
+              );
+
+              widgets.add(pw.SizedBox(height: 10));
+            });
+          }
+
+          return widgets;
         },
       ),
     );
@@ -100,7 +273,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
 
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'Sharing OrderKart Official Product Stock & Price List Catalog',
+        text: 'Sharing Product Catalog & Price List',
       );
     } catch (e) {
       if (mounted) {

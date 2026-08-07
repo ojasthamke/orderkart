@@ -39,6 +39,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   late TabController _tabController;
   String _category = 'All';
   String _selectedOrderStatus = 'all';
+  String _selectedOrderDateFilter = 'all';
   final _categories = ['All', ...AppConstants.itemCategories];
   final DateTime _selectedHistoryDate = DateTime.now();
   DateTimeRange? _priceHistoryRange;
@@ -1124,8 +1125,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   }
 
   Widget _buildOrderedStatsTab(BuildContext context) {
-    final statsAsync =
-        ref.watch(orderedItemStatsProvider(_selectedOrderStatus));
+    final paramKey = '$_selectedOrderStatus:$_selectedOrderDateFilter';
+    final statsAsync = ref.watch(orderedItemStatsProvider(paramKey));
 
     final statusFilters = [
       {'label': 'All Orders', 'value': 'all'},
@@ -1133,9 +1134,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       {'label': 'Pending', 'value': 'pending'},
     ];
 
+    final dateFilters = [
+      {'label': 'All Time', 'value': 'all'},
+      {'label': 'Today', 'value': 'today'},
+      {'label': 'Yesterday', 'value': 'yesterday'},
+      {'label': 'This Week', 'value': 'week'},
+      {'label': 'This Month', 'value': 'month'},
+    ];
+
     return Column(
       children: [
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
+        // Status Filter Row
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1144,14 +1154,54 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               final isSelected = _selectedOrderStatus == f['value'];
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  label: Text(f['label']!),
+                child: ChoiceChip(
+                  label: Text(
+                    f['label']!,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                    ),
+                  ),
                   selected: isSelected,
+                  selectedColor: AppColors.primary,
                   onSelected: (selected) {
                     if (selected) {
                       AppHaptics.selection();
                       setState(() {
                         _selectedOrderStatus = f['value']!;
+                      });
+                    }
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 6),
+        // Date Filter Row
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: dateFilters.map((f) {
+              final isSelected = _selectedOrderDateFilter == f['value'];
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: FilterChip(
+                  label: Text(
+                    f['label']!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    if (selected) {
+                      AppHaptics.selection();
+                      setState(() {
+                        _selectedOrderDateFilter = f['value']!;
                       });
                     }
                   },
@@ -1172,7 +1222,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   title:
                       'No Ordered Items (${_selectedOrderStatus.toUpperCase()})',
                   subtitle:
-                      'Ordered items and profit analysis for $_selectedOrderStatus orders will appear here.',
+                      'No items found for status "$_selectedOrderStatus" and date filter "$_selectedOrderDateFilter".',
                 );
               }
 
@@ -1190,8 +1240,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               }
 
               return RefreshIndicator(
-                onRefresh: () => ref.refresh(
-                    orderedItemStatsProvider(_selectedOrderStatus).future),
+                onRefresh: () =>
+                    ref.refresh(orderedItemStatsProvider(paramKey).future),
                 child: Column(
                   children: [
                     Padding(
