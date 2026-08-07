@@ -138,19 +138,19 @@ class GraphicBillGenerator {
                       pw.SizedBox(height: 10),
 
                   // ── Customer Details ────────────────────────────────
-                  if (customer != null) ...[
+                  if (customer != null || (order.customerName != null && order.customerName!.isNotEmpty)) ...[
                     pw.Text('Billed To:',
                         style: pw.TextStyle(
                             fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(customer.name,
+                    pw.Text(customer?.name ?? order.customerName ?? 'Customer',
                         style: pw.TextStyle(
                             fontSize: 13,
                             fontWeight: pw.FontWeight.bold,
                             color: PdfColors.black)),
-                    if (customer.phone1.isNotEmpty)
-                      pw.Text('Phone: ${customer.phone1}',
+                    if ((customer?.phone1 ?? order.customerPhone ?? '').isNotEmpty)
+                      pw.Text('Phone: ${customer?.phone1 ?? order.customerPhone}',
                           style: const pw.TextStyle(fontSize: 10)),
-                    if (customer.address.isNotEmpty)
+                    if (customer != null && customer.address.isNotEmpty)
                       pw.Text('Address: ${customer.address}',
                           style: const pw.TextStyle(fontSize: 10)),
                     pw.SizedBox(height: 12),
@@ -247,6 +247,14 @@ class GraphicBillGenerator {
                           children: [
                             _buildRow('Subtotal:',
                                 '$safeCurrency ${order.subtotal.toStringAsFixed(2)}'),
+                            if (settings != null && settings.enableGstTax) ...[
+                              _buildRow(
+                                  'CGST (${(settings.gstRate / 2).toStringAsFixed(1)}%):',
+                                  '$safeCurrency ${(order.subtotal * (settings.gstRate / 200)).toStringAsFixed(2)}'),
+                              _buildRow(
+                                  'SGST (${(settings.gstRate / 2).toStringAsFixed(1)}%):',
+                                  '$safeCurrency ${(order.subtotal * (settings.gstRate / 200)).toStringAsFixed(2)}'),
+                            ],
                             if (order.discount > 0)
                               _buildRow('Discount Saved:',
                                   '-$safeCurrency ${order.discount.toStringAsFixed(2)}',

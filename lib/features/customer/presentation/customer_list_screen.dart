@@ -175,8 +175,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                                       .notifier)
                                   .moveCustomers(
                                       customerIds, selectedStreetId!);
-                              _exitSelectionMode();
                               if (context.mounted) {
+                                _exitSelectionMode();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                       content:

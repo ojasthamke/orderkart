@@ -136,27 +136,29 @@ class ItemDao {
   Future<void> updateItem(Item item) async {
     final db = await _db;
     final oldItem = await getItemById(item.id);
-    await db.update(
-      'items',
-      {...item.toMap(), 'updated_at': DateTime.now().toIso8601String()},
-      where: 'id = ?',
-      whereArgs: [item.id],
-    );
+    await db.transaction((txn) async {
+      await txn.update(
+        'items',
+        {...item.toMap(), 'updated_at': DateTime.now().toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [item.id],
+      );
 
-    if (oldItem != null) {
-      final stockDiff = item.stock - oldItem.stock;
-      if (stockDiff != 0) {
-        await insertStockHistory(StockHistory(
-          id: _uuid.v4(),
-          itemId: item.id,
-          itemName: item.name,
-          changeAmount: stockDiff,
-          reason: 'Manual Inventory Update (Edit)',
-          orderId: '',
-          createdAt: DateTime.now(),
-        ));
+      if (oldItem != null) {
+        final stockDiff = item.stock - oldItem.stock;
+        if (stockDiff != 0) {
+          await txn.insert('stock_history', {
+            'id': _uuid.v4(),
+            'item_id': item.id,
+            'item_name': item.name,
+            'change_amount': stockDiff,
+            'reason': 'Manual Inventory Update (Edit)',
+            'order_id': '',
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        }
       }
-    }
+    });
 
     await _recordDailyPriceSnapshot(item);
     await _checkAndTriggerLowStock(item.id, db);

@@ -32,7 +32,7 @@ class AppConstants {
         subFolder = 'expense_receipts';
       }
 
-      final candidate = File('$appDocsDir/$subFolder/$filename');
+      final candidate = File(p.join(appDocsDir, subFolder, filename));
       if (candidate.existsSync()) return candidate;
 
       // Fallback: search in all folders
@@ -46,7 +46,7 @@ class AppConstants {
         'expense_receipts'
       ];
       for (final f in folders) {
-        final fallbackFile = File('$appDocsDir/$f/$filename');
+        final fallbackFile = File(p.join(appDocsDir, f, filename));
         if (fallbackFile.existsSync()) {
           return fallbackFile;
         }

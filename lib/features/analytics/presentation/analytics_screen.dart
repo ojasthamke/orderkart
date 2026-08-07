@@ -169,15 +169,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                _expandedKpi == 'today'
-                                    ? "Today's Hourly Sales Velocity"
-                                    : (_expandedKpi == 'month'
-                                        ? "Monthly Revenue Growth Trend"
-                                        : (_expandedKpi == 'expense'
-                                            ? "Outflow Expense Breakdown"
-                                            : "Customer Credit & Due Aging")),
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                              Expanded(
+                                child: Text(
+                                  _expandedKpi == 'today'
+                                      ? "Today's Hourly Sales Velocity"
+                                      : (_expandedKpi == 'month'
+                                          ? "Monthly Revenue Growth Trend"
+                                          : (_expandedKpi == 'expense'
+                                              ? "Outflow Expense Breakdown"
+                                              : "Customer Credit & Due Aging")),
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.close_rounded, size: 16),
@@ -188,7 +191,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                           const SizedBox(height: 8),
                           SizedBox(
                             height: 100,
-                            child: weeklySalesAsync.when(
+                            child: (_expandedKpi == 'month' ? monthlySalesAsync : weeklySalesAsync).when(
                               data: (data) => _buildLineChart(data, isMonthly: _expandedKpi == 'month'),
                               loading: () => const Center(child: CircularProgressIndicator()),
                               error: (_, __) => const Center(child: Text('Chart unavailable')),

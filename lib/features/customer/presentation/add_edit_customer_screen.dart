@@ -451,6 +451,12 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                             : null,
                       ),
                       textCapitalization: TextCapitalization.characters,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'House number required';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                 ],

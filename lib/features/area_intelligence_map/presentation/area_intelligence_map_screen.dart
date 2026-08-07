@@ -116,7 +116,11 @@ class _AreaIntelligenceMapScreenState
                 data.boundaries.any((b) => b.points.isNotEmpty);
             final hasCustomers = data.customerMarkers.isNotEmpty;
             if (!hasBoundaries && !hasCustomers) {
-              _mapController.move(pos, 17.0);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _mapController.move(pos, 17.0);
+                }
+              });
             }
           });
         });
@@ -345,10 +349,12 @@ class _AreaIntelligenceMapScreenState
                 },
                 onSaveSuccess: () {
                   _exitEditing();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Boundary saved/updated successfully')),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Boundary saved/updated successfully')),
+                    );
+                  }
                 },
               ),
             ),

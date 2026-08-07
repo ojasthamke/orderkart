@@ -722,7 +722,7 @@ class _QuickInventoryAdjustScreenState
                                             Text(
                                               workingItem.sellingPrice >= workingItem.costPrice
                                                   ? 'Margin: +${workingItem.sellingPrice > 0 ? (((workingItem.sellingPrice - workingItem.costPrice) / workingItem.sellingPrice) * 100).toStringAsFixed(1) : "0"}%'
-                                                  : 'Loss: -${(((workingItem.costPrice - workingItem.sellingPrice) / workingItem.costPrice) * 100).toStringAsFixed(1)}%',
+                                                  : 'Loss: -${workingItem.costPrice > 0 ? (((workingItem.costPrice - workingItem.sellingPrice) / workingItem.costPrice) * 100).toStringAsFixed(1) : "0"}%',
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 11,

@@ -164,6 +164,7 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
     await ref
         .read(mapBoundaryNotifierProvider(widget.areaId).notifier)
         .saveBoundary(boundary);
+    if (!mounted) return;
     widget.onSaveSuccess();
   }
 
@@ -191,6 +192,7 @@ class BoundaryEditorWidgetState extends ConsumerState<BoundaryEditorWidget> {
       await ref
           .read(mapBoundaryNotifierProvider(widget.areaId).notifier)
           .deleteBoundary(widget.boundaryId!);
+      if (!mounted) return;
       widget.onSaveSuccess();
     }
   }

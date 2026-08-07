@@ -614,6 +614,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                           lastDate: DateTime.now(),
                         );
                         if (picked != null) {
+                          if (!mounted) return;
                           setState(() => _priceHistoryRange = picked);
                         }
                       },
@@ -1550,7 +1551,7 @@ class _ItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(
+    final tile = GlassContainer(
       margin: const EdgeInsets.only(bottom: 8),
       borderRadius: BorderRadius.circular(14),
       borderColor: item.isLowStock ? Colors.amber.shade600 : null,
@@ -1722,5 +1723,13 @@ class _ItemTile extends StatelessWidget {
               ),
       ),
     );
+
+    if (item.isLowStock) {
+      return tile.animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(
+            duration: const Duration(milliseconds: 1500),
+            color: Colors.amber.shade200.withOpacity(0.35),
+          );
+    }
+    return tile;
   }
 }

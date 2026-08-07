@@ -161,7 +161,7 @@ class BillTextGenerator {
     String gstin = '',
     String currency = '₹',
   }) {
-    final int width = is58mm ? 32 : 42;
+    final int width = is58mm ? 32 : 48;
     final sep = '-' * width;
     final dSep = '=' * width;
     final buf = StringBuffer();
@@ -173,10 +173,11 @@ class BillTextGenerator {
     }
 
     String twoCol(String left, String right) {
-      final maxL = width - right.length - 1;
+      final safeRight = right.length >= width ? right.substring(0, width - 1) : right;
+      final maxL = (width - safeRight.length - 1).clamp(0, width);
       final cleanL = left.length > maxL ? left.substring(0, maxL) : left;
-      final spaces = width - cleanL.length - right.length;
-      return cleanL + (' ' * (spaces > 0 ? spaces : 1)) + right;
+      final spaces = (width - cleanL.length - safeRight.length).clamp(1, width);
+      return cleanL + (' ' * spaces) + safeRight;
     }
 
     buf.writeln(dSep);

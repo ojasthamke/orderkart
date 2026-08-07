@@ -7,7 +7,7 @@ import '../constants/app_constants.dart';
 class AppFormatters {
   AppFormatters._();
 
-  static final _currencyFmt = NumberFormat('#,##0.00');
+  static final _currencyFmt = NumberFormat.currency(locale: 'en_IN', symbol: '');
   static final _dateFmt = DateFormat('dd MMM yyyy');
   static final _timeFmt = DateFormat('hh:mm a');
   static final _dateTimeFmt = DateFormat('dd MMM yyyy, hh:mm a');
@@ -66,9 +66,13 @@ class AppFormatters {
   }
 
   /// Phone display: +91 98765 43210
-  static String phone(String phone) {
-    if (phone.isEmpty) return '—';
-    return phone;
+  static String phone(String raw) {
+    if (raw.isEmpty) return '—';
+    final cleaned = raw.replaceAll(RegExp(r'\D'), '');
+    if (cleaned.length == 10) {
+      return '+91 ${cleaned.substring(0, 5)} ${cleaned.substring(5)}';
+    }
+    return raw;
   }
 
   /// Relative date: Today, Yesterday, DD MMM

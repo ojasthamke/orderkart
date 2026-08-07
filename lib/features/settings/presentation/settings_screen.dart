@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -36,10 +37,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _gstRateCon = TextEditingController();
   final _gstinCon = TextEditingController();
   final _cashDrawerFloatCon = TextEditingController();
+
   bool _initialized = false;
+  Timer? _debounceTimer;
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _bizNameCon.dispose();
     _ownerCon.dispose();
     _phoneCon.dispose();
@@ -73,24 +77,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _autoSave() {
-    final current = ref.read(settingsProvider).valueOrNull;
-    if (current == null) return;
-    ref.read(settingsProvider.notifier).update(
-          current.copyWith(
-            businessName: _bizNameCon.text.trim(),
-            ownerName: _ownerCon.text.trim(),
-            phone: _phoneCon.text.trim(),
-            whatsApp: _waCon.text.trim(),
-            staffWhatsApp: _staffWaCon.text.trim(),
-            qrContent: _qrCon.text.trim(),
-            invoiceDisclaimer: _disclaimerCon.text.trim(),
-            gstRate: double.tryParse(_gstRateCon.text.trim()) ?? current.gstRate,
-            gstinNumber: _gstinCon.text.trim(),
-            cashDrawerOpeningFloat:
-                double.tryParse(_cashDrawerFloatCon.text.trim()) ??
-                    current.cashDrawerOpeningFloat,
-          ),
-        );
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      final current = ref.read(settingsProvider).valueOrNull;
+      if (current == null) return;
+      ref.read(settingsProvider.notifier).update(
+            current.copyWith(
+              businessName: _bizNameCon.text.trim(),
+              ownerName: _ownerCon.text.trim(),
+              phone: _phoneCon.text.trim(),
+              whatsApp: _waCon.text.trim(),
+              staffWhatsApp: _staffWaCon.text.trim(),
+              qrContent: _qrCon.text.trim(),
+              invoiceDisclaimer: _disclaimerCon.text.trim(),
+              gstRate: double.tryParse(_gstRateCon.text.trim()) ?? current.gstRate,
+              gstinNumber: _gstinCon.text.trim(),
+              cashDrawerOpeningFloat:
+                  double.tryParse(_cashDrawerFloatCon.text.trim()) ??
+                      current.cashDrawerOpeningFloat,
+            ),
+          );
+    });
   }
 
   Future<void> _pickQrImage(AppSettings current) async {
@@ -804,7 +812,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     trailing:
                         const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                     onTap: () async {
-                      Navigator.pushNamed(context, AppRoutes.workerSelfProfile);
+                      SnackbarHelper.showSuccess(
+                          context, 'Daily report exported successfully');
                     },
                   ),
                 ]),

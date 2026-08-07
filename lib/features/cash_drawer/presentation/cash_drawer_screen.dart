@@ -80,6 +80,7 @@ class _CashDrawerScreenState extends ConsumerState<CashDrawerScreen> {
         AND DATE(date) = DATE(?)
     ''', [todayStr]);
 
+    if (!mounted) return;
     setState(() {
       _cashInflow =
           (cashPayments.first['total'] as num?)?.toDouble() ?? 0.0;

@@ -684,43 +684,49 @@ class CustomerProfileScreen extends ConsumerWidget {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(7),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF6366F1).withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: const Icon(
-                                                Icons.apartment_rounded,
-                                                color: Color(0xFF6366F1),
-                                                size: 18),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'CO-LIVING HOUSE MAP (House #${customer.houseNumber})',
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w900,
-                                                  fontSize: 11,
-                                                  letterSpacing: 0.8,
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(7),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF6366F1).withOpacity(0.2),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: const Icon(
+                                                  Icons.apartment_rounded,
                                                   color: Color(0xFF6366F1),
-                                                ),
+                                                  size: 18),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'CO-LIVING HOUSE MAP (House #${customer.houseNumber})',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.w900,
+                                                      fontSize: 11,
+                                                      letterSpacing: 0.8,
+                                                      color: Color(0xFF6366F1),
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  Text(
+                                                    '${families.length + 1} Families Residing at this Address',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: isDark ? Colors.white70 : Colors.black87,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ],
                                               ),
-                                              Text(
-                                                '${families.length + 1} Families Residing at this Address',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark ? Colors.white70 : Colors.black87,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.person_add_alt_1_rounded, size: 20, color: Color(0xFF6366F1)),
@@ -1462,18 +1468,21 @@ class _CustomerPreferencesCardState extends State<CustomerPreferencesCard> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       final qList = await OrderQuestionDao.instance
           .getAllQuestionsForCustomer(widget.customerId);
       final ansMap =
           await OrderQuestionDao.instance.getCustomerAnswers(widget.customerId);
+      if (!mounted) return;
       setState(() {
         _questions = qList;
         _answers = ansMap;
         _loading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() => _loading = false);
     }
   }
@@ -1728,6 +1737,7 @@ class _AddSpecificQuestionFormState extends State<_AddSpecificQuestionForm> {
     try {
       await OrderQuestionDao.instance
           .addQuestion(question, options, customerId: widget.customerId);
+      if (!mounted) return;
       widget.onSaved();
     } catch (e) {
       if (mounted) {

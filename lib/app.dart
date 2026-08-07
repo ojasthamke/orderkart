@@ -122,8 +122,8 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};
         return _slide(
             LocationDetailScreen(
-              locationId: args['areaId'] as String? ?? '',
-              locationName: args['areaName'] as String? ?? 'Location Details',
+              locationId: args['streetId'] as String? ?? args['areaId'] as String? ?? '',
+              locationName: args['streetName'] as String? ?? args['areaName'] as String? ?? 'Location Details',
             ),
             settings);
 
@@ -577,7 +577,9 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
             : (WorkerSession.instance.currentWorkerName ?? 'Worker');
 
         if (mode == AppMode.owner) {
-          AppModeService.loginOwnerSuccess();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            AppModeService.loginOwnerSuccess();
+          });
         }
 
         return WelcomeSplashScreen(

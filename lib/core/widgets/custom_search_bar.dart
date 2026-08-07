@@ -72,6 +72,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
                     color: AppColors.primary, size: 20),
                 onPressed: () async {
                   final text = await VoiceSearchDialog.show(context);
+                  if (!mounted) return;
                   if (text != null && text.trim().isNotEmpty) {
                     setState(() {
                       _controller.text = text;

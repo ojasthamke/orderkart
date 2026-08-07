@@ -41,4 +41,9 @@ class AppHaptics {
   static void error() {
     HapticFeedback.vibrate();
   }
+
+  /// Generic impact feedback
+  static void impact() {
+    HapticFeedback.mediumImpact();
+  }
 }
