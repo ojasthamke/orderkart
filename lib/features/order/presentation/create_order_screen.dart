@@ -22,6 +22,7 @@ import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../../settings/domain/app_settings.dart';
+import '../../customer/domain/customer.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
 import '../domain/order.dart';
@@ -361,8 +362,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         ),
                         onChanged: (v) {
                           _isDiscountManuallyEdited = true;
-                          setState(() => _discount =
-                              math.max(0.0, double.tryParse(v) ?? 0));
+                          final parsed = math.max(0.0, double.tryParse(v) ?? 0);
+                          setState(() => _discount = parsed);
+                          if (_subtotal > 0 && (parsed / _subtotal) > 0.25) {
+                            AppHaptics.selection();
+                          }
                         },
                       ),
                       if (exceedsCap)
@@ -536,6 +540,48 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         loading: () => const SizedBox.shrink(),
                         error: (_, __) => const SizedBox.shrink(),
                       ),
+                if (customer != null && customer.houseNumber.isNotEmpty)
+                  ref.watch(sameHouseCustomersProvider((
+                    houseNumber: customer.houseNumber,
+                    streetId: customer.streetId,
+                    customerId: customer.id,
+                  ))).when(
+                    data: (families) {
+                      if (families.isEmpty) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: InkWell(
+                          onTap: () => _showFamilySwitcherSheet(context, families),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.indigo.withOpacity(0.14),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.indigo.withOpacity(0.35)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.family_restroom_rounded, size: 14, color: Colors.indigo),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'House #${customer.houseNumber} (${families.length + 1} Families) ▾',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.indigo,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
                 if (isVip)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
@@ -1584,6 +1630,94 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
+  void _showFamilySwitcherSheet(BuildContext context, List<Customer> families) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.family_restroom_rounded, color: Colors.indigo),
+                  SizedBox(width: 8),
+                  Text(
+                    'Family Quick Switcher (Same House)',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Switch this order or duplicate the same item basket for another family living in this house:',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const Divider(height: 20),
+              ...families.map((f) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFE0E7FF),
+                        child: Icon(Icons.person_rounded, color: Colors.indigo),
+                      ),
+                      title: Text(f.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(f.phone1.isNotEmpty ? f.phone1 : 'House #${f.houseNumber}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              Navigator.pushReplacementNamed(
+                                context,
+                                AppRoutes.createOrder,
+                                arguments: {
+                                  'customerId': f.id,
+                                  'customerName': f.name,
+                                },
+                              );
+                            },
+                            child: const Text('Switch'),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.indigo,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.createOrder,
+                                arguments: {
+                                  'customerId': f.id,
+                                  'customerName': f.name,
+                                },
+                              );
+                              SnackbarHelper.showSuccess(
+                                context,
+                                'Opened new basket for ${f.name}',
+                              );
+                            },
+                            child: const Text('Copy Basket'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showItemSelector(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -1591,6 +1725,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => ItemSelectorWidget(
         customerId: widget.customerId,
+        currentCartCount: _cart.length,
+        currentCartTotal: _subtotal,
         onItemSelected: (item, qty, price) {
           setState(() {
             double unitPrice = price;

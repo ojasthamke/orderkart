@@ -18,11 +18,15 @@ import '../../../../core/widgets/glass_container.dart';
 class ItemSelectorWidget extends ConsumerStatefulWidget {
   final String customerId;
   final void Function(Item item, double qty, double price) onItemSelected;
+  final int currentCartCount;
+  final double currentCartTotal;
 
   const ItemSelectorWidget({
     super.key,
     required this.customerId,
     required this.onItemSelected,
+    this.currentCartCount = 0,
+    this.currentCartTotal = 0.0,
   });
 
   @override
@@ -100,6 +104,46 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                   ),
                 ),
                 const SizedBox(height: 8),
+
+                // Sticky Live Cart Summary Bar (Top / Header)
+                if (widget.currentCartCount > 0)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.35)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.shopping_cart_rounded,
+                                color: AppColors.primary, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Current Cart: ${widget.currentCartCount} item${widget.currentCartCount == 1 ? '' : 's'}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '$currency${widget.currentCartTotal.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // Search bar + Barcode Scanner
                 Padding(
@@ -403,12 +447,12 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                         // Preset chips
                         Wrap(
                           spacing: 8,
-                          children:
-                              AppConstants.getPresetsForUnit(_selected!.unit)
-                                  .map((q) {
+                          runSpacing: 6,
+                          children: _getEnrichedPresets(_selected!.unit, _selected!.stock).map((preset) {
+                            final q = preset.$2;
                             final disabled = q > _selected!.stock;
                             return ChoiceChip(
-                              label: Text(AppFormatters.quantity(q)),
+                              label: Text(preset.$1, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                               selected: _qty == q,
                               onSelected: disabled
                                   ? null
@@ -668,6 +712,53 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
         _priceController.text = calcPrice
             .toStringAsFixed(calcPrice == calcPrice.roundToDouble() ? 0 : 2);
       });
+    }
+  }
+
+  List<(String label, double value)> _getEnrichedPresets(String unit, double stock) {
+    switch (unit.toLowerCase()) {
+      case 'kg':
+        return [
+          ('+250g', 0.25),
+          ('+500g', 0.50),
+          ('+750g', 0.75),
+          ('+1kg', 1.0),
+          ('+2.5kg', 2.5),
+          ('+5kg', 5.0),
+        ];
+      case 'gram':
+      case 'g':
+        return [
+          ('+100g', 100.0),
+          ('+250g', 250.0),
+          ('+500g', 500.0),
+          ('+1000g', 1000.0),
+        ];
+      case 'liter':
+      case 'litre':
+      case 'l':
+        return [
+          ('+250ml', 0.25),
+          ('+500ml', 0.50),
+          ('+1L', 1.0),
+          ('+2.5L', 2.5),
+          ('+5L', 5.0),
+        ];
+      case 'dozen':
+        return [
+          ('+¼ Dozen', 0.25),
+          ('+½ Dozen', 0.50),
+          ('+1 Dozen', 1.0),
+          ('+2 Dozen', 2.0),
+        ];
+      default:
+        return [
+          ('+1', 1.0),
+          ('+2', 2.0),
+          ('+5', 5.0),
+          ('+10', 10.0),
+          ('+25', 25.0),
+        ];
     }
   }
 

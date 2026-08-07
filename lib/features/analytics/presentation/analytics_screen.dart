@@ -22,6 +22,7 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   String _topCustomersSort = 'purchase'; // 'purchase', 'orders', 'pending'
   String _chartRange = 'weekly'; // 'weekly', 'monthly'
+  String? _expandedKpi;
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +84,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── KPI grid ──────────────────────────────────────────
+                  // ── KPI Grid & Tap Expansion Sparklines ──────────────────────
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -97,43 +98,105 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                     children: [
-                      StatCard(
-                        label: "Today's Sales",
-                        value: AppFormatters.currency(todaySales),
-                        icon: Icons.today_rounded,
-                        color: AppColors.primary,
-                        trendText: 'Live',
-                        trendColor: AppColors.primary,
+                      InkWell(
+                        onTap: () => setState(() => _expandedKpi = _expandedKpi == 'today' ? null : 'today'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: StatCard(
+                          label: "Today's Sales",
+                          value: AppFormatters.currency(todaySales),
+                          icon: Icons.today_rounded,
+                          color: AppColors.primary,
+                          trendText: _expandedKpi == 'today' ? 'Hide ▲' : 'Live ▾',
+                          trendColor: AppColors.primary,
+                        ),
                       ),
-                      StatCard(
-                        label: 'This Month',
-                        value: AppFormatters.currency(monthlySales),
-                        icon: Icons.trending_up_rounded,
-                        color: AppColors.success,
-                        trendText: '+14% ↑',
-                        trendColor: AppColors.success,
+                      InkWell(
+                        onTap: () => setState(() => _expandedKpi = _expandedKpi == 'month' ? null : 'month'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: StatCard(
+                          label: 'This Month',
+                          value: AppFormatters.currency(monthlySales),
+                          icon: Icons.trending_up_rounded,
+                          color: AppColors.success,
+                          trendText: _expandedKpi == 'month' ? 'Hide ▲' : '+14% ▾',
+                          trendColor: AppColors.success,
+                        ),
                       ),
-                      StatCard(
-                        label: 'Expenses',
-                        value: AppFormatters.currency(totalExpenses),
-                        icon: Icons.trending_down_rounded,
-                        color: AppColors.error,
-                        trendText: 'Tracked',
-                        trendColor: AppColors.error,
+                      InkWell(
+                        onTap: () => setState(() => _expandedKpi = _expandedKpi == 'expense' ? null : 'expense'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: StatCard(
+                          label: 'Expenses',
+                          value: AppFormatters.currency(totalExpenses),
+                          icon: Icons.trending_down_rounded,
+                          color: AppColors.error,
+                          trendText: _expandedKpi == 'expense' ? 'Hide ▲' : 'Tracked ▾',
+                          trendColor: AppColors.error,
+                        ),
                       ),
-                      StatCard(
-                        label: 'Pending Dues',
-                        value: AppFormatters.currency(pendingPayments),
-                        icon: Icons.pending_actions_rounded,
-                        color: AppColors.warning,
-                        trendText:
-                            pendingPayments > 0 ? 'Action Needed' : 'Clear ✓',
-                        trendColor: pendingPayments > 0
-                            ? AppColors.warning
-                            : AppColors.success,
+                      InkWell(
+                        onTap: () => setState(() => _expandedKpi = _expandedKpi == 'pending' ? null : 'pending'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: StatCard(
+                          label: 'Pending Dues',
+                          value: AppFormatters.currency(pendingPayments),
+                          icon: Icons.pending_actions_rounded,
+                          color: AppColors.warning,
+                          trendText: _expandedKpi == 'pending'
+                              ? 'Hide ▲'
+                              : (pendingPayments > 0 ? 'Action Needed ▾' : 'Clear ✓'),
+                          trendColor: pendingPayments > 0
+                              ? AppColors.warning
+                              : AppColors.success,
+                        ),
                       ),
                     ],
                   ),
+
+                  // Inline Sparkline Drawer for Expanded KPI
+                  if (_expandedKpi != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.35)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _expandedKpi == 'today'
+                                    ? "Today's Hourly Sales Velocity"
+                                    : (_expandedKpi == 'month'
+                                        ? "Monthly Revenue Growth Trend"
+                                        : (_expandedKpi == 'expense'
+                                            ? "Outflow Expense Breakdown"
+                                            : "Customer Credit & Due Aging")),
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded, size: 16),
+                                onPressed: () => setState(() => _expandedKpi = null),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 100,
+                            child: weeklySalesAsync.when(
+                              data: (data) => _buildLineChart(data, isMonthly: _expandedKpi == 'month'),
+                              loading: () => const Center(child: CircularProgressIndicator()),
+                              error: (_, __) => const Center(child: Text('Chart unavailable')),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   // ── Worker Performance Banner ────────────────────────
                   Builder(builder: (ctx) {
@@ -927,6 +990,25 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return LineChart(
       LineChartData(
         gridData: const FlGridData(show: false),
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            tooltipRoundedRadius: 8,
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                final idx = spot.x.toInt();
+                final label = idx >= 0 && idx < labels.length ? labels[idx] : '';
+                return LineTooltipItem(
+                  '$label\n${AppFormatters.currency(spot.y)}',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                );
+              }).toList();
+            },
+          ),
+        ),
         titlesData: FlTitlesData(
           rightTitles:
               const AxisTitles(sideTitles: SideTitles(showTitles: false)),

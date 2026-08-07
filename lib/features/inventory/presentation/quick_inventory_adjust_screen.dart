@@ -571,7 +571,6 @@ class _QuickInventoryAdjustScreenState
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
                                 Row(
                                   children: [
                                     Expanded(
@@ -694,6 +693,83 @@ class _QuickInventoryAdjustScreenState
                                         ),
                                       ),
                                     ],
+                                  ),
+                                  // Quick Price Adjustment Slider with live customer impact
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF111827) : const Color(0xFFF9FAFB),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: AppColors.borderColor(context)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.tune_rounded, size: 14, color: AppColors.primary),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  'Rate Slider: $_currency${workingItem.sellingPrice.toStringAsFixed(2)}',
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                                ),
+                                              ],
+                                            ),
+                                            Text(
+                                              workingItem.sellingPrice >= workingItem.costPrice
+                                                  ? 'Margin: +${workingItem.sellingPrice > 0 ? (((workingItem.sellingPrice - workingItem.costPrice) / workingItem.sellingPrice) * 100).toStringAsFixed(1) : "0"}%'
+                                                  : 'Loss: -${(((workingItem.costPrice - workingItem.sellingPrice) / workingItem.costPrice) * 100).toStringAsFixed(1)}%',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                                color: workingItem.sellingPrice >= workingItem.costPrice
+                                                    ? AppColors.success
+                                                    : AppColors.error,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SliderTheme(
+                                          data: SliderTheme.of(context).copyWith(
+                                            trackHeight: 3,
+                                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                          ),
+                                          child: Slider(
+                                            value: workingItem.sellingPrice.clamp(
+                                              workingItem.costPrice * 0.5,
+                                              workingItem.costPrice * 3.0,
+                                            ),
+                                            min: workingItem.costPrice * 0.5,
+                                            max: workingItem.costPrice * 3.0,
+                                            activeColor: AppColors.primary,
+                                            onChanged: (newPrice) {
+                                              AppHaptics.selection();
+                                              _onFieldChanged(
+                                                item,
+                                                'sellingPrice',
+                                                newPrice.toStringAsFixed(2),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        if (workingItem.marketPrice > workingItem.sellingPrice)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 4),
+                                            child: Text(
+                                              '🎉 Customer Saves: $_currency${(workingItem.marketPrice - workingItem.sellingPrice).toStringAsFixed(2)} (${(((workingItem.marketPrice - workingItem.sellingPrice) / workingItem.marketPrice) * 100).toStringAsFixed(0)}% below MRP)',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.success,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ],

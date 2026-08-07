@@ -665,83 +665,163 @@ class CustomerProfileScreen extends ConsumerWidget {
                             if (families.isEmpty) {
                               return const SizedBox.shrink();
                             }
+                            final isDark = Theme.of(context).brightness == Brightness.dark;
                             return Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              padding: const EdgeInsets.all(12),
+                              margin: const EdgeInsets.only(top: 12),
+                              padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.indigo.withOpacity(0.18)
-                                    : Colors.indigo.shade50,
-                                borderRadius: BorderRadius.circular(14),
+                                color: isDark
+                                    ? const Color(0xFF1E1B4B).withOpacity(0.5) // Deep Indigo
+                                    : const Color(0xFFEEF2FF),
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                    color: Colors.indigo.withOpacity(0.3),
-                                    width: 1),
+                                    color: const Color(0xFF6366F1).withOpacity(0.35),
+                                    width: 1.2),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          color: Colors.indigo.withOpacity(0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(
-                                            Icons.family_restroom_rounded,
-                                            color: Colors.indigo,
-                                            size: 16),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          'Shared Household (${families.length + 1} Families in House #${customer.houseNumber})',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 13,
-                                            color: Colors.indigo,
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(7),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF6366F1).withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: const Icon(
+                                                Icons.apartment_rounded,
+                                                color: Color(0xFF6366F1),
+                                                size: 18),
                                           ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                          const SizedBox(width: 10),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'CO-LIVING HOUSE MAP (House #${customer.houseNumber})',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 11,
+                                                  letterSpacing: 0.8,
+                                                  color: Color(0xFF6366F1),
+                                                ),
+                                              ),
+                                              Text(
+                                                '${families.length + 1} Families Residing at this Address',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDark ? Colors.white70 : Colors.black87,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.person_add_alt_1_rounded, size: 20, color: Color(0xFF6366F1)),
+                                        tooltip: 'Add Family to this House',
+                                        onPressed: () => Navigator.of(context).pushNamed(
+                                          AppRoutes.addEditCustomer,
+                                          arguments: {
+                                            'streetId': customer.streetId,
+                                            'initialHouseNumber': customer.houseNumber,
+                                            'initialAddress': customer.address,
+                                            'initialMapsLocation': customer.mapsLocation,
+                                          },
+                                        ).then((_) => ref.invalidate(customerDetailProvider(customerId))),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 10),
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 6,
+                                  const SizedBox(height: 12),
+                                  // Connected Resident Families Grid
+                                  Column(
                                     children: [
-                                      Chip(
-                                        avatar: const Icon(Icons.star_rounded,
-                                            size: 14, color: Colors.indigo),
-                                        label: Text(
-                                            '${customer.name} (Current)',
-                                            style: const TextStyle(
-                                                fontSize: 10,
+                                      // 1. Current Customer Resident Card
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                        margin: const EdgeInsets.only(bottom: 6),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF6366F1).withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.4)),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.star_rounded, size: 16, color: Color(0xFF6366F1)),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                '${customer.name} (Viewing Profile)',
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                              ),
+                                            ),
+                                            Text(
+                                              customer.outstandingBalance > 0
+                                                  ? 'Due: ₹${customer.outstandingBalance.toStringAsFixed(0)}'
+                                                  : 'All Clear ✓',
+                                              style: TextStyle(
+                                                fontSize: 11,
                                                 fontWeight: FontWeight.bold,
-                                                color: Colors.indigo)),
-                                        backgroundColor:
-                                            Colors.indigo.withOpacity(0.12),
-                                        padding: EdgeInsets.zero,
-                                        materialTapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
+                                                color: customer.outstandingBalance > 0 ? AppColors.error : AppColors.success,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      ...families
-                                          .map((f) => Chip(
-                                                avatar: const Icon(
-                                                    Icons.person_outline_rounded,
-                                                    size: 14),
-                                                label: Text(f.name,
-                                                    style: const TextStyle(
-                                                        fontSize: 10)),
-                                                padding: EdgeInsets.zero,
-                                                materialTapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
-                                              )),
+                                      // 2. Other Resident Families in same house
+                                      ...families.map((f) => Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                            margin: const EdgeInsets.only(bottom: 6),
+                                            decoration: BoxDecoration(
+                                              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                              borderRadius: BorderRadius.circular(10),
+                                              border: Border.all(color: AppColors.borderColor(context)),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.people_outline_rounded, size: 16, color: Color(0xFF6366F1)),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    f.name,
+                                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  f.outstandingBalance > 0
+                                                      ? 'Due: ₹${f.outstandingBalance.toStringAsFixed(0)}'
+                                                      : '₹0 Due',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: f.outstandingBalance > 0 ? AppColors.error : AppColors.success,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                InkWell(
+                                                  onTap: () {
+                                                    Navigator.of(context).pushReplacementNamed(
+                                                      AppRoutes.customerProfile,
+                                                      arguments: {'customerId': f.id},
+                                                    );
+                                                  },
+                                                  child: const Padding(
+                                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                    child: Text(
+                                                      'View →',
+                                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          )),
                                     ],
                                   ),
                                 ],

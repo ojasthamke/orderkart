@@ -28,6 +28,25 @@ class GraphicBillGenerator {
       final safeCurrency = currency == '₹' ? 'Rs.' : currency;
       final phone = settings?.phone ?? '';
 
+      final themeName = settings?.meshTheme ?? 'emerald';
+      PdfColor primaryColor = PdfColors.teal800;
+      PdfColor lightColor = PdfColors.teal50;
+      PdfColor borderColor = PdfColors.teal200;
+
+      if (themeName == 'navy') {
+        primaryColor = PdfColors.indigo800;
+        lightColor = PdfColors.indigo50;
+        borderColor = PdfColors.indigo200;
+      } else if (themeName == 'slate') {
+        primaryColor = PdfColors.blueGrey800;
+        lightColor = PdfColors.blueGrey50;
+        borderColor = PdfColors.blueGrey200;
+      }
+
+      final watermarkText = order.remainingAmount <= 0
+          ? 'PAID IN FULL'
+          : (order.paidAmount > 0 ? 'PARTIAL PAYMENT' : 'DUE / UNPAID');
+
       final pdf = pw.Document();
 
       pdf.addPage(
@@ -35,69 +54,88 @@ class GraphicBillGenerator {
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(28),
           build: (pw.Context ctx) {
-            return pw.Container(
-              padding: const pw.EdgeInsets.all(20),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.teal, width: 2),
-                borderRadius: pw.BorderRadius.circular(12),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  // ── Header ─────────────────────────────────────────
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            businessName.toUpperCase(),
-                            style: pw.TextStyle(
-                              fontSize: 20,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.teal800,
-                            ),
-                          ),
-                          if (phone.isNotEmpty)
-                            pw.Text('Contact: $phone',
-                                style: const pw.TextStyle(
-                                    fontSize: 10, color: PdfColors.grey700)),
-                          pw.Text('Official Tax Invoice / Cash Memo',
-                              style: const pw.TextStyle(
-                                  fontSize: 9, color: PdfColors.grey600)),
-                        ],
+            return pw.Stack(
+              children: [
+                // Live Diagonal Watermark
+                pw.Positioned.fill(
+                  child: pw.Center(
+                    child: pw.Transform.rotate(
+                      angle: -0.45,
+                      child: pw.Text(
+                        watermarkText,
+                        style: pw.TextStyle(
+                          fontSize: 60,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey200,
+                        ),
                       ),
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.end,
-                        children: [
-                          pw.Container(
-                            padding: const pw.EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: pw.BoxDecoration(
-                              color: PdfColors.teal50,
-                              borderRadius: pw.BorderRadius.circular(6),
-                            ),
-                            child: pw.Text(
-                              'ORDER ${order.orderNoLabel}',
-                              style: pw.TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: PdfColors.teal900),
-                            ),
-                          ),
-                          pw.SizedBox(height: 4),
-                          pw.Text(
-                            'Date: ${order.createdAt.toIso8601String().substring(0, 10)}',
-                            style: const pw.TextStyle(
-                                fontSize: 10, color: PdfColors.grey700),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                  pw.Divider(thickness: 1.5, color: PdfColors.teal200),
-                  pw.SizedBox(height: 10),
+                ),
+                // Main Invoice Content
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(20),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: primaryColor, width: 2),
+                    borderRadius: pw.BorderRadius.circular(12),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      // ── Header ─────────────────────────────────────────
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(
+                                businessName.toUpperCase(),
+                                style: pw.TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: primaryColor,
+                                ),
+                              ),
+                              if (phone.isNotEmpty)
+                                pw.Text('Contact: $phone',
+                                    style: const pw.TextStyle(
+                                        fontSize: 10, color: PdfColors.grey700)),
+                              pw.Text('Official Tax Invoice / Cash Memo',
+                                  style: const pw.TextStyle(
+                                      fontSize: 9, color: PdfColors.grey600)),
+                            ],
+                          ),
+                          pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.end,
+                            children: [
+                              pw.Container(
+                                padding: const pw.EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: pw.BoxDecoration(
+                                  color: lightColor,
+                                  borderRadius: pw.BorderRadius.circular(6),
+                                ),
+                                child: pw.Text(
+                                  'ORDER ${order.orderNoLabel}',
+                                  style: pw.TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: primaryColor),
+                                ),
+                              ),
+                              pw.SizedBox(height: 4),
+                              pw.Text(
+                                'Date: ${order.createdAt.toIso8601String().substring(0, 10)}',
+                                style: const pw.TextStyle(
+                                    fontSize: 10, color: PdfColors.grey700),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      pw.Divider(thickness: 1.5, color: borderColor),
+                      pw.SizedBox(height: 10),
 
                   // ── Customer Details ────────────────────────────────
                   if (customer != null) ...[
@@ -257,7 +295,9 @@ class GraphicBillGenerator {
                   ],
                 ],
               ),
-            );
+            ),
+          ],
+        );
           },
         ),
       );

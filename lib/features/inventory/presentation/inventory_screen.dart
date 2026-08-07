@@ -1553,7 +1553,7 @@ class _ItemTile extends StatelessWidget {
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 8),
       borderRadius: BorderRadius.circular(14),
-      borderColor: item.isLowStock ? AppColors.error : null,
+      borderColor: item.isLowStock ? Colors.amber.shade600 : null,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Row(
