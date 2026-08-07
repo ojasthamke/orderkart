@@ -792,6 +792,38 @@ class _CustomerCard extends ConsumerWidget {
                                   loading: () => const SizedBox.shrink(),
                                   error: (_, __) => const SizedBox.shrink(),
                                 ),
+                            // ── Multi-Family Household Badge ─────────────
+                            ref.watch(sameHouseCustomersProvider(customer)).when(
+                                  data: (families) {
+                                    if (families.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Container(
+                                      margin: const EdgeInsets.only(top: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                            color: Colors.blue.withOpacity(0.3),
+                                            width: 1),
+                                      ),
+                                      child: Text(
+                                        '🏠 Household (${families.length + 1} Families: ${customer.name}, ${families.map((f) => f.name).join(", ")})',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  },
+                                  loading: () => const SizedBox.shrink(),
+                                  error: (_, __) => const SizedBox.shrink(),
+                                ),
                           ],
                         ),
                       ),
@@ -814,6 +846,18 @@ class _CustomerCard extends ConsumerWidget {
                           'customerId': customer.id,
                           'customerName': customer.name,
                           'orderId': null,
+                        },
+                      ).then(
+                          (_) => ref.refresh(customerListProvider(streetId)));
+                    } else if (v == 'add_family') {
+                      Navigator.of(context).pushNamed(
+                        AppRoutes.addEditCustomer,
+                        arguments: {
+                          'streetId': customer.streetId,
+                          'initialHouseNumber': customer.houseNumber,
+                          'initialAddress': customer.address,
+                          'initialMapsLocation': customer.mapsLocation,
+                          'initialSerialNo': customer.serialNo,
                         },
                       ).then(
                           (_) => ref.refresh(customerListProvider(streetId)));
@@ -854,6 +898,14 @@ class _CustomerCard extends ConsumerWidget {
                         child: ListTile(
                           leading: Icon(Icons.add_shopping_cart_rounded),
                           title: Text('Create Order'),
+                          contentPadding: EdgeInsets.zero,
+                        )),
+                    const PopupMenuItem(
+                        value: 'add_family',
+                        child: ListTile(
+                          leading: Icon(Icons.home_work_rounded,
+                              color: Colors.blue),
+                          title: Text('Add Family to Same House'),
                           contentPadding: EdgeInsets.zero,
                         )),
                     const PopupMenuItem(

@@ -99,6 +99,19 @@ class CustomerProfileScreen extends ConsumerWidget {
                     ).then((_) =>
                         ref.invalidate(customerDetailProvider(customerId)));
                     break;
+                  case 'add_family':
+                    Navigator.of(context).pushNamed(
+                      AppRoutes.addEditCustomer,
+                      arguments: {
+                        'streetId': customer.streetId,
+                        'initialHouseNumber': customer.houseNumber,
+                        'initialAddress': customer.address,
+                        'initialMapsLocation': customer.mapsLocation,
+                        'initialSerialNo': customer.serialNo,
+                      },
+                    ).then((_) =>
+                        ref.invalidate(customerDetailProvider(customerId)));
+                    break;
                   case 'vip':
                     showModalBottomSheet(
                       context: context,
@@ -139,6 +152,17 @@ class CustomerProfileScreen extends ConsumerWidget {
                       Icon(Icons.edit_rounded, size: 20),
                       SizedBox(width: 12),
                       Text('Edit Details'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'add_family',
+                  child: Row(
+                    children: [
+                      Icon(Icons.home_work_rounded,
+                          color: Colors.blue, size: 20),
+                      SizedBox(width: 12),
+                      Text('Add Family to Same House'),
                     ],
                   ),
                 ),
@@ -626,6 +650,57 @@ class CustomerProfileScreen extends ConsumerWidget {
                                     ),
                                   ),
                               ],
+                            );
+                          },
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, __) => const SizedBox.shrink(),
+                        ),
+                    ref.watch(sameHouseCustomersProvider(customer)).when(
+                          data: (families) {
+                            if (families.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return Container(
+                              margin: const EdgeInsets.only(top: 8),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: Colors.blue.withOpacity(0.3),
+                                    width: 1),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.home_work_rounded,
+                                          color: Colors.blue, size: 18),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '🏠 Household (${families.length + 1} Families in House #${customer.houseNumber})',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Families: ${customer.name}, ${families.map((f) => f.name).join(", ")}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.white70
+                                          : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             );
                           },
                           loading: () => const SizedBox.shrink(),

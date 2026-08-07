@@ -43,8 +43,9 @@ class CustomerDao {
     String where = '(is_archived IS NULL OR is_archived = 0)';
     List<dynamic> args = [];
     if (streetId.isNotEmpty) {
-      where += ' AND (street_id = ? OR location_id = ?)';
-      args.addAll([streetId, streetId]);
+      where +=
+          ' AND (street_id = ? OR location_id = ? OR street_id IN (SELECT id FROM locations WHERE parent_location_id = ?) OR location_id IN (SELECT id FROM locations WHERE parent_location_id = ?))';
+      args.addAll([streetId, streetId, streetId, streetId]);
     }
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
       where += ' AND (name LIKE ? OR phone1 LIKE ? OR house_number LIKE ?)';
@@ -70,6 +71,64 @@ class CustomerDao {
       return aNo.compareTo(bNo);
     });
     return customers;
+  }
+
+  Future<List<Customer>> getCustomersByArea(String areaId,
+      {String? searchQuery}) async {
+    final db = await _db;
+    List<dynamic> args = [
+      areaId,
+      areaId,
+      areaId,
+      areaId,
+      '%/$areaId/%',
+      '/$areaId/%'
+    ];
+    String searchFilter = '';
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      searchFilter =
+          ' AND (c.name LIKE ? OR c.phone1 LIKE ? OR c.house_number LIKE ?)';
+      final q = '%${searchQuery.trim()}%';
+      args.addAll([q, q, q]);
+    }
+
+    final maps = await db.rawQuery('''
+      SELECT DISTINCT c.* FROM customers c
+      LEFT JOIN locations st ON (c.location_id = st.id OR c.street_id = st.id)
+      WHERE (c.is_archived IS NULL OR c.is_archived = 0)
+        AND (c.street_id = ? OR c.location_id = ? OR st.id = ? OR st.parent_location_id = ? OR st.materialized_path LIKE ? OR st.materialized_path LIKE ?)
+        $searchFilter
+    ''', args);
+
+    final customers = maps.map(Customer.fromMap).toList();
+    customers.sort((a, b) {
+      final aNo = a.serialNo;
+      final bNo = b.serialNo;
+      if (aNo == 0 && bNo == 0) return a.createdAt.compareTo(b.createdAt);
+      if (aNo == 0) return 1;
+      if (bNo == 0) return -1;
+      return aNo.compareTo(bNo);
+    });
+    return customers;
+  }
+
+  Future<List<Customer>> getCustomersInSameHouse(String houseNumber,
+      {String? streetId, String? excludeCustomerId}) async {
+    if (houseNumber.trim().isEmpty) return [];
+    final db = await _db;
+    String where =
+        '(is_archived IS NULL OR is_archived = 0) AND LOWER(TRIM(house_number)) = LOWER(TRIM(?))';
+    List<dynamic> args = [houseNumber];
+    if (streetId != null && streetId.isNotEmpty) {
+      where += ' AND (street_id = ? OR location_id = ?)';
+      args.addAll([streetId, streetId]);
+    }
+    if (excludeCustomerId != null && excludeCustomerId.isNotEmpty) {
+      where += ' AND id != ?';
+      args.add(excludeCustomerId);
+    }
+    final maps = await db.query('customers', where: where, whereArgs: args);
+    return maps.map(Customer.fromMap).toList();
   }
 
   Future<List<Customer>> getAllCustomers() async {

@@ -13,6 +13,7 @@ import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/customer.dart';
+import '../data/customer_dao.dart';
 import '../../../core/constants/app_routes.dart';
 import 'customer_provider.dart';
 import '../../../core/utils/image_utils.dart';
@@ -21,11 +22,19 @@ import 'package:latlong2/latlong.dart';
 class AddEditCustomerScreen extends ConsumerStatefulWidget {
   final String? streetId;
   final String? customerId;
+  final String? initialHouseNumber;
+  final String? initialAddress;
+  final String? initialMapsLocation;
+  final int? initialSerialNo;
 
   const AddEditCustomerScreen({
     super.key,
     this.streetId,
     this.customerId,
+    this.initialHouseNumber,
+    this.initialAddress,
+    this.initialMapsLocation,
+    this.initialSerialNo,
   });
 
   @override
@@ -51,6 +60,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   bool _isEdit = false;
   String _dietaryPreference = '';
   bool _isGhostHouse = false;
+  List<Customer> _existingHouseFamilies = [];
 
   // Custom Fields state
   List<Map<String, dynamic>> _customFields = [];
@@ -61,9 +71,42 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     super.initState();
     _streetId = widget.streetId;
     _loadCustomFields();
+
+    if (widget.initialHouseNumber != null && widget.initialHouseNumber!.isNotEmpty) {
+      _houseCon.text = widget.initialHouseNumber!;
+      if (widget.initialAddress != null) _addressCon.text = widget.initialAddress!;
+      if (widget.initialMapsLocation != null) _mapsCon.text = widget.initialMapsLocation!;
+      if (widget.initialSerialNo != null && widget.initialSerialNo! > 0) {
+        _serialNoCon.text = '${widget.initialSerialNo}';
+      }
+      _checkHousehold(widget.initialHouseNumber!);
+    }
+
+    _houseCon.addListener(() {
+      _checkHousehold(_houseCon.text);
+    });
+
     if (widget.customerId != null) {
       _isEdit = true;
       _loadCustomer();
+    }
+  }
+
+  void _checkHousehold(String houseNo) async {
+    if (houseNo.trim().isEmpty) {
+      if (mounted) setState(() => _existingHouseFamilies = []);
+      return;
+    }
+    final dao = CustomerDao();
+    final res = await dao.getCustomersInSameHouse(
+      houseNo,
+      streetId: _streetId,
+      excludeCustomerId: widget.customerId,
+    );
+    if (mounted) {
+      setState(() {
+        _existingHouseFamilies = res;
+      });
     }
   }
 
@@ -282,6 +325,50 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 validator: AppValidators.phone,
               ),
               const SizedBox(height: 16),
+
+              // ── Household Detection Banner (Multiple Families in 1 House) ──────────
+              if (_existingHouseFamilies.isNotEmpty) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1.2),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.home_work_rounded, color: Colors.blue, size: 24),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '🏠 ${_existingHouseFamilies.length} Family/Customer(s) in House #${_houseCon.text.trim()}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Existing: ${_existingHouseFamilies.map((f) => f.name).join(", ")}. Adding another family to this house.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white70
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               Row(
                 children: [

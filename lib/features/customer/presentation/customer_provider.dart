@@ -150,6 +150,18 @@ final allCustomersProvider = FutureProvider<List<Customer>>((ref) async {
   return CustomerDao().getAllCustomers();
 });
 
+// Same house / multi-family customers provider
+final sameHouseCustomersProvider =
+    FutureProvider.family<List<Customer>, Customer>((ref, customer) async {
+  if (customer.houseNumber.trim().isEmpty) return [];
+  final dao = CustomerDao();
+  return dao.getCustomersInSameHouse(
+    customer.houseNumber,
+    streetId: customer.streetId,
+    excludeCustomerId: customer.id,
+  );
+});
+
 // Location info provider (Street and Area name / Breadcrumbs path)
 final customerLocationProvider =
     FutureProvider.family<Map<String, String>, String>((ref, locationId) async {

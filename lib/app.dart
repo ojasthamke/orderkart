@@ -147,6 +147,10 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
             AddEditCustomerScreen(
               streetId: args?['streetId'] as String?,
               customerId: args?['customerId'] as String?,
+              initialHouseNumber: args?['initialHouseNumber'] as String?,
+              initialAddress: args?['initialAddress'] as String?,
+              initialMapsLocation: args?['initialMapsLocation'] as String?,
+              initialSerialNo: args?['initialSerialNo'] as int?,
             ),
             settings);
 
