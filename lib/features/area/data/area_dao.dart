@@ -204,35 +204,79 @@ class AreaDao {
 
   Future<void> deleteArea(String id) async {
     final db = await _db;
+    await db.transaction((txn) async {
+      await txn.execute('PRAGMA foreign_keys = OFF');
 
-    // Find all streets belonging to this area
-    final streets = await db.query('locations',
-        columns: ['id'], where: 'parent_location_id = ?', whereArgs: [id]);
-    final streetIds = streets.map((s) => s['id'] as String).toList();
+      // 1. Find all street IDs belonging to this area in locations and legacy streets tables
+      final locationsStreets = await txn.query('locations',
+          columns: ['id'], where: 'parent_location_id = ?', whereArgs: [id]);
+      final streetIds =
+          locationsStreets.map((s) => s['id'] as String).toList();
 
-    if (streetIds.isNotEmpty) {
-      final placeholders = List.filled(streetIds.length, '?').join(',');
-      await db.update(
-        'customers',
-        {'street_id': '', 'location_id': ''},
-        where: "street_id IN ($placeholders) OR location_id IN ($placeholders)",
-        whereArgs: [...streetIds, ...streetIds],
-      );
-    }
+      final legacyStreets = await txn
+          .query('streets', columns: ['id'], where: 'area_id = ?', whereArgs: [id]);
+      final legacyStreetIds =
+          legacyStreets.map((s) => s['id'] as String).toList();
 
-    // Clear area itself
-    await db.update(
-      'customers',
-      {'street_id': '', 'location_id': ''},
-      where: 'location_id = ?',
-      whereArgs: [id],
-    );
+      final allIds = {id, ...streetIds, ...legacyStreetIds}.toList();
 
-    await db.delete('locations', where: 'id = ?', whereArgs: [id]);
+      if (allIds.isNotEmpty) {
+        final placeholders = List.filled(allIds.length, '?').join(',');
 
-    // Also delete from legacy table
-    try {
-      await db.delete('areas', where: 'id = ?', whereArgs: [id]);
-    } catch (_) {}
+        // Unassign customers from deleted area & its streets
+        await txn.update(
+          'customers',
+          {'street_id': '', 'location_id': ''},
+          where:
+              "street_id IN ($placeholders) OR location_id IN ($placeholders)",
+          whereArgs: [...allIds, ...allIds],
+        );
+
+        // Delete worker assignments
+        try {
+          await txn.delete(
+            'worker_assignments',
+            where: "entity_id IN ($placeholders)",
+            whereArgs: allIds,
+          );
+        } catch (_) {}
+
+        // Delete geo_boundaries & boundary points
+        try {
+          final boundaries = await txn.query(
+            'geo_boundaries',
+            columns: ['id'],
+            where: "location_id IN ($placeholders)",
+            whereArgs: allIds,
+          );
+          final boundaryIds =
+              boundaries.map((b) => b['id'] as String).toList();
+          if (boundaryIds.isNotEmpty) {
+            final bPlaceholders =
+                List.filled(boundaryIds.length, '?').join(',');
+            await txn.delete('geo_boundary_points',
+                where: "boundary_id IN ($bPlaceholders)",
+                whereArgs: boundaryIds);
+            await txn.delete('geo_boundaries',
+                where: "id IN ($bPlaceholders)", whereArgs: boundaryIds);
+          }
+        } catch (_) {}
+      }
+
+      // Delete child streets from locations & streets
+      await txn.delete('locations',
+          where: 'parent_location_id = ?', whereArgs: [id]);
+      try {
+        await txn.delete('streets', where: 'area_id = ?', whereArgs: [id]);
+      } catch (_) {}
+
+      // Delete area itself from locations & areas
+      await txn.delete('locations', where: 'id = ?', whereArgs: [id]);
+      try {
+        await txn.delete('areas', where: 'id = ?', whereArgs: [id]);
+      } catch (_) {}
+
+      await txn.execute('PRAGMA foreign_keys = ON');
+    });
   }
 }
