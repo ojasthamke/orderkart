@@ -163,6 +163,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         _photoPath = customer.photoPath;
         _dietaryPreference = customer.dietaryPreference;
       });
+      _checkHousehold(customer.houseNumber);
     }
   }
 
