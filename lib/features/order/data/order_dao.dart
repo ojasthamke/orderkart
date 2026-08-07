@@ -7,6 +7,8 @@ import '../domain/order.dart';
 import '../domain/order_item.dart';
 import '../domain/payment.dart';
 import '../../customer/data/customer_dao.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/smart_rounding.dart';
 
 class OrderDao {
   final _uuid = const Uuid();
@@ -371,14 +373,30 @@ class OrderDao {
       updatedCount++;
     }
 
-    final newGrandTotal =
+    final unroundedGrandTotal =
         math.max(0.0, newSubtotal - order.discount + order.deliveryCharge);
+
+    final settingsMap = await db.query('settings',
+        where: "key = ?", whereArgs: [AppConstants.keySmartRounding]);
+    final bool isSmartRoundingEnabled = settingsMap.isNotEmpty
+        ? (settingsMap.first['value'] == 'true')
+        : true;
+
+    double newGrandTotal = unroundedGrandTotal;
+    double roundingDiff = 0.0;
+
+    if (isSmartRoundingEnabled || order.smartRoundedAmount != 0) {
+      newGrandTotal = SmartRounding.round(unroundedGrandTotal);
+      roundingDiff = newGrandTotal - unroundedGrandTotal;
+    }
+
     final newRemaining = math.max(0.0, newGrandTotal - order.paidAmount);
 
     await db.update(
       'orders',
       {
         'subtotal': newSubtotal,
+        'smart_rounded_amount': roundingDiff,
         'grand_total': newGrandTotal,
         'remaining_amount': newRemaining,
         'updated_at': DateTime.now().toIso8601String(),

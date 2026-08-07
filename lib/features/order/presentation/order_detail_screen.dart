@@ -25,6 +25,10 @@ import '../domain/order.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
 import '../../location/presentation/location_provider.dart';
+import '../../customer/data/customer_dao.dart';
+import '../../../core/database/database_helper.dart';
+import '../../../core/utils/smart_rounding.dart';
+import 'widgets/smart_round_banner.dart';
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -470,6 +474,16 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             _sumRow('Due Amount',
                 '$currency${order.remainingAmount.toStringAsFixed(2)}',
                 color: AppColors.warning, isBold: true),
+
+          const SizedBox(height: 12),
+          SmartRoundBanner(
+            original: order.grandTotal - order.smartRoundedAmount,
+            rounded: SmartRounding.round(
+                order.grandTotal - order.smartRoundedAmount),
+            enabled: order.smartRoundedAmount != 0,
+            currency: currency,
+            onToggle: (enable) => _toggleOrderRoundOff(order, enable, currency),
+          ),
 
           // ── Daily Savings Banner — always shown on every receipt ──
           const SizedBox(height: 16),
@@ -956,6 +970,55 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       if (mounted) {
         SnackbarHelper.showError(context, 'Failed to delete order: $e');
       }
+    }
+  }
+
+  Future<void> _toggleOrderRoundOff(
+      AppOrder order, bool enable, String currency) async {
+    final double unrounded = order.grandTotal - order.smartRoundedAmount;
+    final double rounded = SmartRounding.round(unrounded);
+    final double newSmartRounded = enable ? (rounded - unrounded) : 0.0;
+    final double newGrandTotal = enable ? rounded : unrounded;
+    final double newRemaining =
+        (newGrandTotal - order.paidAmount).clamp(0.0, double.infinity);
+
+    final db = await DatabaseHelper.instance.database;
+    await db.update(
+      'orders',
+      {
+        'smart_rounded_amount': newSmartRounded,
+        'grand_total': newGrandTotal,
+        'remaining_amount': newRemaining,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [order.id],
+    );
+
+    try {
+      await CustomerDao().recalcCustomerTotals(order.customerId, executor: db);
+    } catch (_) {}
+
+    // Auto-save setting if unselected/changed
+    final currentSettings = ref.read(settingsProvider).valueOrNull;
+    if (currentSettings != null && currentSettings.smartRounding != enable) {
+      await ref.read(settingsProvider.notifier).update(
+            currentSettings.copyWith(smartRounding: enable),
+          );
+    }
+
+    ref.invalidate(orderDetailProvider(order.id));
+    ref.invalidate(customerOrdersProvider);
+    ref.invalidate(customerListProvider);
+    ref.invalidate(orderManagementProvider);
+
+    if (mounted) {
+      SnackbarHelper.showSuccess(
+        context,
+        enable
+            ? 'Round Off applied (Grand Total: $currency${newGrandTotal.toStringAsFixed(2)})'
+            : 'Round Off undone (Grand Total: $currency${newGrandTotal.toStringAsFixed(2)})',
+      );
     }
   }
 

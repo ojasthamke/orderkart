@@ -401,7 +401,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                           rounded: SmartRounding.round(_afterDiscount),
                           enabled: _smartRound,
                           currency: currency,
-                          onToggle: (v) => setState(() => _smartRound = v),
+                          onToggle: (v) async {
+                            setState(() => _smartRound = v);
+                            final currentSettings =
+                                ref.read(settingsProvider).valueOrNull;
+                            if (currentSettings != null &&
+                                currentSettings.smartRounding != v) {
+                              await ref.read(settingsProvider.notifier).update(
+                                    currentSettings.copyWith(smartRounding: v),
+                                  );
+                            }
+                          },
                         ).animate().fadeIn(),
 
                       const SizedBox(height: 16),

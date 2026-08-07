@@ -64,8 +64,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _initialized = true;
   }
 
-  Future<void> _save(AppSettings current) async {
-    await ref.read(settingsProvider.notifier).update(
+  void _autoSave(AppSettings current) {
+    ref.read(settingsProvider.notifier).update(
           current.copyWith(
             businessName: _bizNameCon.text.trim(),
             ownerName: _ownerCon.text.trim(),
@@ -76,7 +76,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             invoiceDisclaimer: _disclaimerCon.text.trim(),
           ),
         );
-    if (mounted) SnackbarHelper.showSuccess(context, 'Settings saved');
   }
 
   Future<void> _pickQrImage(AppSettings current) async {
@@ -163,28 +162,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _sectionHeader('Business Info', Icons.business_rounded),
               _card([
                 _textTile(
-                    'Business Name', _bizNameCon, Icons.storefront_rounded),
-                _textTile('Owner Name', _ownerCon, Icons.person_rounded),
+                    'Business Name', _bizNameCon, Icons.storefront_rounded,
+                    onChanged: (_) => _autoSave(settings)),
+                _textTile('Owner Name', _ownerCon, Icons.person_rounded,
+                    onChanged: (_) => _autoSave(settings)),
                 _textTile('Phone', _phoneCon, Icons.phone_rounded,
-                    keyboardType: TextInputType.phone),
+                    keyboardType: TextInputType.phone,
+                    onChanged: (_) => _autoSave(settings)),
                 _textTile('WhatsApp', _waCon, Icons.chat_rounded,
-                    keyboardType: TextInputType.phone),
+                    keyboardType: TextInputType.phone,
+                    onChanged: (_) => _autoSave(settings)),
                 _textTile('Staff Telegram Link / Username', _staffWaCon,
                     Icons.send_rounded,
-                    keyboardType: TextInputType.text),
+                    keyboardType: TextInputType.text,
+                    onChanged: (_) => _autoSave(settings)),
                 _textTile('Invoice & WhatsApp Bill Terms / Disclaimer',
                     _disclaimerCon, Icons.gavel_rounded,
-                    maxLines: 3),
+                    maxLines: 3,
+                    onChanged: (_) => _autoSave(settings)),
               ]),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _save(settings),
-                  icon: const Icon(Icons.save_rounded),
-                  label: const Text('Save Business Info'),
-                ),
-              ),
 
               const SizedBox(height: 20),
 
@@ -302,15 +298,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ]),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _save(settings),
-                  icon: const Icon(Icons.save_rounded),
-                  label: const Text('Save Order Defaults'),
-                ),
-              ),
+
+              const SizedBox(height: 20),
 
               // ── Theme & Appearance ──────────────────────────────────
               _sectionHeader('Theme & Appearance', Icons.palette_rounded),
@@ -402,7 +391,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         border: InputBorder.none,
                         hintText: 'merchant@upi',
                       ),
-                      onSubmitted: (_) => _save(settings),
+                      onSubmitted: (_) => _autoSave(settings),
+                      onChanged: (_) => _autoSave(settings),
                     ),
                   ),
                 ),
@@ -488,15 +478,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
                 const SizedBox(height: 12),
               ]),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _save(settings),
-                  icon: const Icon(Icons.qr_code_rounded),
-                  label: const Text('Save QR Code'),
-                ),
-              ),
 
               const SizedBox(height: 20),
 
@@ -814,13 +795,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _textTile(String label, TextEditingController con, IconData icon,
-      {TextInputType? keyboardType, int maxLines = 1}) {
+      {TextInputType? keyboardType, int maxLines = 1, ValueChanged<String>? onChanged}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: TextField(
         controller: con,
         keyboardType: keyboardType,
         maxLines: maxLines,
+        onChanged: onChanged,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
