@@ -18,6 +18,7 @@ class WorkerDashboardScreen extends ConsumerWidget {
 
   Future<void> _showCustomerPickerForOrder(
       BuildContext context, WidgetRef ref) async {
+    final navigator = Navigator.of(context);
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -25,10 +26,10 @@ class WorkerDashboardScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => Consumer(
-        builder: (context, ref, _) {
+        builder: (sheetContext, ref, _) {
           final customersAsync = ref.watch(allCustomersProvider);
           return Container(
-            height: MediaQuery.of(context).size.height * 0.7,
+            height: MediaQuery.of(sheetContext).size.height * 0.7,
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,10 +37,14 @@ class WorkerDashboardScreen extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Select Customer for Order',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    const Expanded(
+                      child: Text(
+                        'Select Customer for Order',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 16),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded),
@@ -65,8 +70,8 @@ class WorkerDashboardScreen extends ConsumerWidget {
                               ElevatedButton.icon(
                                 onPressed: () {
                                   Navigator.pop(ctx);
-                                  Navigator.pushNamed(
-                                      context, AppRoutes.addEditCustomer);
+                                  navigator.pushNamed(
+                                      AppRoutes.addEditCustomer);
                                 },
                                 icon: const Icon(Icons.person_add_rounded),
                                 label: const Text('Add Customer First'),
@@ -92,17 +97,24 @@ class WorkerDashboardScreen extends ConsumerWidget {
                                     color: AppColors.primary),
                               ),
                             ),
-                            title: Text(c.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700)),
-                            subtitle: Text([
-                              if (c.phone1.isNotEmpty) c.phone1,
-                              c.address
-                            ].where((e) => e.isNotEmpty).join(' · ')),
+                            title: Text(
+                              c.name,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              [
+                                if (c.phone1.isNotEmpty) c.phone1,
+                                c.address
+                              ].where((e) => e.isNotEmpty).join(' · '),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             onTap: () {
                               Navigator.pop(ctx);
-                              Navigator.pushNamed(
-                                context,
+                              navigator.pushNamed(
                                 AppRoutes.createOrder,
                                 arguments: {
                                   'customerId': c.id,
@@ -194,6 +206,8 @@ class WorkerDashboardScreen extends ConsumerWidget {
                       color: Colors.white,
                       letterSpacing: -0.5,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 12),
                   Container(
@@ -254,16 +268,23 @@ class WorkerDashboardScreen extends ConsumerWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text("Today's Collection Target",
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13)),
+                                const Expanded(
+                                  child: Text("Today's Collection Target",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                                const SizedBox(width: 8),
                                 Text(
                                     '${(pct * 100).toStringAsFixed(0)}% Achieved',
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w900,
                                         color: AppColors.primary,
-                                        fontSize: 13)),
+                                        fontSize: 13),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
                               ],
                             ),
                             const SizedBox(height: 10),
@@ -282,18 +303,28 @@ class WorkerDashboardScreen extends ConsumerWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                    'Collected: ${AppFormatters.currency(collected)}',
-                                    style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.textSecondary,
-                                        fontWeight: FontWeight.w600)),
-                                Text(
-                                    'Target: ${AppFormatters.currency(target)}',
-                                    style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.textSecondary,
-                                        fontWeight: FontWeight.w600)),
+                                Expanded(
+                                  child: Text(
+                                      'Collected: ${AppFormatters.currency(collected)}',
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w600),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                      'Target: ${AppFormatters.currency(target)}',
+                                      textAlign: TextAlign.end,
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w600),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
                               ],
                             ),
                           ],
@@ -518,54 +549,61 @@ class WorkerDashboardScreen extends ConsumerWidget {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: () {
-        AppHaptics.buttonClick();
-        onTap();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        decoration: BoxDecoration(
-          color:
-              isDark ? const Color(0xFF1E293B).withOpacity(0.55) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color:
-                  isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200),
-          boxShadow: AppColors.cardShadow,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                shape: BoxShape.circle,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          AppHaptics.buttonClick();
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF1E293B).withOpacity(0.55)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.12)
+                    : AppColors.gray200),
+            boxShadow: AppColors.cardShadow,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 8),
-            Text(title,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : AppColors.textPrimary,
-                )),
-            const SizedBox(height: 2),
-            Text(subtitle,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: isDark ? Colors.white60 : AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                )),
-          ],
+              const SizedBox(height: 8),
+              Text(title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  )),
+              const SizedBox(height: 2),
+              Text(subtitle,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: isDark ? Colors.white60 : AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  )),
+            ],
+          ),
         ),
       ),
     ).animate().fadeIn(duration: 400.ms, delay: (index * 60).ms).scale(

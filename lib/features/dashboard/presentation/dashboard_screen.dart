@@ -57,31 +57,58 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
         ),
       ],
-      body: summaryAsync.when(
-        loading: () => const LoadingShimmer(),
-        error: (e, _) => Center(child: Text('Dashboard error: $e')),
-        data: (summary) {
-          final double pendingPayments =
-              (summary['pending_payments'] as num?)?.toDouble() ?? 0.0;
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(analyticsSummaryProvider);
+          ref.invalidate(inventoryProvider);
+          ref.invalidate(lowStockProvider);
+          ref.invalidate(dashboardOrdersProvider(params));
+          ref.invalidate(visitListProvider);
+          ref.invalidate(pendingCustomersProvider);
+          ref.invalidate(noteListNotifier);
+          ref.invalidate(notificationListProvider);
+          ref.invalidate(areaProvider);
+          ref.invalidate(allCustomersProvider);
+          await Future.wait([
+            ref.read(analyticsSummaryProvider.future),
+            ref.read(dashboardOrdersProvider(params).future),
+          ]);
+        },
+        child: summaryAsync.when(
+          loading: () => const LoadingShimmer(),
+          error: (e, _) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              padding: const EdgeInsets.all(24),
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline_rounded,
+                      size: 48, color: AppColors.error),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Dashboard error: $e',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: AppColors.error, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => ref.invalidate(analyticsSummaryProvider),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          data: (summary) {
+            final double pendingPayments =
+                (summary['pending_payments'] as num?)?.toDouble() ?? 0.0;
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(analyticsSummaryProvider);
-              ref.invalidate(inventoryProvider);
-              ref.invalidate(lowStockProvider);
-              ref.invalidate(dashboardOrdersProvider(params));
-              ref.invalidate(visitListProvider);
-              ref.invalidate(pendingCustomersProvider);
-              ref.invalidate(noteListNotifier);
-              ref.invalidate(notificationListProvider);
-              ref.invalidate(areaProvider);
-              ref.invalidate(allCustomersProvider);
-              await Future.wait([
-                ref.read(analyticsSummaryProvider.future),
-                ref.read(dashboardOrdersProvider(params).future),
-              ]);
-            },
-            child: SingleChildScrollView(
+            return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -146,6 +173,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.success,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -166,6 +195,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             loading: () => const SizedBox.shrink(),
                             error: (_, __) => const SizedBox.shrink(),
                           ),
+                      const SizedBox(width: 8),
                       // ── Payment warning button ─────────────────────────
                       ref.watch(pendingCustomersProvider).when(
                             data: (pending) => pending.isNotEmpty
@@ -333,7 +363,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     final outOfStockCount =
                         (stockData['out_of_stock_count'] as int?) ?? 0;
                     final inStock =
-                        (totalItems - outOfStockCount - lowStockCount)
+                        (totalItems - outOfStockCount)
                             .clamp(0, 99999);
 
                     return SmartBusinessPulseWidget(
@@ -582,13 +612,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        Text(
-                          AppFormatters.currency(pendingPayments,
-                              symbol: currency),
-                          style: const TextStyle(
-                            color: Color(0xFFD97706),
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            AppFormatters.currency(pendingPayments,
+                                symbol: currency),
+                            style: const TextStyle(
+                              color: Color(0xFFD97706),
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -663,7 +697,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                   ordersAsync.when(
                     loading: () => const LoadingShimmer(count: 3),
-                    error: (e, _) => Text('Error loading orders: $e'),
+                    error: (e, _) => Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppColors.error.withOpacity(0.3)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Error loading orders: $e',
+                          style: const TextStyle(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
                     data: (orders) => orders.isEmpty
                         ? Container(
                             height: 120,
@@ -761,9 +811,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ],
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -951,7 +1001,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                           Text(
-                            '${pending.length} customer${pending.length > 1 ? 's have' : ' has'} pending dues',
+                            '${pending.length} customer${pending.length != 1 ? 's have' : ' has'} pending dues',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
@@ -1034,6 +1084,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     .textTheme
                                     .labelSmall
                                     ?.copyWith(color: AppColors.textHint),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                           ],
                         ),
@@ -1131,7 +1183,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
                         Text(
-                          '${overpaid.length} customer${overpaid.length > 1 ? 's' : ''} paid extra money',
+                          '${overpaid.length} customer${overpaid.length != 1 ? 's' : ''} paid extra money',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -1180,6 +1232,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           c.phone1.isNotEmpty ? c.phone1 : c.address,
                           style: const TextStyle(
                               fontSize: 12, color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1330,6 +1384,8 @@ class _RecentOrderTile extends ConsumerWidget {
         title: Text(
           '${order.orderNoLabel} · $displayName',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
           AppFormatters.relativeDate(order.createdAt),
