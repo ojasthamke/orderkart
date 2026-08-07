@@ -809,21 +809,31 @@ class _CustomerCard extends ConsumerWidget {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.12),
+                                        color: Colors.indigo.withOpacity(0.12),
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                            color: Colors.blue.withOpacity(0.3),
+                                            color: Colors.indigo.withOpacity(0.3),
                                             width: 1),
                                       ),
-                                      child: Text(
-                                        '🏠 Household (${families.length + 1} Families: ${customer.name}, ${families.map((f) => f.name).join(", ")})',
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.family_restroom_rounded,
+                                              size: 13, color: Colors.indigo),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              'Shared Household (${families.length + 1} Families: ${customer.name}, ${families.map((f) => f.name).join(", ")})',
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.indigo,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     );
                                   },

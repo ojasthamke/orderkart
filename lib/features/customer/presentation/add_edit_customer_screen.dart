@@ -327,41 +327,72 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ── Household Detection Banner (Multiple Families in 1 House) ──────────
+              // ── Shared Household Banner (Multiple Families in 1 House) ──────────
               if (_existingHouseFamilies.isNotEmpty) ...[
                 Container(
                   margin: const EdgeInsets.only(bottom: 14),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.blue.withOpacity(0.3), width: 1.2),
+                    color: AppColors.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: AppColors.primary.withOpacity(0.25), width: 1.2),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.home_work_rounded, color: Colors.blue, size: 24),
-                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.family_restroom_rounded,
+                            color: AppColors.primary, size: 22),
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '🏠 ${_existingHouseFamilies.length} Family/Customer(s) in House #${_houseCon.text.trim()}',
+                              'Shared Household (House #${_houseCon.text.trim()})',
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: Colors.blue,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppColors.primary,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             Text(
-                              'Existing: ${_existingHouseFamilies.map((f) => f.name).join(", ")}. Adding another family to this house.',
+                              'Adding a new family to this house. Existing families residing here:',
                               style: TextStyle(
-                                fontSize: 11,
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.white70
-                                    : AppColors.textSecondary,
+                                fontSize: 12,
+                                color: AppColors.textSecondaryColor(context),
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: _existingHouseFamilies
+                                  .map((f) => Chip(
+                                        avatar: const Icon(Icons.person_rounded,
+                                            size: 14, color: AppColors.primary),
+                                        label: Text(f.name,
+                                            style: const TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold)),
+                                        backgroundColor:
+                                            Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? Colors.white10
+                                                : Colors.black.withOpacity(0.04),
+                                        padding: EdgeInsets.zero,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ))
+                                  .toList(),
                             ),
                           ],
                         ),
@@ -402,9 +433,19 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _houseCon,
-                      decoration: const InputDecoration(
+                      readOnly: widget.initialHouseNumber != null &&
+                          widget.initialHouseNumber!.isNotEmpty,
+                      decoration: InputDecoration(
                         labelText: 'House / Flat Number',
-                        prefixIcon: Icon(Icons.home_rounded),
+                        prefixIcon: const Icon(Icons.home_rounded),
+                        suffixIcon: (widget.initialHouseNumber != null &&
+                                widget.initialHouseNumber!.isNotEmpty)
+                            ? const Tooltip(
+                                message: 'House Number is locked for shared household',
+                                child: Icon(Icons.lock_outline_rounded,
+                                    size: 18, color: AppColors.primary),
+                              )
+                            : null,
                       ),
                       textCapitalization: TextCapitalization.characters,
                     ),

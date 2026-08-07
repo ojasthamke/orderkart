@@ -667,12 +667,15 @@ class CustomerProfileScreen extends ConsumerWidget {
                             }
                             return Container(
                               margin: const EdgeInsets.only(top: 8),
-                              padding: const EdgeInsets.all(10),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.indigo.withOpacity(0.18)
+                                    : Colors.indigo.shade50,
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                    color: Colors.blue.withOpacity(0.3),
+                                    color: Colors.indigo.withOpacity(0.3),
                                     width: 1),
                               ),
                               child: Column(
@@ -680,32 +683,66 @@ class CustomerProfileScreen extends ConsumerWidget {
                                 children: [
                                   Row(
                                     children: [
-                                      const Icon(Icons.home_work_rounded,
-                                          color: Colors.blue, size: 18),
-                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.indigo.withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                            Icons.family_restroom_rounded,
+                                            color: Colors.indigo,
+                                            size: 16),
+                                      ),
+                                      const SizedBox(width: 10),
                                       Expanded(
                                         child: Text(
-                                          '🏠 Household (${families.length + 1} Families in House #${customer.houseNumber})',
+                                          'Shared Household (${families.length + 1} Families in House #${customer.houseNumber})',
                                           style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                            color: Colors.blue,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 13,
+                                            color: Colors.indigo,
                                           ),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Families: ${customer.name}, ${families.map((f) => f.name).join(", ")}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? Colors.white70
-                                          : AppColors.textSecondary,
-                                    ),
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: [
+                                      Chip(
+                                        avatar: const Icon(Icons.star_rounded,
+                                            size: 14, color: Colors.indigo),
+                                        label: Text(
+                                            '${customer.name} (Current)',
+                                            style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.indigo)),
+                                        backgroundColor:
+                                            Colors.indigo.withOpacity(0.12),
+                                        padding: EdgeInsets.zero,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      ...families
+                                          .map((f) => Chip(
+                                                avatar: const Icon(
+                                                    Icons.person_outline_rounded,
+                                                    size: 14),
+                                                label: Text(f.name,
+                                                    style: const TextStyle(
+                                                        fontSize: 10)),
+                                                padding: EdgeInsets.zero,
+                                                materialTapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                              )),
+                                    ],
                                   ),
                                 ],
                               ),

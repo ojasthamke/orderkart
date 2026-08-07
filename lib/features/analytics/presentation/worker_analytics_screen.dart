@@ -1310,7 +1310,7 @@ class _WorkerStatsDashboard extends ConsumerWidget {
 
   Widget _paymentSplitRow(BuildContext context, String label, double amount,
       double total, Color color) {
-    final double pct = total > 0 ? (amount / total) : 0.0;
+    final double pct = total > 0 ? (amount / total).clamp(0.0, 1.0) : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -628,16 +628,26 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
+          Expanded(
+            child: Text(
+              label,
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
-                  color: AppColors.textSecondary)),
-          Text(value,
+                  color: AppColors.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
-                  color: color ?? AppColors.textPrimary)),
+                  color: color ?? AppColors.textPrimary),
+            ),
+          ),
         ],
       ),
     );

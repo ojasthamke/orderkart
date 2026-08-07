@@ -194,6 +194,7 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen>
       title: 'Smart Churn Analytics',
       bottom: TabBar(
         controller: _tabController,
+        isScrollable: true,
         tabs: [
           Tab(text: 'High Risk (${highRiskList.length})'),
           Tab(text: 'Medium Risk (${mediumRiskList.length})'),

@@ -25,6 +25,8 @@ import '../domain/payment.dart';
 import 'order_provider.dart';
 import '../../../core/utils/graphic_bill_generator.dart';
 import '../../location/presentation/location_provider.dart';
+import '../../inventory/domain/item.dart';
+import '../../inventory/presentation/inventory_provider.dart';
 
 class OrderManagementScreen extends ConsumerStatefulWidget {
   const OrderManagementScreen({super.key});
@@ -390,21 +392,45 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
   }
 
   Future<void> _duplicateOrder(AppOrder order) async {
-    final now = DateTime.now();
-    final newId = await OrderDao.generateUniqueOrderNo();
-    final duplicate = order.copyWith(
-      id: newId,
-      paidAmount: 0,
-      remainingAmount: order.grandTotal,
-      deliveryStatus: AppConstants.statusPending,
-      createdAt: now,
-      updatedAt: now,
-      payments: const [],
-    );
-    // Get items to duplicate
     try {
       final repo = ref.read(orderRepositoryProvider);
       final items = await repo.getOrderItems(order.id);
+      final inventoryAsync = ref.read(inventoryProvider);
+      final inventoryList = inventoryAsync.value ?? [];
+
+      for (final it in items) {
+        final dbItem = inventoryList.firstWhere(
+          (i) => i.id == it.itemId,
+          orElse: () => Item(
+            id: '',
+            name: '',
+            category: 'Other',
+            unit: 'kg',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        if (dbItem.id.isNotEmpty && it.quantity > dbItem.stock) {
+          if (mounted) {
+            SnackbarHelper.showError(context,
+                'Cannot duplicate. Insufficient stock for "${it.itemName}" (${dbItem.stock} ${dbItem.unit} available)');
+          }
+          return;
+        }
+      }
+
+      final now = DateTime.now();
+      final newId = await OrderDao.generateUniqueOrderNo();
+      final duplicate = order.copyWith(
+        id: newId,
+        paidAmount: 0,
+        remainingAmount: order.grandTotal,
+        deliveryStatus: AppConstants.statusPending,
+        createdAt: now,
+        updatedAt: now,
+        payments: const [],
+      );
+
       await ref.read(orderManagementProvider.notifier).createOrder(
           duplicate,
           items

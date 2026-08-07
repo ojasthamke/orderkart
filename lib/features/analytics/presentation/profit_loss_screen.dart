@@ -26,15 +26,20 @@ class ProfitLossScreen extends ConsumerWidget {
         loading: () => const LoadingShimmer(count: 3),
         error: (err, _) => Center(child: Text('Error calculating P&L: $err')),
         data: (pl) {
-          final double revenue = pl['total_revenue'] ?? 0.0;
-          final double cogs = pl['cogs'] ?? 0.0;
-          final double grossProfit = pl['gross_profit'] ?? 0.0;
-          final double expenses = pl['total_expenses'] ?? 0.0;
-          final double discounts = pl['total_discounts'] ?? 0.0;
-          final double delivery = pl['delivery_income'] ?? 0.0;
-          final double netProfit = pl['net_profit'] ?? 0.0;
-          final double marginPct = pl['profit_margin_pct'] ?? 0.0;
-          final bool isProfitable = pl['is_profitable'] ?? true;
+          final double revenue =
+              (pl['total_revenue'] ?? pl['total_sales'])?.toDouble() ?? 0.0;
+          final double cogs =
+              (pl['cogs'] ?? pl['total_cost'])?.toDouble() ?? 0.0;
+          final double grossProfit =
+              (pl['gross_profit'])?.toDouble() ?? (revenue - cogs);
+          final double expenses = (pl['total_expenses'])?.toDouble() ?? 0.0;
+          final double discounts = (pl['total_discounts'])?.toDouble() ?? 0.0;
+          final double delivery = (pl['delivery_income'])?.toDouble() ?? 0.0;
+          final double netProfit =
+              (pl['net_profit'])?.toDouble() ?? (grossProfit - expenses);
+          final double marginPct = (pl['profit_margin_pct'])?.toDouble() ??
+              (revenue > 0 ? (netProfit / revenue) * 100 : 0.0);
+          final bool isProfitable = pl['is_profitable'] ?? (netProfit >= 0);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -155,16 +160,21 @@ class ProfitLossScreen extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.pie_chart_outline_rounded,
-                                  color: AppColors.primary, size: 20),
-                              SizedBox(width: 8),
-                              Text('Financial Radar Breakdown',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14)),
-                            ],
+                          const Expanded(
+                            child: Row(
+                              children: [
+                                Icon(Icons.pie_chart_outline_rounded,
+                                    color: AppColors.primary, size: 20),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text('Financial Radar Breakdown',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14),
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                              ],
+                            ),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -515,6 +525,10 @@ class ProfitLossScreen extends ConsumerWidget {
   }
 
   Widget _buildRadarBar(String label, double val, double ratio, Color col) {
+    final safeRatio = (ratio.isNaN || ratio.isInfinite)
+        ? 0.0
+        : ratio.clamp(0.0, 1.0);
+
     return Column(
       children: [
         Text(label,
@@ -536,7 +550,7 @@ class ProfitLossScreen extends ConsumerWidget {
             ),
             AnimatedContainer(
               duration: const Duration(milliseconds: 400),
-              height: (60 * ratio).clamp(4.0, 60.0),
+              height: (60 * safeRatio).clamp(4.0, 60.0),
               width: 14,
               decoration: BoxDecoration(
                 color: col,
@@ -549,7 +563,7 @@ class ProfitLossScreen extends ConsumerWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-            '${(ratio * 100).toStringAsFixed(0)}%',
+            '${(safeRatio * 100).toStringAsFixed(0)}%',
             style: TextStyle(
                 fontSize: 10, fontWeight: FontWeight.bold, color: col),
           ),

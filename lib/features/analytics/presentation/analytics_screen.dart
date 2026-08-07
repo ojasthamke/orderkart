@@ -205,14 +205,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        _chartRange == 'weekly'
-                            ? 'Sales Trend (Last 7 Days)'
-                            : 'Sales Trend (Last 6 Months)',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                      Expanded(
+                        child: Text(
+                          _chartRange == 'weekly'
+                              ? 'Sales Trend (Last 7 Days)'
+                              : 'Sales Trend (Last 6 Months)',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
                       ),
                       Row(
                         children: [
@@ -930,6 +932,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
+              reservedSize: 28,
               getTitlesWidget: (val, meta) {
                 final int index = val.toInt();
                 if (index < 0 || index >= labels.length) {
@@ -990,7 +993,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   Widget _paymentSplitRow(BuildContext context, String label, double amount,
       double total, Color color) {
-    final double pct = total > 0 ? (amount / total) : 0.0;
+    final double pct = total > 0 ? (amount / total).clamp(0.0, 1.0) : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

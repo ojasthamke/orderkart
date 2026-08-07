@@ -1419,7 +1419,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       subtotal: adjustedSubtotal,
       discount: _discount,
       deliveryCharge: _deliveryEnabled ? _deliveryCharge : 0,
-      smartRoundedAmount: 0,
+      smartRoundedAmount: roundingDiff.toDouble(),
       grandTotal: _grandTotal,
       paidAmount: _paidAmount,
       remainingAmount: _remaining,
