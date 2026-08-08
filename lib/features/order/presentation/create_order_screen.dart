@@ -232,6 +232,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.orderId != null && _existingOrder == null) {
+      return const AppScaffold(
+        title: 'Edit Order',
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final settings = ref.watch(settingsProvider).valueOrNull;
     final currency = settings?.currency ?? AppConstants.defaultCurrency;
 
@@ -1502,19 +1509,29 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       _orderSaved = true;
 
       // Add initial payment or adjust payment difference if editing
-      final double diff = _paidAmount - (_existingOrder?.paidAmount ?? 0.0);
-      if (diff != 0) {
+      if (widget.orderId != null && _existingOrder != null) {
+        final double diff = _paidAmount - _existingOrder!.paidAmount;
+        if (diff != 0) {
+          await ref.read(orderManagementProvider.notifier).addPayment(Payment(
+                id: const Uuid().v4(),
+                orderId: orderId,
+                customerId: widget.customerId,
+                amount: diff,
+                method: _paymentMethod,
+                notes: diff < 0
+                    ? 'Adjustment: Paid amount decreased'
+                    : 'Adjustment: Additional payment',
+                createdAt: now,
+              ));
+        }
+      } else if (widget.orderId == null && _paidAmount > 0) {
         await ref.read(orderManagementProvider.notifier).addPayment(Payment(
               id: const Uuid().v4(),
               orderId: orderId,
               customerId: widget.customerId,
-              amount: diff,
+              amount: _paidAmount,
               method: _paymentMethod,
-              notes: diff < 0
-                  ? 'Adjustment: Paid amount decreased'
-                  : (_existingOrder == null
-                      ? 'Initial payment'
-                      : 'Adjustment: Additional payment'),
+              notes: 'Initial payment',
               createdAt: now,
             ));
       }
@@ -1528,6 +1545,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       ref.read(createOrderCartProvider(widget.customerId).notifier).state = [];
 
       if (!mounted) return;
+      ref.invalidate(customerOrdersProvider(widget.customerId));
+      ref.invalidate(customerDetailProvider(widget.customerId));
       if (widget.orderId != null) {
         ref.invalidate(orderDetailProvider(widget.orderId!));
         Navigator.of(context).pop(true);
