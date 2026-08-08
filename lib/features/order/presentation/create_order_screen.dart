@@ -1299,16 +1299,28 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // ── Save order ────────────────────────────────────────────────────────────────
   Future<void> _saveOrder() async {
+    // Immediate visible feedback so user knows button tap registered
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Processing order...'),
+        duration: Duration(seconds: 1),
+        backgroundColor: Colors.blue,
+      ),
+    );
     debugPrint('[SaveOrder] _saveOrder() called. _saving=$_saving, cart=${_cart.length} items');
-    if (_saving) {
-      debugPrint('[SaveOrder] BLOCKED: _saving is true, returning early');
-      return;
-    }
-    if (_cart.isEmpty) {
-      debugPrint('[SaveOrder] BLOCKED: cart is empty');
-      SnackbarHelper.showError(context, 'Add at least one item');
-      return;
-    }
+
+    try {
+      if (_saving) {
+        debugPrint('[SaveOrder] BLOCKED: _saving is true');
+        SnackbarHelper.showError(context, 'Already saving, please wait...');
+        return;
+      }
+      if (_cart.isEmpty) {
+        debugPrint('[SaveOrder] BLOCKED: cart is empty');
+        SnackbarHelper.showError(context, 'Add at least one item');
+        return;
+      }
 
     final settingsVal = ref.read(settingsProvider).value;
     final discountCapPct = settingsVal?.workerDiscountCap ?? 10.0;
@@ -1622,6 +1634,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+    } catch (outerError, outerStack) {
+      // Catch ANY unhandled error from the entire function including pre-validation
+      debugPrint('[SaveOrder] OUTER ERROR: $outerError');
+      debugPrint('[SaveOrder] OUTER STACK: $outerStack');
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Unexpected error: $outerError');
+        setState(() => _saving = false);
+      }
     }
   }
 
