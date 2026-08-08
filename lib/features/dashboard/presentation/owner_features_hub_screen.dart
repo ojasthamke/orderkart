@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -11,6 +12,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/haptics.dart';
+import '../../../core/utils/pdf_font_helper.dart';
+import '../../../core/utils/marathi_item_helper.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/empty_state_widget.dart';
@@ -387,12 +390,16 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       }
     } catch (_) {}
 
-    final pdf = pw.Document();
+    final pdfTheme = await PdfFontHelper.getDevanagariTheme();
+    final pdf = pw.Document(theme: pdfTheme);
+
+    final now = DateTime.now();
+    final timeStr = DateFormat('dd MMM yyyy, hh:mm a').format(now);
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
+        margin: const pw.EdgeInsets.all(28),
         build: (pw.Context context) {
           return [
             pw.Header(
@@ -402,31 +409,41 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                 children: [
                   pw.Text('ORDERKART OFFICIAL CATALOG',
                       style: pw.TextStyle(
-                          fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                          fontSize: 18,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.teal900)),
                   pw.Text(
-                      'Generated: ${DateTime.now().toIso8601String().substring(0, 10)}',
-                      style: const pw.TextStyle(fontSize: 10)),
+                      'Generated: $timeStr',
+                      style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
                 ],
               ),
             ),
-            pw.SizedBox(height: 16),
+            pw.SizedBox(height: 12),
             pw.TableHelper.fromTextArray(
               headers: [
-                'Product Name',
+                'Product Name (वस्तूचे नाव)',
                 'Category',
                 'Selling Price',
                 'Unit',
                 'Stock Status'
               ],
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              headerStyle: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 9.5,
+                  color: PdfColors.white),
+              headerDecoration:
+                  const pw.BoxDecoration(color: PdfColors.teal800),
+              cellStyle: const pw.TextStyle(fontSize: 9),
               cellAlignment: pw.Alignment.centerLeft,
               data: pdfItems.isEmpty
                   ? [
                       ['No products available', '', '', '', '']
                     ]
                   : pdfItems.map((i) {
+                      final bilingualName =
+                          MarathiItemHelper.formatBilingual(i.name);
                       return [
-                        i.name,
+                        bilingualName,
                         i.category,
                         '$currency ${i.sellingPrice.toStringAsFixed(2)}',
                         i.unit,
@@ -434,19 +451,55 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                       ];
                     }).toList(),
             ),
+            pw.SizedBox(height: 16),
+            // Decorative Satisfaction Footer Box
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.all(10),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.teal50,
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                border: pw.Border.all(color: PdfColors.teal300, width: 1.0),
+              ),
+              child: pw.Column(
+                children: [
+                  pw.Text(
+                    '🌿 "Your satisfaction matters to us! If something isn\'t right, just let us know and we\'ll make it right. Thank you for trusting us with your everyday fresh vegetables & groceries!" 🙏',
+                    textAlign: pw.TextAlign.center,
+                    style: pw.TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.teal900,
+                    ),
+                  ),
+                  pw.SizedBox(height: 3),
+                  pw.Text(
+                    '🌱 "तुमचे समाधान आमच्यासाठी सर्वात महत्त्वाचे आहे! काही अडचण असल्यास आम्हाला नक्की कळवा. रोजच्या ताज्या भाज्यांसाठी मनःपूर्वक धन्यवाद!"',
+                    textAlign: pw.TextAlign.center,
+                    style: pw.TextStyle(
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.teal900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ];
         },
       ),
     );
 
     try {
+      final dateStr = DateFormat('yyyy-MM-dd').format(now);
+      final fileName = '${dateStr}_OrderKart_Catalog.pdf';
       final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/OrderKart_Catalog.pdf');
+      final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(await pdf.save());
 
       await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Sharing OrderKart Official Product Stock & Price List Catalog',
+        [XFile(file.path, name: fileName)],
+        text: 'Sharing OrderKart Official Product Stock & Price List Catalog ($dateStr)',
       );
     } catch (e) {
       if (mounted) {

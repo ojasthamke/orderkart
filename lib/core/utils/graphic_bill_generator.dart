@@ -1,14 +1,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import '../widgets/snackbar_helper.dart';
 import '../../features/order/domain/order.dart';
+import '../../features/order/data/order_dao.dart';
 import '../../features/customer/domain/customer.dart';
 import '../../features/settings/domain/app_settings.dart';
+import 'pdf_font_helper.dart';
+import 'marathi_item_helper.dart';
+import 'formatters.dart';
 
 class GraphicBillGenerator {
   GraphicBillGenerator._();
@@ -47,273 +52,428 @@ class GraphicBillGenerator {
           ? 'PAID IN FULL'
           : (order.paidAmount > 0 ? 'PARTIAL PAYMENT' : 'DUE / UNPAID');
 
-      final pdf = pw.Document();
+      // Fetch customer monthly savings
+      Map<String, double> savingsData = {'total': 0.0, 'monthly': 0.0};
+      try {
+        if (order.customerId.isNotEmpty) {
+          savingsData = await OrderDao().getCustomerSavings(order.customerId);
+        }
+      } catch (_) {}
+
+      final double monthlySavings = savingsData['monthly'] ?? 0.0;
+      final double currentOrderSavings = order.savings > 0 ? order.savings : order.discount;
+
+      // Load Devanagari (Marathi) capable PDF Theme
+      final pdfTheme = await PdfFontHelper.getDevanagariTheme();
+      final pdf = pw.Document(theme: pdfTheme);
+
+      final now = DateTime.now();
+      final orderDateStr = AppFormatters.date(order.createdAt);
+      final pdfGeneratedTimeStr = DateFormat('dd MMM yyyy, hh:mm a').format(now);
+      final currentMonthName = DateFormat('MMMM yyyy').format(now);
 
       pdf.addPage(
-        pw.Page(
+        pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(28),
+          margin: const pw.EdgeInsets.all(24),
           build: (pw.Context ctx) {
-            return pw.Stack(
-              children: [
-                // Live Diagonal Watermark
-                pw.Positioned.fill(
-                  child: pw.Center(
-                    child: pw.Transform.rotate(
-                      angle: -0.45,
-                      child: pw.Text(
-                        watermarkText,
-                        style: pw.TextStyle(
-                          fontSize: 60,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.grey200,
+            return [
+              pw.Stack(
+                children: [
+                  // Live Diagonal Watermark
+                  pw.Positioned.fill(
+                    child: pw.Center(
+                      child: pw.Transform.rotate(
+                        angle: -0.45,
+                        child: pw.Text(
+                          watermarkText,
+                          style: pw.TextStyle(
+                            fontSize: 54,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.grey200,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                // Main Invoice Content
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(20),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: primaryColor, width: 2),
-                    borderRadius: pw.BorderRadius.circular(12),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      // ── Header ─────────────────────────────────────────
-                      pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                        children: [
-                          pw.Column(
+
+                  // Main Invoice Container
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(18),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: primaryColor, width: 2),
+                      borderRadius: pw.BorderRadius.circular(12),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        // ── Header ─────────────────────────────────────────
+                        pw.Row(
+                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Expanded(
+                              child: pw.Column(
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                children: [
+                                  pw.Text(
+                                    businessName.toUpperCase(),
+                                    style: pw.TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                  if (phone.isNotEmpty)
+                                    pw.Text('Contact: $phone',
+                                        style: const pw.TextStyle(
+                                            fontSize: 9.5, color: PdfColors.grey700)),
+                                  pw.Text('Official Tax Invoice & Cash Memo (बिल पावती)',
+                                      style: const pw.TextStyle(
+                                          fontSize: 9, color: PdfColors.grey600)),
+                                ],
+                              ),
+                            ),
+                            pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.end,
+                              children: [
+                                pw.Container(
+                                  padding: const pw.EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: pw.BoxDecoration(
+                                    color: lightColor,
+                                    borderRadius: pw.BorderRadius.circular(6),
+                                    border: pw.Border.all(color: borderColor),
+                                  ),
+                                  child: pw.Text(
+                                    'ORDER ${order.orderNoLabel}',
+                                    style: pw.TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: primaryColor),
+                                  ),
+                                ),
+                                pw.SizedBox(height: 4),
+                                pw.Text(
+                                  '📅 Order Date: $orderDateStr',
+                                  style: pw.TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.grey800),
+                                ),
+                                pw.Text(
+                                  '🖨️ Bill Generated: $pdfGeneratedTimeStr',
+                                  style: const pw.TextStyle(
+                                      fontSize: 8.5, color: PdfColors.grey600),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        pw.Divider(thickness: 1.2, color: borderColor),
+                        pw.SizedBox(height: 6),
+
+                        // ── Customer Details ────────────────────────────────
+                        if (customer != null || (order.customerName != null && order.customerName!.isNotEmpty)) ...[
+                          pw.Row(
+                            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
+                              pw.Column(
+                                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                children: [
+                                  pw.Text('Billed To (ग्राहक):',
+                                      style: pw.TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: pw.FontWeight.bold,
+                                          color: PdfColors.grey700)),
+                                  pw.Text(
+                                    customer?.name ?? order.customerName ?? 'Valued Customer',
+                                    style: pw.TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: PdfColors.black),
+                                  ),
+                                  if ((customer?.phone1 ?? order.customerPhone ?? '').isNotEmpty)
+                                    pw.Text('Phone: ${customer?.phone1 ?? order.customerPhone}',
+                                        style: const pw.TextStyle(fontSize: 9)),
+                                  if (customer != null && customer.address.isNotEmpty)
+                                    pw.Text('Address: ${customer.address}',
+                                        style: const pw.TextStyle(fontSize: 9)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          pw.SizedBox(height: 10),
+                        ],
+
+                        // ── Itemized Table with Marathi Names ─────────────────
+                        pw.TableHelper.fromTextArray(
+                          headers: [
+                            '#',
+                            'Item Description (वस्तूचे नाव)',
+                            'Qty (प्रमाण)',
+                            'Rate (दर)',
+                            'Total (एकूण)'
+                          ],
+                          headerStyle: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 9.5,
+                              color: PdfColors.white),
+                          headerDecoration:
+                              pw.BoxDecoration(color: primaryColor),
+                          cellStyle: const pw.TextStyle(fontSize: 9),
+                          cellAlignment: pw.Alignment.centerLeft,
+                          data: (orderItems == null || orderItems.isEmpty)
+                              ? [
+                                  [
+                                    '1',
+                                    'General Order Items',
+                                    '1',
+                                    '$safeCurrency ${order.subtotal.toStringAsFixed(2)}',
+                                    '$safeCurrency ${order.subtotal.toStringAsFixed(2)}'
+                                  ]
+                                ]
+                              : orderItems.asMap().entries.map((entry) {
+                                  final idx = entry.key + 1;
+                                  final item = entry.value;
+                                  final rawName =
+                                      item['item_name']?.toString() ?? 'Product';
+                                  // Bilingual Marathi name formatting
+                                  final bilingualName =
+                                      MarathiItemHelper.formatBilingual(rawName);
+
+                                  final qty =
+                                      (item['quantity'] as num?)?.toDouble() ?? 1.0;
+                                  final unit = item['unit']?.toString() ??
+                                      item['item_unit']?.toString() ??
+                                      'pcs';
+                                  final price =
+                                      (item['unit_price'] as num?)?.toDouble() ?? 0.0;
+                                  final total =
+                                      (item['total_price'] as num?)?.toDouble() ??
+                                          (qty * price);
+
+                                  return [
+                                    '$idx',
+                                    bilingualName,
+                                    '${AppFormatters.quantity(qty)} $unit',
+                                    '$safeCurrency ${price.toStringAsFixed(2)}',
+                                    '$safeCurrency ${total.toStringAsFixed(2)}',
+                                  ];
+                                }).toList(),
+                        ),
+                        pw.SizedBox(height: 10),
+
+                        // ── Financial Breakdown & Payment Status ────────────
+                        pw.Row(
+                          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.start,
+                              children: [
+                                pw.Text('Payment Status (पेमेंट स्थिती):',
+                                    style: pw.TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: pw.FontWeight.bold)),
+                                pw.Text(
+                                  order.remainingAmount <= 0
+                                      ? 'PAID IN FULL ✓ (पूर्ण भरले)'
+                                      : 'DUE / PENDING ($safeCurrency ${order.remainingAmount.toStringAsFixed(2)})',
+                                  style: pw.TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: order.remainingAmount <= 0
+                                        ? PdfColors.green800
+                                        : PdfColors.orange900,
+                                  ),
+                                ),
+                                if (order.notes.isNotEmpty) ...[
+                                  pw.SizedBox(height: 6),
+                                  pw.Text('Note: ${order.notes}',
+                                      style: const pw.TextStyle(
+                                          fontSize: 8.5, color: PdfColors.grey700)),
+                                ],
+                              ],
+                            ),
+                            pw.Container(
+                              width: 210,
+                              padding: const pw.EdgeInsets.all(8),
+                              decoration: pw.BoxDecoration(
+                                color: PdfColors.grey100,
+                                borderRadius: pw.BorderRadius.circular(8),
+                                border: pw.Border.all(color: PdfColors.grey300),
+                              ),
+                              child: pw.Column(
+                                children: [
+                                  _buildRow('Subtotal (उप-एकूण):',
+                                      '$safeCurrency ${order.subtotal.toStringAsFixed(2)}'),
+                                  if (settings != null && settings.enableGstTax) ...[
+                                    _buildRow(
+                                        'CGST (${(settings.gstRate / 2).toStringAsFixed(1)}%):',
+                                        '$safeCurrency ${(order.subtotal * (settings.gstRate / 200)).toStringAsFixed(2)}'),
+                                    _buildRow(
+                                        'SGST (${(settings.gstRate / 2).toStringAsFixed(1)}%):',
+                                        '$safeCurrency ${(order.subtotal * (settings.gstRate / 200)).toStringAsFixed(2)}'),
+                                  ],
+                                  if (order.discount > 0)
+                                    _buildRow('Discount Saved (सूट):',
+                                        '-$safeCurrency ${order.discount.toStringAsFixed(2)}',
+                                        color: PdfColors.green800),
+                                  if (order.deliveryCharge > 0)
+                                    _buildRow('Delivery Fee (डिलिव्हरी शुल्क):',
+                                        '+$safeCurrency ${order.deliveryCharge.toStringAsFixed(2)}'),
+                                  pw.Divider(thickness: 0.8),
+                                  _buildRow(
+                                    'Grand Total (एकूण बिल):',
+                                    '$safeCurrency ${order.grandTotal.toStringAsFixed(2)}',
+                                    isBold: true,
+                                    fontSize: 11,
+                                    color: primaryColor,
+                                  ),
+                                  if (order.paidAmount > 0)
+                                    _buildRow('Amount Paid (दिलेली रक्कम):',
+                                        '$safeCurrency ${order.paidAmount.toStringAsFixed(2)}',
+                                        color: PdfColors.green900),
+                                  if (order.remainingAmount > 0)
+                                    _buildRow('Balance Due (बाकी रक्कम):',
+                                        '$safeCurrency ${order.remainingAmount.toStringAsFixed(2)}',
+                                        isBold: true,
+                                        color: PdfColors.red900),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        pw.SizedBox(height: 10),
+
+                        // ── Customer Savings Card (बचत तपशील) ───────────────
+                        if (currentOrderSavings > 0 || monthlySavings > 0)
+                          pw.Container(
+                            width: double.infinity,
+                            margin: const pw.EdgeInsets.symmetric(vertical: 4),
+                            padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: pw.BoxDecoration(
+                              color: PdfColors.green50,
+                              borderRadius: pw.BorderRadius.circular(8),
+                              border: pw.Border.all(
+                                  color: PdfColors.green400, width: 1.2),
+                            ),
+                            child: pw.Row(
+                              mainAxisAlignment:
+                                  pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                pw.Column(
+                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                  children: [
+                                    pw.Text(
+                                      '🎉 YOUR SAVINGS SUMMARY (तुमची एकूण बचत):',
+                                      style: pw.TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: pw.FontWeight.bold,
+                                          color: PdfColors.green900),
+                                    ),
+                                    pw.SizedBox(height: 2),
+                                    pw.Text(
+                                      '• Saved on this order: $safeCurrency ${currentOrderSavings.toStringAsFixed(2)}',
+                                      style: pw.TextStyle(
+                                          fontSize: 8.5,
+                                          fontWeight: pw.FontWeight.bold,
+                                          color: PdfColors.green800),
+                                    ),
+                                    if (monthlySavings > 0)
+                                      pw.Text(
+                                        '• Total saved this month ($currentMonthName): $safeCurrency ${monthlySavings.toStringAsFixed(2)}',
+                                        style: pw.TextStyle(
+                                            fontSize: 8.5,
+                                            fontWeight: pw.FontWeight.bold,
+                                            color: PdfColors.teal900),
+                                      ),
+                                  ],
+                                ),
+                                pw.Container(
+                                  padding: const pw.EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: pw.BoxDecoration(
+                                    color: PdfColors.green700,
+                                    borderRadius: pw.BorderRadius.circular(6),
+                                  ),
+                                  child: pw.Text(
+                                    'SAVED $safeCurrency ${currentOrderSavings.toStringAsFixed(0)}',
+                                    style: pw.TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        pw.SizedBox(height: 8),
+
+                        // ── Decorative Footer & Customer Satisfaction Promise ─
+                        pw.Container(
+                          width: double.infinity,
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: pw.BoxDecoration(
+                            color: lightColor,
+                            borderRadius: pw.BorderRadius.circular(10),
+                            border: pw.Border.all(
+                                color: borderColor, width: 1.2),
+                          ),
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.center,
+                            children: [
                               pw.Text(
-                                businessName.toUpperCase(),
+                                '🌿 "Your satisfaction matters to us! If something isn\'t right, just let us know and we\'ll make it right. Thank you for trusting us with your everyday fresh vegetables & groceries!"',
+                                textAlign: pw.TextAlign.center,
                                 style: pw.TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 8.5,
                                   fontWeight: pw.FontWeight.bold,
                                   color: primaryColor,
                                 ),
                               ),
-                              if (phone.isNotEmpty)
-                                pw.Text('Contact: $phone',
-                                    style: const pw.TextStyle(
-                                        fontSize: 10, color: PdfColors.grey700)),
-                              pw.Text('Official Tax Invoice / Cash Memo',
-                                  style: const pw.TextStyle(
-                                      fontSize: 9, color: PdfColors.grey600)),
-                            ],
-                          ),
-                          pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.end,
-                            children: [
-                              pw.Container(
-                                padding: const pw.EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: pw.BoxDecoration(
-                                  color: lightColor,
-                                  borderRadius: pw.BorderRadius.circular(6),
-                                ),
-                                child: pw.Text(
-                                  'ORDER ${order.orderNoLabel}',
-                                  style: pw.TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: pw.FontWeight.bold,
-                                      color: primaryColor),
-                                ),
-                              ),
                               pw.SizedBox(height: 4),
                               pw.Text(
-                                'Date: ${order.createdAt.toIso8601String().substring(0, 10)}',
-                                style: const pw.TextStyle(
-                                    fontSize: 10, color: PdfColors.grey700),
+                                '🌱 "तुमचे समाधान आमच्यासाठी सर्वात महत्त्वाचे आहे! काही अडचण असल्यास आम्हाला नक्की कळवा, आम्ही ते लगेच दुरुस्त करू. रोजच्या ताज्या भाज्यांसाठी आमच्यावर विश्वास ठेवल्याबद्दल मनःपूर्वक धन्यवाद! 🙏"',
+                                textAlign: pw.TextAlign.center,
+                                style: pw.TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: primaryColor,
+                                ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                      pw.Divider(thickness: 1.5, color: borderColor),
-                      pw.SizedBox(height: 10),
+                        ),
 
-                  // ── Customer Details ────────────────────────────────
-                  if (customer != null || (order.customerName != null && order.customerName!.isNotEmpty)) ...[
-                    pw.Text('Billed To:',
-                        style: pw.TextStyle(
-                            fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(customer?.name ?? order.customerName ?? 'Customer',
-                        style: pw.TextStyle(
-                            fontSize: 13,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.black)),
-                    if ((customer?.phone1 ?? order.customerPhone ?? '').isNotEmpty)
-                      pw.Text('Phone: ${customer?.phone1 ?? order.customerPhone}',
-                          style: const pw.TextStyle(fontSize: 10)),
-                    if (customer != null && customer.address.isNotEmpty)
-                      pw.Text('Address: ${customer.address}',
-                          style: const pw.TextStyle(fontSize: 10)),
-                    pw.SizedBox(height: 12),
-                  ],
-
-                  // ── Itemized Table ─────────────────────────────────
-                  pw.TableHelper.fromTextArray(
-                    headers: [
-                      '#',
-                      'Item Description',
-                      'Qty',
-                      'Unit Price',
-                      'Total'
-                    ],
-                    headerStyle: pw.TextStyle(
-                        fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                    headerDecoration:
-                        const pw.BoxDecoration(color: PdfColors.teal700),
-                    cellAlignment: pw.Alignment.centerLeft,
-                    data: (orderItems == null || orderItems.isEmpty)
-                        ? [
-                            [
-                              '1',
-                              'General Order Items',
-                              '1',
-                              '$safeCurrency ${order.subtotal.toStringAsFixed(2)}',
-                              '$safeCurrency ${order.subtotal.toStringAsFixed(2)}'
-                            ]
-                          ]
-                        : orderItems.asMap().entries.map((entry) {
-                            final idx = entry.key + 1;
-                            final item = entry.value;
-                            final name =
-                                item['item_name']?.toString() ?? 'Product';
-                            final qty =
-                                (item['quantity'] as num?)?.toDouble() ?? 1.0;
-                            final unit = item['unit']?.toString() ?? 'pcs';
-                            final price =
-                                (item['unit_price'] as num?)?.toDouble() ?? 0.0;
-                            final total =
-                                (item['total_price'] as num?)?.toDouble() ??
-                                    (qty * price);
-
-                            return [
-                              '$idx',
-                              name,
-                              '${qty.toStringAsFixed(qty == qty.roundToDouble() ? 0 : 2)} $unit',
-                              '$safeCurrency ${price.toStringAsFixed(2)}',
-                              '$safeCurrency ${total.toStringAsFixed(2)}',
-                            ];
-                          }).toList(),
-                  ),
-                  pw.SizedBox(height: 12),
-
-                  // ── Financial Breakdown & Payment Status ────────────
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text('Payment Status:',
-                              style: pw.TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: pw.FontWeight.bold)),
-                          pw.Text(
-                            order.remainingAmount <= 0
-                                ? 'PAID IN FULL ✓'
-                                : 'PARTIAL / PENDING ($safeCurrency ${order.remainingAmount.toStringAsFixed(2)} DUE)',
-                            style: pw.TextStyle(
-                              fontSize: 11,
-                              fontWeight: pw.FontWeight.bold,
-                              color: order.remainingAmount <= 0
-                                  ? PdfColors.green800
-                                  : PdfColors.orange900,
+                        if (settings != null &&
+                            settings.invoiceDisclaimer.trim().isNotEmpty) ...[
+                          pw.SizedBox(height: 6),
+                          pw.Center(
+                            child: pw.Text(
+                              'Terms: ${settings.invoiceDisclaimer.trim()}',
+                              style: const pw.TextStyle(
+                                  fontSize: 7.5, color: PdfColors.grey600),
                             ),
                           ),
-                          pw.SizedBox(height: 8),
-                          pw.Text('Thank you for your business!',
-                              style: pw.TextStyle(
-                                  fontSize: 10,
-                                  fontStyle: pw.FontStyle.italic)),
                         ],
-                      ),
-                      pw.Container(
-                        width: 220,
-                        padding: const pw.EdgeInsets.all(10),
-                        decoration: pw.BoxDecoration(
-                          color: PdfColors.grey100,
-                          borderRadius: pw.BorderRadius.circular(8),
-                        ),
-                        child: pw.Column(
-                          children: [
-                            _buildRow('Subtotal:',
-                                '$safeCurrency ${order.subtotal.toStringAsFixed(2)}'),
-                            if (settings != null && settings.enableGstTax) ...[
-                              _buildRow(
-                                  'CGST (${(settings.gstRate / 2).toStringAsFixed(1)}%):',
-                                  '$safeCurrency ${(order.subtotal * (settings.gstRate / 200)).toStringAsFixed(2)}'),
-                              _buildRow(
-                                  'SGST (${(settings.gstRate / 2).toStringAsFixed(1)}%):',
-                                  '$safeCurrency ${(order.subtotal * (settings.gstRate / 200)).toStringAsFixed(2)}'),
-                            ],
-                            if (order.discount > 0)
-                              _buildRow('Discount Saved:',
-                                  '-$safeCurrency ${order.discount.toStringAsFixed(2)}',
-                                  color: PdfColors.green800),
-                            if (order.deliveryCharge > 0)
-                              _buildRow('Delivery Fee:',
-                                  '+$safeCurrency ${order.deliveryCharge.toStringAsFixed(2)}'),
-                            pw.Divider(),
-                            _buildRow(
-                              'Grand Total:',
-                              '$safeCurrency ${order.grandTotal.toStringAsFixed(2)}',
-                              isBold: true,
-                              fontSize: 12,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (settings != null &&
-                      settings.invoiceDisclaimer.trim().isNotEmpty) ...[
-                    pw.SizedBox(height: 12),
-                    pw.Container(
-                      width: double.infinity,
-                      padding: const pw.EdgeInsets.all(8),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.teal50,
-                        borderRadius: pw.BorderRadius.circular(6),
-                        border: pw.Border.all(color: PdfColors.teal200),
-                      ),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text('Terms & Disclaimer:',
-                              style: pw.TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: PdfColors.teal900)),
-                          pw.SizedBox(height: 2),
-                          pw.Text(settings.invoiceDisclaimer.trim(),
-                              style: const pw.TextStyle(
-                                  fontSize: 8, color: PdfColors.grey800)),
-                        ],
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ],
               ),
-            ),
-          ],
-        );
+            ];
           },
         ),
       );
 
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/Order_${order.id}_Bill.pdf');
-      await file.writeAsBytes(await pdf.save());
-
+      // Save PDF with sanitized Customer Name & Date
       final custName = (customer?.name.isNotEmpty == true)
           ? customer!.name
           : (order.customerName?.isNotEmpty == true
@@ -323,6 +483,17 @@ class GraphicBillGenerator {
           ? customer!.phone1
           : (order.customerPhone ?? '');
 
+      final dateFormatted = DateFormat('yyyy-MM-dd').format(now);
+      final safeCustName = custName
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_\u0900-\u097F\s]'), '')
+          .trim()
+          .replaceAll(RegExp(r'\s+'), '_');
+      final fileName = '${dateFormatted}_${safeCustName.isEmpty ? "Customer" : safeCustName}_Invoice.pdf';
+
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(await pdf.save());
+
       if (custPhone.isNotEmpty) {
         final cleanPhone = custPhone.replaceAll(RegExp(r'\D'), '');
         if (cleanPhone.isNotEmpty) {
@@ -331,11 +502,11 @@ class GraphicBillGenerator {
       }
 
       final shareText = custPhone.isNotEmpty
-          ? '📄 Tax Invoice Bill: Order ${order.orderNoLabel}\n👤 Customer: $custName ($custPhone)\n🏪 Store: $businessName'
-          : '📄 Tax Invoice Bill: Order ${order.orderNoLabel}\n👤 Customer: $custName\n🏪 Store: $businessName';
+          ? '📄 Tax Invoice Bill: Order ${order.orderNoLabel}\n👤 Customer: $custName ($custPhone)\n🏪 Store: $businessName\n📅 Date: $orderDateStr'
+          : '📄 Tax Invoice Bill: Order ${order.orderNoLabel}\n👤 Customer: $custName\n🏪 Store: $businessName\n📅 Date: $orderDateStr';
 
       await Share.shareXFiles(
-        [XFile(file.path)],
+        [XFile(file.path, name: fileName)],
         text: shareText,
       );
 
@@ -353,9 +524,9 @@ class GraphicBillGenerator {
   }
 
   static pw.Widget _buildRow(String label, String val,
-      {bool isBold = false, double fontSize = 10, PdfColor? color}) {
+      {bool isBold = false, double fontSize = 9, PdfColor? color}) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [

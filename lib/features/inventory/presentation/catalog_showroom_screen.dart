@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -11,6 +12,8 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/loading_shimmer.dart';
+import '../../../core/utils/pdf_font_helper.dart';
+import '../../../core/utils/marathi_item_helper.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
@@ -51,12 +54,9 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
     for (final item in pdfItems) {
       final cat = item.category.trim().isEmpty ? 'General' : item.category.trim();
       categoryGrouped.putIfAbsent(cat, () => []).add(item);
-    }    final pdf = pw.Document(
-      theme: pw.ThemeData.withFont(
-        base: pw.Font.helvetica(),
-        bold: pw.Font.helveticaBold(),
-      ),
-    );
+    }
+    final pdfTheme = await PdfFontHelper.getDevanagariTheme();
+    final pdf = pw.Document(theme: pdfTheme);
     int totalPdfItems = 0;
     for (final l in categoryGrouped.values) {
       totalPdfItems += l.length;
@@ -429,9 +429,10 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                               .toStringAsFixed(0)
                           : '0';
 
+                      final bilingualName = MarathiItemHelper.formatBilingual(i.name);
                       final nameWithUnit = i.unit.isNotEmpty
-                          ? '${i.name} (${i.unit})'
-                          : i.name;
+                          ? '$bilingualName (${i.unit})'
+                          : bilingualName;
                       final mktPriceStr = i.marketPrice > 0
                           ? '$safeCurrency ${i.marketPrice.toStringAsFixed(2)}'
                           : '-';
@@ -515,6 +516,42 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
 
               widgets.add(pw.SizedBox(height: 12));
             });
+
+            // Decorative Satisfaction Footer Box in Catalog
+            widgets.add(
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  color: bgTealLight,
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                  border: pw.Border.all(color: PdfColors.teal300, width: 1.0),
+                ),
+                child: pw.Column(
+                  children: [
+                    pw.Text(
+                      '🌿 "Your satisfaction matters to us! If something isn\'t right, just let us know and we\'ll make it right. Thank you for trusting us with your everyday fresh vegetables & groceries!" 🙏',
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: primaryTeal,
+                      ),
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Text(
+                      '🌱 "तुमचे समाधान आमच्यासाठी सर्वात महत्त्वाचे आहे! काही अडचण असल्यास आम्हाला नक्की कळवा. रोजच्या ताज्या भाज्यांसाठी मनःपूर्वक धन्यवाद!"',
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                        color: primaryTeal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
 
           return widgets;
@@ -523,13 +560,16 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
     );
 
     try {
+      final now = DateTime.now();
+      final dateStr = DateFormat('yyyy-MM-dd').format(now);
+      final fileName = '${dateStr}_Product_Catalog.pdf';
       final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/OrderKart_Catalog.pdf');
+      final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(await pdf.save());
 
       await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Sharing Product Catalog & Price List',
+        [XFile(file.path, name: fileName)],
+        text: 'Sharing Product Catalog & Price List ($dateStr)',
       );
     } catch (e) {
       if (mounted) {

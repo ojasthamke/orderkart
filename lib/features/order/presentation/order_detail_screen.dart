@@ -21,6 +21,7 @@ import '../../inventory/presentation/inventory_provider.dart';
 import '../../inventory/domain/item.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../data/order_questions_dao.dart';
+import '../data/order_dao.dart';
 import '../domain/order.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
@@ -1158,6 +1159,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }).toList();
 
     final qAnswers = await OrderQuestionDao.instance.getOrderAnswers(order.id);
+    double monthlySavings = 0.0;
+    try {
+      if (order.customerId.isNotEmpty) {
+        final sav = await OrderDao().getCustomerSavings(order.customerId);
+        monthlySavings = sav['monthly'] ?? 0.0;
+      }
+    } catch (_) {}
 
     final text = BillTextGenerator.generate(
       businessName: settings?.businessName ?? 'My Business',
@@ -1175,6 +1183,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       paymentMethod: order.payments.firstOrNull?.method ?? 'cash',
       ownerPhone: settings?.phone ?? '',
       marketSavings: marketSavings,
+      monthlySavings: monthlySavings,
       currency: currency,
       notes: order.notes,
       disclaimer: settings?.invoiceDisclaimer ?? '',

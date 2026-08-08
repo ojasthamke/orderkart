@@ -1,9 +1,10 @@
-/// BillTextGenerator — Generates plain-text bill for sharing
-/// Clean, sophisticated style, with no emojis (except warning), no footer, and optional owner phone.
+/// BillTextGenerator — Generates plain-text & thermal bills for sharing with Marathi support & savings breakdown
 library;
 
+import 'package:intl/intl.dart';
 import '../constants/app_constants.dart';
 import 'formatters.dart';
+import 'marathi_item_helper.dart';
 
 class BillTextGenerator {
   BillTextGenerator._();
@@ -24,27 +25,34 @@ class BillTextGenerator {
     required String paymentMethod,
     required String ownerPhone,
     double marketSavings = 0.0, // savings vs market price
+    double monthlySavings = 0.0, // customer's total savings this month
     String currency = AppConstants.defaultCurrency,
     String notes = '',
     String disclaimer = '',
     List<Map<String, dynamic>> questionAnswers = const [],
+    DateTime? billGeneratedAt,
   }) {
     final buf = StringBuffer();
-    final sep = '─' * 30;
-    final doubleSep = '═' * 30;
+    final sep = '─' * 32;
+    final doubleSep = '═' * 32;
+    final now = billGeneratedAt ?? DateTime.now();
+    final billTimeFormatted = DateFormat('dd MMM yyyy, hh:mm a').format(now);
+    final monthName = DateFormat('MMMM yyyy').format(now);
 
     buf.writeln(doubleSep);
     buf.writeln('🏪 *${businessName.toUpperCase()}*');
+    buf.writeln('     _Official Tax Invoice & Cash Memo_');
     buf.writeln(doubleSep);
     buf.writeln('🧾 *INVOICE DETAILS*');
-    buf.writeln('• Order No: $orderNoLabel');
-    buf.writeln('• Date:     ${AppFormatters.dateTime(orderDate)}');
-    buf.writeln('• Customer: $customerName');
+    buf.writeln('• Order No:       *$orderNoLabel*');
+    buf.writeln('• Order Date:     📅 ${AppFormatters.date(orderDate)}');
+    buf.writeln('• Bill Generated: 🖨️ $billTimeFormatted');
+    buf.writeln('• Customer:       👤 *$customerName*');
     if (customerAddress.isNotEmpty) {
-      buf.writeln('• Address:  $customerAddress');
+      buf.writeln('• Address:        📍 $customerAddress');
     }
     if (notes.trim().isNotEmpty) {
-      buf.writeln('• Notes:    ${notes.trim()}');
+      buf.writeln('• Notes:          📝 ${notes.trim()}');
     }
     if (questionAnswers.isNotEmpty) {
       buf.writeln(sep);
@@ -57,63 +65,59 @@ class BillTextGenerator {
       }
     }
     buf.writeln(sep);
-    buf.writeln('🛒 *ITEMS SUMMARY*');
+    buf.writeln('🛒 *ITEMS SUMMARY (मालाचा तपशील)*');
     buf.writeln(sep);
 
-    for (final item in items) {
-      final name = item['item_name']?.toString() ?? 'Item';
+    for (int i = 0; i < items.length; i++) {
+      final item = items[i];
+      final rawName = item['item_name']?.toString() ?? 'Item';
+      final bilingualName = MarathiItemHelper.formatBilingual(rawName);
+
       final qty = (item['quantity'] as num?)?.toDouble() ?? 0.0;
-      final unit = item['item_unit']?.toString() ?? '';
+      final unit = item['item_unit']?.toString() ?? item['unit']?.toString() ?? '';
       final price = (item['unit_price'] as num?)?.toDouble() ?? 0.0;
       final total = (item['total_price'] as num?)?.toDouble() ?? (qty * price);
-      buf.writeln('🔹 *$name* (${AppFormatters.quantity(qty, unit: unit)})');
+      
+      buf.writeln('${i + 1}. 🔹 *$bilingualName*');
       buf.writeln(
-          '  Rate: $currency${price.toStringAsFixed(2)}  |  Total: *$currency${total.toStringAsFixed(2)}*');
+          '   Qty: *${AppFormatters.quantity(qty, unit: unit)}*  |  Rate: $currency${price.toStringAsFixed(2)}  |  Total: *$currency${total.toStringAsFixed(2)}*');
       buf.writeln('');
     }
 
     buf.writeln(sep);
-    buf.writeln('💵 *BILLING DETAILS*');
-    buf.writeln('• Subtotal: $currency${subtotal.toStringAsFixed(2)}');
+    buf.writeln('💵 *BILLING DETAILS (हिशोब)*');
+    buf.writeln('• Subtotal:       $currency${subtotal.toStringAsFixed(2)}');
     if (discount > 0) {
-      buf.writeln('• Discount: -$currency${discount.toStringAsFixed(2)}');
+      buf.writeln('• Discount Saved: -$currency${discount.toStringAsFixed(2)}');
     }
     if (deliveryCharge > 0) {
       buf.writeln(
-          '• Delivery Fee: +$currency${deliveryCharge.toStringAsFixed(2)}');
+          '• Delivery Fee:   +$currency${deliveryCharge.toStringAsFixed(2)}');
     }
-    buf.writeln('• *Grand Total: $currency${grandTotal.toStringAsFixed(2)}*');
+    buf.writeln('• *Grand Total:    $currency${grandTotal.toStringAsFixed(2)}*');
     buf.writeln(sep);
-    buf.writeln('💳 *PAYMENT STATUS*');
+    buf.writeln('💳 *PAYMENT STATUS (पेमेंट स्थिती)*');
     buf.writeln(
-        '• Paid Amount: $currency${paidAmount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(paymentMethod).toUpperCase()})');
+        '• Paid Amount:    $currency${paidAmount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(paymentMethod).toUpperCase()})');
     if (remainingAmount > 0) {
       buf.writeln(
-          '• *Due Amount: $currency${remainingAmount.toStringAsFixed(2)}* ⚠️');
+          '• *Due Amount:     $currency${remainingAmount.toStringAsFixed(2)}* ⚠️');
     } else {
-      buf.writeln('• Status: *Fully Paid* ✅');
+      buf.writeln('• Status:         *Fully Paid (पूर्ण भरले)* ✅');
     }
     buf.writeln(doubleSep);
 
-    // ── Daily Savings Banner ──────────────────────────────────────────
-    final totalSavings = discount + marketSavings;
-    if (totalSavings > 0) {
-      buf.writeln('🎉 *CONGRATULATIONS!*');
-      if (discount > 0 && marketSavings > 0) {
-        buf.writeln(
-            'You saved *$currency${discount.toStringAsFixed(2)}* (order discount) + *$currency${marketSavings.toStringAsFixed(2)}* (vs. market price)');
-        buf.writeln(
-            '🏷️ *Total savings: $currency${totalSavings.toStringAsFixed(2)}* by shopping with us! 🥳✨');
-      } else if (marketSavings > 0) {
-        buf.writeln(
-            'You saved *$currency${marketSavings.toStringAsFixed(2)}* vs. market price by shopping with us! 🥳✨');
-      } else {
-        buf.writeln(
-            'You saved *$currency${discount.toStringAsFixed(2)}* on this order by shopping with us! 🥳✨');
+    // ── Savings Summary Banner ────────────────────────────────────────
+    final totalOrderSavings = discount + marketSavings;
+    if (totalOrderSavings > 0 || monthlySavings > 0) {
+      buf.writeln('🎉 *YOUR SAVINGS SUMMARY (तुमची बचत)*');
+      if (totalOrderSavings > 0) {
+        buf.writeln('• *Saved on this order:* $currency${totalOrderSavings.toStringAsFixed(2)} 🥳');
       }
-      buf.writeln(doubleSep);
-    } else {
-      buf.writeln('💚 Thank you for shopping with *$businessName*!');
+      if (monthlySavings > 0) {
+        buf.writeln('• *Total saved this month ($monthName):* $currency${monthlySavings.toStringAsFixed(2)} 🌟');
+      }
+      buf.writeln('Every order with us helps you save more!');
       buf.writeln(doubleSep);
     }
 
@@ -125,16 +129,20 @@ class BillTextGenerator {
     }
 
     if (ownerPhone.trim().isNotEmpty) {
-      buf.writeln('📞 *STORE CONTACT*');
-      buf.writeln('Owner Phone: ${ownerPhone.trim()}');
+      buf.writeln('📞 *STORE CONTACT*: ${ownerPhone.trim()}');
       buf.writeln(doubleSep);
     }
 
     if (disclaimer.trim().isNotEmpty) {
-      buf.writeln('📌 *TERMS & DISCLAIMER*');
-      buf.writeln(disclaimer.trim());
+      buf.writeln('📌 *TERMS*: ${disclaimer.trim()}');
       buf.writeln(doubleSep);
     }
+
+    // ── Decorative Customer Satisfaction Footer ───────────────────────
+    buf.writeln('🌿 _"Your satisfaction matters to us! If something isn\'t right, just let us know and we\'ll make it right. Thank you for trusting us with your everyday fresh vegetables & groceries!"_ 🙏');
+    buf.writeln('');
+    buf.writeln('🌱 _"तुमचे समाधान आमच्यासाठी सर्वात महत्त्वाचे आहे! काही अडचण असल्यास आम्हाला नक्की कळवा, आम्ही ते लगेच दुरुस्त करू. रोजच्या ताज्या भाज्यांसाठी आमच्यावर विश्वास ठेवल्याबद्दल मनःपूर्वक धन्यवाद!"_');
+    buf.writeln(doubleSep);
 
     return buf.toString();
   }
@@ -159,12 +167,13 @@ class BillTextGenerator {
     bool enableGst = false,
     double gstRate = 5.0,
     String gstin = '',
-    String currency = '₹',
+    String currency = 'Rs.',
   }) {
     final int width = is58mm ? 32 : 48;
     final sep = '-' * width;
     final dSep = '=' * width;
     final buf = StringBuffer();
+    final now = DateTime.now();
 
     String center(String s) {
       if (s.length >= width) return s.substring(0, width);
@@ -180,61 +189,82 @@ class BillTextGenerator {
       return cleanL + (' ' * spaces) + safeRight;
     }
 
-    buf.writeln(dSep);
     buf.writeln(center(businessName.toUpperCase()));
+    buf.writeln(center('TAX INVOICE / CASH MEMO'));
     if (gstin.isNotEmpty) buf.writeln(center('GSTIN: $gstin'));
-    buf.writeln(center('ORDER RECEIPT'));
     buf.writeln(dSep);
-    buf.writeln(twoCol('Order #:', orderNoLabel));
-    buf.writeln(twoCol('Date:', AppFormatters.date(orderDate)));
-    buf.writeln(twoCol('Cust:', customerName));
+
+    buf.writeln(twoCol('Order No:', orderNoLabel));
+    buf.writeln(twoCol('Order Date:', AppFormatters.date(orderDate)));
+    buf.writeln(twoCol('Bill Print:', DateFormat('dd/MM/yy hh:mm a').format(now)));
+    buf.writeln(twoCol('Customer:', customerName));
     if (customerAddress.isNotEmpty) {
       buf.writeln('Addr: $customerAddress');
     }
     buf.writeln(sep);
-    buf.writeln(twoCol('ITEM / QTY', 'TOTAL'));
-    buf.writeln(sep);
 
-    for (final it in items) {
-      final name = it['item_name']?.toString() ?? 'Item';
-      final qty = (it['quantity'] as num?)?.toDouble() ?? 0.0;
-      final unit = it['item_unit']?.toString() ?? '';
-      final price = (it['unit_price'] as num?)?.toDouble() ?? 0.0;
-      final total = (it['total_price'] as num?)?.toDouble() ?? (qty * price);
+    if (is58mm) {
+      buf.writeln('ITEM          QTY   RATE  TOTAL');
+      buf.writeln(sep);
+      for (final it in items) {
+        final rawName = it['item_name']?.toString() ?? 'Item';
+        final bilingualName = MarathiItemHelper.formatBilingual(rawName);
+        final qty = (it['quantity'] as num?)?.toDouble() ?? 1.0;
+        final unit = it['item_unit']?.toString() ?? it['unit']?.toString() ?? '';
+        final price = (it['unit_price'] as num?)?.toDouble() ?? 0.0;
+        final total = (it['total_price'] as num?)?.toDouble() ?? (qty * price);
 
-      buf.writeln(name);
-      buf.writeln(twoCol(
-        '  ${AppFormatters.quantity(qty, unit: unit)} @ $price',
-        total.toStringAsFixed(2),
-      ));
+        buf.writeln(bilingualName);
+        final line = '  ${AppFormatters.quantity(qty)}$unit @$price = $currency${total.toStringAsFixed(2)}';
+        buf.writeln(line);
+      }
+    } else {
+      buf.writeln(twoCol('ITEM (DESCRIPTION)', 'QTY   RATE   TOTAL'));
+      buf.writeln(sep);
+      for (final it in items) {
+        final rawName = it['item_name']?.toString() ?? 'Item';
+        final bilingualName = MarathiItemHelper.formatBilingual(rawName);
+        final qty = (it['quantity'] as num?)?.toDouble() ?? 1.0;
+        final unit = it['item_unit']?.toString() ?? it['unit']?.toString() ?? '';
+        final price = (it['unit_price'] as num?)?.toDouble() ?? 0.0;
+        final total = (it['total_price'] as num?)?.toDouble() ?? (qty * price);
+        final right = '${AppFormatters.quantity(qty)}$unit x $price = $currency${total.toStringAsFixed(2)}';
+        buf.writeln(twoCol(bilingualName, right));
+      }
     }
 
     buf.writeln(sep);
     buf.writeln(twoCol('Subtotal:', '$currency${subtotal.toStringAsFixed(2)}'));
+
+    if (enableGst) {
+      final halfGst = (subtotal * (gstRate / 200)).toStringAsFixed(2);
+      buf.writeln(twoCol('CGST (${(gstRate / 2).toStringAsFixed(1)}%):', '$currency$halfGst'));
+      buf.writeln(twoCol('SGST (${(gstRate / 2).toStringAsFixed(1)}%):', '$currency$halfGst'));
+    }
+
     if (discount > 0) {
       buf.writeln(twoCol('Discount:', '-$currency${discount.toStringAsFixed(2)}'));
     }
     if (deliveryCharge > 0) {
       buf.writeln(twoCol('Delivery:', '+$currency${deliveryCharge.toStringAsFixed(2)}'));
     }
-    if (enableGst && gstRate > 0) {
-      final cgst = (subtotal * (gstRate / 200.0));
-      final sgst = (subtotal * (gstRate / 200.0));
-      buf.writeln(twoCol('CGST (${(gstRate / 2).toStringAsFixed(1)}%):', '+$currency${cgst.toStringAsFixed(2)}'));
-      buf.writeln(twoCol('SGST (${(gstRate / 2).toStringAsFixed(1)}%):', '+$currency${sgst.toStringAsFixed(2)}'));
-    }
     buf.writeln(dSep);
     buf.writeln(twoCol('GRAND TOTAL:', '$currency${grandTotal.toStringAsFixed(2)}'));
-    buf.writeln(twoCol('PAID (${paymentMethod.toUpperCase()}):', '$currency${paidAmount.toStringAsFixed(2)}'));
-    if (remainingAmount > 0) {
-      buf.writeln(twoCol('DUE BALANCE:', '$currency${remainingAmount.toStringAsFixed(2)}'));
-    } else if (remainingAmount < 0) {
-      buf.writeln(twoCol('ADVANCE CREDIT:', '$currency${remainingAmount.abs().toStringAsFixed(2)}'));
-    }
     buf.writeln(dSep);
-    buf.writeln(center('Thank you for your business!'));
-    buf.writeln(center('Please visit again'));
+
+    buf.writeln(twoCol('Paid ($paymentMethod):', '$currency${paidAmount.toStringAsFixed(2)}'));
+    if (remainingAmount > 0) {
+      buf.writeln(twoCol('DUE AMOUNT:', '$currency${remainingAmount.toStringAsFixed(2)}'));
+    } else {
+      buf.writeln(center('*** FULLY PAID ***'));
+    }
+
+    buf.writeln(dSep);
+    buf.writeln(center('Your satisfaction matters to us!'));
+    buf.writeln(center('Thank you for trusting us!'));
+    buf.writeln(center('*** VISIT AGAIN ***'));
     buf.writeln('\n\n');
+
     return buf.toString();
   }
 }
