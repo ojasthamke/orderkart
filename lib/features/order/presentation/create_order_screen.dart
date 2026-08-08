@@ -674,6 +674,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
           return _CartItemTile(
             cartItem: cartItem,
+            dbItem: dbItem,
             currency: currency,
             canToggleUnit: canToggleUnit,
             onQtyChanged: (qty) {
@@ -2164,6 +2165,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 // ── Cart item tile ────────────────────────────────────────────────────────────
 class _CartItemTile extends StatelessWidget {
   final CartItem cartItem;
+  final Item? dbItem;
   final String currency;
   final ValueChanged<double> onQtyChanged;
   final VoidCallback onRemove;
@@ -2172,6 +2174,7 @@ class _CartItemTile extends StatelessWidget {
 
   const _CartItemTile({
     required this.cartItem,
+    this.dbItem,
     required this.currency,
     required this.onQtyChanged,
     required this.onRemove,
@@ -2182,16 +2185,48 @@ class _CartItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    double maxStock = dbItem?.stock ?? 999999.0;
+    if (dbItem != null) {
+      final conversion = dbItem!.weightPerPiece > 0 ? dbItem!.weightPerPiece : 1.0;
+      if (dbItem!.unit == 'kg') {
+        if (cartItem.unit == 'gram') {
+          maxStock = dbItem!.stock * 1000.0;
+        } else if (cartItem.unit == 'piece') {
+          maxStock = dbItem!.stock / conversion;
+        }
+      } else if (dbItem!.unit == 'piece') {
+        if (cartItem.unit == 'dozen') {
+          maxStock = dbItem!.stock / 12.0;
+        } else if (cartItem.unit == 'kg') {
+          maxStock = dbItem!.stock * conversion;
+        }
+      }
+    }
+
+    final isOutOfStock = (dbItem != null && dbItem!.stock < 0.001);
+    final exceedsStock = cartItem.quantity > maxStock && !isOutOfStock;
+    final isLowStock = (dbItem != null && dbItem!.isLowStock && !isOutOfStock);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1E293B).withOpacity(0.4)
-            : AppColors.gray50,
+        color: isOutOfStock
+            ? (isDark ? Colors.red.withOpacity(0.12) : Colors.red.withOpacity(0.06))
+            : exceedsStock
+                ? (isDark ? Colors.red.withOpacity(0.08) : Colors.red.withOpacity(0.04))
+                : (isDark
+                    ? const Color(0xFF1E293B).withOpacity(0.4)
+                    : AppColors.gray50),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200,
+          color: isOutOfStock || exceedsStock
+              ? AppColors.error.withOpacity(0.6)
+              : isLowStock
+                  ? Colors.orange.withOpacity(0.5)
+                  : (isDark ? Colors.white.withOpacity(0.12) : AppColors.gray200),
+          width: isOutOfStock || exceedsStock ? 1.5 : 1.0,
         ),
       ),
       child: Row(
@@ -2200,10 +2235,58 @@ class _CartItemTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(cartItem.name,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        )),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        cartItem.name,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              decoration: isOutOfStock ? TextDecoration.lineThrough : null,
+                            ),
+                      ),
+                    ),
+                    if (isOutOfStock)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'OUT OF STOCK',
+                          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      )
+                    else if (exceedsStock)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppColors.error.withOpacity(0.4)),
+                        ),
+                        child: Text(
+                          'Exceeds Stock (${AppFormatters.quantity(maxStock)} max)',
+                          style: const TextStyle(color: AppColors.error, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      )
+                    else if (isLowStock)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.orange.withOpacity(0.4)),
+                        ),
+                        child: Text(
+                          'Low Stock: ${AppFormatters.quantity(dbItem!.stock)} ${dbItem!.unit}',
+                          style: const TextStyle(color: Colors.orange, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 2),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

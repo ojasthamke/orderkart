@@ -272,15 +272,26 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                           final isSelected = _selected?.id == item.id;
                           final isDark =
                               Theme.of(context).brightness == Brightness.dark;
+                          final isOutOfStock = item.stock < 0.001;
+                          final isLow = item.isLowStock && !isOutOfStock;
 
                           return GestureDetector(
                             onTap: () {
-                              if (item.stock < 0.001) {
+                              if (isOutOfStock) {
+                                AppHaptics.error();
                                 ScaffoldMessenger.of(context).clearSnackBars();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text(
-                                        '❌ "${item.name}" is out of stock! Cannot add to order.'),
+                                    content: Row(
+                                      children: [
+                                        const Icon(Icons.block_rounded, color: Colors.white, size: 20),
+                                        const SizedBox(width: 8),
+                                        Expanded(child: Text(
+                                          '"${item.name}" is OUT OF STOCK and cannot be added.',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        )),
+                                      ],
+                                    ),
                                     backgroundColor: AppColors.error,
                                     duration: const Duration(seconds: 2),
                                     behavior: SnackBarBehavior.floating,
@@ -298,107 +309,130 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                 });
                               _loadCustomPrice(item.id, item.sellingPrice);
                             },
-                            child: GlassContainer(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(12),
-                              borderRadius: BorderRadius.circular(12),
-                              color: isSelected
-                                  ? AppColors.primary.withOpacity(0.20)
-                                  : (item.stock < 0.001
-                                      ? Colors.red.withOpacity(0.06)
-                                      : (isDark
-                                          ? const Color(0xFF1E293B)
-                                              .withOpacity(0.4)
-                                          : AppColors.gray50)),
-                              borderColor: isSelected
-                                  ? AppColors.primary
-                                  : (item.stock < 0.001
-                                      ? AppColors.error.withOpacity(0.25)
-                                      : (isDark
-                                          ? Colors.white.withOpacity(0.12)
-                                          : AppColors.gray200)),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(item.name,
+                            child: Opacity(
+                              opacity: isOutOfStock ? 0.55 : 1.0,
+                              child: GlassContainer(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                borderRadius: BorderRadius.circular(12),
+                                color: isSelected
+                                    ? AppColors.primary.withOpacity(0.20)
+                                    : isOutOfStock
+                                        ? (isDark ? Colors.red.withOpacity(0.12) : Colors.red.withOpacity(0.06))
+                                        : isLow
+                                            ? (isDark ? Colors.orange.withOpacity(0.10) : Colors.orange.withOpacity(0.06))
+                                            : (isDark
+                                                ? const Color(0xFF1E293B)
+                                                    .withOpacity(0.4)
+                                                : AppColors.gray50),
+                                borderColor: isSelected
+                                    ? AppColors.primary
+                                    : isOutOfStock
+                                        ? AppColors.error.withOpacity(0.5)
+                                        : isLow
+                                            ? Colors.orange.withOpacity(0.5)
+                                            : (isDark
+                                                ? Colors.white.withOpacity(0.12)
+                                                : AppColors.gray200),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Item name + stock badge in same row
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(item.name,
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodyMedium
+                                                        ?.copyWith(
+                                                            fontWeight: FontWeight.w700,
+                                                            decoration: isOutOfStock ? TextDecoration.lineThrough : null,
+                                                            color: isOutOfStock
+                                                                ? AppColors.textSecondary
+                                                                : (isDark
+                                                                    ? Colors.white
+                                                                    : AppColors.textPrimary))),
+                                              ),
+                                              if (isOutOfStock)
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.error,
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: const Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.block_rounded, color: Colors.white, size: 12),
+                                                      SizedBox(width: 4),
+                                                      Text('OUT OF STOCK',
+                                                          style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontSize: 9,
+                                                              fontWeight: FontWeight.w900,
+                                                              letterSpacing: 0.5)),
+                                                    ],
+                                                  ),
+                                                )
+                                              else if (isLow)
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.orange,
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 12),
+                                                      const SizedBox(width: 4),
+                                                      Text('LOW: ${AppFormatters.quantity(item.stock)} ${item.unit}',
+                                                          style: const TextStyle(
+                                                              color: Colors.white,
+                                                              fontSize: 9,
+                                                              fontWeight: FontWeight.w900)),
+                                                    ],
+                                                  ),
+                                                )
+                                                    .animate(
+                                                        onPlay: (controller) =>
+                                                            controller.repeat(reverse: true))
+                                                    .fadeIn(begin: 0.5, duration: 800.ms),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '$currency${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Cost: $currency${item.costPrice.toStringAsFixed(item.costPrice == item.costPrice.roundToDouble() ? 0 : 2)}',
                                             style: Theme.of(context)
                                                 .textTheme
-                                                .bodyMedium
+                                                .bodySmall
                                                 ?.copyWith(
-                                                    fontWeight: FontWeight.w700,
-                                                    color: item.stock < 0.001
-                                                        ? AppColors
-                                                            .textSecondary
-                                                        : (isDark
-                                                            ? Colors.white
-                                                            : AppColors
-                                                                .textPrimary))),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '$currency${item.sellingPrice.toStringAsFixed(item.sellingPrice == item.sellingPrice.roundToDouble() ? 0 : 2)} / ${item.unit}  •  Cost: $currency${item.costPrice.toStringAsFixed(item.costPrice == item.costPrice.roundToDouble() ? 0 : 2)}  •  Stock: ${AppFormatters.quantity(item.stock)}',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                color: item.stock < 0.001
-                                                    ? AppColors.error
-                                                    : (isDark
-                                                        ? Colors.white70
-                                                        : AppColors.primary),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                        ),
-                                        // Fractional price hints
-                                        ..._fractionalHints(context,
-                                            item.sellingPrice, item.unit),
-                                        if (item.stock < 0.001)
-                                          Padding(
-                                            padding:
-                                                const EdgeInsets.only(top: 2),
-                                            child: Text(
-                                                '❌ OUT OF STOCK — Cannot add to order',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .labelSmall
-                                                    ?.copyWith(
-                                                        color: AppColors.error,
-                                                        fontWeight:
-                                                            FontWeight.w700)),
-                                          )
-                                        else if (item.isLowStock)
-                                          Padding(
-                                            padding:
-                                                const EdgeInsets.only(top: 2),
-                                            child: Text(
-                                                '⚠️ Low stock (Only ${AppFormatters.quantity(item.stock)} available)',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .labelSmall
-                                                    ?.copyWith(
-                                                        color:
-                                                            AppColors.warning)),
-                                          )
-                                              .animate(
-                                                  onPlay: (controller) =>
-                                                      controller.repeat(
-                                                          reverse: true))
-                                              .fadeIn(
-                                                  begin: 0.40,
-                                                  duration: 1000.ms),
-                                      ],
+                                                  color: isDark ? Colors.white70 : AppColors.textSecondary,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          // Stock level bar
+                                          _buildStockLevelBar(item, isDark),
+                                          // Fractional price hints
+                                          ..._fractionalHints(context,
+                                              item.sellingPrice, item.unit),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  if (isSelected)
-                                    const Icon(Icons.check_circle_rounded,
-                                        color: AppColors.primary)
-                                  else if (item.stock < 0.001)
-                                    const Icon(Icons.block_rounded,
-                                        color: AppColors.error, size: 20),
-                                ],
+                                    if (isSelected)
+                                      const Icon(Icons.check_circle_rounded,
+                                          color: AppColors.primary)
+                                    else if (isOutOfStock)
+                                      const Icon(Icons.block_rounded,
+                                          color: AppColors.error, size: 20),
+                                  ],
+                                ),
                               ),
                             ),
                           );
@@ -426,19 +460,82 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Stock warning banner when qty exceeds stock
+                        if (_qty > _selected!.stock && _selected!.stock > 0)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.error.withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_rounded, color: AppColors.error, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Quantity ${AppFormatters.quantity(_qty)} exceeds available stock (${AppFormatters.quantity(_selected!.stock)} ${_selected!.unit})',
+                                    style: const TextStyle(
+                                      color: AppColors.error,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        // Low stock info banner
+                        if (_selected!.isLowStock && _selected!.stock >= 0.001 && _qty <= _selected!.stock)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.orange.withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Low stock! Only ${AppFormatters.quantity(_selected!.stock)} ${_selected!.unit} available — order carefully',
+                                    style: const TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text('Quantity (${_selected!.unit})',
                                 style: Theme.of(context).textTheme.labelMedium),
-                            Text(
-                              'Max Available: ${AppFormatters.quantity(_selected!.stock)} ${_selected!.unit}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
                                 color: _qty > _selected!.stock
-                                    ? AppColors.error
-                                    : AppColors.primary,
+                                    ? AppColors.error.withOpacity(0.15)
+                                    : AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Stock: ${AppFormatters.quantity(_selected!.stock)} ${_selected!.unit}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _qty > _selected!.stock
+                                      ? AppColors.error
+                                      : AppColors.primary,
+                                ),
                               ),
                             ),
                           ],
@@ -657,6 +754,64 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
           ),
         );
       },
+    );
+  }
+
+  /// Visual stock level bar with color-coded indicator
+  Widget _buildStockLevelBar(Item item, bool isDark) {
+    final isOutOfStock = item.stock < 0.001;
+    final isLow = item.isLowStock && !isOutOfStock;
+    final maxDisplay = item.minStock > 0 ? item.minStock * 3 : 100.0;
+    final ratio = isOutOfStock ? 0.0 : (item.stock / maxDisplay).clamp(0.0, 1.0);
+
+    final Color barColor;
+    final String label;
+    if (isOutOfStock) {
+      barColor = AppColors.error;
+      label = 'No stock';
+    } else if (isLow) {
+      barColor = Colors.orange;
+      label = '${AppFormatters.quantity(item.stock)} ${item.unit} left';
+    } else {
+      barColor = const Color(0xFF22C55E); // green
+      label = '${AppFormatters.quantity(item.stock)} ${item.unit} in stock';
+    }
+
+    return Row(
+      children: [
+        Icon(
+          isOutOfStock
+              ? Icons.cancel_rounded
+              : isLow
+                  ? Icons.warning_amber_rounded
+                  : Icons.inventory_2_rounded,
+          size: 13,
+          color: barColor,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: SizedBox(
+              height: 6,
+              child: LinearProgressIndicator(
+                value: ratio,
+                backgroundColor: isDark ? Colors.white12 : Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation<Color>(barColor),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: barColor,
+          ),
+        ),
+      ],
     );
   }
 
