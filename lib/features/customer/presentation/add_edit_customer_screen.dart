@@ -438,7 +438,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                           (widget.initialHouseNumber != null &&
                               widget.initialHouseNumber!.isNotEmpty),
                       decoration: InputDecoration(
-                        labelText: 'House / Flat Number',
+                        labelText: 'House / Flat Number (optional)',
                         prefixIcon: const Icon(Icons.home_rounded),
                         suffixIcon: ((_isEdit && _existingHouseFamilies.isNotEmpty) ||
                                 (widget.initialHouseNumber != null &&
@@ -451,12 +451,6 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                             : null,
                       ),
                       textCapitalization: TextCapitalization.characters,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'House number required';
-                        }
-                        return null;
-                      },
                     ),
                   ),
                 ],
