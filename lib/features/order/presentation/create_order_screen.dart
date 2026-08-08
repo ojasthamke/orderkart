@@ -1238,13 +1238,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 
   Widget _buildBottomBar(BuildContext context, String currency) {
-    final settingsVal = ref.watch(settingsProvider).valueOrNull;
-    final discountCapPct = settingsVal?.workerDiscountCap ?? 10.0;
-    final isWorker = ref.watch(appModeProvider).valueOrNull == AppMode.worker;
-    final enteredDiscountPct =
-        _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
-    final exceedsCap = isWorker && enteredDiscountPct > discountCapPct;
-
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
@@ -1283,9 +1276,18 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             ),
           ),
           ElevatedButton.icon(
-            onPressed: exceedsCap ? null : _saveOrder,
-            icon: const Icon(Icons.check_circle_rounded),
-            label: const Text('Save Order'),
+            onPressed: _saving ? null : _saveOrder,
+            icon: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.check_circle_rounded),
+            label: Text(_saving ? 'Saving...' : 'Save Order'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             ),
@@ -1386,28 +1388,36 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
       if (requestedQtyBase > availableStockBase) {
         if (!mounted) return;
-        showDialog(
+        final proceed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: AppColors.error),
+                Icon(Icons.warning_amber_rounded, color: Colors.orange),
                 SizedBox(width: 8),
-                Text('Insufficient Stock'),
+                Text('Low Stock Warning'),
               ],
             ),
             content: Text(
-              'Item "${cartItem.name}" has only ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit} available, but ${AppFormatters.quantity(cartItem.quantity)} ${cartItem.unit} was requested.\n\nPlease adjust quantity before saving.',
+              'Item "${cartItem.name}" has ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit} in stock, but ${AppFormatters.quantity(cartItem.quantity)} ${cartItem.unit} was requested.\n\nDo you want to save the order anyway?',
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Adjust Items'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Save Anyway'),
               ),
             ],
           ),
         );
-        return;
+        if (proceed != true) return;
       }
     }
 
