@@ -1300,25 +1300,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // ── Save order ────────────────────────────────────────────────────────────────
   Future<void> _saveOrder() async {
-    // Immediate visible feedback so user knows button tap registered
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Processing order...'),
-        duration: Duration(seconds: 1),
-        backgroundColor: Colors.blue,
-      ),
-    );
-    debugPrint('[SaveOrder] _saveOrder() called. _saving=$_saving, cart=${_cart.length} items');
-
     try {
       if (_saving) {
-        debugPrint('[SaveOrder] BLOCKED: _saving is true');
-        SnackbarHelper.showError(context, 'Already saving, please wait...');
         return;
       }
       if (_cart.isEmpty) {
-        debugPrint('[SaveOrder] BLOCKED: cart is empty');
         SnackbarHelper.showError(context, 'Add at least one item');
         return;
       }
@@ -1328,9 +1314,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final isWorker = ref.read(appModeProvider).valueOrNull == AppMode.worker;
     final enteredDiscountPct =
         _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
-    debugPrint('[SaveOrder] isWorker=$isWorker, discountPct=${enteredDiscountPct.toStringAsFixed(1)}%, cap=${discountCapPct.toStringAsFixed(0)}%');
     if (isWorker && enteredDiscountPct > discountCapPct) {
-      debugPrint('[SaveOrder] Worker discount exceeds cap, requesting PIN...');
       final pinOk = await OwnerPinDialog.verify(
         context,
         title: 'Discount Exceeds Limit',
@@ -1338,7 +1322,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             'Discount of ${enteredDiscountPct.toStringAsFixed(1)}% exceeds worker cap of ${discountCapPct.toStringAsFixed(0)}%. Enter Owner PIN to approve:',
       );
       if (!pinOk) {
-        debugPrint('[SaveOrder] BLOCKED: Owner PIN rejected');
         if (mounted) {
           SnackbarHelper.showError(context,
               'Discount cap exceeded. Owner PIN authorization required.');
@@ -1371,7 +1354,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
 
     if (hasRxItems && !_rxVerified) {
-      debugPrint('[SaveOrder] BLOCKED: Prescription required but not verified');
       AppHaptics.error();
       SnackbarHelper.showError(
         context,
@@ -1398,11 +1380,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       double oldQtyBase = 0.0;
       if (_existingOrder != null) {
         final existingItem = _existingOrder!.items
-            .where((dynamic oi) => oi.itemId == cartItem.itemId)
+            .cast<OrderItem>()
+            .where((oi) => oi.itemId == cartItem.itemId)
             .firstOrNull;
         if (existingItem != null) {
-          final oldQty = (existingItem.quantity as num).toDouble();
-          oldQtyBase = UnitConverter.toBase(oldQty, existingItem.unit);
+          final oldQty = existingItem.quantity;
+          oldQtyBase = UnitConverter.toBase(oldQty, existingItem.itemUnit);
         }
       }
       final double availableStockBase =
