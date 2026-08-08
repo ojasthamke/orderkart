@@ -169,6 +169,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
 
     if (widget.orderId != null) {
+      _isDiscountManuallyEdited = true;
+      _isDeliveryManuallyToggled = true;
       Future.microtask(() => _loadExistingOrder(widget.orderId!));
     } else {
       final savedCart = ref.read(createOrderCartProvider(widget.customerId));
@@ -1464,10 +1466,17 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       grandTotal: _grandTotal,
       paidAmount: _paidAmount,
       remainingAmount: _remaining,
+      deliveryStatus: _existingOrder?.deliveryStatus ?? 'pending',
       notes: _noteCon.text.trim(),
       savings: totalSavings,
       createdAt: _existingOrder?.createdAt ?? now,
       updatedAt: now,
+      assignedWorkerId: _existingOrder?.assignedWorkerId ?? '',
+      createdBy: _existingOrder?.createdBy ?? 'owner',
+      workerName: _existingOrder?.workerName ?? '',
+      deviceName: _existingOrder?.deviceName ?? '',
+      commissionRate: _existingOrder?.commissionRate ?? 0.0,
+      commissionType: _existingOrder?.commissionType ?? '',
     );
 
     try {
@@ -1519,11 +1528,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       ref.read(createOrderCartProvider(widget.customerId).notifier).state = [];
 
       if (!mounted) return;
-      // Navigate to order detail
-      Navigator.of(context).pushReplacementNamed(
-        AppRoutes.orderDetail,
-        arguments: {'orderId': orderId},
-      );
+      if (widget.orderId != null) {
+        ref.invalidate(orderDetailProvider(widget.orderId!));
+        Navigator.of(context).pop(true);
+      } else {
+        Navigator.of(context).pushReplacementNamed(
+          AppRoutes.orderDetail,
+          arguments: {'orderId': orderId},
+        );
+      }
     } catch (e) {
       if (mounted) {
         SnackbarHelper.showError(context, 'Failed to save order: $e');

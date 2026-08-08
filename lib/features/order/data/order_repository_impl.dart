@@ -8,6 +8,7 @@ import '../../inventory/data/item_dao.dart';
 import '../../inventory/domain/item.dart';
 import '../../inventory/domain/stock_history.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/utils/unit_converter.dart';
 import 'order_dao.dart';
 
 class OrderRepositoryImpl implements OrderRepository {
@@ -50,18 +51,11 @@ class OrderRepositoryImpl implements OrderRepository {
         itemUnit.toLowerCase() == dbItem.unit.toLowerCase()) {
       return qty;
     }
-    final conversion = dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
-    final dbUnit = dbItem.unit.toLowerCase();
-    final cartUnit = itemUnit.toLowerCase();
-
-    if (dbUnit == 'kg') {
-      if (cartUnit == 'gram') return qty / 1000.0;
-      if (cartUnit == 'piece') return qty * conversion;
-    } else if (dbUnit == 'piece') {
-      if (cartUnit == 'dozen') return qty * 12.0;
-      if (cartUnit == 'kg') return qty / conversion;
-    }
-    return qty;
+    return UnitConverter.convert(
+      quantity: qty,
+      fromUnit: itemUnit,
+      toUnit: dbItem.unit,
+    );
   }
 
   @override

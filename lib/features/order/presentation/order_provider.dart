@@ -48,7 +48,10 @@ class OrderManagementNotifier
     }
   }
 
-  void _invalidateAll() {
+  void _invalidateAll({String? orderId}) {
+    if (orderId != null && orderId.isNotEmpty) {
+      _ref.invalidate(orderDetailProvider(orderId));
+    }
     _ref.invalidate(customerOrdersProvider);
     _ref.invalidate(orderDetailProvider);
     _ref.invalidate(customerListProvider);
@@ -86,31 +89,31 @@ class OrderManagementNotifier
   Future<void> updateDeliveryStatus(String orderId, String status) async {
     await _repo.updateDeliveryStatus(orderId, status);
     await load(silent: true);
-    _invalidateAll();
+    _invalidateAll(orderId: orderId);
   }
 
   Future<void> addPayment(Payment payment) async {
     await _repo.addPayment(payment);
     await load(silent: true);
-    _invalidateAll();
+    _invalidateAll(orderId: payment.orderId);
   }
 
   Future<void> deleteOrder(String id) async {
     await _repo.deleteOrder(id);
     await load(silent: true);
-    _invalidateAll();
+    _invalidateAll(orderId: id);
   }
 
   Future<void> createOrder(AppOrder order, List<OrderItem> items) async {
     await _repo.createOrder(order, items);
     await load(silent: true);
-    _invalidateAll();
+    _invalidateAll(orderId: order.id);
   }
 
   Future<Map<String, dynamic>> updateOrderRates(String orderId) async {
     final result = await _repo.updateOrderRates(orderId);
     await load(silent: true);
-    _invalidateAll();
+    _invalidateAll(orderId: orderId);
     return result;
   }
 }
