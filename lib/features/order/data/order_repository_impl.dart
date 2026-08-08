@@ -9,6 +9,7 @@ import '../../inventory/domain/item.dart';
 import '../../inventory/domain/stock_history.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/unit_converter.dart';
+import '../../../core/security/app_mode_service.dart';
 import 'order_dao.dart';
 
 class OrderRepositoryImpl implements OrderRepository {
@@ -61,6 +62,9 @@ class OrderRepositoryImpl implements OrderRepository {
   @override
   Future<String> createOrder(AppOrder order, List<OrderItem> items) async {
     final db = await DatabaseHelper.instance.database;
+    // Read AppMode BEFORE the transaction to avoid database deadlock
+    // (AppModeService.getAppMode() may access the DB, which deadlocks inside a txn)
+    final appMode = await AppModeService.getAppMode();
     return await db.transaction((txn) async {
       final existing = await _orderDao.getOrderById(order.id, executor: txn);
       if (existing != null && existing.deliveryStatus != 'cancelled') {
@@ -94,7 +98,8 @@ class OrderRepositoryImpl implements OrderRepository {
         await _orderDao.deleteOrderItems(order.id, executor: txn);
       }
 
-      final orderId = await _orderDao.insertOrder(order, executor: txn);
+      final orderId = await _orderDao.insertOrder(order,
+          executor: txn, appMode: appMode);
 
       for (final item in items) {
         await _orderDao.insertOrderItem(item.copyWith(orderId: orderId),

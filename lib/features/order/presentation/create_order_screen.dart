@@ -1299,8 +1299,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // ── Save order ────────────────────────────────────────────────────────────────
   Future<void> _saveOrder() async {
-    if (_saving) return;
+    debugPrint('[SaveOrder] _saveOrder() called. _saving=$_saving, cart=${_cart.length} items');
+    if (_saving) {
+      debugPrint('[SaveOrder] BLOCKED: _saving is true, returning early');
+      return;
+    }
     if (_cart.isEmpty) {
+      debugPrint('[SaveOrder] BLOCKED: cart is empty');
       SnackbarHelper.showError(context, 'Add at least one item');
       return;
     }
@@ -1310,7 +1315,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final isWorker = ref.read(appModeProvider).valueOrNull == AppMode.worker;
     final enteredDiscountPct =
         _subtotal > 0 ? (_discount / _subtotal) * 100 : 0.0;
+    debugPrint('[SaveOrder] isWorker=$isWorker, discountPct=${enteredDiscountPct.toStringAsFixed(1)}%, cap=${discountCapPct.toStringAsFixed(0)}%');
     if (isWorker && enteredDiscountPct > discountCapPct) {
+      debugPrint('[SaveOrder] Worker discount exceeds cap, requesting PIN...');
       final pinOk = await OwnerPinDialog.verify(
         context,
         title: 'Discount Exceeds Limit',
@@ -1318,6 +1325,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             'Discount of ${enteredDiscountPct.toStringAsFixed(1)}% exceeds worker cap of ${discountCapPct.toStringAsFixed(0)}%. Enter Owner PIN to approve:',
       );
       if (!pinOk) {
+        debugPrint('[SaveOrder] BLOCKED: Owner PIN rejected');
         if (mounted) {
           SnackbarHelper.showError(context,
               'Discount cap exceeded. Owner PIN authorization required.');
@@ -1350,6 +1358,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
 
     if (hasRxItems && !_rxVerified) {
+      debugPrint('[SaveOrder] BLOCKED: Prescription required but not verified');
       AppHaptics.error();
       SnackbarHelper.showError(
         context,
@@ -1444,15 +1453,21 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           ],
         ),
       );
-      if (proceed != true) return;
+      if (proceed != true) {
+        debugPrint('[SaveOrder] BLOCKED: User declined low-stock warning');
+        return;
+      }
+      debugPrint('[SaveOrder] User accepted low-stock warning, proceeding...');
     }
 
+    debugPrint('[SaveOrder] All validations passed! Proceeding to save...');
     AppHaptics.primarySave();
     setState(() => _saving = true);
 
     final now = DateTime.now();
     final String orderId =
         widget.orderId ?? await OrderDao.generateUniqueOrderNo();
+    debugPrint('[SaveOrder] orderId=$orderId, widget.orderId=${widget.orderId}');
 
     final roundingDiff = _smartRound ? _smartRounded - _afterDiscount : 0;
 
@@ -1523,9 +1538,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
 
     try {
+      debugPrint('[SaveOrder] Calling createOrder...');
       await ref
           .read(orderManagementProvider.notifier)
           .createOrder(order, items);
+      debugPrint('[SaveOrder] createOrder succeeded!');
 
       final List<Map<String, dynamic>> orderAnsToSave = [];
       for (final entry in _selectedAnswers.entries) {
@@ -1543,10 +1560,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       await OrderQuestionDao.instance.saveOrderAnswers(orderId, orderAnsToSave);
 
       _orderSaved = true;
+      debugPrint('[SaveOrder] Order answers saved. _orderSaved=true');
 
       // Add initial payment or adjust payment difference if editing
       if (widget.orderId != null && _existingOrder != null) {
         final double diff = _paidAmount - _existingOrder!.paidAmount;
+        debugPrint('[SaveOrder] Edit mode: payment diff=$diff');
         if (diff != 0) {
           await ref.read(orderManagementProvider.notifier).addPayment(Payment(
                 id: const Uuid().v4(),
@@ -1580,19 +1599,24 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       // Clear the saved cart provider
       ref.read(createOrderCartProvider(widget.customerId).notifier).state = [];
 
+      debugPrint('[SaveOrder] About to navigate. mounted=$mounted, widget.orderId=${widget.orderId}');
       if (!mounted) return;
       ref.invalidate(customerOrdersProvider(widget.customerId));
       ref.invalidate(customerDetailProvider(widget.customerId));
       if (widget.orderId != null) {
         ref.invalidate(orderDetailProvider(widget.orderId!));
+        debugPrint('[SaveOrder] Edit mode: popping screen with result=true');
         Navigator.of(context).pop(true);
       } else {
+        debugPrint('[SaveOrder] New order: navigating to order detail');
         Navigator.of(context).pushReplacementNamed(
           AppRoutes.orderDetail,
           arguments: {'orderId': orderId},
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[SaveOrder] ERROR: $e');
+      debugPrint('[SaveOrder] STACK: $st');
       if (mounted) {
         SnackbarHelper.showError(context, 'Failed to save order: $e');
       }

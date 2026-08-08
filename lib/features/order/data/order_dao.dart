@@ -153,7 +153,7 @@ class OrderDao {
   }
 
   Future<String> insertOrder(AppOrder order,
-      {DatabaseExecutor? executor}) async {
+      {DatabaseExecutor? executor, AppMode? appMode}) async {
     final db = await _getExecutor(executor);
     final id = order.id.isEmpty ? await generateUniqueOrderNo() : order.id;
     final now = DateTime.now().toIso8601String();
@@ -181,7 +181,8 @@ class OrderDao {
       }
     }
 
-    final mode = await AppModeService.getAppMode();
+    // Use passed appMode to avoid deadlock when called inside a transaction
+    final mode = appMode ?? await AppModeService.getAppMode();
     String createdBy = order.createdBy;
     String assignedWorkerId =
         workerId.isNotEmpty ? workerId : order.assignedWorkerId;
