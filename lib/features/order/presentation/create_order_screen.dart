@@ -1358,6 +1358,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       return;
     }
 
+    // Collect all low-stock items into one batch warning
+    final List<String> lowStockWarnings = [];
     for (final cartItem in _cart) {
       final dbItem = inventoryList.firstWhere((i) => i.id == cartItem.itemId,
           orElse: () => Item(
@@ -1387,38 +1389,62 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           UnitConverter.toBase(cartItem.quantity, cartItem.unit);
 
       if (requestedQtyBase > availableStockBase) {
-        if (!mounted) return;
-        final proceed = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                SizedBox(width: 8),
-                Text('Low Stock Warning'),
-              ],
-            ),
-            content: Text(
-              'Item "${cartItem.name}" has ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit} in stock, but ${AppFormatters.quantity(cartItem.quantity)} ${cartItem.unit} was requested.\n\nDo you want to save the order anyway?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Adjust Items'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Save Anyway'),
+        lowStockWarnings.add(
+          '• ${cartItem.name}: ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit} available, ${AppFormatters.quantity(cartItem.quantity)} ${cartItem.unit} requested',
+        );
+      }
+    }
+
+    if (lowStockWarnings.isNotEmpty) {
+      if (!mounted) return;
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Low Stock Warning',
+                    style: TextStyle(fontSize: 16)),
               ),
             ],
           ),
-        );
-        if (proceed != true) return;
-      }
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${lowStockWarnings.length} item(s) have insufficient stock:\n',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(lowStockWarnings.join('\n')),
+                const SizedBox(height: 12),
+                const Text(
+                  'Do you want to save the order anyway?',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Go Back'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save Anyway'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
     }
 
     AppHaptics.primarySave();
