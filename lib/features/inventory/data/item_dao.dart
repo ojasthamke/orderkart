@@ -1,6 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/utils/unit_converter.dart';
+import '../../../core/utils/marathi_item_helper.dart';
 import '../domain/item.dart';
 import '../domain/stock_history.dart';
 import '../../../core/services/notification_service.dart';
@@ -359,8 +361,12 @@ class ItemDao {
     return maps.map(StockHistory.fromMap).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getOrderedItemStats(
-      {String status = 'all', String dateFilter = 'all'}) async {
+  Future<List<Map<String, dynamic>>> getOrderedItemStats({
+    String status = 'all',
+    String dateFilter = 'all',
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     final db = await _db;
     String whereClause =
         "(o.delivery_status IS NULL OR o.delivery_status != 'cancelled')";
@@ -372,37 +378,160 @@ class ItemDao {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    if (dateFilter == 'today') {
-      whereClause += " AND DATE(o.created_at) = DATE(?)";
-      args.add(today.toIso8601String());
+
+    if (startDate != null && endDate != null) {
+      final start = DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
+      final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999);
+      whereClause += " AND o.created_at >= ? AND o.created_at <= ?";
+      args.add(start.toIso8601String());
+      args.add(end.toIso8601String());
+    } else if (dateFilter == 'today') {
+      final start = DateTime(today.year, today.month, today.day, 0, 0, 0);
+      final end = DateTime(today.year, today.month, today.day, 23, 59, 59, 999);
+      whereClause += " AND o.created_at >= ? AND o.created_at <= ?";
+      args.add(start.toIso8601String());
+      args.add(end.toIso8601String());
     } else if (dateFilter == 'yesterday') {
-      final yesterday = today.subtract(const Duration(days: 1));
-      whereClause += " AND DATE(o.created_at) = DATE(?)";
-      args.add(yesterday.toIso8601String());
+      final yest = today.subtract(const Duration(days: 1));
+      final start = DateTime(yest.year, yest.month, yest.day, 0, 0, 0);
+      final end = DateTime(yest.year, yest.month, yest.day, 23, 59, 59, 999);
+      whereClause += " AND o.created_at >= ? AND o.created_at <= ?";
+      args.add(start.toIso8601String());
+      args.add(end.toIso8601String());
     } else if (dateFilter == 'week') {
+      final start = today.subtract(const Duration(days: 7));
       whereClause += " AND o.created_at >= ?";
-      args.add(today.subtract(const Duration(days: 7)).toIso8601String());
+      args.add(start.toIso8601String());
     } else if (dateFilter == 'month') {
-      whereClause +=
-          " AND strftime('%Y-%m', o.created_at) = strftime('%Y-%m', ?)";
-      args.add(now.toIso8601String());
+      final start = DateTime(now.year, now.month, 1, 0, 0, 0);
+      whereClause += " AND o.created_at >= ?";
+      args.add(start.toIso8601String());
     }
 
-    return await db.rawQuery('''
+    final rawRows = await db.rawQuery('''
       SELECT 
-        COALESCE(i.name, oi.item_name) AS item_name,
-        COALESCE(i.unit, oi.item_unit) AS item_unit,
-        COALESCE(i.cost_price, 0) AS cost_price,
-        SUM(oi.quantity) AS total_quantity,
-        SUM(oi.quantity * COALESCE(i.cost_price, 0)) AS total_cost_price,
-        SUM(oi.total_price) AS total_selling_price,
-        SUM(oi.total_price) - SUM(oi.quantity * COALESCE(i.cost_price, 0)) AS total_profit
+        oi.id AS order_item_id,
+        oi.order_id,
+        oi.item_id,
+        oi.item_name,
+        oi.item_unit,
+        oi.quantity,
+        oi.unit_price,
+        oi.total_price,
+        i.id AS inv_id,
+        i.name AS inv_name,
+        i.unit AS inv_unit,
+        i.cost_price AS inv_cost_price,
+        i.selling_price AS inv_selling_price,
+        i.weight_per_piece AS inv_weight_per_piece,
+        i.category AS inv_category
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
-      LEFT JOIN items i ON oi.item_id = i.id
+      LEFT JOIN items i ON (
+        (oi.item_id IS NOT NULL AND oi.item_id != '' AND oi.item_id = i.id)
+        OR (LOWER(TRIM(oi.item_name)) = LOWER(TRIM(i.name)))
+      )
       WHERE $whereClause
-      GROUP BY oi.item_id, item_name, item_unit, i.cost_price
-      ORDER BY total_profit DESC, total_quantity DESC
-      ''', args);
+      ORDER BY o.created_at DESC
+    ''', args);
+
+    // Group items accurately in Dart to prevent duplicates across orders
+    final Map<String, Map<String, dynamic>> grouped = {};
+
+    for (final row in rawRows) {
+      final rawName = (row['item_name']?.toString() ?? 'Unknown').trim();
+      final invName = row['inv_name']?.toString().trim();
+      final invId = row['inv_id']?.toString().trim();
+      final rawItemId = row['item_id']?.toString().trim();
+
+      // Canonical identity key: prioritize inventory ID, fallback to normalized name
+      final String groupKey;
+      if (invId != null && invId.isNotEmpty) {
+        groupKey = 'id:$invId';
+      } else if (rawItemId != null && rawItemId.isNotEmpty) {
+        groupKey = 'id:$rawItemId';
+      } else {
+        groupKey = 'name:${rawName.toLowerCase()}';
+      }
+
+      final canonicalName = (invName != null && invName.isNotEmpty) ? invName : rawName;
+      final rawUnit = (row['item_unit']?.toString() ?? 'piece').trim();
+      final invUnit = row['inv_unit']?.toString().trim();
+      final canonicalUnit = (invUnit != null && invUnit.isNotEmpty) ? invUnit : rawUnit;
+
+      final double qty = (row['quantity'] as num?)?.toDouble() ?? 1.0;
+      final double totalPrice = (row['total_price'] as num?)?.toDouble() ??
+          (qty * ((row['unit_price'] as num?)?.toDouble() ?? 0.0));
+      final double invCostPrice = (row['inv_cost_price'] as num?)?.toDouble() ?? 0.0;
+      final String orderId = row['order_id']?.toString() ?? '';
+
+      // Convert quantity to canonical inventory unit (e.g. gram -> kg)
+      final double convertedQty = UnitConverter.convert(
+        quantity: qty,
+        fromUnit: rawUnit,
+        toUnit: canonicalUnit,
+      );
+
+      final double costForThisItem = convertedQty * invCostPrice;
+      final double weightInKg = UnitConverter.toWeightInKg(qty, rawUnit);
+      final bool isWeight = UnitConverter.isWeightUnit(canonicalUnit) || UnitConverter.isWeightUnit(rawUnit);
+
+      if (!grouped.containsKey(groupKey)) {
+        grouped[groupKey] = {
+          'item_name': canonicalName,
+          'bilingual_name': MarathiItemHelper.formatBilingual(canonicalName),
+          'item_unit': canonicalUnit,
+          'cost_price': invCostPrice,
+          'total_quantity': convertedQty,
+          'total_cost_price': costForThisItem,
+          'total_selling_price': totalPrice,
+          'total_profit': totalPrice - costForThisItem,
+          'total_weight_kg': weightInKg,
+          'is_weight': isWeight,
+          'order_ids': <String>{orderId},
+          'category': row['inv_category']?.toString() ?? 'General',
+        };
+      } else {
+        final existing = grouped[groupKey]!;
+        existing['total_quantity'] = (existing['total_quantity'] as double) + convertedQty;
+        existing['total_cost_price'] = (existing['total_cost_price'] as double) + costForThisItem;
+        existing['total_selling_price'] = (existing['total_selling_price'] as double) + totalPrice;
+        existing['total_profit'] = (existing['total_selling_price'] as double) -
+            (existing['total_cost_price'] as double);
+        existing['total_weight_kg'] = (existing['total_weight_kg'] as double) + weightInKg;
+        (existing['order_ids'] as Set<String>).add(orderId);
+      }
+    }
+
+    final List<Map<String, dynamic>> results = grouped.values.map((item) {
+      final orderIds = item['order_ids'] as Set<String>;
+      final totalQty = item['total_quantity'] as double;
+      final totalSelling = item['total_selling_price'] as double;
+
+      return {
+        'item_name': item['item_name'],
+        'bilingual_name': item['bilingual_name'],
+        'item_unit': item['item_unit'],
+        'cost_price': item['cost_price'],
+        'total_quantity': totalQty,
+        'total_cost_price': item['total_cost_price'],
+        'total_selling_price': totalSelling,
+        'total_profit': item['total_profit'],
+        'total_weight_kg': item['total_weight_kg'],
+        'is_weight': item['is_weight'],
+        'order_count': orderIds.length,
+        'avg_price': totalQty > 0 ? (totalSelling / totalQty) : 0.0,
+        'category': item['category'],
+      };
+    }).toList();
+
+    // Sort by Total Quantity (descending) then Profit (descending)
+    results.sort((a, b) {
+      final profitComp = (b['total_profit'] as double).compareTo(a['total_profit'] as double);
+      if (profitComp != 0) return profitComp;
+      return (b['total_quantity'] as double).compareTo(a['total_quantity'] as double);
+    });
+
+    return results;
   }
 }

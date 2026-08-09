@@ -186,7 +186,17 @@ final orderedItemStatsProvider =
   final parts = param.split(':');
   final status = parts.isNotEmpty ? parts[0] : 'all';
   final dateFilter = parts.length > 1 ? parts[1] : 'all';
-  return await ItemDao()
-      .getOrderedItemStats(status: status, dateFilter: dateFilter);
+  DateTime? startDate;
+  DateTime? endDate;
+  if (dateFilter == 'custom' && parts.length >= 4) {
+    startDate = DateTime.tryParse(parts[2]);
+    endDate = DateTime.tryParse(parts[3]);
+  }
+  return await ItemDao().getOrderedItemStats(
+    status: status,
+    dateFilter: dateFilter,
+    startDate: startDate,
+    endDate: endDate,
+  );
 });
 

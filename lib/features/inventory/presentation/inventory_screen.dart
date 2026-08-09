@@ -12,6 +12,7 @@ import '../../../core/services/package_exporter.dart';
 import '../../../core/services/package_validator.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
+import '../../../core/utils/unit_converter.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/custom_search_bar.dart';
@@ -44,6 +45,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   final _categories = ['All', ...AppConstants.itemCategories];
   final DateTime _selectedHistoryDate = DateTime.now();
   DateTimeRange? _priceHistoryRange;
+  DateTimeRange? _selectedOrderDateRange;
 
   @override
   void initState() {
@@ -1153,7 +1155,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   }
 
   Widget _buildOrderedStatsTab(BuildContext context) {
-    final paramKey = '$_selectedOrderStatus:$_selectedOrderDateFilter';
+    String paramKey = '$_selectedOrderStatus:$_selectedOrderDateFilter';
+    if (_selectedOrderDateFilter == 'custom' && _selectedOrderDateRange != null) {
+      paramKey =
+          '$_selectedOrderStatus:custom:${_selectedOrderDateRange!.start.toIso8601String()}:${_selectedOrderDateRange!.end.toIso8601String()}';
+    }
+
     final statsAsync = ref.watch(orderedItemStatsProvider(paramKey));
 
     final statusFilters = [
@@ -1162,12 +1169,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       {'label': 'Pending', 'value': 'pending'},
     ];
 
+    String customRangeLabel = 'Custom Range 📅';
+    if (_selectedOrderDateRange != null && _selectedOrderDateFilter == 'custom') {
+      final startStr = DateFormat('dd MMM').format(_selectedOrderDateRange!.start);
+      final endStr = DateFormat('dd MMM').format(_selectedOrderDateRange!.end);
+      customRangeLabel = '$startStr - $endStr 📅';
+    }
+
     final dateFilters = [
       {'label': 'All Time', 'value': 'all'},
       {'label': 'Today', 'value': 'today'},
       {'label': 'Yesterday', 'value': 'yesterday'},
       {'label': 'This Week', 'value': 'week'},
       {'label': 'This Month', 'value': 'month'},
+      {'label': customRangeLabel, 'value': 'custom'},
     ];
 
     return Column(
@@ -1207,26 +1222,67 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           ),
         ),
         const SizedBox(height: 6),
-        // Date Filter Row
+        // Date Filter Row with Custom Range Picker
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: dateFilters.map((f) {
+              final isCustom = f['value'] == 'custom';
               final isSelected = _selectedOrderDateFilter == f['value'];
               return Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: FilterChip(
-                  label: Text(
-                    f['label']!,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isCustom) const Icon(Icons.date_range_rounded, size: 14),
+                      if (isCustom) const SizedBox(width: 4),
+                      Text(
+                        f['label']!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? AppColors.primary : null,
+                        ),
+                      ),
+                    ],
                   ),
                   selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
+                  selectedColor: AppColors.primary.withOpacity(0.15),
+                  checkmarkColor: AppColors.primary,
+                  onSelected: (selected) async {
+                    if (isCustom) {
+                      AppHaptics.selection();
+                      final now = DateTime.now();
+                      final picked = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(now.year + 2),
+                        initialDateRange: _selectedOrderDateRange ??
+                            DateTimeRange(
+                              start: now.subtract(const Duration(days: 7)),
+                              end: now,
+                            ),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: Theme.of(context).colorScheme.copyWith(
+                                    primary: AppColors.primary,
+                                    onPrimary: Colors.white,
+                                  ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _selectedOrderDateFilter = 'custom';
+                          _selectedOrderDateRange = picked;
+                        });
+                      }
+                    } else if (selected) {
                       AppHaptics.selection();
                       setState(() {
                         _selectedOrderDateFilter = f['value']!;
@@ -1257,6 +1313,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               double overallCost = 0;
               double overallRevenue = 0;
               double overallProfit = 0;
+              double overallWeightKg = 0;
+              double overallPieceCount = 0;
 
               for (final row in stats) {
                 overallCost +=
@@ -1265,6 +1323,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     (row['total_selling_price'] as num?)?.toDouble() ?? 0.0;
                 overallProfit +=
                     (row['total_profit'] as num?)?.toDouble() ?? 0.0;
+                overallWeightKg +=
+                    (row['total_weight_kg'] as num?)?.toDouble() ?? 0.0;
+                if (row['is_weight'] != true) {
+                  overallPieceCount +=
+                      (row['total_quantity'] as num?)?.toDouble() ?? 0.0;
+                }
               }
 
               return RefreshIndicator(
@@ -1273,127 +1337,247 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: GlassContainer(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 12, horizontal: 8),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'TOTAL COST',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: AppColors.textSecondary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 10,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      AppFormatters.currency(overallCost),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
+                          // ── Top KPI Grid: 4 Metrics (Weight, Sales, Profit, Cost) ──
+                          Row(
+                            children: [
+                              // 1. Total Weight KPI (Excluding piece quantities, showing them as subtitle)
+                              Expanded(
+                                child: GlassContainer(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10, horizontal: 8),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.scale_rounded,
+                                              size: 14, color: Colors.teal),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'TOTAL WEIGHT',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  color: Colors.teal.shade800,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 9.5,
+                                                ),
                                           ),
-                                    ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          UnitConverter.formatWeight(overallWeightKg),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.teal.shade900,
+                                              ),
+                                        ),
+                                      ),
+                                      if (overallPieceCount > 0)
+                                        Text(
+                                          '+ ${AppFormatters.quantity(overallPieceCount)} pcs',
+                                          style: const TextStyle(
+                                            fontSize: 9.5,
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              // 2. Total Sales KPI
+                              Expanded(
+                                child: GlassContainer(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10, horizontal: 8),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.shopping_bag_rounded,
+                                              size: 14, color: AppColors.primary),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'TOTAL SALES',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 9.5,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          AppFormatters.currency(overallRevenue),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.primary,
+                                              ),
+                                        ),
+                                      ),
+                                      Text(
+                                        '${stats.length} items sold',
+                                        style: const TextStyle(
+                                          fontSize: 9.5,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: GlassContainer(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 12, horizontal: 8),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'TOTAL SALES',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: AppColors.textSecondary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 10,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      AppFormatters.currency(overallRevenue),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              // 3. Total Profit KPI
+                              Expanded(
+                                child: GlassContainer(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10, horizontal: 8),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.trending_up_rounded,
+                                              size: 14,
+                                              color: overallProfit >= 0
+                                                  ? AppColors.success
+                                                  : AppColors.error),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'TOTAL PROFIT',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  color: overallProfit >= 0
+                                                      ? AppColors.success
+                                                      : AppColors.error,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 9.5,
+                                                ),
                                           ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: GlassContainer(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 12, horizontal: 8),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'TOTAL PROFIT',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: AppColors.textSecondary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 10,
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          AppFormatters.currency(overallProfit),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                                color: overallProfit >= 0
+                                                    ? AppColors.success
+                                                    : AppColors.error,
+                                              ),
                                         ),
+                                      ),
+                                      Text(
+                                        overallRevenue > 0
+                                            ? '${((overallProfit / overallRevenue) * 100).toStringAsFixed(1)}% margin'
+                                            : '0% margin',
+                                        style: const TextStyle(
+                                          fontSize: 9.5,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 6),
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      AppFormatters.currency(overallProfit),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: overallProfit >= 0
-                                                ? AppColors.success
-                                                : AppColors.error,
-                                          ),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              // 4. Total Cost KPI
+                              Expanded(
+                                child: GlassContainer(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10, horizontal: 8),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.receipt_long_rounded,
+                                              size: 14, color: Colors.orange),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'TOTAL COST',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  color: Colors.orange.shade800,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 9.5,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          AppFormatters.currency(overallCost),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.orange.shade900,
+                                              ),
+                                        ),
+                                      ),
+                                      const Text(
+                                        'Inventory cost',
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                          horizontal: 16, vertical: 6),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'PRODUCT PERFORMANCE',
+                            'ORDERED ITEMS BREAKDOWN',
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
@@ -1404,7 +1588,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                 ),
                           ),
                           Text(
-                            '${stats.length} Items',
+                            '${stats.length} Products',
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
@@ -1419,46 +1603,48 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                            horizontal: 16, vertical: 4),
                         itemCount: stats.length,
                         itemBuilder: (ctx, i) {
                           final row = stats[i];
-                          final name = row['item_name'] ?? '';
+                          final displayName = row['bilingual_name'] ?? row['item_name'] ?? '';
                           final unit = row['item_unit'] ?? '';
                           final qty =
-                              (row['total_quantity'] as num?)?.toDouble() ??
-                                  0.0;
+                              (row['total_quantity'] as num?)?.toDouble() ?? 0.0;
                           final cost =
-                              (row['total_cost_price'] as num?)?.toDouble() ??
-                                  0.0;
-                          final revenue = (row['total_selling_price'] as num?)
-                                  ?.toDouble() ??
-                              0.0;
+                              (row['total_cost_price'] as num?)?.toDouble() ?? 0.0;
+                          final revenue =
+                              (row['total_selling_price'] as num?)?.toDouble() ?? 0.0;
                           final profit =
                               (row['total_profit'] as num?)?.toDouble() ?? 0.0;
+                          final orderCount = row['order_count'] ?? 1;
+                          final isWeight = row['is_weight'] == true;
+                          final double weightKg =
+                              (row['total_weight_kg'] as num?)?.toDouble() ?? 0.0;
 
                           return GlassContainer(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(14),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        name,
+                                        displayName,
                                         style: Theme.of(context)
                                             .textTheme
-                                            .titleMedium
+                                            .titleSmall
                                             ?.copyWith(
                                               fontWeight: FontWeight.w800,
                                             ),
                                       ),
                                       const SizedBox(height: 6),
-                                      Row(
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
                                         children: [
                                           Container(
                                             padding: const EdgeInsets.symmetric(
@@ -1468,9 +1654,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                                   .withOpacity(0.08),
                                               borderRadius:
                                                   BorderRadius.circular(6),
+                                              border: Border.all(
+                                                  color: AppColors.primary
+                                                      .withOpacity(0.25)),
                                             ),
                                             child: Text(
-                                              'Qty: $qty $unit',
+                                              'Total Qty: ${AppFormatters.quantity(qty)} $unit',
                                               style: const TextStyle(
                                                 color: AppColors.primary,
                                                 fontSize: 11,
@@ -1478,7 +1667,47 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
+                                          if (isWeight && weightKg > 0)
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.teal
+                                                    .withOpacity(0.08),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                border: Border.all(
+                                                    color: Colors.teal
+                                                        .withOpacity(0.25)),
+                                              ),
+                                              child: Text(
+                                                'Weight: ${UnitConverter.formatWeight(weightKg)}',
+                                                style: TextStyle(
+                                                  color: Colors.teal.shade800,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.indigo
+                                                  .withOpacity(0.08),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              '$orderCount ${orderCount == 1 ? 'order' : 'orders'}',
+                                              style: const TextStyle(
+                                                color: Colors.indigo,
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
                                           Text(
                                             'Cost: ${AppFormatters.currency(cost)}',
                                             style: const TextStyle(
@@ -1491,6 +1720,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                     ],
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
@@ -1501,17 +1731,28 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                             ? AppColors.success
                                             : AppColors.error,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 15,
+                                        fontSize: 14,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: 2),
                                     Text(
                                       'Sales: ${AppFormatters.currency(revenue)}',
                                       style: const TextStyle(
-                                        color: AppColors.textHint,
+                                        color: AppColors.textSecondary,
                                         fontSize: 10,
                                       ),
                                     ),
+                                    if (revenue > 0)
+                                      Text(
+                                        '${((profit / revenue) * 100).toStringAsFixed(0)}% profit',
+                                        style: TextStyle(
+                                          color: profit >= 0
+                                              ? AppColors.success
+                                              : AppColors.error,
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ],
