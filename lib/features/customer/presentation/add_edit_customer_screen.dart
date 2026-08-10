@@ -1018,6 +1018,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       } else {
         SnackbarHelper.showSuccess(context, 'Customer added successfully');
       }
+      Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
         SnackbarHelper.showError(context, 'Failed to save customer: $e');

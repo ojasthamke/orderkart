@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../core/utils/formatters.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/glass_container.dart';
@@ -12,7 +11,6 @@ import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
-import '../../expense/domain/expense.dart';
 import '../../expense/presentation/expense_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
 
@@ -144,168 +142,9 @@ class _QuickInventoryAdjustScreenState
     return discard ?? false;
   }
 
-  Widget _buildStatMini(String title, String val, BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: const TextStyle(
-                fontSize: 10,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 2),
-        Text(val,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-      ],
-    );
-  }
 
-  Widget _buildProfitAdvisorCard(List<Item> allItems, List<Expense> expenses,
-      double multiplier, BuildContext context) {
-    final now = DateTime.now();
-    final currentMonthStr =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}";
-    double monthlyExpenses = 0.0;
-    for (final exp in expenses) {
-      final expMonth =
-          "${exp.date.year}-${exp.date.month.toString().padLeft(2, '0')}";
-      if (expMonth == currentMonthStr) {
-        monthlyExpenses += exp.amount;
-      }
-    }
-    if (monthlyExpenses <= 0 && expenses.isNotEmpty) {
-      monthlyExpenses = expenses.fold(0.0, (sum, e) => sum + e.amount);
-    }
 
-    double totalInventoryCost = 0.0;
-    for (final item in allItems) {
-      final qty = item.stock > 0 ? item.stock : 10.0;
-      totalInventoryCost += (item.costPrice * qty);
-    }
 
-    final safeMultiplier =
-        (multiplier.isNaN || multiplier.isInfinite || multiplier < 1.0)
-            ? 1.43
-            : multiplier;
-    final markupPct = ((safeMultiplier - 1.0) * 100).round();
-
-    return GlassContainer(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.auto_awesome_rounded,
-                    color: AppColors.success, size: 18),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '30% Net Profit & Expense Advisor',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-                    ),
-                    Text(
-                      'Covers shop expenses + guarantees 30% net profit',
-                      style: TextStyle(
-                          fontSize: 10, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${safeMultiplier.toStringAsFixed(2)}x Target',
-                  style: const TextStyle(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: _buildStatMini(
-                    'Monthly Expenses',
-                    AppFormatters.currency(monthlyExpenses, symbol: _currency),
-                    context),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildStatMini(
-                    'Est. Stock Cost',
-                    AppFormatters.currency(totalInventoryCost, symbol: _currency),
-                    context),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _buildStatMini(
-                    'Req. Selling Multiplier',
-                    '${safeMultiplier.toStringAsFixed(2)}x (+$markupPct%)',
-                    context),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                AppHaptics.buttonClick();
-                int updatedCount = 0;
-                for (final item in allItems) {
-                  if (item.costPrice > 0) {
-                    final targetPrice =
-                        (item.costPrice * safeMultiplier).toStringAsFixed(2);
-                    _onFieldChanged(item, 'sellingPrice', targetPrice);
-                    updatedCount++;
-                  }
-                }
-                SnackbarHelper.showSuccess(
-                  context,
-                  '✨ Applied 30% profit target price (${safeMultiplier.toStringAsFixed(2)}x) to $updatedCount items! Tap Save Changes to apply.',
-                );
-              },
-              icon: const Icon(Icons.bolt_rounded, size: 16),
-              label: Text(
-                'Auto-Apply 30% Profit Target to All Items (${safeMultiplier.toStringAsFixed(2)}x)',
-                style:
-                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -370,9 +209,7 @@ class _QuickInventoryAdjustScreenState
               ),
             ),
 
-            // Smart 30% Profit Advisor Card
-            if (allItems.isNotEmpty)
-              _buildProfitAdvisorCard(allItems, expenses, multiplier, context),
+
 
             // Category Capsules list
             SizedBox(
@@ -410,7 +247,7 @@ class _QuickInventoryAdjustScreenState
                         cat,
                         style: TextStyle(
                           color: isSelected
-                              ? AppColors.primary
+                              ? Colors.white
                               : (isDark ? Colors.white70 : Colors.black87),
                           fontWeight:
                               isSelected ? FontWeight.w800 : FontWeight.w600,
