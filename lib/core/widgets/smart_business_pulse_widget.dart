@@ -20,6 +20,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
   final double todayProfit;
   final double monthlyProfit;
   final String currency;
+  final List<Map<String, dynamic>>? weeklyChartData;
   final VoidCallback? onCreateOrder;
   final VoidCallback? onViewInventory;
 
@@ -43,6 +44,7 @@ class SmartBusinessPulseWidget extends StatelessWidget {
     this.todayProfit = 0.0,
     this.monthlyProfit = 0.0,
     this.currency = '₹',
+    this.weeklyChartData,
     this.onCreateOrder,
     this.onViewInventory,
   });
@@ -362,6 +364,113 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                       ),
                     ],
                   ),
+
+                  if (weeklyChartData != null && weeklyChartData!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: subCardBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: subCardBorder),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.show_chart_rounded,
+                                      size: 14, color: accentColor),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '7-Day Sales Trend',
+                                    style: TextStyle(
+                                      color: textMutedColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                'Recent Pulse',
+                                style: TextStyle(
+                                  color: accentColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 38,
+                            child: Builder(builder: (_) {
+                              final data = weeklyChartData!;
+                              double maxVal = 0;
+                              for (final d in data) {
+                                final val = (d['total'] as num?)?.toDouble() ?? 0.0;
+                                if (val > maxVal) maxVal = val;
+                              }
+                              if (maxVal <= 0) maxVal = 1.0;
+
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: data.map((d) {
+                                  final val = (d['total'] as num?)?.toDouble() ?? 0.0;
+                                  final dayLabel = d['day']?.toString() ?? '';
+                                  final heightFactor = (val / maxVal).clamp(0.08, 1.0);
+
+                                  return Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          Expanded(
+                                            child: Align(
+                                              alignment: Alignment.bottomCenter,
+                                              child: Container(
+                                                height: 24 * heightFactor,
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topCenter,
+                                                    end: Alignment.bottomCenter,
+                                                    colors: [
+                                                      accentColor,
+                                                      accentColor.withOpacity(0.35),
+                                                    ],
+                                                  ),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            dayLabel.length > 3 ? dayLabel.substring(0, 3) : dayLabel,
+                                            style: TextStyle(
+                                              fontSize: 8.5,
+                                              color: textMutedColor,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 20),
                   Divider(color: dividerColor, height: 1),

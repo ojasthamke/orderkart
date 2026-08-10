@@ -183,14 +183,21 @@ final spillageHistoryProvider = FutureProvider<List<StockHistory>>((ref) {
 final orderedItemStatsProvider =
     FutureProvider.family<List<Map<String, dynamic>>, String>(
         (ref, param) async {
-  final parts = param.split(':');
+  final parts = param.contains('|') ? param.split('|') : param.split(':');
   final status = parts.isNotEmpty ? parts[0] : 'all';
   final dateFilter = parts.length > 1 ? parts[1] : 'all';
   DateTime? startDate;
   DateTime? endDate;
   if (dateFilter == 'custom' && parts.length >= 4) {
-    startDate = DateTime.tryParse(parts[2]);
-    endDate = DateTime.tryParse(parts[3]);
+    final startMs = int.tryParse(parts[2]);
+    final endMs = int.tryParse(parts[3]);
+    if (startMs != null && endMs != null) {
+      startDate = DateTime.fromMillisecondsSinceEpoch(startMs);
+      endDate = DateTime.fromMillisecondsSinceEpoch(endMs);
+    } else {
+      startDate = DateTime.tryParse(parts[2]);
+      endDate = DateTime.tryParse(parts[3]);
+    }
   }
   return await ItemDao().getOrderedItemStats(
     status: status,

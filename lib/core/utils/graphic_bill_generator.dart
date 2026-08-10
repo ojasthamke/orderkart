@@ -14,6 +14,7 @@ import '../../features/settings/domain/app_settings.dart';
 import 'pdf_font_helper.dart';
 import 'marathi_item_helper.dart';
 import 'formatters.dart';
+import 'unit_converter.dart';
 
 class GraphicBillGenerator {
   GraphicBillGenerator._();
@@ -71,6 +72,35 @@ class GraphicBillGenerator {
       final orderDateStr = AppFormatters.date(order.createdAt);
       final pdfGeneratedTimeStr = DateFormat('dd MMM yyyy, hh:mm a').format(now);
       final currentMonthName = DateFormat('MMMM yyyy').format(now);
+
+      // Calculate Total Package Weight and Non-Weight Counts
+      double totalPackageWeightKg = 0.0;
+      double nonWeightCount = 0.0;
+
+      if (orderItems != null && orderItems.isNotEmpty) {
+        for (final item in orderItems) {
+          final qty =
+              (item['quantity'] as num?)?.toDouble() ?? 1.0;
+          final unit = item['unit']?.toString() ??
+              item['item_unit']?.toString() ??
+              'pcs';
+          if (UnitConverter.isWeightUnit(unit)) {
+            totalPackageWeightKg +=
+                UnitConverter.toWeightInKg(qty, unit);
+          } else {
+            nonWeightCount += qty;
+          }
+        }
+      } else if (order.items.isNotEmpty) {
+        for (final item in order.items) {
+          if (UnitConverter.isWeightUnit(item.itemUnit)) {
+            totalPackageWeightKg += UnitConverter.toWeightInKg(
+                item.quantity, item.itemUnit);
+          } else {
+            nonWeightCount += item.quantity;
+          }
+        }
+      }
 
       pdf.addPage(
         pw.MultiPage(
@@ -207,7 +237,7 @@ class GraphicBillGenerator {
                           pw.SizedBox(height: 10),
                         ],
 
-                        // ── Itemized Table with Marathi Names ─────────────────
+                        // ── Itemized Table with Marathi Names & Zebra Striping ──
                         pw.TableHelper.fromTextArray(
                           headers: [
                             '#',
@@ -222,8 +252,20 @@ class GraphicBillGenerator {
                               color: PdfColors.white),
                           headerDecoration:
                               pw.BoxDecoration(color: primaryColor),
+                          rowDecoration:
+                              const pw.BoxDecoration(color: PdfColors.white),
+                          oddRowDecoration:
+                              pw.BoxDecoration(color: PdfColor.fromHex('#F8FAFC')),
                           cellStyle: const pw.TextStyle(fontSize: 9),
-                          cellAlignment: pw.Alignment.centerLeft,
+                          cellPadding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 5),
+                          cellAlignments: {
+                            0: pw.Alignment.center,
+                            1: pw.Alignment.centerLeft,
+                            2: pw.Alignment.centerRight,
+                            3: pw.Alignment.centerRight,
+                            4: pw.Alignment.centerRight,
+                          },
                           data: (orderItems == null || orderItems.isEmpty)
                               ? [
                                   [
@@ -263,7 +305,55 @@ class GraphicBillGenerator {
                                   ];
                                 }).toList(),
                         ),
-                        pw.SizedBox(height: 10),
+
+                        // ── Dedicated Total Package Weight & Parcel Summary Bar ──
+                        if (totalPackageWeightKg > 0 || nonWeightCount > 0) ...[
+                          pw.SizedBox(height: 4),
+                          pw.Container(
+                            width: double.infinity,
+                            padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: pw.BoxDecoration(
+                              color: lightColor,
+                              borderRadius: pw.BorderRadius.circular(6),
+                              border: pw.Border.all(
+                                  color: borderColor, width: 0.8),
+                            ),
+                            child: pw.Row(
+                              mainAxisAlignment:
+                                  pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                pw.Row(
+                                  children: [
+                                    pw.Text('⚖️ Total Package Weight: ',
+                                        style: pw.TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: pw.FontWeight.bold,
+                                            color: primaryColor)),
+                                    pw.Text(
+                                      totalPackageWeightKg > 0
+                                          ? UnitConverter.formatWeight(
+                                              totalPackageWeightKg)
+                                          : 'N/A',
+                                      style: pw.TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: pw.FontWeight.bold,
+                                          color: primaryColor),
+                                    ),
+                                  ],
+                                ),
+                                if (nonWeightCount > 0)
+                                  pw.Text(
+                                    '+ ${nonWeightCount.toStringAsFixed(nonWeightCount == nonWeightCount.roundToDouble() ? 0 : 1)} count/bunch items',
+                                    style: const pw.TextStyle(
+                                        fontSize: 8.5,
+                                        color: PdfColors.grey700),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        pw.SizedBox(height: 8),
 
                         // ── Financial Breakdown & Payment Status ────────────
                         pw.Row(

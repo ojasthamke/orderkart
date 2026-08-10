@@ -1040,6 +1040,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     ref.invalidate(customerOrdersProvider);
     ref.invalidate(customerListProvider);
     ref.invalidate(orderManagementProvider);
+    ref.invalidate(analyticsSummaryProvider);
+    ref.invalidate(todaysDetailedReportProvider);
+    ref.invalidate(dashboardOrdersProvider);
 
     if (mounted) {
       SnackbarHelper.showSuccess(

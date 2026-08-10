@@ -37,6 +37,7 @@ import '../../../core/widgets/owner_pin_dialog.dart';
 import '../../../core/localization/app_localization.dart';
 import 'widgets/item_selector_widget.dart';
 import 'widgets/smart_round_banner.dart';
+import '../../../core/utils/marathi_item_helper.dart';
 
 class CartItem {
   final String itemId;
@@ -103,9 +104,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   bool _orderSaved = false;
   bool _isDiscountManuallyEdited = false;
   bool _isDeliveryManuallyToggled = false;
+  bool _showProfit = false;
 
   List<OrderQuestion> _questions = [];
   Map<String, String> _selectedAnswers = {};
+  List<Map<String, dynamic>> _favoriteItems = [];
 
   Future<void> _loadQuestionsAndPreferences() async {
     try {
@@ -113,6 +116,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           .getAllQuestionsForCustomer(widget.customerId);
       final prefs =
           await OrderQuestionDao.instance.getCustomerAnswers(widget.customerId);
+      final favs =
+          await OrderDao().getCustomerTopOrderedItems(widget.customerId);
 
       Map<String, String> orderAnswers = {};
       if (widget.orderId != null) {
@@ -127,17 +132,97 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         }
       }
 
-      setState(() {
-        _questions = qList;
-        for (final q in qList) {
-          if (orderAnswers.containsKey(q.id)) {
-            _selectedAnswers[q.id] = orderAnswers[q.id]!;
-          } else if (prefs.containsKey(q.id)) {
-            _selectedAnswers[q.id] = prefs[q.id]!;
+      if (mounted) {
+        setState(() {
+          _favoriteItems = favs;
+          _questions = qList;
+          for (final q in qList) {
+            if (orderAnswers.containsKey(q.id)) {
+              _selectedAnswers[q.id] = orderAnswers[q.id]!;
+            } else if (prefs.containsKey(q.id)) {
+              _selectedAnswers[q.id] = prefs[q.id]!;
+            }
           }
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _quickAddFavoriteItem(
+      Map<String, dynamic> favItem, List<Item> inventoryList) {
+    AppHaptics.selection();
+    final itemId = favItem['item_id']?.toString() ?? '';
+    final itemName = favItem['item_name']?.toString() ?? 'Item';
+    final itemUnit = favItem['item_unit']?.toString() ?? 'kg';
+    final unitPrice = (favItem['unit_price'] as num?)?.toDouble() ??
+        (favItem['selling_price'] as num?)?.toDouble() ??
+        0.0;
+    final defaultQty = (favItem['avg_qty'] as num?)?.toDouble() ?? 1.0;
+    final cleanQty = defaultQty > 0 ? defaultQty : 1.0;
+
+    Item? dbItem;
+    for (final it in inventoryList) {
+      if (it.id == itemId) {
+        dbItem = it;
+        break;
+      }
+    }
+
+    if (dbItem != null) {
+      final existing = _cart.indexWhere((c) => c.itemId == itemId);
+      final currentInCart = existing >= 0 ? _cart[existing].quantity : 0.0;
+      final newTotalInAddedUnit = currentInCart + cleanQty;
+      final newTotalInBase =
+          UnitConverter.toBase(newTotalInAddedUnit, dbItem.unit);
+      final stockInBase = UnitConverter.toBase(dbItem.stock, dbItem.unit);
+
+      if (newTotalInBase > stockInBase) {
+        SnackbarHelper.showError(
+          context,
+          'Cannot add more "$itemName". In-stock limit is ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit}',
+        );
+        return;
+      }
+
+      setState(() {
+        if (existing >= 0) {
+          _cart[existing] = _cart[existing].copyWith(
+            quantity: newTotalInAddedUnit,
+            price: dbItem!.sellingPrice > 0 ? dbItem.sellingPrice : unitPrice,
+          );
+        } else {
+          _cart.add(CartItem(
+            itemId: dbItem!.id,
+            name: dbItem.name,
+            unit: dbItem.unit,
+            price: dbItem.sellingPrice > 0 ? dbItem.sellingPrice : unitPrice,
+            quantity: cleanQty,
+          ));
         }
       });
-    } catch (_) {}
+    } else {
+      setState(() {
+        final existing = _cart.indexWhere((c) => c.itemId == itemId);
+        if (existing >= 0) {
+          _cart[existing] = _cart[existing].copyWith(
+            quantity: _cart[existing].quantity + cleanQty,
+          );
+        } else {
+          _cart.add(CartItem(
+            itemId: itemId,
+            name: itemName,
+            unit: itemUnit,
+            price: unitPrice,
+            quantity: cleanQty,
+          ));
+        }
+      });
+    }
+
+    SnackbarHelper.showSuccess(
+      context,
+      'Added $itemName (${AppFormatters.quantity(cleanQty)} $itemUnit) to cart',
+    );
   }
 
   // Calculated
@@ -315,6 +400,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             children: [
               // Customer header
               _buildCustomerHeader(currency),
+              _buildSmartCustomerPreferenceBar(
+                  customer,
+                  currency,
+                  ref.watch(inventoryProvider).valueOrNull ?? []),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
@@ -620,6 +709,384 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
+  // ── Smart Customer Preference Bar ──────────────────────────────────────────
+  Widget _buildSmartCustomerPreferenceBar(
+      Customer? customer, String currency, List<Item> inventoryList) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final notes = customer?.notes.trim() ?? '';
+    final orderCount = customer?.totalOrders ?? 0;
+    final dietary = customer?.dietaryPreference.trim().toLowerCase() ?? '';
+
+    final answeredQuestions = _questions.where((q) {
+      final ans = _selectedAnswers[q.id];
+      return ans != null && ans.trim().isNotEmpty;
+    }).toList();
+
+    final bool hasAnyPreferences = dietary.isNotEmpty ||
+        notes.isNotEmpty ||
+        answeredQuestions.isNotEmpty ||
+        _favoriteItems.isNotEmpty ||
+        (customer != null && customer.lastOrderDate.isNotEmpty);
+
+    if (!hasAnyPreferences && orderCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+              : [const Color(0xFFF8FAFC), const Color(0xFFEEF2F6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.08)
+              : Colors.black.withOpacity(0.06),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Title & Order count badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome_rounded,
+                      size: 15, color: Color(0xFFF59E0B)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Customer Preferences & History',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: Text(
+                  orderCount > 0 ? '📦 $orderCount Orders' : '🌱 New Customer',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Scrollable Info Chips (Dietary, Notes, Preferences)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (dietary.isNotEmpty) ...[
+                  _buildPrefChip(
+                    icon: Icons.eco_rounded,
+                    label: dietary == 'veg' ? 'Pure Veg' : dietary.toUpperCase(),
+                    bgColor: Colors.green.withOpacity(0.15),
+                    borderColor: Colors.green.withOpacity(0.4),
+                    textColor: isDark
+                        ? const Color(0xFF4ADE80)
+                        : Colors.green.shade800,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                if (notes.isNotEmpty) ...[
+                  _buildPrefChip(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    label: notes.length > 28
+                        ? '${notes.substring(0, 28)}...'
+                        : notes,
+                    bgColor: Colors.amber.withOpacity(0.15),
+                    borderColor: Colors.amber.withOpacity(0.4),
+                    textColor: isDark
+                        ? const Color(0xFFFBBF24)
+                        : Colors.amber.shade900,
+                    tooltip: notes,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                ...answeredQuestions.map((q) {
+                  final ans = _selectedAnswers[q.id]!;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: _buildPrefChip(
+                      icon: Icons.check_circle_outline_rounded,
+                      label: '${q.question}: $ans',
+                      bgColor: Colors.indigo.withOpacity(0.12),
+                      borderColor: Colors.indigo.withOpacity(0.35),
+                      textColor: isDark
+                          ? const Color(0xFF818CF8)
+                          : Colors.indigo.shade800,
+                    ),
+                  );
+                }),
+                if (customer != null && customer.lastOrderDate.isNotEmpty)
+                  _buildPrefChip(
+                    icon: Icons.history_rounded,
+                    label: 'Last: ${customer.lastOrderDate}',
+                    bgColor: Colors.purple.withOpacity(0.12),
+                    borderColor: Colors.purple.withOpacity(0.35),
+                    textColor: isDark
+                        ? const Color(0xFFC084FC)
+                        : Colors.purple.shade800,
+                  ),
+              ],
+            ),
+          ),
+
+          // ⭐ Frequent Favorites 1-Tap Quick-Add Section
+          if (_favoriteItems.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Icons.star_rounded,
+                    size: 14, color: Color(0xFFF59E0B)),
+                const SizedBox(width: 4),
+                Text(
+                  'Top Favorites (1-Tap Add):',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white70 : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _favoriteItems.map((fav) {
+                  final rawName = fav['item_name']?.toString() ?? 'Item';
+                  final unit = fav['item_unit']?.toString() ?? 'kg';
+                  final price = (fav['unit_price'] as num?)?.toDouble() ??
+                      (fav['selling_price'] as num?)?.toDouble() ??
+                      0.0;
+                  final defaultQty =
+                      (fav['avg_qty'] as num?)?.toDouble() ?? 1.0;
+                  final cleanQty = defaultQty > 0 ? defaultQty : 1.0;
+                  final bilingual = MarathiItemHelper.formatBilingual(rawName);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: InkWell(
+                      onTap: () =>
+                          _quickAddFavoriteItem(fav, inventoryList),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isDark
+                                ? [
+                                    const Color(0xFF1E3A8A).withOpacity(0.4),
+                                    const Color(0xFF312E81).withOpacity(0.3)
+                                  ]
+                                : [Colors.white, const Color(0xFFEEF2FF)],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFF6366F1).withOpacity(0.4),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.add_circle_rounded,
+                                size: 14, color: Color(0xFF4F46E5)),
+                            const SizedBox(width: 4),
+                            Text(
+                              bilingual,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '(${AppFormatters.quantity(cleanQty)} $unit • $currency${price.toStringAsFixed(0)})',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark
+                                    ? const Color(0xFFA5B4FC)
+                                    : const Color(0xFF4338CA),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrefChip({
+    required IconData icon,
+    required String label,
+    required Color bgColor,
+    required Color borderColor,
+    required Color textColor,
+    String? tooltip,
+  }) {
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (tooltip != null) {
+      return Tooltip(message: tooltip, child: chip);
+    }
+    return chip;
+  }
+
+  // ── Animated Margin & Profit Pill ──────────────────────────────────────────
+  Widget _buildProfitMarginPill(String currency, List<Item> inventoryList) {
+    if (_cart.isEmpty) return const SizedBox.shrink();
+
+    double totalCost = 0.0;
+    for (final cartItem in _cart) {
+      Item? dbItem;
+      for (final it in inventoryList) {
+        if (it.id == cartItem.itemId) {
+          dbItem = it;
+          break;
+        }
+      }
+      final costRate = dbItem?.costPrice ?? 0.0;
+      final dbUnit = dbItem?.unit ?? cartItem.unit;
+      final qtyInBase = UnitConverter.toBase(cartItem.quantity, cartItem.unit);
+      final dbBase = UnitConverter.toBase(1.0, dbUnit);
+      final lineCost = dbBase > 0
+          ? (qtyInBase / dbBase) * costRate
+          : (cartItem.quantity * costRate);
+      totalCost += lineCost;
+    }
+
+    final netProfit =
+        (_subtotal - _discount - totalCost).clamp(0.0, double.infinity);
+    final marginPct = _subtotal > 0 ? (netProfit / _subtotal) * 100 : 0.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: () {
+        AppHaptics.selection();
+        setState(() => _showProfit = !_showProfit);
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    const Color(0xFF064E3B).withOpacity(0.6),
+                    const Color(0xFF022C22).withOpacity(0.8)
+                  ]
+                : [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? const Color(0xFF059669).withOpacity(0.5)
+                : const Color(0xFF10B981).withOpacity(0.4),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _showProfit
+                  ? Icons.visibility_rounded
+                  : Icons.visibility_off_rounded,
+              size: 13,
+              color: isDark
+                  ? const Color(0xFF34D399)
+                  : const Color(0xFF059669),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              _showProfit
+                  ? '📈 Est. Profit: $currency${netProfit.toStringAsFixed(2)} (${marginPct.toStringAsFixed(1)}%)'
+                  : '📈 Est. Profit: • • • • (Tap to view)',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isDark
+                    ? const Color(0xFF6EE7B7)
+                    : const Color(0xFF047857),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Cart section ─────────────────────────────────────────────────────────────
   Widget _buildCartSection(BuildContext context, String currency) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -653,7 +1120,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Items', style: Theme.of(context).textTheme.titleSmall),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Items', style: Theme.of(context).textTheme.titleSmall),
+            _buildProfitMarginPill(currency, inventoryList),
+          ],
+        ),
         const SizedBox(height: 8),
         ..._cart.asMap().entries.map((e) {
           final cartItem = e.value;
@@ -784,40 +1257,233 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final enableDelivery =
         ref.watch(settingsProvider).valueOrNull?.enableDeliveryCharges ?? true;
     if (!enableDelivery) return const SizedBox.shrink();
-    return Row(
-      children: [
-        Expanded(
-          child: TextFormField(
-            initialValue: _deliveryCharge.toStringAsFixed(0),
-            enabled: _deliveryEnabled,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'Delivery Charge',
-              prefixText: '$currency ',
-              prefixIcon: const Icon(Icons.delivery_dining_rounded),
-              suffixText: _deliveryEnabled ? null : 'DISABLED',
-            ),
-            onChanged: (v) {
-              _isDeliveryManuallyToggled = true;
-              setState(() =>
-                  _deliveryCharge = math.max(0.0, double.tryParse(v) ?? 0));
-            },
-          ),
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF1E293B).withOpacity(0.5)
+            : AppColors.gray50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.1) : AppColors.gray200,
         ),
-        const SizedBox(width: 12),
-        Column(
-          children: [
-            const Text('Enable', style: TextStyle(fontSize: 11)),
-            Switch(
-              value: _deliveryEnabled,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Fulfillment Mode',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white70 : AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              // 🚚 Home Delivery Card
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    AppHaptics.selection();
+                    _isDeliveryManuallyToggled = true;
+                    setState(() => _deliveryEnabled = true);
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    decoration: BoxDecoration(
+                      gradient: _deliveryEnabled
+                          ? LinearGradient(
+                              colors: isDark
+                                  ? [
+                                      const Color(0xFF1E3A8A),
+                                      const Color(0xFF1D4ED8)
+                                    ]
+                                  : [
+                                      const Color(0xFFEFF6FF),
+                                      const Color(0xFFDBEAFE)
+                                    ],
+                            )
+                          : null,
+                      color: !_deliveryEnabled
+                          ? (isDark ? const Color(0xFF0F172A) : Colors.white)
+                          : null,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _deliveryEnabled
+                            ? AppColors.primary
+                            : (isDark ? Colors.white12 : AppColors.gray300),
+                        width: _deliveryEnabled ? 1.8 : 1.0,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.delivery_dining_rounded,
+                          size: 22,
+                          color: _deliveryEnabled
+                              ? (isDark ? Colors.white : AppColors.primary)
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '🚚 Home Delivery',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: _deliveryEnabled
+                                ? (isDark ? Colors.white : AppColors.primary)
+                                : (isDark
+                                    ? Colors.white70
+                                    : AppColors.textSecondary),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _deliveryEnabled
+                                ? AppColors.primary.withOpacity(0.15)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '+ $currency${_deliveryCharge.toStringAsFixed(0)} Fee',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: _deliveryEnabled
+                                  ? (isDark
+                                      ? const Color(0xFF93C5FD)
+                                      : AppColors.primary)
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // 🏬 Store Pickup Card
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    AppHaptics.selection();
+                    _isDeliveryManuallyToggled = true;
+                    setState(() => _deliveryEnabled = false);
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    decoration: BoxDecoration(
+                      gradient: !_deliveryEnabled
+                          ? LinearGradient(
+                              colors: isDark
+                                  ? [
+                                      const Color(0xFF064E3B),
+                                      const Color(0xFF047857)
+                                    ]
+                                  : [
+                                      const Color(0xFFECFDF5),
+                                      const Color(0xFFD1FAE5)
+                                    ],
+                            )
+                          : null,
+                      color: _deliveryEnabled
+                          ? (isDark ? const Color(0xFF0F172A) : Colors.white)
+                          : null,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: !_deliveryEnabled
+                            ? Colors.green
+                            : (isDark ? Colors.white12 : AppColors.gray300),
+                        width: !_deliveryEnabled ? 1.8 : 1.0,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.storefront_rounded,
+                          size: 22,
+                          color: !_deliveryEnabled
+                              ? (isDark ? Colors.white : Colors.green.shade800)
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '🏬 Store Pickup',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: !_deliveryEnabled
+                                ? (isDark ? Colors.white : Colors.green.shade800)
+                                : (isDark
+                                    ? Colors.white70
+                                    : AppColors.textSecondary),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: !_deliveryEnabled
+                                ? Colors.green.withOpacity(0.15)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Free • ₹0 Fee',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: !_deliveryEnabled
+                                  ? (isDark
+                                      ? const Color(0xFF6EE7B7)
+                                      : Colors.green.shade800)
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_deliveryEnabled) ...[
+            const SizedBox(height: 10),
+            TextFormField(
+              initialValue: _deliveryCharge.toStringAsFixed(0),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Delivery Charge Amount',
+                prefixText: '$currency ',
+                prefixIcon: const Icon(Icons.edit_road_rounded, size: 18),
+                isDense: true,
+              ),
               onChanged: (v) {
                 _isDeliveryManuallyToggled = true;
-                setState(() => _deliveryEnabled = v);
+                setState(() =>
+                    _deliveryCharge = math.max(0.0, double.tryParse(v) ?? 0));
               },
             ),
           ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -958,76 +1624,139 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   // ── Payment section ──────────────────────────────────────────────────────────
   Widget _buildPaymentSection(String currency, AppSettings? settings) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final paymentMethods = [
+      {
+        'id': AppConstants.paymentCash,
+        'label': 'Cash',
+        'icon': Icons.payments_rounded,
+        'color': Colors.green
+      },
+      {
+        'id': AppConstants.paymentUPI,
+        'label': 'UPI / QR',
+        'icon': Icons.qr_code_scanner_rounded,
+        'color': Colors.purple
+      },
+      {
+        'id': AppConstants.paymentKhata,
+        'label': 'Khata',
+        'icon': Icons.account_balance_wallet_rounded,
+        'color': Colors.amber
+      },
+      {
+        'id': 'online',
+        'label': 'Card / Net',
+        'icon': Icons.credit_card_rounded,
+        'color': Colors.blue
+      },
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Payment', style: Theme.of(context).textTheme.titleSmall),
+        Text(
+          'Payment Method',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
         const SizedBox(height: 8),
+        // Segmented payment cards
         Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _paidCon,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Paid Amount',
-                  prefixText: '$currency ',
-                  prefixIcon: const Icon(Icons.payments_rounded),
+          children: paymentMethods.map((m) {
+            final id = m['id'] as String;
+            final label = m['label'] as String;
+            final icon = m['icon'] as IconData;
+            final color = m['color'] as MaterialColor;
+            final isSelected = _paymentMethod == id;
+
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: InkWell(
+                  onTap: () {
+                    AppHaptics.selection();
+                    setState(() => _paymentMethod = id);
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    decoration: BoxDecoration(
+                      gradient: isSelected
+                          ? LinearGradient(
+                              colors: isDark
+                                  ? [
+                                      color.shade900.withOpacity(0.6),
+                                      color.shade800.withOpacity(0.4)
+                                    ]
+                                  : [
+                                      color.shade50,
+                                      color.shade100.withOpacity(0.5)
+                                    ],
+                            )
+                          : null,
+                      color: !isSelected
+                          ? (isDark
+                              ? const Color(0xFF1E293B).withOpacity(0.4)
+                              : AppColors.gray50)
+                          : null,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected
+                            ? color.shade600
+                            : (isDark ? Colors.white12 : AppColors.gray300),
+                        width: isSelected ? 1.8 : 1.0,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          icon,
+                          size: 20,
+                          color: isSelected
+                              ? (isDark ? Colors.white : color.shade700)
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight:
+                                isSelected ? FontWeight.w800 : FontWeight.w600,
+                            color: isSelected
+                                ? (isDark ? Colors.white : color.shade800)
+                                : (isDark
+                                    ? Colors.white70
+                                    : AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                onChanged: (v) =>
-                    setState(() => _paidAmount = double.tryParse(v) ?? 0),
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Method', style: TextStyle(fontSize: 11)),
-                const SizedBox(height: 4),
-                DropdownButton<String>(
-                  value: _paymentMethod,
-                  underline: const SizedBox.shrink(),
-                  items: [
-                    DropdownMenuItem(
-                        value: 'cash',
-                        child: Text('Cash',
-                            style: TextStyle(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.white
-                                    : AppColors.textPrimary))),
-                    DropdownMenuItem(
-                        value: 'online',
-                        child: Text('Online',
-                            style: TextStyle(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.white
-                                    : AppColors.textPrimary))),
-                    DropdownMenuItem(
-                        value: 'upi',
-                        child: Text('UPI',
-                            style: TextStyle(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.white
-                                    : AppColors.textPrimary))),
-                    DropdownMenuItem(
-                        value: 'card',
-                        child: Text('Card',
-                            style: TextStyle(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.white
-                                    : AppColors.textPrimary))),
-                  ],
-                  onChanged: (v) =>
-                      setState(() => _paymentMethod = v ?? 'cash'),
-                ),
-              ],
-            ),
-          ],
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        // Paid amount text field
+        TextFormField(
+          controller: _paidCon,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: 'Paid Amount',
+            prefixText: '$currency ',
+            prefixIcon: const Icon(Icons.payments_rounded),
+          ),
+          onChanged: (v) =>
+              setState(() => _paidAmount = double.tryParse(v) ?? 0),
         ),
         const SizedBox(height: 8),
         // Quick-fill buttons
@@ -1597,8 +2326,41 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
       debugPrint('[SaveOrder] About to navigate. mounted=$mounted, widget.orderId=${widget.orderId}');
       if (!mounted) return;
+
+      // Invalidate Customer & Order Providers
       ref.invalidate(customerOrdersProvider(widget.customerId));
       ref.invalidate(customerDetailProvider(widget.customerId));
+      ref.invalidate(orderDetailProvider(orderId));
+      ref.invalidate(customerOrdersProvider);
+      ref.invalidate(customerListProvider);
+      ref.invalidate(allCustomersProvider);
+      ref.invalidate(pendingCustomersProvider);
+      ref.invalidate(overpaidCustomersProvider);
+
+      // Invalidate & Refresh Inventory & Stock Providers
+      ref.invalidate(inventoryProvider);
+      ref.invalidate(lowStockProvider);
+      ref.invalidate(outOfStockProvider);
+      ref.invalidate(stockSummaryProvider);
+      ref.invalidate(stockHistoryProvider);
+      ref.invalidate(orderedItemStatsProvider);
+      try {
+        ref.read(inventoryProvider.notifier).load(silent: true);
+      } catch (_) {}
+
+      // Invalidate & Refresh Dashboard & Analytics Providers
+      ref.invalidate(analyticsSummaryProvider);
+      ref.invalidate(todaysDetailedReportProvider);
+      ref.invalidate(dashboardOrdersProvider);
+      ref.invalidate(weeklyChartProvider);
+      ref.invalidate(monthlyChartProvider);
+      ref.invalidate(profitLossProvider);
+      ref.invalidate(customerSavingsProvider);
+      ref.invalidate(orderManagementProvider);
+      try {
+        ref.read(orderManagementProvider.notifier).load(silent: true);
+      } catch (_) {}
+
       if (widget.orderId != null) {
         ref.invalidate(orderDetailProvider(widget.orderId!));
         debugPrint('[SaveOrder] Edit mode: popping screen with result=true');
@@ -1824,6 +2586,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         customerId: widget.customerId,
         currentCartCount: _cart.length,
         currentCartTotal: _subtotal,
+        cartItems: _cart,
         onItemSelected: (item, qty, price) {
           setState(() {
             double unitPrice = price;

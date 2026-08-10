@@ -141,6 +141,12 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     } catch (_) {}
   }
 
+  String _initialName = '';
+  String _initialPhone = '';
+  String _initialHouse = '';
+  String _initialAddress = '';
+  String _initialNotes = '';
+
   Future<void> _loadCustomer() async {
     final customer = await ref
         .read(customerRepositoryProvider)
@@ -151,20 +157,76 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       setState(() {
         _streetId = customer.streetId;
         _isGhostHouse = wasGhost;
-        _nameCon.text = wasGhost ? '' : customer.name;
-        _phone1Con.text = wasGhost ? '' : customer.phone1;
+        _initialName = wasGhost ? '' : customer.name;
+        _initialPhone = wasGhost ? '' : customer.phone1;
+        _initialHouse = customer.houseNumber;
+        _initialAddress = customer.address;
+        _initialNotes = customer.notes;
+
+        _nameCon.text = _initialName;
+        _phone1Con.text = _initialPhone;
         _phone2Con.text = customer.phone2;
         _waCon.text = customer.whatsapp;
         _serialNoCon.text = customer.serialNo > 0 ? '${customer.serialNo}' : '';
-        _houseCon.text = customer.houseNumber;
-        _addressCon.text = customer.address;
-        _notesCon.text = customer.notes;
+        _houseCon.text = _initialHouse;
+        _addressCon.text = _initialAddress;
+        _notesCon.text = _initialNotes;
         _mapsCon.text = customer.mapsLocation;
         _photoPath = customer.photoPath;
         _dietaryPreference = customer.dietaryPreference;
       });
       _checkHousehold(customer.houseNumber);
     }
+  }
+
+  bool _hasUnsavedChanges() {
+    if (_isEdit) {
+      return _nameCon.text != _initialName ||
+          _phone1Con.text != _initialPhone ||
+          _houseCon.text != _initialHouse ||
+          _addressCon.text != _initialAddress ||
+          _notesCon.text != _initialNotes;
+    }
+    return _nameCon.text.trim().isNotEmpty ||
+        _phone1Con.text.trim().isNotEmpty ||
+        _houseCon.text.trim().isNotEmpty ||
+        _addressCon.text.trim().isNotEmpty ||
+        _notesCon.text.trim().isNotEmpty ||
+        _photoPath.isNotEmpty;
+  }
+
+  Future<bool> _confirmDiscard() async {
+    if (!_hasUnsavedChanges()) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Discard Changes?'),
+          ],
+        ),
+        content: const Text(
+            'You have unsaved changes in this form. Are you sure you want to leave without saving?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep Editing'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   @override
@@ -186,9 +248,24 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      title: _isEdit ? 'Edit Customer' : 'Add Customer',
-      body: SingleChildScrollView(
+    return PopScope(
+      canPop: !_hasUnsavedChanges(),
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _confirmDiscard();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: AppScaffold(
+        title: _isEdit ? 'Edit Customer' : 'Add Customer',
+        onBack: () async {
+          final shouldPop = await _confirmDiscard();
+          if (shouldPop && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+        body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -692,8 +769,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Future<void> _pickImage() async {
     final source = await showModalBottomSheet<ImageSource>(

@@ -369,6 +369,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         (totalItems - outOfStockCount)
                             .clamp(0, 99999);
 
+                    final weeklySalesData =
+                        ref.watch(weeklyChartProvider).valueOrNull;
+
                     return SmartBusinessPulseWidget(
                       todaySales:
                           (summary['today_sales'] as num?)?.toDouble() ?? 0.0,
@@ -403,6 +406,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       currency:
                           ref.watch(settingsProvider).valueOrNull?.currency ??
                               '₹',
+                      weeklyChartData: weeklySalesData,
                       onCreateOrder: () =>
                           Navigator.of(context).pushNamed(AppRoutes.customers),
                       onViewInventory: () =>

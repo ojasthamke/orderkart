@@ -122,6 +122,38 @@ class OrderDao {
     return maps.map(AppOrder.fromMap).toList();
   }
 
+  /// Get top ordered items by a specific customer for quick-add recommendations
+  Future<List<Map<String, dynamic>>> getCustomerTopOrderedItems(
+      String customerId,
+      {int limit = 6}) async {
+    final db = await _db;
+    try {
+      final rows = await db.rawQuery('''
+        SELECT 
+          oi.item_id,
+          oi.item_name,
+          oi.item_unit,
+          oi.unit_price,
+          COUNT(oi.id) AS order_count,
+          AVG(oi.quantity) AS avg_qty,
+          i.stock,
+          i.selling_price,
+          i.cost_price,
+          i.unit
+        FROM order_items oi
+        INNER JOIN orders o ON oi.order_id = o.id
+        LEFT JOIN items i ON oi.item_id = i.id
+        WHERE o.customer_id = ? AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+        GROUP BY oi.item_id, oi.item_name, oi.item_unit
+        ORDER BY order_count DESC
+        LIMIT ?
+      ''', [customerId, limit]);
+      return rows;
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<AppOrder?> getOrderById(String id,
       {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);

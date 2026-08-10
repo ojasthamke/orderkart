@@ -70,11 +70,21 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     }
   }
 
+  String _initialName = '';
+  String _initialCost = '';
+  String _initialSell = '';
+  String _initialStock = '';
+
   Future<void> _loadItem() async {
     final item =
         await ref.read(inventoryRepositoryProvider).getItemById(widget.itemId!);
     if (item != null && mounted) {
       setState(() {
+        _initialName = item.name;
+        _initialCost = item.costPrice.toString();
+        _initialSell = item.sellingPrice.toString();
+        _initialStock = item.stock.toString();
+
         _nameCon.text = item.name;
         _costCon.text = item.costPrice.toString();
         _sellCon.text = item.sellingPrice.toString();
@@ -98,6 +108,55 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _createdAt = item.createdAt;
       });
     }
+  }
+
+  bool _hasUnsavedChanges() {
+    if (_isEdit) {
+      return _nameCon.text != _initialName ||
+          _costCon.text != _initialCost ||
+          _sellCon.text != _initialSell ||
+          _stockCon.text != _initialStock;
+    }
+    return _nameCon.text.trim().isNotEmpty ||
+        _costCon.text.trim().isNotEmpty ||
+        _sellCon.text.trim().isNotEmpty ||
+        _stockCon.text.trim().isNotEmpty ||
+        _barcodeCon.text.trim().isNotEmpty ||
+        _photoPath.isNotEmpty;
+  }
+
+  Future<bool> _confirmDiscard() async {
+    if (!_hasUnsavedChanges()) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Discard Item Changes?'),
+          ],
+        ),
+        content: const Text(
+            'You have unsaved changes in this item form. Are you sure you want to leave without saving?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep Editing'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   @override
@@ -124,9 +183,24 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     final settings = ref.watch(settingsProvider).valueOrNull;
     final currency = settings?.currency ?? AppConstants.defaultCurrency;
 
-    return AppScaffold(
-      title: _isEdit ? 'Edit Item' : 'Add Item',
-      body: SingleChildScrollView(
+    return PopScope(
+      canPop: !_hasUnsavedChanges(),
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _confirmDiscard();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: AppScaffold(
+        title: _isEdit ? 'Edit Item' : 'Add Item',
+        onBack: () async {
+          final shouldPop = await _confirmDiscard();
+          if (shouldPop && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+        body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -494,8 +568,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Future<void> _scanBarcode() async {
     final result = await showModalBottomSheet<String>(

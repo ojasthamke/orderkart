@@ -81,30 +81,33 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _SectionCard(
-            title: 'Export Packages',
-            icon: Icons.upload_rounded,
-            iconColor: AppColors.success,
-            children: [
-              _ActionTile(
-                icon: Icons.backup_rounded,
-                title: 'Full Business Backup',
-                subtitle:
-                    'Export entire database and files (.orderkart backup)',
-                onTap: _exportBusinessBackup,
-                loading: _loading,
-              ),
-              const Divider(height: 1),
-              _ActionTile(
-                icon: Icons.drive_folder_upload_rounded,
-                title: 'Modular Package Export',
-                subtitle:
-                    'Select Areas, Customers, Orders, Inventory, Settings to export (.zip)',
-                onTap: () => ExportWizardDialog.show(context),
-                loading: _loading,
-              ),
-            ],
-          ),
+          if (!isWorker) ...[
+            _SectionCard(
+              title: 'Export Packages',
+              icon: Icons.upload_rounded,
+              iconColor: AppColors.success,
+              children: [
+                _ActionTile(
+                  icon: Icons.backup_rounded,
+                  title: 'Full Business Backup',
+                  subtitle:
+                      'Export entire database and files (.orderkart backup)',
+                  onTap: _exportBusinessBackup,
+                  loading: _loading,
+                ),
+                const Divider(height: 1),
+                _ActionTile(
+                  icon: Icons.drive_folder_upload_rounded,
+                  title: 'Modular Package Export',
+                  subtitle:
+                      'Select Areas, Customers, Orders, Inventory, Settings to export (.zip)',
+                  onTap: () => ExportWizardDialog.show(context),
+                  loading: _loading,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
           HotspotSyncControlCard(
             workerId: workerId,
             workerName: workerName,
@@ -158,6 +161,15 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   }
 
   Future<void> _exportBusinessBackup() async {
+    final mode = await AppModeService.getAppMode();
+    if (mode == AppMode.worker) {
+      if (mounted) {
+        SnackbarHelper.showError(
+            context, 'Access Denied: Workers cannot export business data.');
+      }
+      return;
+    }
+
     final defaultName =
         'BusinessBackup_${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
     final customName = await ExportFilenameDialog.show(

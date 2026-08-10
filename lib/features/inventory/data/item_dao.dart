@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
@@ -378,34 +379,34 @@ class ItemDao {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final todayStr = DateFormat('yyyy-MM-dd').format(today);
 
     if (startDate != null && endDate != null) {
-      final start = DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
-      final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999);
-      whereClause += " AND o.created_at >= ? AND o.created_at <= ?";
-      args.add(start.toIso8601String());
-      args.add(end.toIso8601String());
+      final startStr = DateFormat('yyyy-MM-dd').format(startDate);
+      final endStr = DateFormat('yyyy-MM-dd').format(endDate);
+      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      args.add(startStr);
+      args.add(endStr);
     } else if (dateFilter == 'today') {
-      final start = DateTime(today.year, today.month, today.day, 0, 0, 0);
-      final end = DateTime(today.year, today.month, today.day, 23, 59, 59, 999);
-      whereClause += " AND o.created_at >= ? AND o.created_at <= ?";
-      args.add(start.toIso8601String());
-      args.add(end.toIso8601String());
+      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      args.add(todayStr);
     } else if (dateFilter == 'yesterday') {
       final yest = today.subtract(const Duration(days: 1));
-      final start = DateTime(yest.year, yest.month, yest.day, 0, 0, 0);
-      final end = DateTime(yest.year, yest.month, yest.day, 23, 59, 59, 999);
-      whereClause += " AND o.created_at >= ? AND o.created_at <= ?";
-      args.add(start.toIso8601String());
-      args.add(end.toIso8601String());
+      final yestStr = DateFormat('yyyy-MM-dd').format(yest);
+      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      args.add(yestStr);
     } else if (dateFilter == 'week') {
       final start = today.subtract(const Duration(days: 7));
-      whereClause += " AND o.created_at >= ?";
-      args.add(start.toIso8601String());
+      final startStr = DateFormat('yyyy-MM-dd').format(start);
+      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      args.add(startStr);
+      args.add(todayStr);
     } else if (dateFilter == 'month') {
-      final start = DateTime(now.year, now.month, 1, 0, 0, 0);
-      whereClause += " AND o.created_at >= ?";
-      args.add(start.toIso8601String());
+      final start = DateTime(now.year, now.month, 1);
+      final startStr = DateFormat('yyyy-MM-dd').format(start);
+      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      args.add(startStr);
+      args.add(todayStr);
     }
 
     final rawRows = await db.rawQuery('''

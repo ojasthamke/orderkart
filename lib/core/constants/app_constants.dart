@@ -83,6 +83,7 @@ class AppConstants {
   static const String paymentOnline = 'online';
   static const String paymentUPI = 'upi';
   static const String paymentCard = 'card';
+  static const String paymentKhata = 'khata';
 
   // Item Categories
   static const String catVegetables = 'Vegetables';

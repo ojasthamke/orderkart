@@ -46,11 +46,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
 
   // Multi-Store state
   List<Map<String, dynamic>> _warehouseStock = [];
-  final List<String> _warehouses = [
-    'Main Godown',
-    'Sub-Store Alpha',
-    'Warehouse West'
-  ];
+  List<String> _warehouses = ['Main Godown'];
   String _selectedWarehouse = 'Main Godown';
 
   // Audit Logs state
@@ -93,6 +89,29 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       final audits =
           await db.query('audit_logs', orderBy: 'created_at DESC', limit: 30);
 
+      final Set<String> warehouseSet = {'Main Godown'};
+      for (final row in warehouseLogs) {
+        final name = row['warehouse_name']?.toString();
+        if (name != null && name.trim().isNotEmpty) {
+          warehouseSet.add(name.trim());
+        }
+      }
+      try {
+        final locWarehouses = await db.query('locations',
+            where: "kind = 'warehouse' OR is_archived = 0",
+            columns: ['name']);
+        for (final row in locWarehouses) {
+          final name = row['name']?.toString();
+          if (name != null && name.trim().isNotEmpty) {
+            warehouseSet.add(name.trim());
+          }
+        }
+      } catch (_) {}
+      final loadedWarehouses = warehouseSet.toList()..sort();
+      final selectedWh = loadedWarehouses.contains(_selectedWarehouse)
+          ? _selectedWarehouse
+          : (loadedWarehouses.isNotEmpty ? loadedWarehouses.first : 'Main Godown');
+
       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
       final cashRes = await db.rawQuery(
         "SELECT SUM(amount) as total FROM payments WHERE created_at LIKE ?",
@@ -110,6 +129,8 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
           _priceChanges = prices;
           _customFields = fields;
           _warehouseStock = warehouseLogs;
+          _warehouses = loadedWarehouses;
+          _selectedWarehouse = selectedWh;
           _auditLogs = audits;
           _cashCollectedToday = cashToday;
           _outstandingDuesLedger = totalDues;
@@ -842,26 +863,88 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
     );
   }
 
+  Future<void> _showAddWarehouseDialog() async {
+    final con = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Warehouse / Godown'),
+        content: TextField(
+          controller: con,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Warehouse Name',
+            hintText: 'e.g., North Godown, Cold Storage',
+            prefixIcon: Icon(Icons.warehouse_outlined),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final val = con.text.trim();
+              if (val.isNotEmpty) {
+                Navigator.pop(ctx, val);
+              }
+            },
+            child: const Text('Add Warehouse'),
+          ),
+        ],
+      ),
+    );
+    if (name != null && name.isNotEmpty) {
+      setState(() {
+        if (!_warehouses.contains(name)) {
+          _warehouses.add(name);
+          _warehouses.sort();
+        }
+        _selectedWarehouse = name;
+      });
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Warehouse "$name" selected.');
+      }
+    }
+  }
+
   // --- SUB TAB 2: Multi-Store Warehouses ---
   Widget _buildWarehouseTab(List<Item> items) {
+    final selectedVal = _warehouses.contains(_selectedWarehouse)
+        ? _selectedWarehouse
+        : (_warehouses.isNotEmpty ? _warehouses.first : null);
+
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: DropdownButtonFormField<String>(
-            value: _selectedWarehouse,
-            decoration: const InputDecoration(
-              labelText: 'Select Warehouse Location',
-              prefixIcon: Icon(Icons.warehouse_rounded),
-            ),
-            items: _warehouses
-                .map((w) => DropdownMenuItem(value: w, child: Text(w)))
-                .toList(),
-            onChanged: (v) {
-              if (v != null) {
-                setState(() => _selectedWarehouse = v);
-              }
-            },
+          child: Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: selectedVal,
+                  decoration: const InputDecoration(
+                    labelText: 'Select Warehouse Location',
+                    prefixIcon: Icon(Icons.warehouse_rounded),
+                  ),
+                  items: _warehouses
+                      .map((w) => DropdownMenuItem(value: w, child: Text(w)))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() => _selectedWarehouse = v);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                icon: const Icon(Icons.add_business_rounded),
+                tooltip: 'Add Godown / Warehouse',
+                onPressed: _showAddWarehouseDialog,
+              ),
+            ],
           ),
         ),
         const Divider(),

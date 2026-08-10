@@ -60,8 +60,12 @@ class _WorkerPasscodeLockScreenState extends State<WorkerPasscodeLockScreen> {
       final String correctCode =
           rows.isNotEmpty ? (rows.first['pin_hash']?.toString() ?? '') : '';
 
-      // Check match
-      if (entered == correctCode || entered == '124357') {
+      // Check match strictly against stored worker PIN/hash
+      final String hashedInput = AppModeService.hashWorkerPin(entered);
+      final bool matches = (entered == correctCode && correctCode.isNotEmpty) ||
+          (hashedInput == correctCode && correctCode.isNotEmpty);
+
+      if (matches) {
         AppHaptics.success();
         final prefs = await SharedPreferences.getInstance();
         final now = DateTime.now().millisecondsSinceEpoch;

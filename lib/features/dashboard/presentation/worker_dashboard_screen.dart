@@ -144,6 +144,15 @@ class WorkerDashboardScreen extends ConsumerWidget {
     final workerName = WorkerSession.instance.currentWorkerName ?? 'Worker';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final workerList = ref.watch(workerListProvider).valueOrNull ?? [];
+    final currentWorker =
+        workerList.where((w) => w.id == workerId).firstOrNull;
+    final double rawTarget = (currentWorker != null && currentWorker.target > 0)
+        ? currentWorker.target
+        : 50000.0;
+    // Calculate daily collection target dynamically from worker's target profile
+    final double target = rawTarget > 3000 ? (rawTarget / 30.0) : rawTarget;
+
     final headerGradient = LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -248,7 +257,6 @@ class WorkerDashboardScreen extends ConsumerWidget {
                     data: (rpt) {
                       final collected =
                           (rpt['cash_received'] as num?)?.toDouble() ?? 0.0;
-                      const double target = 50000.0;
                       final pct = (collected / target).clamp(0.0, 1.0);
                       return Container(
                         padding: const EdgeInsets.all(18),
