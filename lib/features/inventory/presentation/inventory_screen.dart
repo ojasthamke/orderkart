@@ -8,6 +8,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/database/database_helper.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../../core/services/package_exporter.dart';
 import '../../../core/services/package_validator.dart';
 import '../../../core/utils/formatters.dart';
@@ -27,6 +30,7 @@ import '../data/item_dao.dart';
 import '../../expense/domain/expense.dart';
 import '../../expense/data/expense_dao.dart';
 import '../../order/presentation/order_provider.dart';
+import '../../settings/presentation/settings_provider.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final bool showBack;
@@ -1412,6 +1416,46 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           ),
         ),
         const SizedBox(height: 8),
+
+        // Price History Date Range PDF Exporter CTA
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 38,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                AppHaptics.buttonClick();
+                final picked = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                  initialDateRange: _selectedOrderDateRange ??
+                      DateTimeRange(
+                        start: DateTime.now().subtract(const Duration(days: 30)),
+                        end: DateTime.now(),
+                      ),
+                );
+                if (picked != null && context.mounted) {
+                  await _exportPriceComparisonPdf(context, picked);
+                }
+              },
+              icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+              label: const Text(
+                '📄 Compare Date Range & Export Price PDF',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: statsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -1999,6 +2043,117 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       ],
     );
   }
+
+  Future<void> _exportPriceComparisonPdf(
+      BuildContext context, DateTimeRange range) async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final startIso = range.start.toIso8601String();
+      final endIso = range.end.add(const Duration(days: 1)).toIso8601String();
+
+      final rows = await db.rawQuery('''
+        SELECT h.*, i.name as current_item_name, i.unit as item_unit, i.cost_price as current_cost, i.selling_price as current_price
+        FROM item_price_history h
+        JOIN items i ON h.item_id = i.id
+        WHERE h.created_at >= ? AND h.created_at <= ?
+        ORDER BY h.created_at DESC
+      ''', [startIso, endIso]);
+
+      if (rows.isEmpty) {
+        if (context.mounted) {
+          SnackbarHelper.showInfo(
+              context, 'No price changes logged within the selected date range.');
+        }
+        return;
+      }
+
+      final doc = pw.Document();
+      final currency = ref.read(settingsProvider).valueOrNull?.currency ?? '₹';
+
+      doc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context pwContext) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Header(
+                  level: 0,
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('OrderKart - Inventory Price Comparison Report',
+                          style: pw.TextStyle(
+                              fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(
+                          '${DateFormat('dd MMM yyyy').format(range.start)} - ${DateFormat('dd MMM yyyy').format(range.end)}',
+                          style: const pw.TextStyle(fontSize: 11)),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 12),
+                pw.Table.fromTextArray(
+                  headers: [
+                    'Item Name',
+                    'Date',
+                    'Old Cost',
+                    'New Cost',
+                    'Old Price',
+                    'New Price',
+                    'Diff'
+                  ],
+                  data: rows.map((r) {
+                    final oldC =
+                        (r['old_cost_price'] as num?)?.toDouble() ?? 0.0;
+                    final newC =
+                        (r['new_cost_price'] as num?)?.toDouble() ?? 0.0;
+                    final oldS =
+                        (r['old_selling_price'] as num?)?.toDouble() ?? 0.0;
+                    final newS =
+                        (r['new_selling_price'] as num?)?.toDouble() ?? 0.0;
+                    final diff = newS - oldS;
+                    final diffStr =
+                        '${diff >= 0 ? '+' : ''}$currency${diff.toStringAsFixed(2)}';
+                    final dateStr = DateFormat('dd/MM/yy')
+                        .format(DateTime.parse(r['created_at'].toString()));
+                    return [
+                      r['current_item_name'].toString(),
+                      dateStr,
+                      '$currency${oldC.toStringAsFixed(2)}',
+                      '$currency${newC.toStringAsFixed(2)}',
+                      '$currency${oldS.toStringAsFixed(2)}',
+                      '$currency${newS.toStringAsFixed(2)}',
+                      diffStr,
+                    ];
+                  }).toList(),
+                  headerStyle: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                  headerDecoration:
+                      const pw.BoxDecoration(color: PdfColors.indigo),
+                  rowDecoration: const pw.BoxDecoration(
+                      border: pw.Border(
+                          bottom: pw.BorderSide(color: PdfColors.grey300))),
+                  cellPadding: const pw.EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 5),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      final pdfBytes = await doc.save();
+      await Printing.sharePdf(
+        bytes: pdfBytes,
+        filename:
+            'price_comparison_${DateFormat('yyyyMMdd').format(range.start)}_${DateFormat('yyyyMMdd').format(range.end)}.pdf',
+      );
+    } catch (e) {
+      if (context.mounted) {
+        SnackbarHelper.showError(context, 'Failed to generate PDF: $e');
+      }
+    }
+  }
 }
 
 class _ItemTile extends StatelessWidget {
@@ -2039,31 +2194,17 @@ class _ItemTile extends StatelessWidget {
                       color: AppColors.gray400, size: 20),
                 ),
               ),
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.primarySurface,
-                borderRadius: BorderRadius.circular(8),
-                image: (item.photoPath.isNotEmpty &&
-                        (item.photoPath.startsWith('http') ||
-                            AppConstants.resolveFile(item.photoPath)
-                                .existsSync()))
-                    ? DecorationImage(
-                        image: item.photoPath.startsWith('http')
-                            ? NetworkImage(item.photoPath) as ImageProvider
-                            : FileImage(
-                                AppConstants.resolveFile(item.photoPath)),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.primary.withOpacity(0.12),
+              child: Text(
+                '${index + 1}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
               ),
-              child: (item.photoPath.isEmpty ||
-                      (!item.photoPath.startsWith('http') &&
-                          !AppConstants.resolveFile(item.photoPath)
-                              .existsSync()))
-                  ? const Icon(Icons.image_outlined, color: AppColors.primary)
-                  : null,
             ),
           ],
         ),
@@ -2093,10 +2234,7 @@ class _ItemTile extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-              )
-                  .animate(
-                      onPlay: (controller) => controller.repeat(reverse: true))
-                  .fadeIn(begin: 0.40, duration: 1000.ms),
+              ),
           ],
         ),
         subtitle: Column(
@@ -2166,7 +2304,7 @@ class _ItemTile extends StatelessWidget {
                   if (v == 'stock') onAdjustStock();
                   if (v == 'delete') onDelete();
                 },
-                itemBuilder: (_) => [
+                itemBuilder: (ctx) => [
                   const PopupMenuItem(
                       value: 'edit',
                       child: Row(children: [

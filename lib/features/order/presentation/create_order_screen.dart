@@ -37,7 +37,6 @@ import '../../../core/widgets/owner_pin_dialog.dart';
 import '../../../core/localization/app_localization.dart';
 import 'widgets/item_selector_widget.dart';
 import 'widgets/smart_round_banner.dart';
-import '../../../core/utils/marathi_item_helper.dart';
 
 class CartItem {
   final String itemId;
@@ -74,6 +73,7 @@ class CreateOrderScreen extends ConsumerStatefulWidget {
   final String customerName;
   final String? orderId; // non-null = edit mode
   final double? initialDiscount;
+  final bool autoReorder;
 
   const CreateOrderScreen({
     super.key,
@@ -81,6 +81,7 @@ class CreateOrderScreen extends ConsumerStatefulWidget {
     required this.customerName,
     this.orderId,
     this.initialDiscount,
+    this.autoReorder = false,
   });
 
   @override
@@ -108,7 +109,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
   List<OrderQuestion> _questions = [];
   Map<String, String> _selectedAnswers = {};
-  List<Map<String, dynamic>> _favoriteItems = [];
 
   Future<void> _loadQuestionsAndPreferences() async {
     try {
@@ -116,8 +116,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           .getAllQuestionsForCustomer(widget.customerId);
       final prefs =
           await OrderQuestionDao.instance.getCustomerAnswers(widget.customerId);
-      final favs =
-          await OrderDao().getCustomerTopOrderedItems(widget.customerId);
 
       Map<String, String> orderAnswers = {};
       if (widget.orderId != null) {
@@ -134,7 +132,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
       if (mounted) {
         setState(() {
-          _favoriteItems = favs;
+          _questions = qList;
           _questions = qList;
           for (final q in qList) {
             if (orderAnswers.containsKey(q.id)) {
@@ -148,82 +146,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     } catch (_) {}
   }
 
-  void _quickAddFavoriteItem(
-      Map<String, dynamic> favItem, List<Item> inventoryList) {
-    AppHaptics.selection();
-    final itemId = favItem['item_id']?.toString() ?? '';
-    final itemName = favItem['item_name']?.toString() ?? 'Item';
-    final itemUnit = favItem['item_unit']?.toString() ?? 'kg';
-    final unitPrice = (favItem['unit_price'] as num?)?.toDouble() ??
-        (favItem['selling_price'] as num?)?.toDouble() ??
-        0.0;
-    final defaultQty = (favItem['avg_qty'] as num?)?.toDouble() ?? 1.0;
-    final cleanQty = defaultQty > 0 ? defaultQty : 1.0;
 
-    Item? dbItem;
-    for (final it in inventoryList) {
-      if (it.id == itemId) {
-        dbItem = it;
-        break;
-      }
-    }
-
-    if (dbItem != null) {
-      final existing = _cart.indexWhere((c) => c.itemId == itemId);
-      final currentInCart = existing >= 0 ? _cart[existing].quantity : 0.0;
-      final newTotalInAddedUnit = currentInCart + cleanQty;
-      final newTotalInBase =
-          UnitConverter.toBase(newTotalInAddedUnit, dbItem.unit);
-      final stockInBase = UnitConverter.toBase(dbItem.stock, dbItem.unit);
-
-      if (newTotalInBase > stockInBase) {
-        SnackbarHelper.showError(
-          context,
-          'Cannot add more "$itemName". In-stock limit is ${AppFormatters.quantity(dbItem.stock)} ${dbItem.unit}',
-        );
-        return;
-      }
-
-      setState(() {
-        if (existing >= 0) {
-          _cart[existing] = _cart[existing].copyWith(
-            quantity: newTotalInAddedUnit,
-            price: dbItem!.sellingPrice > 0 ? dbItem.sellingPrice : unitPrice,
-          );
-        } else {
-          _cart.add(CartItem(
-            itemId: dbItem!.id,
-            name: dbItem.name,
-            unit: dbItem.unit,
-            price: dbItem.sellingPrice > 0 ? dbItem.sellingPrice : unitPrice,
-            quantity: cleanQty,
-          ));
-        }
-      });
-    } else {
-      setState(() {
-        final existing = _cart.indexWhere((c) => c.itemId == itemId);
-        if (existing >= 0) {
-          _cart[existing] = _cart[existing].copyWith(
-            quantity: _cart[existing].quantity + cleanQty,
-          );
-        } else {
-          _cart.add(CartItem(
-            itemId: itemId,
-            name: itemName,
-            unit: itemUnit,
-            price: unitPrice,
-            quantity: cleanQty,
-          ));
-        }
-      });
-    }
-
-    SnackbarHelper.showSuccess(
-      context,
-      'Added $itemName (${AppFormatters.quantity(cleanQty)} $itemUnit) to cart',
-    );
-  }
 
   // Calculated
   double get _subtotal => _cart.fold(0, (s, i) => s + i.total);
@@ -261,6 +184,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       final savedCart = ref.read(createOrderCartProvider(widget.customerId));
       if (savedCart.isNotEmpty) {
         _cart.addAll(savedCart);
+      }
+      if (widget.autoReorder) {
+        Future.microtask(() => _quickReorderPreviousOrder());
       }
     }
     _loadQuestionsAndPreferences();
@@ -400,44 +326,51 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             children: [
               // Customer header
               _buildCustomerHeader(currency),
-              _buildSmartCustomerPreferenceBar(
-                  customer,
-                  currency,
-                  ref.watch(inventoryProvider).valueOrNull ?? []),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Cart Items
                       _buildCartSection(context, currency),
 
-                      // Reorder from Past Orders
+                      // Reorder from Past Orders CTA Buttons
                       if (widget.orderId == null) ...[
-                        OutlinedButton.icon(
-                          onPressed: () => _showPastOrdersReorderSheet(context),
-                          icon: const Icon(Icons.history_rounded,
-                              color: AppColors.primary),
-                          label: const Text(
-                              'Reorder from Customer\'s Past Orders'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(double.infinity, 46),
-                            foregroundColor: AppColors.primary,
-                            side: BorderSide(
-                                color: AppColors.primary.withOpacity(0.5)),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _quickReorderPreviousOrder,
+                            icon: const Icon(Icons.bolt_rounded,
+                                size: 19, color: Colors.amber),
+                            label: const Text(
+                              'Reorder Last Order',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(0, 48),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                       ],
 
                       // Add Item button
                       OutlinedButton.icon(
                         onPressed: () => _showItemSelector(context),
                         icon: const Icon(Icons.add_shopping_cart_rounded),
-                        label: const Text('Add Item'),
+                        label: const Text('Add Item',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
                         style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 52),
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
 
@@ -540,8 +473,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         ),
                         maxLines: 2,
                       ),
-
-                      _buildQuestionsSection(),
                     ],
                   ),
                 ),
@@ -709,292 +640,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
-  // ── Smart Customer Preference Bar ──────────────────────────────────────────
-  Widget _buildSmartCustomerPreferenceBar(
-      Customer? customer, String currency, List<Item> inventoryList) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final notes = customer?.notes.trim() ?? '';
-    final orderCount = customer?.totalOrders ?? 0;
-    final dietary = customer?.dietaryPreference.trim().toLowerCase() ?? '';
 
-    final answeredQuestions = _questions.where((q) {
-      final ans = _selectedAnswers[q.id];
-      return ans != null && ans.trim().isNotEmpty;
-    }).toList();
 
-    final bool hasAnyPreferences = dietary.isNotEmpty ||
-        notes.isNotEmpty ||
-        answeredQuestions.isNotEmpty ||
-        _favoriteItems.isNotEmpty ||
-        (customer != null && customer.lastOrderDate.isNotEmpty);
 
-    if (!hasAnyPreferences && orderCount == 0) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-              : [const Color(0xFFF8FAFC), const Color(0xFFEEF2F6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.08)
-              : Colors.black.withOpacity(0.06),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section Title & Order count badge
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.auto_awesome_rounded,
-                      size: 15, color: Color(0xFFF59E0B)),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Customer Preferences & History',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                ),
-                child: Text(
-                  orderCount > 0 ? '📦 $orderCount Orders' : '🌱 New Customer',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Scrollable Info Chips (Dietary, Notes, Preferences)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                if (dietary.isNotEmpty) ...[
-                  _buildPrefChip(
-                    icon: Icons.eco_rounded,
-                    label: dietary == 'veg' ? 'Pure Veg' : dietary.toUpperCase(),
-                    bgColor: Colors.green.withOpacity(0.15),
-                    borderColor: Colors.green.withOpacity(0.4),
-                    textColor: isDark
-                        ? const Color(0xFF4ADE80)
-                        : Colors.green.shade800,
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                if (notes.isNotEmpty) ...[
-                  _buildPrefChip(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    label: notes.length > 28
-                        ? '${notes.substring(0, 28)}...'
-                        : notes,
-                    bgColor: Colors.amber.withOpacity(0.15),
-                    borderColor: Colors.amber.withOpacity(0.4),
-                    textColor: isDark
-                        ? const Color(0xFFFBBF24)
-                        : Colors.amber.shade900,
-                    tooltip: notes,
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                ...answeredQuestions.map((q) {
-                  final ans = _selectedAnswers[q.id]!;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: _buildPrefChip(
-                      icon: Icons.check_circle_outline_rounded,
-                      label: '${q.question}: $ans',
-                      bgColor: Colors.indigo.withOpacity(0.12),
-                      borderColor: Colors.indigo.withOpacity(0.35),
-                      textColor: isDark
-                          ? const Color(0xFF818CF8)
-                          : Colors.indigo.shade800,
-                    ),
-                  );
-                }),
-                if (customer != null && customer.lastOrderDate.isNotEmpty)
-                  _buildPrefChip(
-                    icon: Icons.history_rounded,
-                    label: 'Last: ${customer.lastOrderDate}',
-                    bgColor: Colors.purple.withOpacity(0.12),
-                    borderColor: Colors.purple.withOpacity(0.35),
-                    textColor: isDark
-                        ? const Color(0xFFC084FC)
-                        : Colors.purple.shade800,
-                  ),
-              ],
-            ),
-          ),
-
-          // ⭐ Frequent Favorites 1-Tap Quick-Add Section
-          if (_favoriteItems.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.star_rounded,
-                    size: 14, color: Color(0xFFF59E0B)),
-                const SizedBox(width: 4),
-                Text(
-                  'Top Favorites (1-Tap Add):',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white70 : AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _favoriteItems.map((fav) {
-                  final rawName = fav['item_name']?.toString() ?? 'Item';
-                  final unit = fav['item_unit']?.toString() ?? 'kg';
-                  final price = (fav['unit_price'] as num?)?.toDouble() ??
-                      (fav['selling_price'] as num?)?.toDouble() ??
-                      0.0;
-                  final defaultQty =
-                      (fav['avg_qty'] as num?)?.toDouble() ?? 1.0;
-                  final cleanQty = defaultQty > 0 ? defaultQty : 1.0;
-                  final bilingual = MarathiItemHelper.formatBilingual(rawName);
-
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: InkWell(
-                      onTap: () =>
-                          _quickAddFavoriteItem(fav, inventoryList),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isDark
-                                ? [
-                                    const Color(0xFF1E3A8A).withOpacity(0.4),
-                                    const Color(0xFF312E81).withOpacity(0.3)
-                                  ]
-                                : [Colors.white, const Color(0xFFEEF2FF)],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: const Color(0xFF6366F1).withOpacity(0.4),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.add_circle_rounded,
-                                size: 14, color: Color(0xFF4F46E5)),
-                            const SizedBox(width: 4),
-                            Text(
-                              bilingual,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: isDark
-                                    ? Colors.white
-                                    : AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '(${AppFormatters.quantity(cleanQty)} $unit • $currency${price.toStringAsFixed(0)})',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: isDark
-                                    ? const Color(0xFFA5B4FC)
-                                    : const Color(0xFF4338CA),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrefChip({
-    required IconData icon,
-    required String label,
-    required Color bgColor,
-    required Color borderColor,
-    required Color textColor,
-    String? tooltip,
-  }) {
-    final chip = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: textColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (tooltip != null) {
-      return Tooltip(message: tooltip, child: chip);
-    }
-    return chip;
-  }
 
   // ── Animated Margin & Profit Pill ──────────────────────────────────────────
   Widget _buildProfitMarginPill(String currency, List<Item> inventoryList) {
@@ -1009,14 +657,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           break;
         }
       }
-      final costRate = dbItem?.costPrice ?? 0.0;
-      final dbUnit = dbItem?.unit ?? cartItem.unit;
-      final qtyInBase = UnitConverter.toBase(cartItem.quantity, cartItem.unit);
-      final dbBase = UnitConverter.toBase(1.0, dbUnit);
-      final lineCost = dbBase > 0
-          ? (qtyInBase / dbBase) * costRate
-          : (cartItem.quantity * costRate);
-      totalCost += lineCost;
+      if (dbItem != null) {
+        totalCost += dbItem.costPrice * cartItem.quantity;
+      }
     }
 
     final netProfit =
@@ -1032,53 +675,63 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isDark
                 ? [
-                    const Color(0xFF064E3B).withOpacity(0.6),
-                    const Color(0xFF022C22).withOpacity(0.8)
+                    const Color(0xFF065F46),
+                    const Color(0xFF047857),
                   ]
-                : [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)],
+                : [
+                    const Color(0xFFD1FAE5),
+                    const Color(0xFFA7F3D0),
+                  ],
           ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isDark
-                ? const Color(0xFF059669).withOpacity(0.5)
-                : const Color(0xFF10B981).withOpacity(0.4),
+                ? const Color(0xFF34D399).withOpacity(0.6)
+                : const Color(0xFF059669).withOpacity(0.5),
+            width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.green.withOpacity(0.06),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: const Color(0xFF10B981).withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              _showProfit
-                  ? Icons.visibility_rounded
-                  : Icons.visibility_off_rounded,
-              size: 13,
-              color: isDark
-                  ? const Color(0xFF34D399)
-                  : const Color(0xFF059669),
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.black.withOpacity(0.25)
+                    : Colors.white.withOpacity(0.6),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _showProfit
+                    ? Icons.trending_up_rounded
+                    : Icons.lock_outline_rounded,
+                size: 13,
+                color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF047857),
+              ),
             ),
-            const SizedBox(width: 5),
+            const SizedBox(width: 6),
             Text(
               _showProfit
-                  ? '📈 Est. Profit: $currency${netProfit.toStringAsFixed(2)} (${marginPct.toStringAsFixed(1)}%)'
-                  : '📈 Est. Profit: • • • • (Tap to view)',
+                  ? 'Est. Profit: $currency${netProfit.toStringAsFixed(2)} (${marginPct.toStringAsFixed(1)}%)'
+                  : 'Est. Profit: • • • • (Tap to view)',
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: isDark
-                    ? const Color(0xFF6EE7B7)
-                    : const Color(0xFF047857),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color:
+                    isDark ? const Color(0xFF6EE7B7) : const Color(0xFF047857),
               ),
             ),
           ],
@@ -1261,7 +914,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: isDark
             ? const Color(0xFF1E293B).withOpacity(0.5)
@@ -1274,203 +927,50 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Fulfillment Mode',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white70 : AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 🚚 Home Delivery Card
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    AppHaptics.selection();
-                    _isDeliveryManuallyToggled = true;
-                    setState(() => _deliveryEnabled = true);
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                    decoration: BoxDecoration(
-                      gradient: _deliveryEnabled
-                          ? LinearGradient(
-                              colors: isDark
-                                  ? [
-                                      const Color(0xFF1E3A8A),
-                                      const Color(0xFF1D4ED8)
-                                    ]
-                                  : [
-                                      const Color(0xFFEFF6FF),
-                                      const Color(0xFFDBEAFE)
-                                    ],
-                            )
-                          : null,
-                      color: !_deliveryEnabled
-                          ? (isDark ? const Color(0xFF0F172A) : Colors.white)
-                          : null,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: _deliveryEnabled
-                            ? AppColors.primary
-                            : (isDark ? Colors.white12 : AppColors.gray300),
-                        width: _deliveryEnabled ? 1.8 : 1.0,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.delivery_dining_rounded,
-                          size: 22,
-                          color: _deliveryEnabled
-                              ? (isDark ? Colors.white : AppColors.primary)
-                              : AppColors.textSecondary,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '🚚 Home Delivery',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: _deliveryEnabled
-                                ? (isDark ? Colors.white : AppColors.primary)
-                                : (isDark
-                                    ? Colors.white70
-                                    : AppColors.textSecondary),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _deliveryEnabled
-                                ? AppColors.primary.withOpacity(0.15)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '+ $currency${_deliveryCharge.toStringAsFixed(0)} Fee',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: _deliveryEnabled
-                                  ? (isDark
-                                      ? const Color(0xFF93C5FD)
-                                      : AppColors.primary)
-                                  : AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
+              Row(
+                children: [
+                  Icon(
+                    Icons.delivery_dining_rounded,
+                    size: 22,
+                    color: _deliveryEnabled
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Add Delivery Charge',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
                     ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 10),
-              // 🏬 Store Pickup Card
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    AppHaptics.selection();
+              Switch.adaptive(
+                value: _deliveryEnabled,
+                activeColor: AppColors.primary,
+                onChanged: (v) {
+                  AppHaptics.selection();
+                  setState(() {
                     _isDeliveryManuallyToggled = true;
-                    setState(() => _deliveryEnabled = false);
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                    decoration: BoxDecoration(
-                      gradient: !_deliveryEnabled
-                          ? LinearGradient(
-                              colors: isDark
-                                  ? [
-                                      const Color(0xFF064E3B),
-                                      const Color(0xFF047857)
-                                    ]
-                                  : [
-                                      const Color(0xFFECFDF5),
-                                      const Color(0xFFD1FAE5)
-                                    ],
-                            )
-                          : null,
-                      color: _deliveryEnabled
-                          ? (isDark ? const Color(0xFF0F172A) : Colors.white)
-                          : null,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: !_deliveryEnabled
-                            ? Colors.green
-                            : (isDark ? Colors.white12 : AppColors.gray300),
-                        width: !_deliveryEnabled ? 1.8 : 1.0,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.storefront_rounded,
-                          size: 22,
-                          color: !_deliveryEnabled
-                              ? (isDark ? Colors.white : Colors.green.shade800)
-                              : AppColors.textSecondary,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '🏬 Store Pickup',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: !_deliveryEnabled
-                                ? (isDark ? Colors.white : Colors.green.shade800)
-                                : (isDark
-                                    ? Colors.white70
-                                    : AppColors.textSecondary),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: !_deliveryEnabled
-                                ? Colors.green.withOpacity(0.15)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'Free • ₹0 Fee',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: !_deliveryEnabled
-                                  ? (isDark
-                                      ? const Color(0xFF6EE7B7)
-                                      : Colors.green.shade800)
-                                  : AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                    _deliveryEnabled = v;
+                  });
+                },
               ),
             ],
           ),
           if (_deliveryEnabled) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             TextFormField(
               initialValue: _deliveryCharge.toStringAsFixed(0),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: 'Delivery Charge Amount',
+                labelText: 'Delivery Fee Amount',
                 prefixText: '$currency ',
                 prefixIcon: const Icon(Icons.edit_road_rounded, size: 18),
                 isDense: true,
@@ -2392,102 +1892,85 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     }
   }
 
-  void _showPastOrdersReorderSheet(BuildContext context) {
-    AppHaptics.selection();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Consumer(
-        builder: (ctx, ref, _) {
-          final ordersAsync =
-              ref.watch(customerOrdersProvider(widget.customerId));
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.65,
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Reorder Past Order for ${widget.customerName}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 16),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const Divider(),
-                Expanded(
-                  child: ordersAsync.when(
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (e, _) =>
-                        Center(child: Text('Error loading past orders: $e')),
-                    data: (pastOrders) {
-                      if (pastOrders.isEmpty) {
-                        return const Center(
-                            child: Text(
-                                'No previous orders found for this customer.'));
-                      }
-                      return ListView.builder(
-                        itemCount: pastOrders.length,
-                        itemBuilder: (_, i) {
-                          final o = pastOrders[i];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              title: Text(
-                                  'Order ${o.orderNoLabel} — ${AppFormatters.currency(o.grandTotal, symbol: ref.watch(settingsProvider).valueOrNull?.currency ?? '₹')}'),
-                              subtitle: Text(
-                                '${AppFormatters.date(o.createdAt)} • ${o.items.length} items (${o.items.map((it) => it.itemName).join(', ')})',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: ElevatedButton(
-                                onPressed: () {
-                                  AppHaptics.itemAdded();
-                                  setState(() {
-                                    _cart.clear();
-                                    for (final it in o.items) {
-                                      _cart.add(CartItem(
-                                        itemId: it.itemId,
-                                        name: it.itemName,
-                                        unit: it.itemUnit,
-                                        price: it.unitPrice,
-                                        quantity: it.quantity,
-                                      ));
-                                    }
-                                  });
-                                  Navigator.pop(ctx);
-                                  SnackbarHelper.showSuccess(context,
-                                      'Reordered ${o.items.length} items from past order');
-                                },
-                                child: const Text('Reorder'),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+  Future<void> _quickReorderPreviousOrder() async {
+    try {
+      AppHaptics.itemAdded();
+      final orders = await ref
+          .read(orderRepositoryProvider)
+          .getAllOrders(customerId: widget.customerId);
+
+      List<OrderItem> items = [];
+      if (orders.isNotEmpty) {
+        for (final o in orders) {
+          final oItems = await OrderDao().getOrderItems(o.id);
+          if (oItems.isNotEmpty) {
+            items = oItems;
+            break;
+          }
+        }
+      }
+
+      if (items.isEmpty) {
+        final topFavs =
+            await OrderDao().getCustomerTopOrderedItems(widget.customerId);
+        if (topFavs.isNotEmpty) {
+          setState(() {
+            _cart.clear();
+            for (final fav in topFavs) {
+              final itemId = fav['item_id']?.toString() ?? '';
+              final itemName = fav['item_name']?.toString() ?? 'Item';
+              final itemUnit = fav['item_unit']?.toString() ?? 'kg';
+              final unitPrice = (fav['unit_price'] as num?)?.toDouble() ??
+                  (fav['selling_price'] as num?)?.toDouble() ??
+                  0.0;
+              final defaultQty = (fav['avg_qty'] as num?)?.toDouble() ?? 1.0;
+              _cart.add(CartItem(
+                itemId: itemId,
+                name: itemName,
+                unit: itemUnit,
+                price: unitPrice,
+                quantity: defaultQty > 0 ? defaultQty : 1.0,
+              ));
+            }
+          });
+          if (mounted) {
+            SnackbarHelper.showSuccess(context,
+                '⚡ Added ${topFavs.length} previous items to cart');
+          }
+          return;
+        }
+
+        if (mounted) {
+          SnackbarHelper.showInfo(
+              context, 'No previous order items found for ${widget.customerName}');
+        }
+        return;
+      }
+
+      setState(() {
+        _cart.clear();
+        for (final it in items) {
+          _cart.add(CartItem(
+            itemId: it.itemId,
+            name: it.itemName,
+            unit: it.itemUnit,
+            price: it.unitPrice,
+            quantity: it.quantity,
+          ));
+        }
+      });
+
+      if (mounted) {
+        SnackbarHelper.showSuccess(context,
+            '⚡ Reordered ${items.length} items from previous order');
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Failed to reorder: $e');
+      }
+    }
   }
+
 
   void _showFamilySwitcherSheet(BuildContext context, List<Customer> families) {
     showModalBottomSheet(
@@ -2655,180 +2138,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
-  void _addQuestion(bool isSpecific) {
-    AppHaptics.buttonClick();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-            isSpecific ? 'Add Specific Question' : 'Add Common Question',
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: _AddSpecificQuestionForm(
-          customerId: isSpecific ? widget.customerId : '',
-          onSaved: () {
-            Navigator.pop(context);
-            _loadQuestionsAndPreferences();
-          },
-        ),
-      ),
-    );
-  }
 
-  Widget _buildQuestionsSection() {
-    if (_questions.isEmpty) {
-      return Card(
-        margin: const EdgeInsets.only(top: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Order Notes Questions',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'No template questions configured yet.',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontStyle: FontStyle.italic),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _addQuestion(false),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add Common Q',
-                        style: TextStyle(fontSize: 11)),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => _addQuestion(true),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add Specific Q',
-                        style: TextStyle(fontSize: 11)),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(top: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Order Notes Questions',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                Row(
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _addQuestion(false),
-                      icon: const Icon(Icons.add, size: 14),
-                      label:
-                          const Text('Common', style: TextStyle(fontSize: 11)),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => _addQuestion(true),
-                      icon: const Icon(Icons.add, size: 14),
-                      label: const Text('Specific',
-                          style: TextStyle(fontSize: 11)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const Divider(),
-            ..._questions.map((q) {
-              final selectedValue = _selectedAnswers[q.id];
-              final isSpecific =
-                  q.customerId != null && q.customerId!.isNotEmpty;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            q.question,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 13),
-                          ),
-                        ),
-                        if (isSpecific)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade100,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'Specific',
-                              style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber.shade900),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: q.options.map((opt) {
-                        final isSel = selectedValue == opt;
-                        return ChoiceChip(
-                          label:
-                              Text(opt, style: const TextStyle(fontSize: 12)),
-                          selected: isSel,
-                          selectedColor: AppColors.primary.withOpacity(0.15),
-                          labelStyle: TextStyle(
-                            color: isSel
-                                ? AppColors.primary
-                                : AppColors.textSecondary,
-                            fontWeight:
-                                isSel ? FontWeight.bold : FontWeight.normal,
-                          ),
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _selectedAnswers[q.id] = opt;
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildRxVerificationSection() {
     final inventoryAsync = ref.read(inventoryProvider);
@@ -3148,7 +2458,7 @@ class _QtyPickerState extends State<_QtyPicker> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 80,
+      width: 108,
       child: TextField(
         controller: _ctrl,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),

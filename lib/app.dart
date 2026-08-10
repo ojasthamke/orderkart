@@ -165,6 +165,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
               customerName: args?['customerName'] as String? ?? '',
               orderId: args?['orderId'] as String?,
               initialDiscount: (args?['initialDiscount'] as num?)?.toDouble(),
+              autoReorder: args?['autoReorder'] as bool? ?? false,
             ),
             settings);
 

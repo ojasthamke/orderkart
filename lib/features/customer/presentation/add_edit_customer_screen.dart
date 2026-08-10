@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -1017,114 +1015,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       if (!mounted) return;
       if (_isEdit) {
         SnackbarHelper.showSuccess(context, 'Customer details updated');
-        Navigator.of(context).pop();
       } else {
         SnackbarHelper.showSuccess(context, 'Customer added successfully');
-
-        // Offer Copy Name & Dial Directly
-        final dialContact = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(
-              children: [
-                Icon(Icons.phone_enabled_rounded,
-                    color: AppColors.primary, size: 26),
-                SizedBox(width: 10),
-                Text('Copy Name & Dial?',
-                    style:
-                        TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-              ],
-            ),
-            content: Text(
-              'Copy ${_nameCon.text.trim()} to clipboard and open your phone dialer for ${_phone1Con.text.trim()}?',
-              style: const TextStyle(fontSize: 14, height: 1.4),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Skip'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pop(ctx, true),
-                icon: const Icon(Icons.phone_enabled_rounded, size: 18),
-                label: const Text('Copy & Dial'),
-              ),
-            ],
-          ),
-        );
-
-        if (dialContact == true && mounted) {
-          final cName = _nameCon.text.trim();
-          final cPhone = _phone1Con.text.trim();
-
-          // Copy name to clipboard
-          await Clipboard.setData(ClipboardData(text: cName));
-
-          // Log the call in our Call Logs table
-          await DatabaseHelper.instance.insertCallLog(
-            customerId: customerId,
-            customerName: cName,
-            phone: cPhone,
-          );
-
-          // Open dialpad directly
-          final cleanPhone = cPhone.replaceAll(RegExp(r'[^\d+]'), '');
-          final telUri = Uri.parse('tel:$cleanPhone');
-          if (await canLaunchUrl(telUri)) {
-            await launchUrl(telUri);
-          } else if (mounted) {
-            SnackbarHelper.showError(context, 'Could not open dialpad');
-          }
-        }
-
-        if (!mounted) return;
-
-        // Offer VIP upgrade for new customers
-        final upgradeToVip = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Row(
-              children: [
-                Icon(Icons.workspace_premium_rounded,
-                    color: Color(0xFFFFD700), size: 28),
-                SizedBox(width: 10),
-                Text('Upgrade to VIP?',
-                    style:
-                        TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-              ],
-            ),
-            content: Text(
-              'Would you like to enroll ${_nameCon.text.trim()} in a VIP membership plan?\n\nVIP members enjoy exclusive discounts, free delivery, and priority handling.',
-              style: const TextStyle(fontSize: 14, height: 1.5),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Not Now'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pop(ctx, true),
-                icon: const Icon(Icons.workspace_premium_rounded, size: 18),
-                label: const Text('Yes, Upgrade!'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD700),
-                  foregroundColor: const Color(0xFF0F172A),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ],
-          ),
-        );
-        if (!mounted) return;
-        Navigator.of(context).pop();
-        if (upgradeToVip == true) {
-          Navigator.of(context).pushNamed(AppRoutes.vipDashboard);
-        }
       }
     } catch (e) {
       if (mounted) {

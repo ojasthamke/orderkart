@@ -79,10 +79,61 @@ class DatabaseHelper {
     await _ensureGeoMapTables(db);
   }
 
+  static Future<void> _autoRecoverAndBackup(String internalDbPath) async {
+    try {
+      Directory? extDir;
+      if (Platform.isAndroid) {
+        extDir = Directory('/storage/emulated/0/Download/OrderKart_Backups');
+        if (!extDir.existsSync()) {
+          try {
+            extDir.createSync(recursive: true);
+          } catch (_) {
+            try {
+              extDir = await getExternalStorageDirectory();
+            } catch (_) {}
+          }
+        }
+      } else {
+        try {
+          extDir = await getApplicationDocumentsDirectory();
+        } catch (_) {}
+      }
+
+      if (extDir == null) return;
+
+      final backupFile = File(join(extDir.path, 'orderkart_auto_backup.db'));
+      final internalFile = File(internalDbPath);
+
+      // Self-Healing Recovery: If internal DB is missing or empty, but external backup exists
+      if ((!internalFile.existsSync() || internalFile.lengthSync() < 4096) &&
+          backupFile.existsSync() &&
+          backupFile.lengthSync() >= 4096) {
+        debugPrint(
+            '[DatabaseHelper] 🛠️ Self-healing recovery triggered from external auto-backup: ${backupFile.path}');
+        internalFile.parent.createSync(recursive: true);
+        backupFile.copySync(internalFile.path);
+        debugPrint('[DatabaseHelper] ✅ Self-healing database recovery successful!');
+      } else if (internalFile.existsSync() && internalFile.lengthSync() >= 4096) {
+        // Periodic Sync: Copy healthy internal database to external resilient file
+        try {
+          internalFile.copySync(backupFile.path);
+          debugPrint(
+              '[DatabaseHelper] 💾 Auto-backup synced to resilient external file: ${backupFile.path}');
+        } catch (e) {
+          debugPrint('[DatabaseHelper] External backup sync warning: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('[DatabaseHelper] Auto-backup error: $e');
+    }
+  }
+
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final name = dbNameOverride ?? AppConstants.dbName;
     final path = join(dbPath, name);
+
+    await _autoRecoverAndBackup(path);
 
     return openDatabase(
       path,
@@ -111,6 +162,7 @@ class DatabaseHelper {
         await _ensureGeoMapTables(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
+        _autoRecoverAndBackup(path);
       },
     );
   }

@@ -285,28 +285,126 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
   }
 
   Widget _buildOrderList(List<AppOrder> orders) {
+    double totalWeightKg = 0.0;
+    double totalAmount = 0.0;
+    for (final o in orders) {
+      totalAmount += o.grandTotal;
+      for (final it in o.items) {
+        final u = it.itemUnit.toLowerCase();
+        if (u.contains('kg')) {
+          totalWeightKg += it.quantity;
+        } else if (u.contains('gm') || u.contains('g')) {
+          totalWeightKg += it.quantity / 1000.0;
+        }
+      }
+    }
+
+    final currency = ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 24),
-      itemCount: orders.length,
-      itemBuilder: (ctx, i) => _OrderCard(
-        order: orders[i],
-        onTap: () => Navigator.of(ctx).pushNamed(
-          AppRoutes.orderDetail,
-          arguments: {'orderId': orders[i].id},
-        ).then((_) => ref.invalidate(orderManagementProvider)),
-        onToggleDelivery: () => _toggleDelivery(orders[i]),
-        onAddPayment: () => _addPayment(ctx, orders[i]),
-        onEdit: () => Navigator.of(ctx).pushNamed(
-          AppRoutes.createOrder,
-          arguments: {
-            'customerId': orders[i].customerId,
-            'customerName': orders[i].customerName ?? '',
-            'orderId': orders[i].id,
-          },
-        ).then((_) => ref.invalidate(orderManagementProvider)),
-        onDelete: () => _deleteOrder(orders[i]),
-        onDuplicate: () => _duplicateOrder(orders[i]),
-      ).animate(delay: (i * 40).ms).fadeIn(),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      itemCount: orders.length + 1,
+      itemBuilder: (ctx, i) {
+        if (i == 0) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                    : [const Color(0xFFEFF6FF), const Color(0xFFDBEAFE)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.12)
+                    : AppColors.primary.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Column(
+                  children: [
+                    const Text('Total Orders',
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textSecondary)),
+                    const SizedBox(height: 2),
+                    Text('${orders.length}',
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary)),
+                  ],
+                ),
+                Container(
+                    height: 22,
+                    width: 1,
+                    color: isDark ? Colors.white24 : Colors.black12),
+                Column(
+                  children: [
+                    const Text('Total Weight',
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textSecondary)),
+                    const SizedBox(height: 2),
+                    Text('${totalWeightKg.toStringAsFixed(1)} kg',
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.teal)),
+                  ],
+                ),
+                Container(
+                    height: 22,
+                    width: 1,
+                    color: isDark ? Colors.white24 : Colors.black12),
+                Column(
+                  children: [
+                    const Text('Total Value',
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textSecondary)),
+                    const SizedBox(height: 2),
+                    Text(AppFormatters.currency(totalAmount, symbol: currency),
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.success)),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        final order = orders[i - 1];
+        return _OrderCard(
+          order: order,
+          onTap: () => Navigator.of(ctx).pushNamed(
+            AppRoutes.orderDetail,
+            arguments: {'orderId': order.id},
+          ).then((_) => ref.invalidate(orderManagementProvider)),
+          onToggleDelivery: () => _toggleDelivery(order),
+          onAddPayment: () => _addPayment(ctx, order),
+          onEdit: () => Navigator.of(ctx).pushNamed(
+            AppRoutes.createOrder,
+            arguments: {
+              'customerId': order.customerId,
+              'customerName': order.customerName ?? '',
+              'orderId': order.id,
+            },
+          ).then((_) => ref.invalidate(orderManagementProvider)),
+          onDelete: () => _deleteOrder(order),
+          onDuplicate: () => _duplicateOrder(order),
+        ).animate(delay: ((i - 1) * 30).ms).fadeIn();
+      },
     );
   }
 
@@ -763,85 +861,96 @@ class _OrderCard extends ConsumerWidget {
                           .labelSmall
                           ?.copyWith(color: AppColors.textHint),
                     ),
-                    const Spacer(),
-                    // Delivery toggle
-                    _ActionBtn(
-                      label:
-                          order.deliveryStatus == AppConstants.statusDelivered
-                              ? 'Delivered ✓'
-                              : (order.deliveryStatus ==
-                                      AppConstants.statusCancelled
-                                  ? 'Reactivate'
-                                  : 'Mark Delivered'),
-                      color:
-                          order.deliveryStatus == AppConstants.statusDelivered
-                              ? AppColors.success
-                              : (order.deliveryStatus ==
-                                      AppConstants.statusCancelled
-                                  ? AppColors.warning
-                                  : AppColors.primary),
-                      onTap: onToggleDelivery,
-                    ),
                     const SizedBox(width: 6),
-                    // Pay button
-                    if (order.remainingAmount > 0) ...[
-                      _ActionBtn(
-                        label: 'Pay',
-                        color: AppColors.warning,
-                        onTap: onAddPayment,
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            // Delivery toggle
+                            _ActionBtn(
+                              label:
+                                  order.deliveryStatus == AppConstants.statusDelivered
+                                      ? 'Delivered ✓'
+                                      : (order.deliveryStatus ==
+                                              AppConstants.statusCancelled
+                                          ? 'Reactivate'
+                                          : 'Mark Delivered'),
+                              color:
+                                  order.deliveryStatus == AppConstants.statusDelivered
+                                      ? AppColors.success
+                                      : (order.deliveryStatus ==
+                                              AppConstants.statusCancelled
+                                          ? AppColors.warning
+                                          : AppColors.primary),
+                              onTap: onToggleDelivery,
+                            ),
+                            const SizedBox(width: 6),
+                            // Pay button
+                            if (order.remainingAmount > 0) ...[
+                              _ActionBtn(
+                                label: 'Pay',
+                                color: AppColors.warning,
+                                onTap: onAddPayment,
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            // Profile button
+                            _ActionBtn(
+                              label: 'Profile',
+                              color: Colors.blueGrey,
+                              onTap: () {
+                                Navigator.of(context).pushNamed(
+                                  AppRoutes.customerProfile,
+                                  arguments: {'customerId': order.customerId},
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 6),
+                            // Invoice button
+                            _ActionBtn(
+                              label: 'Invoice',
+                              color: const Color(0xFF0F766E),
+                              onTap: () async {
+                                try {
+                                  final cust = await ref.read(
+                                      customerDetailProvider(order.customerId).future);
+                                  final settings = ref.read(settingsProvider).valueOrNull;
+                                  final rawItems = await ref
+                                      .read(orderRepositoryProvider)
+                                      .getOrderItems(order.id);
+                                  final itemsList = rawItems
+                                      .map((i) => {
+                                            'item_name': i.itemName,
+                                            'quantity': i.quantity,
+                                            'unit': i.itemUnit,
+                                            'unit_price': i.unitPrice,
+                                            'total_price': i.totalPrice,
+                                          })
+                                      .toList();
+                                  if (context.mounted) {
+                                    await GraphicBillGenerator
+                                        .generateAndShareGraphicBill(
+                                      context: context,
+                                      order: order,
+                                      customer: cust,
+                                      settings: settings,
+                                      orderItems: itemsList,
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    SnackbarHelper.showError(
+                                        context, 'Failed to generate invoice: $e');
+                                  }
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 6),
-                    ],
-                    // Profile button
-                    _ActionBtn(
-                      label: 'Profile',
-                      color: Colors.blueGrey,
-                      onTap: () {
-                        Navigator.of(context).pushNamed(
-                          AppRoutes.customerProfile,
-                          arguments: {'customerId': order.customerId},
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 6),
-                    // Invoice button
-                    _ActionBtn(
-                      label: 'Invoice',
-                      color: const Color(0xFF0F766E),
-                      onTap: () async {
-                        try {
-                          final cust = await ref.read(
-                              customerDetailProvider(order.customerId).future);
-                          final settings = ref.read(settingsProvider).valueOrNull;
-                          final rawItems = await ref
-                              .read(orderRepositoryProvider)
-                              .getOrderItems(order.id);
-                          final itemsList = rawItems
-                              .map((i) => {
-                                    'item_name': i.itemName,
-                                    'quantity': i.quantity,
-                                    'unit': i.itemUnit,
-                                    'unit_price': i.unitPrice,
-                                    'total_price': i.totalPrice,
-                                  })
-                              .toList();
-                          if (context.mounted) {
-                            await GraphicBillGenerator
-                                .generateAndShareGraphicBill(
-                              context: context,
-                              order: order,
-                              customer: cust,
-                              settings: settings,
-                              orderItems: itemsList,
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            SnackbarHelper.showError(
-                                context, 'Failed to generate invoice: $e');
-                          }
-                        }
-                      },
                     ),
                   ],
                 ),

@@ -297,11 +297,12 @@ class ProfitLossScreen extends ConsumerWidget {
                       if (discounts > 0) ...[
                         _calcRow(
                           context,
-                          symbol: '−',
-                          symbolColor: AppColors.warning,
-                          label: 'Discounts Allowed',
-                          subtitle: 'Total promotional price discounts',
+                          symbol: 'ℹ️',
+                          symbolColor: Colors.blue,
+                          label: 'Customer Discounts Granted',
+                          subtitle: 'Promotional savings (already factored in Net Sales, not an expense)',
                           amount: discounts,
+                          amountColor: Colors.blue,
                         ),
                         const Divider(height: 24),
                       ],

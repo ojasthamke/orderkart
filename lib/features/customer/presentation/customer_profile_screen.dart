@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 import '../../../core/utils/external_launcher.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/constants/app_colors.dart';
@@ -267,14 +268,12 @@ class CustomerProfileScreen extends ConsumerWidget {
                                 height: 52,
                                 child: OutlinedButton.icon(
                                   onPressed: () {
-                                    final latestOrder = orders.first;
                                     Navigator.of(context).pushNamed(
                                       AppRoutes.createOrder,
                                       arguments: {
                                         'customerId': customer.id,
                                         'customerName': customer.name,
-                                        'orderId': latestOrder
-                                            .id, // loads items into cart
+                                        'autoReorder': true,
                                       },
                                     ).then((_) {
                                       ref.invalidate(
@@ -315,9 +314,11 @@ class CustomerProfileScreen extends ConsumerWidget {
                 // Customer Savings Tracker Card & WhatsApp Share
                 _buildSavingsTrackerCard(context, ref, customer),
 
-                CustomerPreferencesCard(
-                  customerId: customer.id,
-                  customerName: customer.name,
+                // ── Customer Statistics & Purchasing Trends Section ───────
+                ordersAsync.maybeWhen(
+                  data: (orders) =>
+                      _buildCustomerStatisticsCard(context, ref, customer, orders),
+                  orElse: () => const SizedBox.shrink(),
                 ),
 
                 CustomerCustomFieldsCard(customerId: customer.id),
@@ -2156,6 +2157,279 @@ Future<void> _showCustomMessageDialog(
             }
           },
           child: const Text('Send'),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildCustomerStatisticsCard(
+    BuildContext context, WidgetRef ref, Customer customer, List<AppOrder> orders) {
+  final currency = ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+  final totalOrders = orders.length;
+  final totalSpent = orders.fold<double>(0.0, (s, o) => s + o.grandTotal);
+  final totalPaid = orders.fold<double>(0.0, (s, o) => s + o.paidAmount);
+  final totalPending = orders.fold<double>(0.0, (s, o) => s + o.remainingAmount);
+  final avgOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0.0;
+
+  final joiningDateStr = DateFormat('dd MMM yyyy').format(customer.createdAt);
+
+  // Compute monthly order trends for last 6 months
+  final now = DateTime.now();
+  final List<Map<String, dynamic>> monthlyStats = [];
+  for (int i = 5; i >= 0; i--) {
+    final mDate = DateTime(now.year, now.month - i, 1);
+    final monthLabel = DateFormat('MMM').format(mDate);
+    final yearMonthStr = DateFormat('yyyy-MM').format(mDate);
+
+    double mSpend = 0.0;
+    int mCount = 0;
+    for (final o in orders) {
+      if (o.createdAt.toIso8601String().startsWith(yearMonthStr)) {
+        mSpend += o.grandTotal;
+        mCount++;
+      }
+    }
+    monthlyStats.add({
+      'month': monthLabel,
+      'spend': mSpend,
+      'count': mCount,
+    });
+  }
+
+  final maxMonthlySpend = monthlyStats.fold<double>(
+      0.0, (max, m) => (m['spend'] as double) > max ? (m['spend'] as double) : max);
+
+  return GlassContainer(
+    margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+    padding: const EdgeInsets.all(16),
+    borderRadius: BorderRadius.circular(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Title & Joining Date Badge
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.analytics_rounded,
+                    color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Customer Statistics & Insights',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: AppColors.primary.withOpacity(0.3), width: 0.8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.calendar_today_rounded,
+                      size: 11, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Joined $joiningDateStr',
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // 2x2 Grid of Key Metrics Cards
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatMiniCard(
+                context,
+                title: 'Total Orders',
+                value: '$totalOrders Orders',
+                subtitle: 'Lifetime Purchases',
+                icon: Icons.shopping_bag_outlined,
+                iconColor: Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStatMiniCard(
+                context,
+                title: 'Total Spend',
+                value: '$currency${totalSpent.toStringAsFixed(0)}',
+                subtitle: 'Avg: $currency${avgOrderValue.toStringAsFixed(0)}/ord',
+                icon: Icons.account_balance_wallet_outlined,
+                iconColor: Colors.purple,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatMiniCard(
+                context,
+                title: 'Total Paid',
+                value: '$currency${totalPaid.toStringAsFixed(0)}',
+                subtitle: 'Cleared Payments',
+                icon: Icons.check_circle_outline_rounded,
+                iconColor: Colors.green,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStatMiniCard(
+                context,
+                title: 'Pending Due',
+                value: '$currency${totalPending.toStringAsFixed(0)}',
+                subtitle: totalPending > 0 ? 'Action Required' : 'No Balance Due',
+                icon: Icons.pending_actions_rounded,
+                iconColor: totalPending > 0 ? Colors.red : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // Monthly Purchasing Trend Visual Bar Chart
+        Text(
+          'Purchasing Volume Trend (Last 6 Months)',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white70 : AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 90,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: monthlyStats.map((m) {
+              final spend = m['spend'] as double;
+              final pct = maxMonthlySpend > 0 ? (spend / maxMonthlySpend) : 0.0;
+              final barHeight = 12.0 + (pct * 48.0);
+
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (spend > 0)
+                    Text(
+                      '$currency${spend.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                          fontSize: 9, fontWeight: FontWeight.bold),
+                    ),
+                  const SizedBox(height: 4),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 600),
+                    width: 22,
+                    height: barHeight,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: spend > 0
+                            ? [AppColors.primary, AppColors.primary.withOpacity(0.6)]
+                            : [Colors.grey.shade400, Colors.grey.shade300],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    m['month'].toString(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white60 : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildStatMiniCard(
+  BuildContext context, {
+  required String title,
+  required String value,
+  required String subtitle,
+  required IconData icon,
+  required Color iconColor,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: isDark
+          ? Colors.white.withOpacity(0.04)
+          : Colors.grey.shade50,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade200),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: iconColor),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white60 : AppColors.textSecondary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 9.5,
+            color: isDark ? Colors.white38 : Colors.grey.shade600,
+          ),
         ),
       ],
     ),
