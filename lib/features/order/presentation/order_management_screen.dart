@@ -27,6 +27,7 @@ import '../../../core/utils/graphic_bill_generator.dart';
 import '../../location/presentation/location_provider.dart';
 import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
+import '../../../core/utils/external_launcher.dart';
 
 class OrderManagementScreen extends ConsumerStatefulWidget {
   const OrderManagementScreen({super.key});
@@ -681,6 +682,105 @@ class _OrderCard extends ConsumerWidget {
                             }
                           }
                         }
+                        if (v == 'whatsapp_review') {
+                          final settingsVal = ref.read(settingsProvider).valueOrNull;
+                          final bName = (settingsVal?.businessName.trim().isNotEmpty ?? false)
+                              ? settingsVal!.businessName.trim()
+                              : 'OrderKart Store';
+                          final customerName = (order.customerName != null &&
+                                  order.customerName!.trim().isNotEmpty)
+                              ? order.customerName!.trim()
+                              : 'Valued Customer';
+                          final phone = order.customerPhone ?? '';
+
+                          final defaultMessage =
+                              'Namaste $customerName! 🙏\n\n'
+                              'Thank you for your recent order (#${order.orderNoLabel}) from $bName! '
+                              'We hope you are happy with the products and service.\n\n'
+                              '⭐ We would love to hear your feedback! Please rate your experience:\n'
+                              '1️⃣ Product Quality\n'
+                              '2️⃣ Delivery Speed\n'
+                              '3️⃣ Overall Service\n\n'
+                              'Your feedback helps us serve you better! 🌿\n'
+                              'Thank you, Team $bName';
+
+                          final controller = TextEditingController(text: defaultMessage);
+
+                          if (context.mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Row(
+                                  children: [
+                                    Icon(Icons.rate_review_rounded, color: Color(0xFF25D366)),
+                                    SizedBox(width: 8),
+                                    Expanded(child: Text('WhatsApp Review Request', style: TextStyle(fontSize: 16))),
+                                  ],
+                                ),
+                                content: SizedBox(
+                                  width: double.maxFinite,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'To: $customerName${phone.isNotEmpty ? " ($phone)" : ""}',
+                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text('Edit message before sending:',
+                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                      const SizedBox(height: 8),
+                                      TextField(
+                                        controller: controller,
+                                        maxLines: 10,
+                                        minLines: 6,
+                                        decoration: InputDecoration(
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          contentPadding: const EdgeInsets.all(12),
+                                          hintText: 'Type your review request message...',
+                                        ),
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  FilledButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      ExternalLauncher.launchWhatsApp(
+                                        context,
+                                        phone,
+                                        text: controller.text,
+                                      );
+                                    },
+                                    icon: const Icon(Icons.send_rounded, size: 18),
+                                    label: const Text('Send via WhatsApp'),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: const Color(0xFF25D366),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        }
+                        if (v == 'new_order') {
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.createOrder,
+                            arguments: {
+                              'customerId': order.customerId,
+                              'customerName': order.customerName ?? '',
+                            },
+                          );
+                        }
                         if (v == 'edit') onEdit();
                         if (v == 'delete') onDelete();
                         if (v == 'duplicate') onDuplicate();
@@ -696,6 +796,28 @@ class _OrderCard extends ConsumerWidget {
                                   size: 16, color: Color(0xFF0F766E)),
                               SizedBox(width: 8),
                               Text('Share Graphic Invoice'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'whatsapp_review',
+                          child: Row(
+                            children: [
+                              Icon(Icons.rate_review_rounded,
+                                  size: 16, color: Color(0xFF25D366)),
+                              SizedBox(width: 8),
+                              Text('WhatsApp Review'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'new_order',
+                          child: Row(
+                            children: [
+                              Icon(Icons.add_shopping_cart_rounded,
+                                  size: 16, color: Colors.teal),
+                              SizedBox(width: 8),
+                              Text('Create New Order'),
                             ],
                           ),
                         ),

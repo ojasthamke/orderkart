@@ -15,6 +15,7 @@ import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 
 import 'core/services/notification_service.dart';
 import 'core/services/background_service.dart';
+import 'core/services/customer_order_sync_service.dart';
 import 'core/utils/image_utils.dart';
 
 Future<void> main() async {
@@ -64,6 +65,9 @@ Future<void> main() async {
     await NotificationService.instance.init();
     await BackgroundService.instance.init();
     BackgroundService.instance.registerDailyTask();
+
+    // Start customer orders background sync service
+    CustomerOrderSyncService.instance.startSync();
 
     runApp(
       const ProviderScope(

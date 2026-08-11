@@ -373,10 +373,12 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                     right: pw.BorderSide(color: PdfColors.grey300, width: 0.6),
                   ),
                   columnWidths: {
-                    0: const pw.FlexColumnWidth(3.2),
-                    1: const pw.FlexColumnWidth(1.8),
-                    2: const pw.FlexColumnWidth(2.2),
-                    3: const pw.FlexColumnWidth(3.4),
+                    0: const pw.FlexColumnWidth(2.8),
+                    1: const pw.FlexColumnWidth(1.6),
+                    2: const pw.FlexColumnWidth(1.6),
+                    3: const pw.FlexColumnWidth(1.6),
+                    4: const pw.FlexColumnWidth(1.6),
+                    5: const pw.FlexColumnWidth(2.8),
                   },
                   children: [
                     pw.TableRow(
@@ -384,38 +386,56 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                       children: [
                         pw.Padding(
                           padding: const pw.EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 7),
+                              horizontal: 6, vertical: 6),
                           child: pw.Text('PRODUCT NAME',
                               style: pw.TextStyle(
                                   fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10,
+                                  fontSize: 8.5,
                                   color: PdfColors.white)),
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 7),
-                          child: pw.Text('MARKET PRICE',
+                              horizontal: 6, vertical: 6),
+                          child: pw.Text('MARKET\nPRICE',
                               style: pw.TextStyle(
                                   fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10,
+                                  fontSize: 8.5,
                                   color: PdfColors.white)),
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 7),
-                          child: pw.Text('ORDERKART PRICE',
+                              horizontal: 6, vertical: 6),
+                          child: pw.Text('250 GM\nMARKET',
                               style: pw.TextStyle(
                                   fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10,
+                                  fontSize: 8.5,
                                   color: PdfColors.white)),
                         ),
                         pw.Padding(
                           padding: const pw.EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 7),
+                              horizontal: 6, vertical: 6),
+                          child: pw.Text('ORDERKART\nPRICE',
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold,
+                                  fontSize: 8.5,
+                                  color: PdfColors.white)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 6),
+                          child: pw.Text('250 GM\nORDERKART',
+                              style: pw.TextStyle(
+                                  fontWeight: pw.FontWeight.bold,
+                                  fontSize: 8.5,
+                                  color: PdfColors.white)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 6),
                           child: pw.Text('MONEY SAVED',
                               style: pw.TextStyle(
                                   fontWeight: pw.FontWeight.bold,
-                                  fontSize: 10,
+                                  fontSize: 8.5,
                                   color: PdfColors.white)),
                         ),
                       ],
@@ -442,29 +462,57 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                           ? 'SAVE $safeCurrency ${savings.toStringAsFixed(2)} ($pct% OFF)'
                           : '-';
 
+                      // Calculate 250gm prices for weight-based units
+                      final unitLower = i.unit.trim().toLowerCase();
+                      final bool isKgUnit = unitLower == 'kg' || unitLower == 'kilo' || unitLower == 'kilogram' || unitLower == 'kilograms';
+                      final bool isGmUnit = unitLower == 'gram' || unitLower == 'grams' || unitLower == 'g' || unitLower == 'gm' || unitLower == 'gms';
+
+                      String mkt250Str = '-';
+                      String sell250Str = '-';
+                      if (isKgUnit) {
+                        // Price is per kg, so 250gm = price * 0.25
+                        if (i.marketPrice > 0) {
+                          mkt250Str = '$safeCurrency ${(i.marketPrice * 0.25).toStringAsFixed(2)}';
+                        }
+                        sell250Str = '$safeCurrency ${(i.sellingPrice * 0.25).toStringAsFixed(2)}';
+                      } else if (isGmUnit) {
+                        // Price is per gram, so 250gm = price * 250
+                        if (i.marketPrice > 0) {
+                          mkt250Str = '$safeCurrency ${(i.marketPrice * 250).toStringAsFixed(2)}';
+                        }
+                        sell250Str = '$safeCurrency ${(i.sellingPrice * 250).toStringAsFixed(2)}';
+                      }
+
                       return pw.TableRow(
                         children: [
                           pw.Padding(
                             padding: const pw.EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 7),
+                                horizontal: 6, vertical: 6),
                             child: pw.Text(nameWithUnit,
                                 style: pw.TextStyle(
-                                    fontSize: 9.5,
+                                    fontSize: 8.5,
                                     fontWeight: pw.FontWeight.bold)),
                           ),
                           pw.Padding(
                             padding: const pw.EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 7),
+                                horizontal: 6, vertical: 6),
                             child: pw.Text(mktPriceStr,
                                 style: const pw.TextStyle(
-                                    fontSize: 9.5, color: PdfColors.grey700)),
+                                    fontSize: 8.5, color: PdfColors.grey700)),
                           ),
                           pw.Padding(
                             padding: const pw.EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 5),
+                                horizontal: 6, vertical: 6),
+                            child: pw.Text(mkt250Str,
+                                style: const pw.TextStyle(
+                                    fontSize: 8.5, color: PdfColors.grey600)),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 5),
                             child: pw.Container(
                               padding: const pw.EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                                  horizontal: 6, vertical: 3),
                               decoration: const pw.BoxDecoration(
                                 color: priceBg,
                                 borderRadius:
@@ -473,7 +521,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                               child: pw.Text(
                                 sellPriceStr,
                                 style: pw.TextStyle(
-                                  fontSize: 9.5,
+                                  fontSize: 8.5,
                                   fontWeight: pw.FontWeight.bold,
                                   color: primaryTeal,
                                 ),
@@ -482,11 +530,35 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                           ),
                           pw.Padding(
                             padding: const pw.EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 5),
+                                horizontal: 6, vertical: 5),
+                            child: sell250Str != '-'
+                                ? pw.Container(
+                                    padding: const pw.EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 3),
+                                    decoration: const pw.BoxDecoration(
+                                      color: priceBg,
+                                      borderRadius:
+                                          pw.BorderRadius.all(pw.Radius.circular(4)),
+                                    ),
+                                    child: pw.Text(
+                                      sell250Str,
+                                      style: pw.TextStyle(
+                                        fontSize: 8.5,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: primaryTeal,
+                                      ),
+                                    ),
+                                  )
+                                : pw.Text('-',
+                                    style: const pw.TextStyle(fontSize: 8.5)),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 5),
                             child: savings > 0
                                 ? pw.Container(
                                     padding: const pw.EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
+                                        horizontal: 6, vertical: 3),
                                     decoration: pw.BoxDecoration(
                                       color: greenBg,
                                       border: pw.Border.all(
@@ -498,14 +570,14 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                     child: pw.Text(
                                       savedStr,
                                       style: pw.TextStyle(
-                                        fontSize: 9.5,
+                                        fontSize: 8.5,
                                         fontWeight: pw.FontWeight.bold,
                                         color: greenText,
                                       ),
                                     ),
                                   )
                                 : pw.Text('-',
-                                    style: const pw.TextStyle(fontSize: 9.5)),
+                                    style: const pw.TextStyle(fontSize: 8.5)),
                           ),
                         ],
                       );

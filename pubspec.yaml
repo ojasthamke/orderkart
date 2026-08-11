@@ -23,6 +23,7 @@ dependencies:
   share_plus: ^9.0.0
   connectivity_plus: ^6.0.3
   network_info_plus: ^6.0.0
+  http: ^1.2.2
 
   # QR Code
   qr_flutter: ^4.1.0
