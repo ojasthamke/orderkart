@@ -7,6 +7,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import 'customer_provider.dart';
+import '../../dashboard/presentation/widgets/store_order_clock_card.dart';
 
 /// Teacup Customer Control & Code Manager Hub in OrderKart POS
 class TeacupCustomerHubScreen extends ConsumerStatefulWidget {
@@ -212,6 +213,12 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
                 ),
               ],
             ),
+          ),
+
+          // Sub-Section: Store Operating Hours & Order Cutoff Clock
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: StoreOrderClockCard(),
           ),
 
           // Pending Address Change Requests Card

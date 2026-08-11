@@ -41,12 +41,6 @@ class QuickLauncherGrid extends StatelessWidget {
       color: Color(0xFF14B8A6),
       route: AppRoutes.quickInventoryAdjust,
     ),
-    _LauncherItem(
-      title: 'Teacup Codes',
-      icon: Icons.key_rounded,
-      color: Color(0xFFF97316),
-      route: AppRoutes.teacupCustomerHub,
-    ),
   ];
 
   @override

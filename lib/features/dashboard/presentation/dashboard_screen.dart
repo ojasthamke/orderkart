@@ -225,9 +225,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // ── Store Operating Hours & Order Cutoff Clock Widget ────────
-                  const StoreOrderClockCard(),
-
 
                   // ── Pending Payments Warning Banner ───────────────────
                   ref.watch(pendingCustomersProvider).when(
