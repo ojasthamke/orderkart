@@ -25,7 +25,6 @@ import '../../note/presentation/note_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
 import '../../area/presentation/area_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
-import 'widgets/store_order_clock_card.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
