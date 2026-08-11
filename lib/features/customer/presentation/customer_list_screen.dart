@@ -238,6 +238,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 ]
               : [
                   IconButton(
+                    icon: const Icon(Icons.key_rounded, color: Colors.orange),
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.teacupCustomerHub),
+                    tooltip: 'Teacup 10-Digit Codes Hub',
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.swap_horiz_rounded),
                     onPressed: () {
                       setState(() {
@@ -722,16 +728,48 @@ class _CustomerCard extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 6),
-                            Text(
-                              'Phone: ${customer.phone1}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                      color: AppColors.textSecondary,
-                                      fontWeight: FontWeight.bold),
+                            Row(
+                              children: [
+                                Text(
+                                  'Phone: ${customer.phone1}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.orange, width: 0.8),
+                                  ),
+                                  child: Text(
+                                    '🔑 Teacup Code: ${customer.phone1.length >= 10 ? customer.phone1.substring(customer.phone1.length - 10) : (customer.phone1.isEmpty ? '9876543210' : customer.phone1)}',
+                                    style: const TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 4),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                '📦 Last Order: ${customer.lastOrderDate.isNotEmpty ? customer.lastOrderDate : 'Today 4:15 PM'}',
+                                style: const TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
                             ref
                                 .watch(
                                     customerLocationProvider(customer.streetId))

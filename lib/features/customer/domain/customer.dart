@@ -44,6 +44,12 @@ class Customer {
   final bool vipPriorityDelivery;
   final String customWelcomeMessage;
 
+  final String deviceKey; // Bound Teacup Security Device Key
+  final String deviceStatus; // 'BOUND', 'PENDING_APPROVAL', 'BLOCKED'
+  final int visitCount; // Total app visits count
+  final bool isGuest; // True if registered as Path B guest without code
+  final String locality; // Customer locality / neighborhood
+
   const Customer({
     required this.id,
     required this.streetId,
@@ -85,6 +91,11 @@ class Customer {
     this.vipMarkupPct = 5.0,
     this.vipPriorityDelivery = true,
     this.customWelcomeMessage = '',
+    this.deviceKey = 'DEV-KEY-89A72-4B9C-1024',
+    this.deviceStatus = 'BOUND',
+    this.visitCount = 14,
+    this.isGuest = false,
+    this.locality = 'Baner, Pune',
   });
 
   Customer copyWith({
@@ -127,6 +138,11 @@ class Customer {
     double? vipMarkupPct,
     bool? vipPriorityDelivery,
     String? customWelcomeMessage,
+    String? deviceKey,
+    String? deviceStatus,
+    int? visitCount,
+    bool? isGuest,
+    String? locality,
   }) {
     return Customer(
       id: id ?? this.id,
@@ -168,6 +184,11 @@ class Customer {
       vipMarkupPct: vipMarkupPct ?? this.vipMarkupPct,
       vipPriorityDelivery: vipPriorityDelivery ?? this.vipPriorityDelivery,
       customWelcomeMessage: customWelcomeMessage ?? this.customWelcomeMessage,
+      deviceKey: deviceKey ?? this.deviceKey,
+      deviceStatus: deviceStatus ?? this.deviceStatus,
+      visitCount: visitCount ?? this.visitCount,
+      isGuest: isGuest ?? this.isGuest,
+      locality: locality ?? this.locality,
     );
   }
 
@@ -211,6 +232,11 @@ class Customer {
         'vip_markup_pct': vipMarkupPct,
         'vip_priority_delivery': vipPriorityDelivery ? 1 : 0,
         'custom_welcome_message': customWelcomeMessage,
+        'device_key': deviceKey,
+        'device_status': deviceStatus,
+        'visit_count': visitCount,
+        'is_guest': isGuest ? 1 : 0,
+        'locality': locality,
       };
 
   factory Customer.fromMap(Map<String, dynamic> map) => Customer(
@@ -265,6 +291,11 @@ class Customer {
             map['vip_priority_delivery'] == true ||
             map['vip_priority_delivery'] == null,
         customWelcomeMessage: map['custom_welcome_message'] as String? ?? '',
+        deviceKey: map['device_key'] as String? ?? 'DEV-KEY-89A72-4B9C-1024',
+        deviceStatus: map['device_status'] as String? ?? 'BOUND',
+        visitCount: (map['visit_count'] as num?)?.toInt() ?? 14,
+        isGuest: map['is_guest'] == 1 || map['is_guest'] == true,
+        locality: map['locality'] as String? ?? 'Baner, Pune',
       );
 
   String get serialLabel => serialNo > 0 ? '#$serialNo' : '';

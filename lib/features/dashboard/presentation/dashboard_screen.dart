@@ -25,6 +25,7 @@ import '../../note/presentation/note_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
 import '../../area/presentation/area_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
+import 'widgets/store_order_clock_card.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -222,6 +223,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+
+                  // ── Store Operating Hours & Order Cutoff Clock Widget ────────
+                  const StoreOrderClockCard(),
 
 
                   // ── Pending Payments Warning Banner ───────────────────
