@@ -75,15 +75,26 @@ class NotificationListNotifier
           Map<String, dynamic>? routeArgs;
           switch (category) {
             case 'payment_due':
-              route = AppRoutes.customerProfile;
-              routeArgs = {'customerId': relatedId};
+              if (relatedId.isNotEmpty) {
+                route = AppRoutes.customerProfile;
+                routeArgs = {'customerId': relatedId};
+              } else {
+                route = AppRoutes.customers;
+              }
               break;
             case 'low_stock':
               route = AppRoutes.inventory;
               break;
             case 'order_update':
-              route = AppRoutes.orderDetail;
-              routeArgs = {'orderId': relatedId};
+              if (relatedId.isNotEmpty) {
+                route = AppRoutes.orderDetail;
+                routeArgs = {'orderId': relatedId};
+              } else {
+                route = AppRoutes.orderManagement;
+              }
+              break;
+            case 'sync':
+              route = AppRoutes.syncHistory;
               break;
           }
           if (route != null) {

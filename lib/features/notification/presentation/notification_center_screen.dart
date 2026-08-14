@@ -430,15 +430,26 @@ class _NotificationCard extends ConsumerWidget {
                     Object? routeArgs;
                     switch (notification.category) {
                       case 'payment_due':
-                        route = AppRoutes.customerProfile;
-                        routeArgs = {'customerId': notification.relatedId};
+                        if (notification.relatedId.isNotEmpty) {
+                          route = AppRoutes.customerProfile;
+                          routeArgs = {'customerId': notification.relatedId};
+                        } else {
+                          route = AppRoutes.customers;
+                        }
                         break;
                       case 'low_stock':
                         route = AppRoutes.inventory;
                         break;
                       case 'order_update':
-                        route = AppRoutes.orderDetail;
-                        routeArgs = {'orderId': notification.relatedId};
+                        if (notification.relatedId.isNotEmpty) {
+                          route = AppRoutes.orderDetail;
+                          routeArgs = {'orderId': notification.relatedId};
+                        } else {
+                          route = AppRoutes.orderManagement;
+                        }
+                        break;
+                      case 'sync':
+                        route = AppRoutes.syncHistory;
                         break;
                     }
 
