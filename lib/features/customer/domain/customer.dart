@@ -44,7 +44,7 @@ class Customer {
   final bool vipPriorityDelivery;
   final String customWelcomeMessage;
 
-  final String deviceKey; // Bound Teacup Security Device Key
+  final String deviceKey; // Bound Device Security Key
   final String deviceStatus; // 'BOUND', 'PENDING_APPROVAL', 'BLOCKED'
   final int visitCount; // Total app visits count
   final bool isGuest; // True if registered as Path B guest without code

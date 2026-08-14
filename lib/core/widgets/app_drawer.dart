@@ -135,18 +135,6 @@ class AppDrawer extends ConsumerWidget {
                       },
                     ),
 
-                    // 3b. Teacup 10-Digit Code Hub
-                    _DrawerItem(
-                      icon: Icons.key_rounded,
-                      title: 'Teacup 10-Digit Code Hub',
-                      iconColor: Colors.orange,
-                      onTap: () {
-                        final nav = Navigator.of(context);
-                        nav.pop();
-                        nav.pushNamed(AppRoutes.teacupCustomerHub);
-                      },
-                    ),
-
                     // 4. Inventory Catalog
                     _DrawerItem(
                       icon: Icons.inventory_rounded,

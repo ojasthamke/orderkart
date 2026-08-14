@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../customer/presentation/teacup_customer_hub_screen.dart';
 import '../../inventory/presentation/inventory_screen.dart';
 import '../../expense/presentation/expense_screen.dart';
 import '../../note/presentation/notes_list_screen.dart';
@@ -24,7 +23,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   final List<Widget> _screens = const [
     DashboardScreen(),
-    TeacupCustomerHubScreen(),
     InventoryScreen(showBack: false),
     AreaScreen(showBack: false),
     NotesListScreen(showBack: false),
@@ -109,11 +107,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             icon: Icons.dashboard_outlined,
             selectedIcon: Icons.dashboard_rounded,
             label: 'Dashboard',
-          ),
-          FloatingBottomDestination(
-            icon: Icons.key_outlined,
-            selectedIcon: Icons.key_rounded,
-            label: 'Teacup',
           ),
           FloatingBottomDestination(
             icon: Icons.inventory_2_outlined,

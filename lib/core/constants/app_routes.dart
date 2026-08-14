@@ -66,5 +66,4 @@ class AppRoutes {
   static const String churnRisk = '/churn-risk';
   static const String areaIntelligenceMap = '/area-intelligence-map';
   static const String mapPinPicker = '/map-pin-picker';
-  static const String teacupCustomerHub = '/teacup-customer-hub';
 }

@@ -80,7 +80,7 @@ class CustomerOrderSyncService {
               final String orderId = ord['id'];
           final String customerId = ord['customerId'] ?? ord['customer_id'] ?? '';
           final String customerName = ord['customerName'] ?? ord['customer_name'] ?? 'App Customer';
-          final String customerPhone = ord['customerPhone'] ?? ord['customer_phone'] ?? 'Teacup App User';
+          final String customerPhone = ord['customerPhone'] ?? ord['customer_phone'] ?? 'Online App User';
 
           // A. Ensure customer exists in POS SQLite DB to prevent FK violation
           if (customerId.isNotEmpty) {
@@ -179,7 +179,7 @@ class CustomerOrderSyncService {
                   'item_id': itemId,
                   'item_name': itemName,
                   'change_amount': -qty,
-                  'reason': 'Teacup App Order #$orderId',
+                  'reason': 'Online App Order #$orderId',
                   'order_id': orderId,
                   'created_at': nowStr,
                 });

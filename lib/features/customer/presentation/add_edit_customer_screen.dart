@@ -378,41 +378,6 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                 ),
                 const SizedBox(height: 8),
 
-                // 🔑 10-Digit Teacup Code Callout
-                Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.withOpacity(0.4)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.key, color: Colors.orange, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Teacup 10-Digit Code: ${_phone1Con.text.length >= 10 ? _phone1Con.text.substring(_phone1Con.text.length - 10) : (_phone1Con.text.isEmpty ? '9876543210' : _phone1Con.text)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: Colors.orange,
-                              ),
-                            ),
-                            const Text(
-                              'This 10-digit code unlocks the customer account & syncs orders in Teacup customer app.',
-                              style: TextStyle(fontSize: 11, color: Colors.black87),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ], // end !_isGhostHouse block
 
               // Phone 2

@@ -137,7 +137,7 @@ class _StoreOrderClockCardState extends State<StoreOrderClockCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Order cutoff updated to ${_cutoffTime.format(context)}. Synced to Teacup!',
+              'Order cutoff updated to ${_cutoffTime.format(context)}.',
             ),
             backgroundColor: AppColors.primary,
           ),
@@ -321,7 +321,7 @@ class _StoreOrderClockCardState extends State<StoreOrderClockCard> {
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    _isAcceptingOrders ? 'Store receiving orders in Teacup' : 'Orders paused by owner',
+                    _isAcceptingOrders ? 'Store accepting online orders' : 'Orders paused by owner',
                     style: const TextStyle(fontSize: 10, color: Colors.grey),
                   ),
                   value: _isAcceptingOrders,
@@ -335,8 +335,8 @@ class _StoreOrderClockCardState extends State<StoreOrderClockCard> {
                         SnackBar(
                           content: Text(
                             val
-                                ? '🟢 Order acceptance activated! Teacup store is open.'
-                                : '🔴 Order acceptance paused! Teacup store is closed.',
+                                ? '🟢 Order acceptance activated! Store is open.'
+                                : '🔴 Order acceptance paused! Store is closed.',
                           ),
                           backgroundColor: val ? Colors.green : Colors.red,
                         ),

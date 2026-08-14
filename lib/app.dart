@@ -15,7 +15,6 @@ import 'features/customer/presentation/customer_list_screen.dart';
 import 'features/customer/presentation/vip_dashboard_screen.dart';
 import 'features/customer/presentation/customer_profile_screen.dart';
 import 'features/customer/presentation/add_edit_customer_screen.dart';
-import 'features/customer/presentation/teacup_customer_hub_screen.dart';
 import 'features/order/presentation/create_order_screen.dart';
 import 'features/order/presentation/order_management_screen.dart';
 import 'features/order/presentation/order_detail_screen.dart';
@@ -157,9 +156,6 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
               initialSerialNo: args?['initialSerialNo'] as int?,
             ),
             settings);
-
-      case AppRoutes.teacupCustomerHub:
-        return _slide(const TeacupCustomerHubScreen(), settings);
 
       case AppRoutes.createOrder:
         final args = settings.arguments as Map<String, dynamic>?;
