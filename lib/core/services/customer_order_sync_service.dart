@@ -75,39 +75,68 @@ class CustomerOrderSyncService {
         final db = await DatabaseHelper.instance.database;
 
         for (var ord in orders) {
-          final String orderId = ord['id'];
-          final String customerId = ord['customerId'];
+          try {
+            await db.transaction((txn) async {
+              final String orderId = ord['id'];
+          final String customerId = ord['customerId'] ?? ord['customer_id'] ?? '';
+          final String customerName = ord['customerName'] ?? ord['customer_name'] ?? 'App Customer';
+          final String customerPhone = ord['customerPhone'] ?? ord['customer_phone'] ?? 'Teacup App User';
 
           // A. Ensure customer exists in POS SQLite DB to prevent FK violation
-          final custCheck = await db.query('customers', where: 'id = ?', whereArgs: [customerId]);
-          if (custCheck.isEmpty) {
-            await db.insert('customers', {
-              'id': customerId,
-              'name': 'App Customer (${ord['id']})',
-              'phone': 'App-User',
-              'outstanding_balance': 0.0,
-              'total_orders': 0,
-              'total_paid': 0.0,
-              'total_pending': 0.0,
-              'created_at': DateTime.now().toIso8601String(),
-            });
+          if (customerId.isNotEmpty) {
+            final custCheck = await txn.query('customers', where: 'id = ?', whereArgs: [customerId]);
+            if (custCheck.isEmpty) {
+              // Find a valid street_id or location_id for FK safety
+              final streetCheck = await txn.query('streets', columns: ['id'], limit: 1);
+              String streetId = 'default_street';
+              if (streetCheck.isNotEmpty) {
+                streetId = streetCheck.first['id'] as String;
+              } else {
+                final locCheck = await txn.query('locations', columns: ['id'], limit: 1);
+                if (locCheck.isNotEmpty) {
+                  streetId = locCheck.first['id'] as String;
+                }
+              }
+
+              final nowStr = DateTime.now().toIso8601String();
+              await txn.insert('customers', {
+                'id': customerId,
+                'street_id': streetId,
+                'location_id': streetId,
+                'name': customerName,
+                'phone1': customerPhone,
+                'phone2': '',
+                'whatsapp': customerPhone,
+                'house_number': ord['houseNumber'] ?? '',
+                'address': ord['address'] ?? '',
+                'outstanding_balance': 0.0,
+                'total_orders': 0,
+                'total_paid': 0.0,
+                'total_pending': 0.0,
+                'customer_since': nowStr,
+                'created_at': nowStr,
+                'updated_at': nowStr,
+              });
+            }
           }
 
           // B. Check if order already exists in POS SQLite DB
-          final orderCheck = await db.query('orders', where: 'id = ?', whereArgs: [orderId]);
-          final String serverStatus = ord['status'];
+          final orderCheck = await txn.query('orders', where: 'id = ?', whereArgs: [orderId]);
+          final String serverStatus = ord['status'] ?? 'PENDING';
 
           if (orderCheck.isEmpty) {
             // Write new order
-            final double grandTotal = double.tryParse(ord['grandTotal'].toString()) ?? 0.0;
-            final bool isPaid = ord['paymentStatus'] == 'Paid' || ord['paymentStatus'] == 'CAPTURED';
+            final double grandTotal = double.tryParse(ord['grandTotal']?.toString() ?? '') ?? 0.0;
+            final String payStat = (ord['paymentStatus'] ?? '').toString().toLowerCase();
+            final bool isPaid = payStat == 'paid' || payStat == 'captured';
 
-            await db.insert('orders', {
+            final nowStr = DateTime.now().toIso8601String();
+            await txn.insert('orders', {
               'id': orderId,
               'customer_id': customerId,
-              'subtotal': double.tryParse(ord['subtotal'].toString()) ?? 0.0,
-              'discount': double.tryParse(ord['discount'].toString()) ?? 0.0,
-              'delivery_charge': double.tryParse(ord['deliveryCharge'].toString()) ?? 0.0,
+              'subtotal': double.tryParse(ord['subtotal']?.toString() ?? '') ?? 0.0,
+              'discount': double.tryParse(ord['discount']?.toString() ?? '') ?? 0.0,
+              'delivery_charge': double.tryParse(ord['deliveryCharge']?.toString() ?? '') ?? 0.0,
               'smart_rounded_amount': 0.0,
               'grand_total': grandTotal,
               'paid_amount': isPaid ? grandTotal : 0.0,
@@ -115,23 +144,46 @@ class CustomerOrderSyncService {
               'delivery_status': serverStatus.toLowerCase(),
               'notes': ord['customerNote'] ?? '',
               'savings': 0.0,
-              'created_at': ord['createdAt'],
-              'updated_at': ord['updatedAt'],
+              'created_at': ord['createdAt'] ?? nowStr,
+              'updated_at': ord['updatedAt'] ?? nowStr,
             });
 
-            // Write order items
+            // Write order items & deduct inventory stock
             final List<dynamic> items = ord['items'] ?? [];
             for (var item in items) {
-              await db.insert('order_items', {
+              final String itemId = item['productId'] ?? item['item_id'] ?? '';
+              final String itemName = item['productNameSnapshot'] ?? item['item_name'] ?? 'Item';
+              final double qty = double.tryParse(item['quantity']?.toString() ?? '') ?? 1.0;
+              final double unitPrice = double.tryParse(item['unitPriceSnapshot']?.toString() ?? item['unit_price']?.toString() ?? '') ?? 0.0;
+              final double subtotal = double.tryParse(item['subtotal']?.toString() ?? item['total_price']?.toString() ?? '') ?? (qty * unitPrice);
+
+              await txn.insert('order_items', {
                 'id': _uuid.v4(),
                 'order_id': orderId,
-                'item_id': item['productId'] ?? '',
-                'item_name': item['productNameSnapshot'] ?? 'Item',
+                'item_id': itemId,
+                'item_name': itemName,
                 'item_unit': item['unit'] ?? 'kg',
-                'quantity': double.tryParse(item['quantity'].toString()) ?? 1.0,
-                'unit_price': double.tryParse(item['unitPriceSnapshot'].toString()) ?? 0.0,
-                'total_price': double.tryParse(item['subtotal'].toString()) ?? 0.0,
+                'quantity': qty,
+                'unit_price': unitPrice,
+                'total_price': subtotal,
               });
+
+              // Deduct stock in SQLite items table & record stock history
+              if (itemId.isNotEmpty) {
+                await txn.rawUpdate(
+                  'UPDATE items SET stock = stock - ?, updated_at = ? WHERE id = ?',
+                  [qty, nowStr, itemId],
+                );
+                await txn.insert('stock_history', {
+                  'id': _uuid.v4(),
+                  'item_id': itemId,
+                  'item_name': itemName,
+                  'change_amount': -qty,
+                  'reason': 'Teacup App Order #$orderId',
+                  'order_id': orderId,
+                  'created_at': nowStr,
+                });
+              }
             }
           } else {
             // C. Order exists locally - check for status sync (Local POS -> Backend Server)
@@ -139,10 +191,24 @@ class CustomerOrderSyncService {
             final targetStatus = serverStatus.toLowerCase();
 
             if (localStatus != targetStatus) {
-              // POS changed status locally! Update it on the remote server
-              final mappedStatus = _mapLocalToRemoteStatus(localStatus);
-              await _pushOrderStatusToServer(orderId, mappedStatus);
+              if (targetStatus == 'cancelled') {
+                // If server status is cancelled, local POS should adopt it
+                await txn.update(
+                  'orders',
+                  {'delivery_status': 'cancelled', 'updated_at': DateTime.now().toIso8601String()},
+                  where: 'id = ?',
+                  whereArgs: [orderId],
+                );
+              } else if (localStatus != 'pending') {
+                // POS changed status locally! Update it on the remote server
+                final mappedStatus = _mapLocalToRemoteStatus(localStatus);
+                await _pushOrderStatusToServer(orderId, mappedStatus);
+              }
             }
+          }
+            });
+          } catch (e) {
+            if (kDebugMode) print('CustomerOrderSyncService order $ord error: $e');
           }
         }
       }

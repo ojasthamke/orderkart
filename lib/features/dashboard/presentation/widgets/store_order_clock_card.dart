@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/glass_container.dart';
+import '../../../../core/database/database_helper.dart';
 
 class StoreOrderClockCard extends StatefulWidget {
   const StoreOrderClockCard({super.key});
@@ -21,6 +23,7 @@ class _StoreOrderClockCardState extends State<StoreOrderClockCard> {
   @override
   void initState() {
     super.initState();
+    _loadSavedSettings();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
@@ -28,6 +31,50 @@ class _StoreOrderClockCardState extends State<StoreOrderClockCard> {
         });
       }
     });
+  }
+
+  Future<void> _loadSavedSettings() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final rows = await db.query('settings',
+          where: 'key IN (?, ?, ?)',
+          whereArgs: ['is_accepting_orders', 'cutoff_hour', 'cutoff_minute']);
+      bool accepting = true;
+      int hour = 20;
+      int minute = 0;
+      for (final r in rows) {
+        final k = r['key']?.toString();
+        final v = r['value']?.toString();
+        if (k == 'is_accepting_orders') {
+          accepting = v == 'true' || v == '1';
+        } else if (k == 'cutoff_hour') {
+          hour = int.tryParse(v ?? '') ?? 20;
+        } else if (k == 'cutoff_minute') {
+          minute = int.tryParse(v ?? '') ?? 0;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _isAcceptingOrders = accepting;
+          _cutoffTime = TimeOfDay(hour: hour, minute: minute);
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveSettings() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      await db.insert('settings',
+          {'key': 'is_accepting_orders', 'value': _isAcceptingOrders.toString()},
+          conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert('settings',
+          {'key': 'cutoff_hour', 'value': _cutoffTime.hour.toString()},
+          conflictAlgorithm: ConflictAlgorithm.replace);
+      await db.insert('settings',
+          {'key': 'cutoff_minute', 'value': _cutoffTime.minute.toString()},
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (_) {}
   }
 
   @override
@@ -85,6 +132,7 @@ class _StoreOrderClockCardState extends State<StoreOrderClockCard> {
       setState(() {
         _cutoffTime = pickedTime;
       });
+      await _saveSettings();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -277,20 +325,23 @@ class _StoreOrderClockCardState extends State<StoreOrderClockCard> {
                     style: const TextStyle(fontSize: 10, color: Colors.grey),
                   ),
                   value: _isAcceptingOrders,
-                  onChanged: (val) {
+                  onChanged: (val) async {
                     setState(() {
                       _isAcceptingOrders = val;
                     });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          val
-                              ? '🟢 Order acceptance activated! Teacup store is open.'
-                              : '🔴 Order acceptance paused! Teacup store is closed.',
+                    await _saveSettings();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            val
+                                ? '🟢 Order acceptance activated! Teacup store is open.'
+                                : '🔴 Order acceptance paused! Teacup store is closed.',
+                          ),
+                          backgroundColor: val ? Colors.green : Colors.red,
                         ),
-                        backgroundColor: val ? Colors.green : Colors.red,
-                      ),
-                    );
+                      );
+                    }
                   },
                 ),
               ),

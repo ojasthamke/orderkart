@@ -1288,11 +1288,10 @@ class CustomerProfileScreen extends ConsumerWidget {
       } else {
         final allOrders = List<AppOrder>.from(orders)
           ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        if (allOrders.isNotEmpty) {
-          final newestOrder = allOrders.first;
+          final orderIdForPayment = allOrders.isNotEmpty ? allOrders.first.id : '';
           await ref.read(orderManagementProvider.notifier).addPayment(Payment(
                 id: const Uuid().v4(),
-                orderId: newestOrder.id,
+                orderId: orderIdForPayment,
                 customerId: customer.id,
                 amount: amount,
                 method: method,
@@ -1310,12 +1309,6 @@ class CustomerProfileScreen extends ConsumerWidget {
             SnackbarHelper.showSuccess(context,
                 'Prepayment of $currencySymbol$amount registered as account credit');
           }
-        } else {
-          if (context.mounted) {
-            SnackbarHelper.showError(context,
-                'Cannot record prepayment: Customer has no order history. Please create an order first.');
-          }
-        }
       }
     }
   }

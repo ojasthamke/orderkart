@@ -7,6 +7,7 @@ import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import 'customer_provider.dart';
+import '../data/customer_dao.dart';
 import '../../dashboard/presentation/widgets/store_order_clock_card.dart';
 
 /// Teacup Customer Control & Code Manager Hub in OrderKart POS
@@ -114,13 +115,13 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.lightBlueAccent),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
-                              Icon(Icons.remove_red_eye_rounded, size: 12, color: Colors.lightBlueAccent),
-                              SizedBox(width: 4),
+                              const Icon(Icons.remove_red_eye_rounded, size: 12, color: Colors.lightBlueAccent),
+                              const SizedBox(width: 4),
                               Text(
-                                '284 Total App Visits',
-                                style: TextStyle(
+                                '${customersAsync.valueOrNull?.fold<int>(0, (sum, c) => sum + (c.visitCount > 0 ? c.visitCount : 1)) ?? 0} Total App Visits',
+                                style: const TextStyle(
                                   color: Colors.lightBlueAccent,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -249,7 +250,7 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
                       Icon(Icons.pin_drop_rounded, color: Colors.orange, size: 20),
                       SizedBox(width: 8),
                       Text(
-                        '📍 Pending Customer Address Requests',
+                        '📍 Customer Address Management & Teacup Sync',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -266,12 +267,12 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Customer: Ramesh Sharma (Code: 9876543210)',
+                              'Locked Delivery Address Verification',
                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Proposed: Flat 402, Block B, Green Acres, Baner',
+                              'Approve or update registered customer delivery addresses to sync with Teacup.',
                               style: TextStyle(fontSize: 12, color: AppColors.gray700),
                             ),
                           ],
@@ -279,15 +280,85 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
                       ),
                       ElevatedButton.icon(
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✅ Approved & updated Ramesh Sharma\'s address! Synced to Teacup.'),
-                              backgroundColor: Colors.green,
+                          final customersList = customersAsync.valueOrNull ?? [];
+                          if (customersList.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('No customers registered yet.')),
+                            );
+                            return;
+                          }
+                          String selectedCustId = customersList.first.id;
+                          final addressCon = TextEditingController(text: customersList.first.address);
+
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => StatefulBuilder(
+                              builder: (context, setDialogState) => AlertDialog(
+                                title: const Text('Update Customer Address'),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Select Customer:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                    DropdownButton<String>(
+                                      isExpanded: true,
+                                      value: selectedCustId,
+                                      items: customersList.map((c) {
+                                        return DropdownMenuItem(
+                                          value: c.id,
+                                          child: Text('${c.name} (${c.phone1})'),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setDialogState(() {
+                                            selectedCustId = val;
+                                            final found = customersList.firstWhere((c) => c.id == val);
+                                            addressCon.text = found.address;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text('New Address:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                    TextField(
+                                      controller: addressCon,
+                                      maxLines: 2,
+                                      decoration: InputDecoration(
+                                        hintText: 'Enter full delivery address...',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                                    onPressed: () async {
+                                      final targetCust = customersList.firstWhere((c) => c.id == selectedCustId);
+                                      final updated = targetCust.copyWith(address: addressCon.text.trim());
+                                      await CustomerDao().updateCustomer(updated);
+                                      ref.invalidate(allCustomersProvider);
+                                      if (mounted) {
+                                        Navigator.pop(ctx);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('✅ Approved & updated ${targetCust.name}\'s address! Synced to Teacup.'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: const Text('Approve & Sync'),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
                         icon: const Icon(Icons.check_circle_rounded, size: 16),
-                        label: const Text('Approve'),
+                        label: const Text('Approve / Update'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
@@ -337,8 +408,9 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
             data: (customers) {
               final filtered = customers.where((c) {
                 if (_searchQuery.isEmpty) return true;
-                final tenCode = c.phone1.length >= 10
-                    ? c.phone1.substring(c.phone1.length - 10)
+                final digitsOnly = c.phone1.replaceAll(RegExp(r'\D'), '');
+                final tenCode = digitsOnly.length >= 10
+                    ? digitsOnly.substring(digitsOnly.length - 10)
                     : c.phone1;
                 return c.name.toLowerCase().contains(_searchQuery) ||
                     c.phone1.contains(_searchQuery) ||
@@ -347,13 +419,15 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
 
               if (filtered.isEmpty) {
                 return [
-                  const SliverToBoxAdapter(
+                  SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
                       child: Text(
-                        'No customers found.\nAdd customers in OrderKart to generate 10-digit Teacup codes.',
+                        _searchQuery.isNotEmpty 
+                            ? 'No customers found for "$_searchQuery".'
+                            : 'No customers found.\nAdd customers in OrderKart to generate 10-digit Teacup codes.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.gray500),
+                        style: const TextStyle(color: AppColors.gray500),
                       ),
                     ),
                   ),
@@ -367,9 +441,10 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final customer = filtered[index];
-                        final tenDigitCode = customer.phone1.length >= 10
-                            ? customer.phone1.substring(customer.phone1.length - 10)
-                            : (customer.phone1.isEmpty ? '9876543210' : customer.phone1);
+                        final digitsOnly = customer.phone1.replaceAll(RegExp(r'\D'), '');
+                        final tenDigitCode = digitsOnly.length >= 10
+                            ? digitsOnly.substring(digitsOnly.length - 10)
+                            : (customer.phone1.isNotEmpty ? customer.phone1 : (customer.id.length >= 10 ? customer.id.substring(0, 10).toUpperCase() : 'PENDING-CODE'));
 
                         return GlassContainer(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -435,10 +510,14 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
                                               const SizedBox(width: 8),
                                               InkWell(
                                                 onTap: () {
-                                                  Clipboard.setData(ClipboardData(text: tenDigitCode));
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(content: Text('Copied 10-digit code: $tenDigitCode')),
-                                                  );
+                                                  Clipboard.setData(ClipboardData(text: tenDigitCode)).then((_) {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).clearSnackBars();
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(content: Text('Copied 10-digit code: $tenDigitCode')),
+                                                      );
+                                                    }
+                                                  });
                                                 },
                                                 child: const Icon(Icons.copy_rounded, size: 14, color: Colors.orange),
                                               ),
@@ -470,10 +549,14 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
                                               const SizedBox(width: 8),
                                               InkWell(
                                                 onTap: () {
-                                                  Clipboard.setData(ClipboardData(text: customer.deviceKey));
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(content: Text('Copied Device Key: ${customer.deviceKey}')),
-                                                  );
+                                                  Clipboard.setData(ClipboardData(text: customer.deviceKey)).then((_) {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).clearSnackBars();
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(content: Text('Copied Device Key: ${customer.deviceKey}')),
+                                                      );
+                                                    }
+                                                  });
                                                 },
                                                 child: const Icon(Icons.copy_rounded, size: 14, color: Colors.green),
                                               ),
@@ -524,11 +607,11 @@ class _TeacupCustomerHubScreenState extends ConsumerState<TeacupCustomerHubScree
                                   const Icon(Icons.local_shipping_outlined, size: 16, color: Colors.green),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Last Order: ${customer.lastOrderDate.isNotEmpty ? customer.lastOrderDate : 'Today 4:15 PM'}',
-                                    style: const TextStyle(
+                                    'Last Order: ${customer.lastOrderDate.isNotEmpty ? customer.lastOrderDate : 'No orders yet'}',
+                                    style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.green,
+                                      color: customer.lastOrderDate.isNotEmpty ? Colors.green : AppColors.gray600,
                                     ),
                                   ),
                                 ],

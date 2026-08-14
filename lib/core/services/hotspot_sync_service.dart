@@ -61,26 +61,28 @@ class HotspotSyncService {
   // ---------------------------------------------------------------------------
 
   /// Helper to check if a specific IP responds to handshake on port 8292
-  static Future<bool> _pingDevice(String ip) async {
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(milliseconds: 600);
-    try {
-      final token = await getSyncToken();
-      final req = await client.getUrl(Uri.parse('http://$ip:8292/handshake'));
-      req.headers.add('x-sync-token', token);
-      final resp = await req.close();
-      if (resp.statusCode == HttpStatus.ok) {
-        final body = await utf8.decoder.bind(resp).join();
-        final res = jsonDecode(body);
-        return res['app'] == 'orderkart';
+    static Future<bool> _pingDevice(String ip) async {
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(milliseconds: 600);
+      try {
+        final token = await getSyncToken();
+        final req = await client.getUrl(Uri.parse('http://$ip:8292/handshake')).timeout(const Duration(milliseconds: 600));
+        req.headers.add('x-sync-token', token);
+        final resp = await req.close().timeout(const Duration(milliseconds: 600));
+        if (resp.statusCode == HttpStatus.ok) {
+          final body = await utf8.decoder.bind(resp).join();
+          final res = jsonDecode(body);
+          return res['app'] == 'orderkart';
+        } else {
+          await resp.drain();
+        }
+        return false;
+      } catch (_) {
+        return false;
+      } finally {
+        client.close();
       }
-      return false;
-    } catch (_) {
-      return false;
-    } finally {
-      client.close();
     }
-  }
 
   /// Scan subnet to automatically find the other device running the receiver
   static Future<String?> discoverReceiverDevice() async {
@@ -120,15 +122,17 @@ class HotspotSyncService {
         final results = await Future.wait(batch.map((ip) async {
           try {
             final req =
-                await client.getUrl(Uri.parse('http://$ip:8292/handshake'));
+                await client.getUrl(Uri.parse('http://$ip:8292/handshake')).timeout(const Duration(milliseconds: 600));
             req.headers.add('x-sync-token', token);
-            final resp = await req.close();
+            final resp = await req.close().timeout(const Duration(milliseconds: 600));
             if (resp.statusCode == HttpStatus.ok) {
               final body = await utf8.decoder.bind(resp).join();
               final res = jsonDecode(body);
               if (res['app'] == 'orderkart') {
                 return ip;
               }
+            } else {
+              await resp.drain();
             }
           } catch (_) {}
           return null;
@@ -199,12 +203,13 @@ class HotspotSyncService {
             }));
           await request.response.close();
         } else if (method == 'POST' && path == '/sync') {
-          try {
-            // C5: Payload size limit check
-            final contentLength = request.contentLength;
-            if (contentLength > 50 * 1024 * 1024) {
-              throw Exception('Payload exceeds maximum size limit of 50MB');
-            }
+            try {
+              // C5: Payload size limit check
+              final contentLength = request.contentLength;
+              if (contentLength > 50 * 1024 * 1024) {
+                await request.drain();
+                throw Exception('Payload exceeds maximum size limit of 50MB');
+              }
 
             final bytesBuilder = BytesBuilder();
             int totalBytesRead = 0;
@@ -902,7 +907,7 @@ class HotspotSyncService {
   }) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
     try {
-      final token = await getSyncToken();
+      final token = syncToken.isNotEmpty ? syncToken : await getSyncToken();
       // 1. Handshake verification
       final handshakeUri = Uri.parse('http://$gatewayIp:8292/handshake');
       final handshakeReq =
@@ -910,7 +915,10 @@ class HotspotSyncService {
       handshakeReq.headers.add('x-sync-token', token);
       final handshakeResp =
           await handshakeReq.close().timeout(const Duration(seconds: 5));
-      if (handshakeResp.statusCode != HttpStatus.ok) return false;
+      if (handshakeResp.statusCode != HttpStatus.ok) {
+        await handshakeResp.drain();
+        return false;
+      }
 
       final body = await utf8.decoder.bind(handshakeResp).join();
       final res = jsonDecode(body);
@@ -976,6 +984,8 @@ class HotspotSyncService {
             },
             conflictAlgorithm: ConflictAlgorithm.replace);
         return true;
+      } else {
+        await syncResp.drain();
       }
       return false;
     } catch (_) {

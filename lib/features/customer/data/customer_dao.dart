@@ -414,7 +414,6 @@ class CustomerDao {
       FROM payments p
       LEFT JOIN orders o ON p.order_id = o.id
       WHERE (p.customer_id = ? OR o.customer_id = ?)
-        AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
     ''', [customerId, customerId]);
 
     if (ordersResult.isNotEmpty) {

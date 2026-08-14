@@ -239,11 +239,21 @@ class Customer {
         'locality': locality,
       };
 
-  factory Customer.fromMap(Map<String, dynamic> map) => Customer(
-        id: map['id'] as String? ?? '',
+  factory Customer.fromMap(Map<String, dynamic> map) {
+    final phone = map['phone1'] as String? ?? map['phone'] as String? ?? '';
+    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
+    final custId = map['id'] as String? ?? '';
+    final defaultKey = digitsOnly.length >= 10
+        ? 'DEV-KEY-${digitsOnly.substring(digitsOnly.length - 10)}'
+        : (custId.isNotEmpty
+            ? 'DEV-KEY-${custId.replaceAll('-', '').substring(0, custId.replaceAll('-', '').length.clamp(0, 10)).toUpperCase()}'
+            : 'DEV-KEY-NEW');
+
+    return Customer(
+        id: custId,
         streetId: (map['street_id'] ?? map['location_id']) as String? ?? '',
         name: map['name'] as String? ?? '',
-        phone1: map['phone1'] as String? ?? '',
+        phone1: phone,
         phone2: map['phone2'] as String? ?? '',
         whatsapp: map['whatsapp'] as String? ?? '',
         houseNumber: map['house_number'] as String? ?? '',
@@ -291,12 +301,13 @@ class Customer {
             map['vip_priority_delivery'] == true ||
             map['vip_priority_delivery'] == null,
         customWelcomeMessage: map['custom_welcome_message'] as String? ?? '',
-        deviceKey: map['device_key'] as String? ?? 'DEV-KEY-89A72-4B9C-1024',
+        deviceKey: map['device_key'] as String? ?? defaultKey,
         deviceStatus: map['device_status'] as String? ?? 'BOUND',
-        visitCount: (map['visit_count'] as num?)?.toInt() ?? 14,
+        visitCount: (map['visit_count'] as num?)?.toInt() ?? 0,
         isGuest: map['is_guest'] == 1 || map['is_guest'] == true,
         locality: map['locality'] as String? ?? 'Baner, Pune',
       );
+  }
 
   String get serialLabel => serialNo > 0 ? '#$serialNo' : '';
 

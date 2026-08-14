@@ -462,17 +462,6 @@ class OrderDao {
     String? customerId;
     if (orderMaps.isNotEmpty) {
       customerId = orderMaps.first['customer_id'] as String?;
-      final deliveryStatus = orderMaps.first['delivery_status'] as String?;
-      if (deliveryStatus != 'cancelled') {
-        final items = await getOrderItems(id, executor: db);
-        for (final item in items) {
-          if (item.itemId.isNotEmpty) {
-            await db.rawUpdate(
-                'UPDATE items SET stock = stock + ? WHERE id = ?',
-                [item.quantity, item.itemId]);
-          }
-        }
-      }
     }
 
     await db.delete('order_items', where: 'order_id = ?', whereArgs: [id]);
@@ -510,25 +499,7 @@ class OrderDao {
       whereArgs: [orderId],
     );
 
-    if (oldStatus != 'cancelled' && status == 'cancelled') {
-      final items = await getOrderItems(orderId, executor: db);
-      for (final item in items) {
-        if (item.itemId.isNotEmpty) {
-          await db.rawUpdate(
-              'UPDATE items SET stock = stock + ? WHERE id = ?',
-              [item.quantity, item.itemId]);
-        }
-      }
-    } else if (oldStatus == 'cancelled' && status != 'cancelled') {
-      final items = await getOrderItems(orderId, executor: db);
-      for (final item in items) {
-        if (item.itemId.isNotEmpty) {
-          await db.rawUpdate(
-              'UPDATE items SET stock = stock - ? WHERE id = ?',
-              [item.quantity, item.itemId]);
-        }
-      }
-    }
+    // Stock adjustment is now handled in OrderRepositoryImpl to ensure proper unit conversion
 
     if ((oldStatus == 'cancelled' && status != 'cancelled') ||
         (oldStatus != 'cancelled' && status == 'cancelled')) {
