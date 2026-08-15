@@ -152,13 +152,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   double get _subtotal => _cart.fold(0, (s, i) => s + i.total);
   double get _afterDiscount =>
       (_subtotal - _discount).clamp(0, double.infinity);
+  double get _unroundedGrandTotal =>
+      _afterDiscount + (_deliveryEnabled ? _deliveryCharge : 0);
   double get _smartRounded {
-    if (!_smartRound) return _afterDiscount;
-    return SmartRounding.round(_afterDiscount);
+    if (!_smartRound) return _unroundedGrandTotal;
+    return SmartRounding.round(_unroundedGrandTotal);
   }
 
-  double get _grandTotal =>
-      _smartRounded + (_deliveryEnabled ? _deliveryCharge : 0);
+  double get _grandTotal => _smartRounded;
   double get _remaining => _grandTotal - _paidAmount;
 
   @override
@@ -430,10 +431,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
                       // Smart Rounding banner
                       if (_subtotal > 0 &&
-                          SmartRounding.needsRounding(_afterDiscount))
+                          SmartRounding.needsRounding(_unroundedGrandTotal))
                         SmartRoundBanner(
-                          original: _afterDiscount,
-                          rounded: SmartRounding.round(_afterDiscount),
+                          original: _unroundedGrandTotal,
+                          rounded: SmartRounding.round(_unroundedGrandTotal),
                           enabled: _smartRound,
                           currency: currency,
                           onToggle: (v) async {
@@ -1031,15 +1032,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             _sumRow('Discount',
                 '- ${AppFormatters.currency(_discount, symbol: currency)}',
                 color: AppColors.success),
-          if (_smartRound && SmartRounding.needsRounding(_afterDiscount))
-            _sumRow(
-                'Smart Rounded',
-                AppFormatters.currency(_smartRounded - _afterDiscount,
-                    symbol: currency),
-                color: AppColors.warning),
           if (_deliveryEnabled && _deliveryCharge > 0)
             _sumRow('Delivery',
                 AppFormatters.currency(_deliveryCharge, symbol: currency)),
+          if (_smartRound && SmartRounding.needsRounding(_unroundedGrandTotal))
+            _sumRow(
+                'Smart Rounded',
+                AppFormatters.currency(_smartRounded - _unroundedGrandTotal,
+                    symbol: currency),
+                color: AppColors.warning),
           const Divider(height: 20),
           _sumRow('Grand Total',
               AppFormatters.currency(_grandTotal, symbol: currency),
@@ -1694,7 +1695,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         widget.orderId ?? await OrderDao.generateUniqueOrderNo();
     debugPrint('[SaveOrder] orderId=$orderId, widget.orderId=${widget.orderId}');
 
-    final roundingDiff = _smartRound ? _smartRounded - _afterDiscount : 0;
+    final roundingDiff = _smartRound ? _smartRounded - _unroundedGrandTotal : 0;
 
     final List<OrderItem> items = [];
     if (_cart.isNotEmpty) {

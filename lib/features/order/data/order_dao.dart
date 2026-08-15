@@ -710,6 +710,18 @@ class OrderDao {
             : "SELECT COALESCE(SUM(discount),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ? AND delivery_status != 'cancelled'",
         isWorker ? [month, workerId, workerId] : [month]);
 
+    // Delivery charges collected today & this month (revenue component)
+    final todayDeliveryRes = await db.rawQuery(
+        isWorker
+            ? "SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled'",
+        isWorker ? [today, workerId, workerId] : [today]);
+    final monthlyDeliveryRes = await db.rawQuery(
+        isWorker
+            ? "SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ? AND delivery_status != 'cancelled' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ? AND delivery_status != 'cancelled'",
+        isWorker ? [month, workerId, workerId] : [month]);
+
     final double tExp = (todayExpenses.first['v'] as num?)?.toDouble() ?? 0.0;
     final double mExp =
         (monthlyExpensesRes.first['v'] as num?)?.toDouble() ?? 0.0;
@@ -721,9 +733,13 @@ class OrderDao {
         (todayDiscountsRes.first['v'] as num?)?.toDouble() ?? 0.0;
     final double mDisc =
         (monthlyDiscountsRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double tDel =
+        (todayDeliveryRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double mDel =
+        (monthlyDeliveryRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
-    final double todayNetProfit = tGross - tDisc - tExp;
-    final double monthlyNetProfit = mGross - mDisc - mExp;
+    final double todayNetProfit = tGross + tDel - tDisc - tExp;
+    final double monthlyNetProfit = mGross + mDel - mDisc - mExp;
 
     // Top selling items
     final topItems = await db.rawQuery(
@@ -820,17 +836,28 @@ class OrderDao {
         isWorker ? [workerId, workerId] : null);
     final totalRevenue = (revenueRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
-    // 2. Cost of Goods Sold (COGS)
+    // 2. Cost of Goods Sold (COGS) — with unit conversion
+    const cogsSql = '''
+      COALESCE(SUM(
+        CASE
+          WHEN oi.item_id != '' AND (LOWER(COALESCE(oi.item_unit, '')) = 'gram' OR LOWER(COALESCE(oi.item_unit, '')) = 'gm') AND LOWER(COALESCE(i.unit, '')) = 'kg'
+          THEN (oi.quantity / 1000.0) * COALESCE(i.cost_price, 0)
+          WHEN oi.item_id != '' AND LOWER(COALESCE(oi.item_unit, '')) = 'kg' AND (LOWER(COALESCE(i.unit, '')) = 'gram' OR LOWER(COALESCE(i.unit, '')) = 'gm')
+          THEN (oi.quantity * 1000.0) * COALESCE(i.cost_price, 0)
+          ELSE oi.quantity * COALESCE(i.cost_price, 0)
+        END
+      ), 0)
+    ''';
     final cogsRes = await db.rawQuery(
         isWorker
             ? '''
-              SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0)), 0) AS v
+              SELECT $cogsSql AS v
               FROM order_items oi
               LEFT JOIN items i ON oi.item_id = i.id
               WHERE oi.order_id IN (SELECT id FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled')
               '''
             : '''
-              SELECT COALESCE(SUM(oi.quantity * COALESCE(i.cost_price, 0)), 0) AS v
+              SELECT $cogsSql AS v
               FROM order_items oi
               LEFT JOIN items i ON oi.item_id = i.id
               WHERE oi.order_id IN (SELECT id FROM orders WHERE delivery_status != 'cancelled')
@@ -1115,8 +1142,10 @@ class OrderDao {
         CASE
           WHEN oi.item_id != '' AND i.market_price > oi.unit_price AND (LOWER(COALESCE(oi.item_unit, '')) = LOWER(COALESCE(i.unit, '')) OR oi.item_unit IS NULL OR oi.item_unit = '')
           THEN (i.market_price - oi.unit_price) * oi.quantity
-          WHEN oi.item_id != '' AND i.market_price > 0 AND LOWER(COALESCE(oi.item_unit, '')) = 'gram' AND LOWER(COALESCE(i.unit, '')) = 'kg'
+          WHEN oi.item_id != '' AND i.market_price > 0 AND (LOWER(COALESCE(oi.item_unit, '')) = 'gram' OR LOWER(COALESCE(oi.item_unit, '')) = 'gm') AND LOWER(COALESCE(i.unit, '')) = 'kg'
           THEN MAX(0, (i.market_price * (oi.quantity / 1000.0)) - oi.total_price)
+          WHEN oi.item_id != '' AND i.market_price > 0 AND LOWER(COALESCE(oi.item_unit, '')) = 'kg' AND (LOWER(COALESCE(i.unit, '')) = 'gram' OR LOWER(COALESCE(i.unit, '')) = 'gm')
+          THEN MAX(0, (i.market_price * (oi.quantity * 1000.0)) - oi.total_price)
           ELSE 0
         END
       ), 0) AS v
@@ -1131,8 +1160,10 @@ class OrderDao {
         CASE
           WHEN oi.item_id != '' AND i.market_price > oi.unit_price AND (LOWER(COALESCE(oi.item_unit, '')) = LOWER(COALESCE(i.unit, '')) OR oi.item_unit IS NULL OR oi.item_unit = '')
           THEN (i.market_price - oi.unit_price) * oi.quantity
-          WHEN oi.item_id != '' AND i.market_price > 0 AND LOWER(COALESCE(oi.item_unit, '')) = 'gram' AND LOWER(COALESCE(i.unit, '')) = 'kg'
+          WHEN oi.item_id != '' AND i.market_price > 0 AND (LOWER(COALESCE(oi.item_unit, '')) = 'gram' OR LOWER(COALESCE(oi.item_unit, '')) = 'gm') AND LOWER(COALESCE(i.unit, '')) = 'kg'
           THEN MAX(0, (i.market_price * (oi.quantity / 1000.0)) - oi.total_price)
+          WHEN oi.item_id != '' AND i.market_price > 0 AND LOWER(COALESCE(oi.item_unit, '')) = 'kg' AND (LOWER(COALESCE(i.unit, '')) = 'gram' OR LOWER(COALESCE(i.unit, '')) = 'gm')
+          THEN MAX(0, (i.market_price * (oi.quantity * 1000.0)) - oi.total_price)
           ELSE 0
         END
       ), 0) AS v
