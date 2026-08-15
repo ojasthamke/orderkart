@@ -429,28 +429,45 @@ class AnalyticsDao {
         c.photo_path,
         c.outstanding_balance,
         c.is_vip,
-        COUNT(DISTINCT o.id) AS total_orders,
-        COALESCE(SUM(o.grand_total), 0) AS total_revenue,
-        COALESCE(SUM(o.paid_amount), 0) AS total_paid,
-        COALESCE(SUM(
-          CASE
-            WHEN oi.item_id != '' AND (LOWER(COALESCE(oi.item_unit, '')) = 'gram' OR LOWER(COALESCE(oi.item_unit, '')) = 'gm') AND LOWER(COALESCE(i.unit, '')) = 'kg'
-            THEN (oi.quantity / 1000.0) * COALESCE(i.cost_price, 0)
-            WHEN oi.item_id != '' AND LOWER(COALESCE(oi.item_unit, '')) = 'kg' AND (LOWER(COALESCE(i.unit, '')) = 'gram' OR LOWER(COALESCE(i.unit, '')) = 'gm')
-            THEN (oi.quantity * 1000.0) * COALESCE(i.cost_price, 0)
-            ELSE oi.quantity * COALESCE(i.cost_price, 0)
-          END
-        ), 0) AS total_cogs,
-        MIN(o.created_at) AS first_order_date,
-        MAX(o.created_at) AS last_order_date
+        ord.total_orders,
+        ord.total_revenue,
+        ord.total_paid,
+        COALESCE(cogs_sub.total_cogs, 0) AS total_cogs,
+        ord.first_order_date,
+        ord.last_order_date
       FROM customers c
-      JOIN orders o ON c.id = o.customer_id AND o.delivery_status != 'cancelled'
-      LEFT JOIN order_items oi ON o.id = oi.order_id
-      LEFT JOIN items i ON oi.item_id = i.id
+      JOIN (
+        SELECT 
+          customer_id,
+          COUNT(id) AS total_orders,
+          COALESCE(SUM(grand_total), 0) AS total_revenue,
+          COALESCE(SUM(paid_amount), 0) AS total_paid,
+          MIN(created_at) AS first_order_date,
+          MAX(created_at) AS last_order_date
+        FROM orders
+        WHERE delivery_status != 'cancelled'
+        GROUP BY customer_id
+      ) ord ON c.id = ord.customer_id
+      LEFT JOIN (
+        SELECT 
+          o.customer_id,
+          COALESCE(SUM(
+            CASE
+              WHEN oi.item_id != '' AND (LOWER(COALESCE(oi.item_unit, '')) = 'gram' OR LOWER(COALESCE(oi.item_unit, '')) = 'gm') AND LOWER(COALESCE(i.unit, '')) = 'kg'
+              THEN (oi.quantity / 1000.0) * COALESCE(i.cost_price, 0)
+              WHEN oi.item_id != '' AND LOWER(COALESCE(oi.item_unit, '')) = 'kg' AND (LOWER(COALESCE(i.unit, '')) = 'gram' OR LOWER(COALESCE(i.unit, '')) = 'gm')
+              THEN (oi.quantity * 1000.0) * COALESCE(i.cost_price, 0)
+              ELSE oi.quantity * COALESCE(i.cost_price, 0)
+            END
+          ), 0) AS total_cogs
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        LEFT JOIN items i ON oi.item_id = i.id
+        WHERE o.delivery_status != 'cancelled'
+        GROUP BY o.customer_id
+      ) cogs_sub ON c.id = cogs_sub.customer_id
       WHERE (c.is_archived IS NULL OR c.is_archived = 0)
-      GROUP BY c.id
-      HAVING total_revenue > 0
-      ORDER BY (total_revenue - total_cogs) DESC
+      ORDER BY (ord.total_revenue - COALESCE(cogs_sub.total_cogs, 0)) DESC
       LIMIT ?
     ''', [limit]);
 
