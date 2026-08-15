@@ -160,6 +160,7 @@ class DatabaseHelper {
               'ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
         } catch (_) {}
         await _ensureGeoMapTables(db);
+        await ensureCustomerDeviceColumns(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
         _autoRecoverAndBackup(path);
@@ -324,6 +325,11 @@ class DatabaseHelper {
         updated_at          TEXT NOT NULL,
         dietary_preference  TEXT DEFAULT '',
         custom_welcome_message TEXT DEFAULT '',
+        device_key          TEXT DEFAULT '',
+        device_status       TEXT DEFAULT 'BOUND',
+        visit_count         INTEGER DEFAULT 0,
+        is_guest            INTEGER DEFAULT 0,
+        locality            TEXT DEFAULT '',
         FOREIGN KEY(street_id) REFERENCES streets(id) ON DELETE CASCADE
       )
     ''');
@@ -566,6 +572,24 @@ class DatabaseHelper {
       'ALTER TABLE customers ADD COLUMN vip_priority_delivery INTEGER DEFAULT 1',
     ];
     for (final col in cols) {
+      try {
+        await db.execute(col);
+      } catch (_) {
+        // Column already exists, ignore
+      }
+    }
+  }
+
+  Future<void> ensureCustomerDeviceColumns([DatabaseExecutor? dbExecutor]) async {
+    final db = dbExecutor ?? await database;
+    final customerCols = [
+      "ALTER TABLE customers ADD COLUMN device_key TEXT DEFAULT ''",
+      "ALTER TABLE customers ADD COLUMN device_status TEXT DEFAULT 'BOUND'",
+      "ALTER TABLE customers ADD COLUMN visit_count INTEGER DEFAULT 0",
+      "ALTER TABLE customers ADD COLUMN is_guest INTEGER DEFAULT 0",
+      "ALTER TABLE customers ADD COLUMN locality TEXT DEFAULT ''",
+    ];
+    for (final col in customerCols) {
       try {
         await db.execute(col);
       } catch (_) {

@@ -114,6 +114,12 @@ class OrderManagementNotifier
     _invalidateAll(orderId: order.id, customerId: order.customerId);
   }
 
+  Future<void> updateOrder(AppOrder order) async {
+    await _repo.updateOrder(order);
+    await load(silent: true);
+    _invalidateAll(orderId: order.id, customerId: order.customerId);
+  }
+
   Future<Map<String, dynamic>> updateOrderRates(String orderId) async {
     final result = await _repo.updateOrderRates(orderId);
     await load(silent: true);

@@ -666,10 +666,30 @@ class OrderDao {
             : 'SELECT COALESCE(SUM(amount),0) AS v FROM expenses WHERE DATE(created_at) = DATE(?)',
         isWorker ? [today, workerId, workerId] : [today]);
 
+    const profitItemCostSql = '''
+      COALESCE(SUM(
+        oi.total_price - (
+          CASE
+            WHEN oi.item_id != '' AND (LOWER(COALESCE(oi.item_unit, '')) = 'gram' OR LOWER(COALESCE(oi.item_unit, '')) = 'gm') AND LOWER(COALESCE(i.unit, '')) = 'kg'
+            THEN (oi.quantity / 1000.0) * COALESCE(i.cost_price, 0)
+            WHEN oi.item_id != '' AND LOWER(COALESCE(oi.item_unit, '')) = 'kg' AND (LOWER(COALESCE(i.unit, '')) = 'gram' OR LOWER(COALESCE(i.unit, '')) = 'gm')
+            THEN (oi.quantity * 1000.0) * COALESCE(i.cost_price, 0)
+            ELSE oi.quantity * COALESCE(i.cost_price, 0)
+          END
+        )
+      ), 0)
+    ''';
+
     final todayGrossProfit = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(oi.total_price - (oi.quantity * COALESCE(i.cost_price, 0))), 0) AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(oi.total_price - (oi.quantity * COALESCE(i.cost_price, 0))), 0) AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled'",
+            ? "SELECT $profitItemCostSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT $profitItemCostSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled'",
+        isWorker ? [today, workerId, workerId] : [today]);
+
+    final todayDiscountsRes = await db.rawQuery(
+        isWorker
+            ? "SELECT COALESCE(SUM(discount),0) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(discount),0) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled'",
         isWorker ? [today, workerId, workerId] : [today]);
 
     final monthlyExpensesRes = await db.rawQuery(
@@ -680,8 +700,14 @@ class OrderDao {
 
     final monthlyGrossProfit = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(oi.total_price - (oi.quantity * COALESCE(i.cost_price, 0))), 0) AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', o.created_at) = ? AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(oi.total_price - (oi.quantity * COALESCE(i.cost_price, 0))), 0) AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', o.created_at) = ? AND o.delivery_status != 'cancelled'",
+            ? "SELECT $profitItemCostSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', o.created_at) = ? AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT $profitItemCostSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', o.created_at) = ? AND o.delivery_status != 'cancelled'",
+        isWorker ? [month, workerId, workerId] : [month]);
+
+    final monthlyDiscountsRes = await db.rawQuery(
+        isWorker
+            ? "SELECT COALESCE(SUM(discount),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ? AND delivery_status != 'cancelled' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(discount),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ? AND delivery_status != 'cancelled'",
         isWorker ? [month, workerId, workerId] : [month]);
 
     final double tExp = (todayExpenses.first['v'] as num?)?.toDouble() ?? 0.0;
@@ -691,9 +717,13 @@ class OrderDao {
         (todayGrossProfit.first['v'] as num?)?.toDouble() ?? 0.0;
     final double mGross =
         (monthlyGrossProfit.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double tDisc =
+        (todayDiscountsRes.first['v'] as num?)?.toDouble() ?? 0.0;
+    final double mDisc =
+        (monthlyDiscountsRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
-    final double todayNetProfit = tGross - tExp;
-    final double monthlyNetProfit = mGross - mExp;
+    final double todayNetProfit = tGross - tDisc - tExp;
+    final double monthlyNetProfit = mGross - mDisc - mExp;
 
     // Top selling items
     final topItems = await db.rawQuery(

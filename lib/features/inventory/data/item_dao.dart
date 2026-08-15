@@ -510,6 +510,7 @@ class ItemDao {
       final totalSelling = item['total_selling_price'] as double;
 
       return {
+        'item_id': item['item_id'],
         'item_name': item['item_name'],
         'bilingual_name': item['bilingual_name'],
         'item_unit': item['item_unit'],
@@ -534,5 +535,88 @@ class ItemDao {
     });
 
     return results;
+  }
+
+  Future<List<Map<String, dynamic>>> getOrdersForItem({
+    String? itemId,
+    required String itemName,
+    String status = 'all',
+    String dateFilter = 'all',
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final db = await _db;
+    String whereClause =
+        "(o.delivery_status IS NULL OR o.delivery_status != 'cancelled')";
+    List<dynamic> args = [];
+
+    if (itemId != null && itemId.isNotEmpty) {
+      whereClause +=
+          " AND ((oi.item_id IS NOT NULL AND oi.item_id != '' AND oi.item_id = ?) OR (LOWER(TRIM(oi.item_name)) = LOWER(TRIM(?))))";
+      args.addAll([itemId, itemName]);
+    } else {
+      whereClause += " AND LOWER(TRIM(oi.item_name)) = LOWER(TRIM(?))";
+      args.add(itemName);
+    }
+
+    if (status != 'all' && status.isNotEmpty) {
+      whereClause += " AND o.delivery_status = ?";
+      args.add(status);
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayStr = DateFormat('yyyy-MM-dd').format(today);
+
+    if (startDate != null && endDate != null) {
+      final startStr = DateFormat('yyyy-MM-dd').format(startDate);
+      final endStr = DateFormat('yyyy-MM-dd').format(endDate);
+      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      args.add(startStr);
+      args.add(endStr);
+    } else if (dateFilter == 'today') {
+      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      args.add(todayStr);
+    } else if (dateFilter == 'yesterday') {
+      final yest = today.subtract(const Duration(days: 1));
+      final yestStr = DateFormat('yyyy-MM-dd').format(yest);
+      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      args.add(yestStr);
+    } else if (dateFilter == 'week') {
+      final start = today.subtract(const Duration(days: 7));
+      final startStr = DateFormat('yyyy-MM-dd').format(start);
+      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      args.add(startStr);
+      args.add(todayStr);
+    } else if (dateFilter == 'month') {
+      final start = DateTime(now.year, now.month, 1);
+      final startStr = DateFormat('yyyy-MM-dd').format(start);
+      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      args.add(startStr);
+      args.add(todayStr);
+    }
+
+    final rows = await db.rawQuery('''
+      SELECT 
+        o.id AS order_id,
+        o.customer_id,
+        o.grand_total,
+        o.delivery_status,
+        o.created_at,
+        c.name AS customer_name,
+        c.phone1 AS customer_phone,
+        c.house_number AS customer_house,
+        oi.quantity,
+        oi.item_unit,
+        oi.unit_price,
+        oi.total_price
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      LEFT JOIN customers c ON o.customer_id = c.id
+      WHERE $whereClause
+      ORDER BY o.created_at DESC
+    ''', args);
+
+    return rows;
   }
 }

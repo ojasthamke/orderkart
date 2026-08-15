@@ -60,8 +60,6 @@ class SmartBusinessPulseWidget extends StatelessWidget {
         ? ((totalRevenue - pendingDues) / totalRevenue).clamp(0.0, 1.0)
         : 1.0;
 
-    final totalOrdersCount = deliveredCount + pendingCount;
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final bgColors = isDark
@@ -333,13 +331,11 @@ class SmartBusinessPulseWidget extends StatelessWidget {
                     children: [
                       Expanded(
                         child: _buildMetricTile(
-                          title: 'Success Rate',
-                          value: totalOrdersCount > 0
-                              ? '${(deliveredCount / totalOrdersCount * 100).toStringAsFixed(1)}%'
-                              : '0.0%',
-                          subtitle: '$deliveredCount Completed',
-                          icon: Icons.check_circle_outline_rounded,
-                          iconColor: const Color(0xFF22C55E),
+                          title: "Today's Orders",
+                          value: '$todayOrdersCount',
+                          subtitle: '$deliveredCount Delivered · $pendingCount Pending',
+                          icon: Icons.shopping_bag_rounded,
+                          iconColor: const Color(0xFF0284C7),
                           cardBg: subCardBg,
                           cardBorder: subCardBorder,
                           titleColor: textMutedColor,

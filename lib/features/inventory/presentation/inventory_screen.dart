@@ -1855,89 +1855,120 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                           return GlassContainer(
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(12),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        displayName,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleSmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 4,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primary
-                                                  .withOpacity(0.08),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                              border: Border.all(
-                                                  color: AppColors.primary
-                                                      .withOpacity(0.25)),
-                                            ),
-                                            child: Text(
-                                              'Total Qty: ${AppFormatters.quantity(qty)} $unit',
-                                              style: const TextStyle(
-                                                color: AppColors.primary,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () =>
+                                  _showOrdersForItemBottomSheet(context, row),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          displayName,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleSmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
                                               ),
-                                            ),
-                                          ),
-                                          if (isWeight && weightKg > 0)
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 4,
+                                          children: [
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                       horizontal: 6, vertical: 2),
                                               decoration: BoxDecoration(
-                                                color: Colors.teal
+                                                color: AppColors.primary
                                                     .withOpacity(0.08),
                                                 borderRadius:
                                                     BorderRadius.circular(6),
                                                 border: Border.all(
-                                                    color: Colors.teal
+                                                    color: AppColors.primary
                                                         .withOpacity(0.25)),
                                               ),
                                               child: Text(
-                                                'Weight: ${UnitConverter.formatWeight(weightKg)}',
-                                                style: TextStyle(
-                                                  color: Colors.teal.shade800,
+                                                'Total Qty: ${AppFormatters.quantity(qty)} $unit',
+                                                style: const TextStyle(
+                                                  color: AppColors.primary,
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
                                             ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.indigo
-                                                  .withOpacity(0.08),
+                                            if (isWeight && weightKg > 0)
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.teal
+                                                      .withOpacity(0.08),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                      color: Colors.teal
+                                                          .withOpacity(0.25)),
+                                                ),
+                                                child: Text(
+                                                  'Weight: ${UnitConverter.formatWeight(weightKg)}',
+                                                  style: TextStyle(
+                                                    color: Colors.teal.shade800,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            InkWell(
                                               borderRadius:
                                                   BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              '$orderCount ${orderCount == 1 ? 'order' : 'orders'}',
-                                              style: const TextStyle(
-                                                color: Colors.indigo,
-                                                fontSize: 10.5,
-                                                fontWeight: FontWeight.w600,
+                                              onTap: () =>
+                                                  _showOrdersForItemBottomSheet(
+                                                      context, row),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.indigo
+                                                      .withOpacity(0.12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                      color: Colors.indigo
+                                                          .withOpacity(0.3)),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      '$orderCount ${orderCount == 1 ? 'order' : 'orders'}',
+                                                      style: const TextStyle(
+                                                        color: Colors.indigo,
+                                                        fontSize: 10.5,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 3),
+                                                    const Icon(
+                                                        Icons
+                                                            .arrow_forward_ios_rounded,
+                                                        size: 9,
+                                                        color: Colors.indigo),
+                                                  ],
+                                                ),
                                               ),
                                             ),
-                                          ),
                                           Text(
                                             'Cost: ${AppFormatters.currency(cost)}',
                                             style: const TextStyle(
@@ -1990,21 +2021,265 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
-      ],
+      ),
+    ],
+  );
+}
+
+  void _showOrdersForItemBottomSheet(
+      BuildContext context, Map<String, dynamic> itemRow) {
+    AppHaptics.selection();
+    final displayName =
+        itemRow['bilingual_name'] ?? itemRow['item_name'] ?? 'Item';
+    final itemId = itemRow['item_id'] as String?;
+    final rawName = itemRow['item_name'] as String? ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Orders for $displayName',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Status: ${_selectedOrderStatus.toUpperCase()} • Filter: ${_selectedOrderDateFilter.toUpperCase()}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const Divider(height: 20),
+
+              Expanded(
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: ItemDao().getOrdersForItem(
+                    itemId: itemId,
+                    itemName: rawName,
+                    status: _selectedOrderStatus,
+                    dateFilter: _selectedOrderDateFilter,
+                    startDate: _selectedOrderDateRange?.start,
+                    endDate: _selectedOrderDateRange?.end,
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final orders = snapshot.data ?? [];
+                    if (orders.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No orders found for this item.',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      itemCount: orders.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final o = orders[index];
+                        final orderId = o['order_id'] as String? ?? '';
+                        final custName = o['customer_name'] as String? ??
+                            'Walk-in / App Customer';
+                        final custHouse =
+                            o['customer_house'] as String? ?? '';
+                        final statusStr =
+                            o['delivery_status'] as String? ?? 'pending';
+                        final createdAt = o['created_at'] != null
+                            ? DateTime.tryParse(o['created_at'].toString())
+                            : null;
+                        final qty =
+                            (o['quantity'] as num?)?.toDouble() ?? 0.0;
+                        final unit = o['item_unit'] as String? ?? '';
+                        final itemTotal =
+                            (o['total_price'] as num?)?.toDouble() ?? 0.0;
+
+                        Color statusBg = Colors.amber.withOpacity(0.15);
+                        Color statusColor = Colors.amber.shade900;
+                        if (statusStr == 'delivered' ||
+                            statusStr == 'completed') {
+                          statusBg = AppColors.success.withOpacity(0.15);
+                          statusColor = AppColors.success;
+                        } else if (statusStr == 'cancelled') {
+                          statusBg = AppColors.error.withOpacity(0.15);
+                          statusColor = AppColors.error;
+                        }
+
+                        return GlassContainer(
+                          padding: const EdgeInsets.all(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              AppHaptics.buttonClick();
+                              Navigator.pop(ctx);
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.orderDetail,
+                                arguments: orderId,
+                              );
+                            },
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.receipt_long_rounded,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              custName,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                    horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: statusBg,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              statusStr.toUpperCase(),
+                                              style: TextStyle(
+                                                color: statusColor,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Item Qty: ${AppFormatters.quantity(qty)} $unit  •  Total: ${AppFormatters.currency(itemTotal)}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          if (custHouse.isNotEmpty) ...[
+                                            Text(
+                                              '🏠 $custHouse',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                            const Text('  •  ',
+                                                style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: AppColors
+                                                        .textSecondary)),
+                                          ],
+                                          if (createdAt != null)
+                                            Text(
+                                              AppFormatters.dateTime(createdAt),
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: AppColors.primary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
-
-
 }
 
 class _ItemTile extends StatelessWidget {

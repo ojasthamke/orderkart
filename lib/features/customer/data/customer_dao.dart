@@ -236,6 +236,7 @@ class CustomerDao {
     final map = customer.toMap();
     await DatabaseHelper.instance
         .ensureLegacyStreetAndAreaExists(db, customer.streetId);
+    await DatabaseHelper.instance.ensureCustomerDeviceColumns(db);
     await db.insert(
         'customers',
         {
@@ -260,6 +261,7 @@ class CustomerDao {
     final db = await _db;
     await DatabaseHelper.instance
         .ensureLegacyStreetAndAreaExists(db, customer.streetId);
+    await DatabaseHelper.instance.ensureCustomerDeviceColumns(db);
     await db.update(
       'customers',
       {

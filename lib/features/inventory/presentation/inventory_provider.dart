@@ -51,6 +51,7 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     _ref.invalidate(stockHistoryProvider);
     _ref.invalidate(spillageHistoryProvider);
     _ref.invalidate(analyticsSummaryProvider);
+    _ref.invalidate(profitLossProvider);
     _ref.invalidate(searchProvider);
     _ref.invalidate(orderedItemStatsProvider);
   }
