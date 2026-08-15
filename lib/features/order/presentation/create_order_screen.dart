@@ -474,6 +474,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                         ),
                         maxLines: 2,
                       ),
+
+                      const SizedBox(height: 16),
+
+                      // Order Questions & Preferences Section
+                      _buildOrderQuestionsSection(),
                     ],
                   ),
                 ),
@@ -1354,6 +1359,252 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         },
         style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(8)),
         child: Text(label, style: const TextStyle(fontSize: 12)),
+      ),
+    );
+  }
+
+  void _showAddSpecificQuestionDialog() {
+    AppHaptics.buttonClick();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Specific Question',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: _AddSpecificQuestionForm(
+          customerId: widget.customerId,
+          onSaved: () {
+            Navigator.pop(context);
+            _loadQuestionsAndPreferences();
+          },
+        ),
+      ),
+    );
+  }
+
+  // ── Order Questions Section ───────────────────────────────────────────────────
+  Widget _buildOrderQuestionsSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.grey.shade300,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.quiz_rounded, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Order Questions',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                  if (_questions.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_selectedAnswers.length}/${_questions.length}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.customerId.isNotEmpty) ...[
+                    InkWell(
+                      onTap: _showAddSpecificQuestionDialog,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.add_rounded, size: 14, color: AppColors.primary),
+                            const SizedBox(width: 2),
+                            Text(
+                              '+ Specific',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.lightBlueAccent : AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  InkWell(
+                    onTap: () async {
+                      AppHaptics.buttonClick();
+                      await Navigator.pushNamed(context, AppRoutes.orderQuestionsConfig);
+                      _loadQuestionsAndPreferences();
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.tune_rounded, size: 14, color: AppColors.primary),
+                          const SizedBox(width: 2),
+                          Text(
+                            'Manage',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.lightBlueAccent : AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_questions.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.04) : Colors.amber.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.help_outline_rounded, color: Colors.amber, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'No order questions configured yet. Tap "Manage" to create reusable questions (e.g., Ripeness, Bag Type).',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () async {
+                      AppHaptics.buttonClick();
+                      await Navigator.pushNamed(context, AppRoutes.orderQuestionsConfig);
+                      _loadQuestionsAndPreferences();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Add Qs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            ..._questions.map((q) {
+              final selected = _selectedAnswers[q.id];
+              final isSpecific = q.customerId != null && q.customerId!.isNotEmpty;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            q.question,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        if (isSpecific)
+                          Container(
+                            margin: const EdgeInsets.only(left: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Customer Specific',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: q.options.map((opt) {
+                        final isOptSelected = selected == opt;
+                        return ChoiceChip(
+                          label: Text(
+                            opt,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isOptSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isOptSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                            ),
+                          ),
+                          selected: isOptSelected,
+                          selectedColor: AppColors.primary,
+                          onSelected: (val) {
+                            AppHaptics.selection();
+                            setState(() {
+                              if (val) {
+                                _selectedAnswers[q.id] = opt;
+                              } else {
+                                _selectedAnswers.remove(q.id);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
       ),
     );
   }

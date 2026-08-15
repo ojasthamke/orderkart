@@ -320,6 +320,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.question_answer_rounded,
+                      color: AppColors.primary),
+                  title: const Text('Order Notes Questions & Preferences'),
+                  subtitle: const Text(
+                      'Configure reusable order questions & custom option chips'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.pushNamed(
+                      context, AppRoutes.orderQuestionsConfig),
+                ),
               ]),
 
               const SizedBox(height: 20),
