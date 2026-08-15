@@ -54,6 +54,7 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
     _ref.invalidate(profitLossProvider);
     _ref.invalidate(searchProvider);
     _ref.invalidate(orderedItemStatsProvider);
+    _ref.invalidate(todaysDetailedReportProvider);
   }
 
   void filterByCategory(String category) {

@@ -14,6 +14,8 @@ import '../../../../core/widgets/custom_search_bar.dart';
 import '../../../inventory/domain/item.dart';
 import '../../../inventory/presentation/inventory_provider.dart';
 import '../../../settings/presentation/settings_provider.dart';
+import '../../../search/presentation/search_provider.dart';
+import '../order_provider.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../create_order_screen.dart';
 
@@ -824,14 +826,24 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                                         widget.customerId,
                                                         selectedItem.id,
                                                         finalUnitPriceToUse);
+                                                await ref.read(inventoryProvider.notifier).load(silent: true);
                                                 ref.invalidate(inventoryProvider);
+                                                ref.invalidate(searchProvider);
+                                                ref.invalidate(customerSavingsProvider(widget.customerId));
                                               } else if (choice == 2) {
                                                 // General
                                                 await DatabaseHelper.instance
                                                     .updateItemSellingPrice(
                                                         selectedItem.id,
                                                         finalUnitPriceToUse);
+                                                await ref.read(inventoryProvider.notifier).load(silent: true);
                                                 ref.invalidate(inventoryProvider);
+                                                ref.invalidate(searchProvider);
+                                                ref.invalidate(stockSummaryProvider);
+                                                ref.invalidate(orderedItemStatsProvider);
+                                                ref.invalidate(analyticsSummaryProvider);
+                                                ref.invalidate(profitLossProvider);
+                                                ref.invalidate(todaysDetailedReportProvider);
                                               }
                                             }
                                           }

@@ -663,15 +663,41 @@ class DatabaseHelper {
 
   Future<void> updateItemSellingPrice(String itemId, double newPrice) async {
     final db = await database;
+    final now = DateTime.now().toIso8601String();
     await db.update(
       'items',
       {
         'selling_price': newPrice,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': now,
       },
       where: 'id = ?',
       whereArgs: [itemId],
     );
+
+    final dateKey = now.substring(0, 10);
+    final itemRows = await db.query('items',
+        columns: ['cost_price', 'market_price'],
+        where: 'id = ?',
+        whereArgs: [itemId]);
+    if (itemRows.isNotEmpty) {
+      final costPrice =
+          (itemRows.first['cost_price'] as num?)?.toDouble() ?? 0.0;
+      final marketPrice =
+          (itemRows.first['market_price'] as num?)?.toDouble() ?? 0.0;
+
+      await db.rawInsert('''
+        INSERT OR REPLACE INTO item_price_history (id, item_id, date, selling_price, cost_price, market_price, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      ''', [
+        '${itemId}_$dateKey',
+        itemId,
+        dateKey,
+        newPrice,
+        costPrice,
+        marketPrice,
+        now,
+      ]);
+    }
   }
 
   Future<void> insertCallLog({
