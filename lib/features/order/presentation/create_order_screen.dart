@@ -133,7 +133,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       if (mounted) {
         setState(() {
           _questions = qList;
-          _questions = qList;
           for (final q in qList) {
             if (orderAnswers.containsKey(q.id)) {
               _selectedAnswers[q.id] = orderAnswers[q.id]!;

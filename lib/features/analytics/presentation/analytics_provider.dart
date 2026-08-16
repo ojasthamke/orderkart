@@ -81,3 +81,9 @@ final areaPerformanceAnalyticsProvider =
   final dao = ref.watch(analyticsDaoProvider);
   return dao.getAreaPerformance();
 });
+
+final todayVsYesterdayProfitProvider =
+    FutureProvider<Map<String, dynamic>>((ref) {
+  final dao = ref.watch(analyticsDaoProvider);
+  return dao.getTodayVsYesterdayProfitSummary();
+});

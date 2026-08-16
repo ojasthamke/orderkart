@@ -252,11 +252,14 @@ class AnalyticsDao {
         }
     };
 
-    final List<Map<String, dynamic>> result = [];
     final int totalDays = end.difference(start).inDays + 1;
     const List<String> dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    for (int i = totalDays - 1; i >= 0; i--) {
+    // Build chronological list first to calculate running accumulated profit
+    final List<Map<String, dynamic>> chronologicalList = [];
+    double runningAccumulatedProfit = 0.0;
+
+    for (int i = 0; i < totalDays; i++) {
       final curDate = start.add(Duration(days: i));
       final dateKey =
           "${curDate.year}-${curDate.month.toString().padLeft(2, '0')}-${curDate.day.toString().padLeft(2, '0')}";
@@ -275,14 +278,16 @@ class AnalyticsDao {
       final double expenses = expMap[dateKey] ?? 0.0;
 
       final double grossProfit = revenue - cogs;
-      final double netProfit = grossProfit + deliveryIncome - discounts - expenses;
+      final double netProfit = grossProfit - expenses;
       final double marginPct =
           revenue > 0 ? (netProfit / revenue) * 100.0 : 0.0;
 
       final double cashCollected = payMap[dateKey]?['cash'] ?? 0.0;
       final double onlineCollected = payMap[dateKey]?['online'] ?? 0.0;
 
-      result.add({
+      runningAccumulatedProfit += netProfit;
+
+      chronologicalList.add({
         'date': dateKey,
         'day_name': dayName,
         'display_date': "${curDate.day} ${_monthName(curDate.month)} ($dayName)",
@@ -294,6 +299,7 @@ class AnalyticsDao {
         'expenses': expenses,
         'gross_profit': grossProfit,
         'net_profit': netProfit,
+        'accumulated_profit': runningAccumulatedProfit,
         'profit_margin_pct': marginPct,
         'is_profitable': netProfit >= 0,
         'cash_collected': cashCollected,
@@ -302,7 +308,97 @@ class AnalyticsDao {
       });
     }
 
-    return result;
+    // Return in reverse chronological order (newest first for UI listing)
+    return chronologicalList.reversed.toList();
+  }
+
+  /// 7B. Today vs Yesterday Profit & Executive Comparison Summary
+  Future<Map<String, dynamic>> getTodayVsYesterdayProfitSummary() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final todayStr =
+        "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+    final yesterdayStr =
+        "${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}";
+
+    final rows = await getDateWiseProfitBreakdown(
+      startDate: yesterdayStr,
+      endDate: todayStr,
+      days: 2,
+    );
+
+    final Map<String, dynamic> todayData = rows.firstWhere(
+      (r) => r['date'] == todayStr,
+      orElse: () => {
+        'date': todayStr,
+        'day_name': 'Today',
+        'display_date': 'Today',
+        'orders_count': 0,
+        'revenue': 0.0,
+        'cogs': 0.0,
+        'delivery_income': 0.0,
+        'discounts': 0.0,
+        'expenses': 0.0,
+        'gross_profit': 0.0,
+        'net_profit': 0.0,
+        'accumulated_profit': 0.0,
+        'profit_margin_pct': 0.0,
+        'is_profitable': true,
+        'cash_collected': 0.0,
+        'online_collected': 0.0,
+        'pending_debt': 0.0,
+      },
+    );
+
+    final Map<String, dynamic> yesterdayData = rows.firstWhere(
+      (r) => r['date'] == yesterdayStr,
+      orElse: () => {
+        'date': yesterdayStr,
+        'day_name': 'Yesterday',
+        'display_date': 'Yesterday',
+        'orders_count': 0,
+        'revenue': 0.0,
+        'cogs': 0.0,
+        'delivery_income': 0.0,
+        'discounts': 0.0,
+        'expenses': 0.0,
+        'gross_profit': 0.0,
+        'net_profit': 0.0,
+        'accumulated_profit': 0.0,
+        'profit_margin_pct': 0.0,
+        'is_profitable': true,
+        'cash_collected': 0.0,
+        'online_collected': 0.0,
+        'pending_debt': 0.0,
+      },
+    );
+
+    final double todayProfit = (todayData['net_profit'] as num?)?.toDouble() ?? 0.0;
+    final double yesterdayProfit = (yesterdayData['net_profit'] as num?)?.toDouble() ?? 0.0;
+    final double profitDiff = todayProfit - yesterdayProfit;
+    final double profitGrowthPct = yesterdayProfit != 0
+        ? ((profitDiff / yesterdayProfit.abs()) * 100.0)
+        : (todayProfit > 0 ? 100.0 : (todayProfit < 0 ? -100.0 : 0.0));
+
+    final double todayRevenue = (todayData['revenue'] as num?)?.toDouble() ?? 0.0;
+    final double yesterdayRevenue = (yesterdayData['revenue'] as num?)?.toDouble() ?? 0.0;
+    final double revenueDiff = todayRevenue - yesterdayRevenue;
+
+    final int todayOrders = (todayData['orders_count'] as num?)?.toInt() ?? 0;
+    final int yesterdayOrders = (yesterdayData['orders_count'] as num?)?.toInt() ?? 0;
+    final int ordersDiff = todayOrders - yesterdayOrders;
+
+    return {
+      'today': todayData,
+      'yesterday': yesterdayData,
+      'profit_diff': profitDiff,
+      'profit_growth_pct': profitGrowthPct,
+      'revenue_diff': revenueDiff,
+      'orders_diff': ordersDiff,
+      'is_growth': profitDiff >= 0,
+    };
   }
 
   /// 8. Item Profitability & Margin Ranking Matrix

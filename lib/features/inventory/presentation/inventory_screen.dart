@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
@@ -27,6 +29,7 @@ import '../data/item_dao.dart';
 import '../../expense/domain/expense.dart';
 import '../../expense/data/expense_dao.dart';
 import '../../order/presentation/order_provider.dart';
+import '../../analytics/presentation/analytics_provider.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final bool showBack;
@@ -42,6 +45,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   String _category = 'All';
   String _selectedOrderStatus = 'all';
   String _selectedOrderDateFilter = 'all';
+  String _orderedStatsSubView = 'analytics'; // 'analytics' vs 'mandi'
+  final Set<String> _marketCheckedItems = {};
   final _categories = ['All', ...AppConstants.itemCategories];
   final DateTime _selectedHistoryDate = DateTime.now();
   DateTimeRange? _priceHistoryRange;
@@ -1518,6 +1523,104 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         ),
         const SizedBox(height: 8),
 
+        // Subview Switcher: Analytics Breakdown vs Market Buying Checklist
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    AppHaptics.selection();
+                    setState(() => _orderedStatsSubView = 'analytics');
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _orderedStatsSubView == 'analytics'
+                          ? AppColors.primary
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white.withOpacity(0.06)
+                              : Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.bar_chart_rounded,
+                          size: 15,
+                          color: _orderedStatsSubView == 'analytics'
+                              ? Colors.white
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Analytics Breakdown',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _orderedStatsSubView == 'analytics'
+                                ? Colors.white
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    AppHaptics.selection();
+                    setState(() => _orderedStatsSubView = 'mandi');
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _orderedStatsSubView == 'mandi'
+                          ? Colors.orange.shade700
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white.withOpacity(0.06)
+                              : Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.shopping_cart_checkout_rounded,
+                          size: 15,
+                          color: _orderedStatsSubView == 'mandi'
+                              ? Colors.white
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '🛒 Market Buying List',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _orderedStatsSubView == 'mandi'
+                                ? Colors.white
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
 
         Expanded(
           child: statsAsync.when(
@@ -1532,6 +1635,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   subtitle:
                       'No items found for status "$_selectedOrderStatus" and date filter "$_selectedOrderDateFilter".',
                 );
+              }
+
+              if (_orderedStatsSubView == 'mandi') {
+                return _buildMarketProcurementView(
+                    context, stats, isWorker, paramKey);
               }
 
               double overallCost = 0;
@@ -2033,8 +2141,611 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         ),
       ),
     ],
-  );
-}
+    );
+  }
+
+  Widget _buildMarketProcurementView(
+    BuildContext context,
+    List<Map<String, dynamic>> stats,
+    bool isWorker,
+    String paramKey,
+  ) {
+    final totalItems = stats.length;
+    final boughtCount = stats
+        .where((s) =>
+            _marketCheckedItems.contains(s['item_name']?.toString() ?? ''))
+        .length;
+    final progress = totalItems > 0 ? (boughtCount / totalItems) : 0.0;
+
+    double totalProcurementBudget = 0;
+    double totalRequiredKg = 0;
+    double totalRequiredPcs = 0;
+
+    for (final row in stats) {
+      final toBuy = (row['to_buy_quantity'] as num?)?.toDouble() ?? 0.0;
+      final cost = (row['cost_price'] as num?)?.toDouble() ?? 0.0;
+      totalProcurementBudget += (toBuy * cost);
+
+      final isWeight = row['is_weight'] == true;
+      if (isWeight) {
+        totalRequiredKg += UnitConverter.toWeightInKg(
+            toBuy, row['item_unit']?.toString() ?? 'kg');
+      } else {
+        totalRequiredPcs += toBuy;
+      }
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(orderedItemStatsProvider(paramKey).future),
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        children: [
+          // ── Market Procurement Header Summary Card ──
+          GlassContainer(
+            padding: const EdgeInsets.all(16),
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.orange.withOpacity(isDark ? 0.18 : 0.08),
+            borderColor: Colors.orange.withOpacity(0.35),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.storefront_rounded,
+                            size: 18, color: Colors.orange),
+                        SizedBox(width: 8),
+                        Text(
+                          'MANDI / MARKET BUYING CHECKLIST',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$boughtCount / $totalItems Bought',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor: Colors.orange.withOpacity(0.15),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Colors.green),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Est. Procurement Budget',
+                          style: TextStyle(
+                              fontSize: 10.5, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          AppFormatters.currency(totalProcurementBudget),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Total Deficit to Buy',
+                          style: TextStyle(
+                              fontSize: 10.5, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          totalRequiredKg > 0
+                              ? '${UnitConverter.formatWeight(totalRequiredKg)}${totalRequiredPcs > 0 ? " + ${totalRequiredPcs.toInt()} pcs" : ""}'
+                              : '${totalRequiredPcs.toInt()} pcs',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () {
+                        AppHaptics.selection();
+                        setState(() {
+                          if (_marketCheckedItems.length == stats.length) {
+                            _marketCheckedItems.clear();
+                          } else {
+                            _marketCheckedItems.addAll(
+                              stats.map(
+                                  (s) => s['item_name']?.toString() ?? ''),
+                            );
+                          }
+                        });
+                      },
+                      icon: Icon(
+                        _marketCheckedItems.length == stats.length
+                            ? Icons.check_box_rounded
+                            : Icons.check_box_outline_blank_rounded,
+                        size: 16,
+                        color: Colors.orange,
+                      ),
+                      label: Text(
+                        _marketCheckedItems.length == stats.length
+                            ? 'Clear Checks'
+                            : 'Select All',
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () => _shareMarketBuyingList(stats),
+                      icon: const Icon(Icons.share_rounded, size: 14),
+                      label: const Text(
+                        'Share WhatsApp',
+                        style: TextStyle(
+                            fontSize: 11.5, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'ITEMS TO PROCURE (TAP TO EDIT COST)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  '$totalItems items',
+                  style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          // ── List of Procurement Items with Checkboxes and Inline Cost Pricing ──
+          ...stats.map((row) {
+            final itemName = row['item_name']?.toString() ?? 'Item';
+            final displayName = row['bilingual_name'] ?? itemName;
+            final itemId = row['item_id']?.toString() ?? '';
+            final unit = row['item_unit']?.toString() ?? 'kg';
+            final totalOrdered =
+                (row['total_quantity'] as num?)?.toDouble() ?? 0.0;
+            final stock = (row['stock'] as num?)?.toDouble() ?? 0.0;
+            final toBuy =
+                (row['to_buy_quantity'] as num?)?.toDouble() ?? 0.0;
+            final costPrice =
+                (row['cost_price'] as num?)?.toDouble() ?? 0.0;
+            final isChecked = _marketCheckedItems.contains(itemName);
+
+            return GlassContainer(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              borderRadius: BorderRadius.circular(14),
+              color: isChecked
+                  ? (isDark
+                      ? Colors.green.withOpacity(0.08)
+                      : Colors.green.shade50.withOpacity(0.5))
+                  : null,
+              borderColor: isChecked
+                  ? Colors.green.withOpacity(0.35)
+                  : (toBuy > 0 ? Colors.orange.withOpacity(0.3) : null),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Checkbox
+                  InkWell(
+                    onTap: () {
+                      AppHaptics.selection();
+                      setState(() {
+                        if (isChecked) {
+                          _marketCheckedItems.remove(itemName);
+                        } else {
+                          _marketCheckedItems.add(itemName);
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: Icon(
+                        isChecked
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        color: isChecked ? AppColors.success : Colors.grey,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Name and quantities
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            decoration:
+                                isChecked ? TextDecoration.lineThrough : null,
+                            color: isChecked ? AppColors.textSecondary : null,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            // Total Demand Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Demand: ${AppFormatters.quantity(totalOrdered)} $unit',
+                                style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary),
+                              ),
+                            ),
+                            // In-store Stock Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Stock: ${AppFormatters.quantity(stock)} $unit',
+                                style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondary),
+                              ),
+                            ),
+                            // Net to Buy Badge
+                            if (toBuy > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                      color: Colors.orange.withOpacity(0.4)),
+                                ),
+                                child: Text(
+                                  '🛒 To Buy: ${AppFormatters.quantity(toBuy)} $unit',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.orange),
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  '✓ Stock Sufficient',
+                                  style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Cost Price interactive editor button
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      InkWell(
+                        onTap: () => _showQuickCostPriceDialog(
+                          context,
+                          itemId,
+                          itemName,
+                          costPrice,
+                          unit,
+                          paramKey,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color: AppColors.primary.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                costPrice > 0
+                                    ? '₹${costPrice.toStringAsFixed(1)}/$unit'
+                                    : 'Set Cost',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 3),
+                              const Icon(Icons.edit_rounded,
+                                  size: 11, color: AppColors.primary),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (toBuy > 0 && costPrice > 0) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          'Est: ${AppFormatters.currency(toBuy * costPrice)}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showQuickCostPriceDialog(
+    BuildContext context,
+    String itemId,
+    String itemName,
+    double currentCostPrice,
+    String unit,
+    String paramKey,
+  ) async {
+    final con = TextEditingController(
+      text: currentCostPrice > 0 ? currentCostPrice.toStringAsFixed(2) : '',
+    );
+
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.edit_note_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Set Market Cost: $itemName',
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter actual wholesale rate paid per $unit:',
+              style: const TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: con,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Cost Price (₹ per $unit)',
+                prefixText: '₹ ',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              final val = double.tryParse(con.text.trim());
+              if (val != null && val >= 0) {
+                if (itemId.isNotEmpty) {
+                  await ItemDao().quickUpdateItemCostPrice(itemId, val);
+                }
+                Navigator.pop(ctx, true);
+              } else {
+                SnackbarHelper.showError(ctx, 'Please enter a valid price');
+              }
+            },
+            child: const Text('Save Rate'),
+          ),
+        ],
+      ),
+    );
+
+    if (updated == true) {
+      AppHaptics.primarySave();
+      ref.invalidate(orderedItemStatsProvider);
+      ref.invalidate(inventoryProvider);
+      ref.invalidate(profitLossProvider);
+      ref.invalidate(dateWiseProfitProvider);
+      ref.invalidate(todayVsYesterdayProfitProvider);
+      if (mounted) {
+        SnackbarHelper.showSuccess(
+            context, 'Updated purchase cost for $itemName');
+      }
+    }
+  }
+
+  Future<void> _shareMarketBuyingList(
+      List<Map<String, dynamic>> stats) async {
+    AppHaptics.buttonClick();
+    if (stats.isEmpty) return;
+
+    final now = DateTime.now();
+    final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(now);
+
+    final sb = StringBuffer();
+    sb.writeln('🛒 *ORDERKART MARKET BUYING LIST (MANDI PROCUREMENT)*');
+    sb.writeln('📅 Date: $dateStr');
+    sb.writeln(
+        '📋 Filter: ${_selectedOrderStatus.toUpperCase()} Orders (${_selectedOrderDateFilter.toUpperCase()})');
+    sb.writeln('═══════════════════════════════════');
+
+    double totalEstCost = 0.0;
+    int index = 1;
+
+    for (final row in stats) {
+      final name = row['bilingual_name'] ?? row['item_name'] ?? 'Item';
+      final unit = row['item_unit'] ?? '';
+      final totalQty = (row['total_quantity'] as num?)?.toDouble() ?? 0.0;
+      final stock = (row['stock'] as num?)?.toDouble() ?? 0.0;
+      final toBuyQty = (row['to_buy_quantity'] as num?)?.toDouble() ??
+          (totalQty - stock).clamp(0, double.infinity);
+      final costPrice = (row['cost_price'] as num?)?.toDouble() ?? 0.0;
+      final estItemCost = toBuyQty * costPrice;
+      totalEstCost += estItemCost;
+
+      final isChecked =
+          _marketCheckedItems.contains(row['item_name']?.toString() ?? '');
+      final checkMark = isChecked ? '✅ [DONE]' : '⬜ [TO BUY]';
+
+      sb.writeln('$checkMark $index. *$name*');
+      sb.writeln(
+          '   • *Required To Buy: ${AppFormatters.quantity(toBuyQty)} $unit*');
+      sb.writeln(
+          '   • Total Demand: ${AppFormatters.quantity(totalQty)} $unit | Store Stock: ${AppFormatters.quantity(stock)} $unit');
+      if (costPrice > 0) {
+        sb.writeln(
+            '   • Rate: ₹${costPrice.toStringAsFixed(2)}/$unit | Est Cost: ₹${estItemCost.toStringAsFixed(2)}');
+      }
+      sb.writeln('-----------------------------------');
+      index++;
+    }
+
+    sb.writeln('═══════════════════════════════════');
+    sb.writeln('📦 Total Distinct Items: ${stats.length}');
+    sb.writeln('💰 Total Estimated Budget: ₹${totalEstCost.toStringAsFixed(2)}');
+    sb.writeln('⚡ Generated by OrderKart FreshFlow POS');
+
+    final text = sb.toString();
+    try {
+      await Share.share(text, subject: 'OrderKart Mandi Procurement List');
+    } catch (_) {
+      await Clipboard.setData(ClipboardData(text: text));
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Copied buying list to clipboard!');
+      }
+    }
+  }
 
   void _showOrdersForItemBottomSheet(
       BuildContext context, Map<String, dynamic> itemRow) {

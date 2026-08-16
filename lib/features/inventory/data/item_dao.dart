@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -425,7 +426,8 @@ class ItemDao {
         i.cost_price AS inv_cost_price,
         i.selling_price AS inv_selling_price,
         i.weight_per_piece AS inv_weight_per_piece,
-        i.category AS inv_category
+        i.category AS inv_category,
+        i.stock AS inv_stock
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN items i ON (
@@ -444,6 +446,7 @@ class ItemDao {
       final invName = row['inv_name']?.toString().trim();
       final invId = row['inv_id']?.toString().trim();
       final rawItemId = row['item_id']?.toString().trim();
+      final resolvedItemId = (invId != null && invId.isNotEmpty) ? invId : (rawItemId ?? '');
 
       // Canonical identity key: prioritize inventory ID, fallback to normalized name
       final String groupKey;
@@ -464,6 +467,7 @@ class ItemDao {
       final double totalPrice = (row['total_price'] as num?)?.toDouble() ??
           (qty * ((row['unit_price'] as num?)?.toDouble() ?? 0.0));
       final double invCostPrice = (row['inv_cost_price'] as num?)?.toDouble() ?? 0.0;
+      final double invStock = (row['inv_stock'] as num?)?.toDouble() ?? 0.0;
       final String orderId = row['order_id']?.toString() ?? '';
 
       // Convert quantity to canonical inventory unit (e.g. gram -> kg)
@@ -479,10 +483,12 @@ class ItemDao {
 
       if (!grouped.containsKey(groupKey)) {
         grouped[groupKey] = {
+          'item_id': resolvedItemId,
           'item_name': canonicalName,
           'bilingual_name': MarathiItemHelper.formatBilingual(canonicalName),
           'item_unit': canonicalUnit,
           'cost_price': invCostPrice,
+          'stock': invStock,
           'total_quantity': convertedQty,
           'total_cost_price': costForThisItem,
           'total_selling_price': totalPrice,
@@ -508,13 +514,17 @@ class ItemDao {
       final orderIds = item['order_ids'] as Set<String>;
       final totalQty = item['total_quantity'] as double;
       final totalSelling = item['total_selling_price'] as double;
+      final stock = (item['stock'] as num?)?.toDouble() ?? 0.0;
+      final toBuyQty = math.max(0.0, totalQty - stock);
 
       return {
-        'item_id': item['item_id'],
+        'item_id': item['item_id'] ?? '',
         'item_name': item['item_name'],
         'bilingual_name': item['bilingual_name'],
         'item_unit': item['item_unit'],
         'cost_price': item['cost_price'],
+        'stock': stock,
+        'to_buy_quantity': toBuyQty,
         'total_quantity': totalQty,
         'total_cost_price': item['total_cost_price'],
         'total_selling_price': totalSelling,
@@ -535,6 +545,49 @@ class ItemDao {
     });
 
     return results;
+  }
+
+  /// Quickly update cost price of an item from Market procurement view and log price history snapshot
+  Future<void> quickUpdateItemCostPrice(String itemId, double newCostPrice) async {
+    if (itemId.isEmpty) return;
+    final db = await _db;
+    final now = DateTime.now().toIso8601String();
+    final dateKey = now.substring(0, 10);
+
+    await db.transaction((txn) async {
+      await txn.update(
+        'items',
+        {
+          'cost_price': newCostPrice,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [itemId],
+      );
+
+      final itemRows =
+          await txn.query('items', where: 'id = ?', whereArgs: [itemId]);
+      if (itemRows.isNotEmpty) {
+        final itemMap = itemRows.first;
+        final sellingPrice =
+            (itemMap['selling_price'] as num?)?.toDouble() ?? 0.0;
+        final marketPrice =
+            (itemMap['market_price'] as num?)?.toDouble() ?? 0.0;
+
+        await txn.rawInsert('''
+          INSERT OR REPLACE INTO item_price_history (id, item_id, date, selling_price, cost_price, market_price, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', [
+          '${itemId}_$dateKey',
+          itemId,
+          dateKey,
+          sellingPrice,
+          newCostPrice,
+          marketPrice,
+          now,
+        ]);
+      }
+    });
   }
 
   Future<List<Map<String, dynamic>>> getOrdersForItem({

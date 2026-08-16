@@ -189,6 +189,228 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Live Daily & Accumulated Profit Bar ───────────────────────────
+            Consumer(
+              builder: (context, ref, _) {
+                final todayVsYestAsync =
+                    ref.watch(todayVsYesterdayProfitProvider);
+                return todayVsYestAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (data) {
+                    final today = data['today'] as Map<String, dynamic>;
+                    final yesterday =
+                        data['yesterday'] as Map<String, dynamic>;
+                    final double todayProfit =
+                        (today['net_profit'] as num?)?.toDouble() ?? 0.0;
+                    final double yestProfit =
+                        (yesterday['net_profit'] as num?)?.toDouble() ?? 0.0;
+                    final double profitDiff =
+                        (data['profit_diff'] as num?)?.toDouble() ?? 0.0;
+                    final double profitGrowthPct =
+                        (data['profit_growth_pct'] as num?)?.toDouble() ??
+                            0.0;
+                    final bool isGrowth =
+                        data['is_growth'] as bool? ?? true;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: GlassContainer(
+                        padding: const EdgeInsets.all(16),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary
+                                            .withOpacity(0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                          Icons.show_chart_rounded,
+                                          size: 16,
+                                          color: AppColors.primary),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'PROFIT PERFORMANCE',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.8,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                InkWell(
+                                  onTap: () => Navigator.of(context)
+                                      .pushNamed(AppRoutes.profitLoss),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withOpacity(0.12),
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Full P&L Report',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primary),
+                                        ),
+                                        SizedBox(width: 4),
+                                        Icon(Icons.arrow_forward_ios_rounded,
+                                            size: 10,
+                                            color: AppColors.primary),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          AppColors.primary.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                          color: AppColors.primary
+                                              .withOpacity(0.2)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Today\'s Net Profit',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors
+                                                    .textSecondary)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          AppFormatters.currency(todayProfit),
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w900,
+                                            color: todayProfit >= 0
+                                                ? AppColors.success
+                                                : AppColors.error,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${today['orders_count']} orders (${((today['profit_margin_pct'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}% margin)',
+                                          style: const TextStyle(
+                                              fontSize: 9.5,
+                                              color: AppColors
+                                                  .textSecondary),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                          color: Colors.grey
+                                              .withOpacity(0.2)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Yesterday\'s Net Profit',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors
+                                                    .textSecondary)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          AppFormatters.currency(yestProfit),
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w900,
+                                            color: yestProfit >= 0
+                                                ? AppColors.success
+                                                : AppColors.error,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${yesterday['orders_count']} orders (${((yesterday['profit_margin_pct'] as num?)?.toDouble() ?? 0).toStringAsFixed(1)}% margin)',
+                                          style: const TextStyle(
+                                              fontSize: 9.5,
+                                              color: AppColors
+                                                  .textSecondary),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Daily Difference: ${profitDiff >= 0 ? '+' : ''}${AppFormatters.currency(profitDiff)}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: isGrowth
+                                        ? AppColors.success
+                                        : AppColors.error,
+                                  ),
+                                ),
+                                Text(
+                                  '${isGrowth ? '▲ +' : '▼ '}${profitGrowthPct.toStringAsFixed(1)}% vs Yesterday',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: isGrowth
+                                        ? AppColors.success
+                                        : AppColors.error,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+
             // KPI Grid
             GridView.count(
               shrinkWrap: true,

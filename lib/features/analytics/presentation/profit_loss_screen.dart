@@ -28,7 +28,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -63,7 +63,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Profit & Loss & Daily Stats',
+      title: 'Profit & Loss & Analytics',
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh_rounded),
@@ -72,12 +72,13 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
             AppHaptics.buttonClick();
             ref.invalidate(profitLossProvider);
             ref.invalidate(dateWiseProfitProvider);
+            ref.invalidate(todayVsYesterdayProfitProvider);
           },
         ),
       ],
       body: Column(
         children: [
-          // Segmented Tab Bar
+          // Segmented Tab Bar (3 Tabs: P&L Statement, Date-Wise & Accumulated, Today vs Yesterday)
           Container(
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             decoration: BoxDecoration(
@@ -99,15 +100,19 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                       ? Colors.white70
                       : AppColors.textSecondary,
               labelStyle:
-                  const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
               tabs: const [
                 Tab(
-                  icon: Icon(Icons.analytics_rounded, size: 18),
+                  icon: Icon(Icons.analytics_rounded, size: 16),
                   text: 'P&L Statement',
                 ),
                 Tab(
-                  icon: Icon(Icons.calendar_month_rounded, size: 18),
-                  text: 'Date-Wise Profit',
+                  icon: Icon(Icons.trending_up_rounded, size: 16),
+                  text: 'Accumulated Profit',
+                ),
+                Tab(
+                  icon: Icon(Icons.compare_arrows_rounded, size: 16),
+                  text: 'Today vs Yesterday',
                 ),
               ],
             ),
@@ -118,6 +123,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
               children: [
                 _buildOverallStatementTab(),
                 _buildDateWiseProfitTab(),
+                _buildTodayVsYesterdayTab(),
               ],
             ),
           ),
@@ -127,10 +133,11 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // TAB 1: OVERALL P&L STATEMENT
+  // TAB 1: OVERALL P&L STATEMENT & SUBSECTIONS
   // ════════════════════════════════════════════════════════════════════════════
   Widget _buildOverallStatementTab() {
     final plAsync = ref.watch(profitLossProvider);
+    final todayVsYestAsync = ref.watch(todayVsYesterdayProfitProvider);
 
     return plAsync.when(
       loading: () => const LoadingShimmer(count: 3),
@@ -156,7 +163,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Big Net Profit / Loss Header Card
+              // ── SUBSECTION 1: Executive P&L Scorecard ──────────────────────
               Builder(builder: (ctx) {
                 final isDark = Theme.of(ctx).brightness == Brightness.dark;
                 final bannerColor = isProfitable
@@ -179,20 +186,10 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                 final secTextColor = isProfitable
                     ? (isDark ? Colors.white70 : Colors.green.shade700)
                     : (isDark ? Colors.white70 : Colors.red.shade700);
-                final badgeBgColor = isProfitable
-                    ? (isDark
-                        ? Colors.white.withOpacity(0.15)
-                        : Colors.green.shade200.withOpacity(0.60))
-                    : (isDark
-                        ? Colors.white.withOpacity(0.15)
-                        : Colors.red.shade200.withOpacity(0.60));
-                final badgeTextColor = isProfitable
-                    ? (isDark ? Colors.white : Colors.green.shade900)
-                    : (isDark ? Colors.white : Colors.red.shade900);
 
                 return GlassContainer(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(22),
                   borderRadius: BorderRadius.circular(24),
                   color: bannerColor,
                   borderColor: bannerBorder,
@@ -206,7 +203,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                                 ? Icons.trending_up_rounded
                                 : Icons.trending_down_rounded,
                             color: textColor,
-                            size: 28,
+                            size: 26,
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -220,30 +217,30 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Text(
                         AppFormatters.currency(netProfit.abs()),
                         style: TextStyle(
                           color: textColor,
-                          fontSize: 36,
+                          fontSize: 34,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.5,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 6),
+                            horizontal: 12, vertical: 5),
                         decoration: BoxDecoration(
-                          color: badgeBgColor,
+                          color: isDark ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.85),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           '${isProfitable ? '+' : ''}${marginPct.toStringAsFixed(1)}% Net Margin',
                           style: TextStyle(
-                            color: badgeTextColor,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            color: textColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -252,76 +249,163 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                 );
               }),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              // Interactive Financial Profit Radar Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: Theme.of(context).dividerColor.withOpacity(0.1)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // ── SUBSECTION 2: Today vs Yesterday Snapshot Card ────────────
+              todayVsYestAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (comparison) {
+                  final today = comparison['today'] as Map<String, dynamic>;
+                  final yesterday = comparison['yesterday'] as Map<String, dynamic>;
+                  final double profitDiff = (comparison['profit_diff'] as num?)?.toDouble() ?? 0.0;
+                  final double profitGrowthPct = (comparison['profit_growth_pct'] as num?)?.toDouble() ?? 0.0;
+                  final bool isGrowth = comparison['is_growth'] as bool? ?? true;
+
+                  final double todayProfit = (today['net_profit'] as num?)?.toDouble() ?? 0.0;
+                  final double yestProfit = (yesterday['net_profit'] as num?)?.toDouble() ?? 0.0;
+
+                  return GlassContainer(
+                    padding: const EdgeInsets.all(16),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Financial Health Radar',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 14),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.flash_on_rounded, size: 16, color: Colors.amber),
+                                SizedBox(width: 6),
+                                Text(
+                                  'TODAY VS YESTERDAY PROFIT',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.8,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: (isGrowth ? AppColors.success : AppColors.error).withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '${isGrowth ? '+' : ''}${profitGrowthPct.toStringAsFixed(1)}% Growth',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: isGrowth ? AppColors.success : AppColors.error,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          isProfitable ? 'Healthy Business' : 'High Cost Pressure',
-                          style: TextStyle(
-                            color: isProfitable ? AppColors.success : AppColors.error,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            // Today column
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Today\'s Profit', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      AppFormatters.currency(todayProfit),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900,
+                                        color: todayProfit >= 0 ? AppColors.success : AppColors.error,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${today['orders_count']} orders • ${AppFormatters.currency((today['revenue'] as num?)?.toDouble() ?? 0)} sales',
+                                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Yesterday column
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.grey.withOpacity(0.25)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Yesterday\'s Profit', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      AppFormatters.currency(yestProfit),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900,
+                                        color: yestProfit >= 0 ? AppColors.success : AppColors.error,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${yesterday['orders_count']} orders • ${AppFormatters.currency((yesterday['revenue'] as num?)?.toDouble() ?? 0)} sales',
+                                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            'Delta: ${profitDiff >= 0 ? '+' : ''}${AppFormatters.currency(profitDiff)}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isGrowth ? AppColors.success : AppColors.error,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildRadarBar('Sales', revenue, 1.0, AppColors.primary),
-                        _buildRadarBar('Cost (COGS)', cogs,
-                            revenue > 0 ? (cogs / revenue) : 0.0, Colors.orange),
-                        _buildRadarBar(
-                            'Expenses',
-                            expenses,
-                            revenue > 0 ? (expenses / revenue) : 0.0,
-                            Colors.redAccent),
-                        _buildRadarBar(
-                            'Net Profit',
-                            netProfit > 0 ? netProfit : 0,
-                            revenue > 0 ? (netProfit / revenue) : 0.0,
-                            Colors.green),
-                      ],
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
 
               const SizedBox(height: 20),
 
-              // Accounting Step Breakdown
+              // ── SUBSECTION 3: Forensic Step-by-Step Accounting Ledger ─────
               Text(
-                'Accounting Ledger & Breakdown',
+                'Forensic Accounting Ledger',
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                    ?.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               GlassContainer(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 borderRadius: BorderRadius.circular(20),
                 child: Column(
                   children: [
@@ -330,64 +414,64 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                       symbol: '+',
                       symbolColor: AppColors.primary,
                       label: 'Gross Sales Revenue',
-                      subtitle: 'Total order value of non-cancelled orders',
+                      subtitle: 'Total order bill value (active orders)',
                       amount: revenue,
                       isBold: true,
                     ),
-                    const Divider(height: 24),
+                    const Divider(height: 22),
                     _calcRow(
                       context,
                       symbol: '-',
                       symbolColor: Colors.orange,
                       label: 'Cost of Goods Sold (COGS)',
-                      subtitle: 'Base purchase cost of all products delivered',
+                      subtitle: 'Direct product purchase & wholesale costs',
                       amount: cogs,
                       amountColor: Colors.orange,
                     ),
-                    const Divider(height: 24),
+                    const Divider(height: 22),
                     _calcRow(
                       context,
                       symbol: '=',
                       symbolColor: AppColors.success,
-                      label: 'Gross Profit',
-                      subtitle: 'Revenue minus direct product costs',
+                      label: 'Gross Trading Profit',
+                      subtitle: 'Revenue minus direct wholesale product cost',
                       amount: grossProfit,
                       amountColor: AppColors.success,
                       isBold: true,
                     ),
-                    const Divider(height: 24),
+                    const Divider(height: 22),
                     _calcRow(
                       context,
                       symbol: '-',
                       symbolColor: AppColors.error,
-                      label: 'Operating Expenses',
-                      subtitle: 'Total recorded store & delivery expenses',
+                      label: 'Operating & Store Expenses',
+                      subtitle: 'Rent, transport, daily overheads, salaries',
                       amount: expenses,
                       amountColor: AppColors.error,
                     ),
-                    const Divider(height: 24),
+                    const Divider(height: 22),
                     if (discounts > 0) ...[
                       _calcRow(
                         context,
                         symbol: 'ℹ️',
                         symbolColor: Colors.blue,
                         label: 'Customer Discounts Granted',
-                        subtitle: 'Promotional savings (already factored in Net Sales)',
+                        subtitle: 'Promotional markdowns (factored in net)',
                         amount: discounts,
                         amountColor: Colors.blue,
                       ),
-                      const Divider(height: 24),
+                      const Divider(height: 22),
                     ],
                     if (delivery > 0) ...[
                       _calcRow(
                         context,
                         symbol: '+',
                         symbolColor: AppColors.success,
-                        label: 'Delivery Fees Collected',
-                        subtitle: 'Delivery service charges earned',
+                        label: 'Delivery Surcharges Collected',
+                        subtitle: 'Delivery service fees earned',
                         amount: delivery,
                       ),
-                      const Divider(height: 24),
+                      const Divider(height: 22),
                     ],
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -395,13 +479,13 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                         color: (isProfitable
                                 ? AppColors.success
                                 : AppColors.error)
-                            .withOpacity(0.08),
+                            .withOpacity(0.10),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: (isProfitable
                                   ? AppColors.success
                                   : AppColors.error)
-                              .withOpacity(0.3),
+                              .withOpacity(0.35),
                         ),
                       ),
                       child: Row(
@@ -434,45 +518,54 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
-              // Percentage Analysis Ratios
+              // ── SUBSECTION 4: Financial Ratios & Performance ──────────────
               Text(
-                'Financial Ratios & Ratios Breakdown',
+                'Financial Health & Performance Ratios',
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                    ?.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               GlassContainer(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 borderRadius: BorderRadius.circular(20),
                 child: Column(
                   children: [
                     _ratioBar(
                       context,
-                      label: 'Cost of Goods (COGS)',
+                      label: 'Product Procurement Cost (COGS)',
                       amount: cogs,
                       total: revenue,
                       color: Colors.orange,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _ratioBar(
                       context,
-                      label: 'Operating Expenses',
+                      label: 'Operating Expenses Ratio',
                       amount: expenses,
                       total: revenue,
-                      color: Colors.redAccent,
+                      color: AppColors.error,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _ratioBar(
                       context,
-                      label: 'Net Retained Profit',
+                      label: 'Net Profit Margin Ratio',
                       amount: netProfit > 0 ? netProfit : 0,
                       total: revenue,
-                      color: Colors.green,
+                      color: AppColors.success,
+                    ),
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _metricBox('Gross Margin', '${revenue > 0 ? ((grossProfit / revenue) * 100).toStringAsFixed(1) : 0.0}%', AppColors.primary),
+                        _metricBox('Net Margin', '${marginPct.toStringAsFixed(1)}%', isProfitable ? AppColors.success : AppColors.error),
+                        _metricBox('Markup / ROI', '${cogs > 0 ? ((grossProfit / cogs) * 100).toStringAsFixed(1) : 0.0}%', Colors.teal),
+                      ],
                     ),
                   ],
                 ),
@@ -486,15 +579,15 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // TAB 2: DATE-WISE DAILY PROFIT BREAKDOWN
+  // TAB 2: DATE-WISE & ACCUMULATED PROFIT
   // ════════════════════════════════════════════════════════════════════════════
   Widget _buildDateWiseProfitTab() {
     final params = DateWiseProfitParams(
-      days: _selectedDays > 0 ? _selectedDays : 7,
-      startDate: _selectedDays == 0 && _customStart != null
+      days: _selectedDays,
+      startDate: _customStart != null
           ? "${_customStart!.year}-${_customStart!.month.toString().padLeft(2, '0')}-${_customStart!.day.toString().padLeft(2, '0')}"
           : null,
-      endDate: _selectedDays == 0 && _customEnd != null
+      endDate: _customEnd != null
           ? "${_customEnd!.year}-${_customEnd!.month.toString().padLeft(2, '0')}-${_customEnd!.day.toString().padLeft(2, '0')}"
           : null,
     );
@@ -511,7 +604,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildPeriodChip('Last 7 Days (Week)', 7),
+                _buildPeriodChip('Last 7 Days', 7),
                 const SizedBox(width: 8),
                 _buildPeriodChip('Last 14 Days', 14),
                 const SizedBox(width: 8),
@@ -565,7 +658,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Period Executive Summary Card
+                  // Period Executive Summary Card with Accumulated Profit Highlight
                   GlassContainer(
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
@@ -582,12 +675,12 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                           children: [
                             Text(
                               _selectedDays == 7
-                                  ? 'LAST 7 DAYS SUMMARY'
+                                  ? '7-DAY ACCUMULATED PROFIT'
                                   : (_selectedDays == 14
-                                      ? 'LAST 14 DAYS SUMMARY'
+                                      ? '14-DAY ACCUMULATED PROFIT'
                                       : (_selectedDays == 30
-                                          ? 'LAST 30 DAYS SUMMARY'
-                                          : 'CUSTOM RANGE SUMMARY')),
+                                          ? '30-DAY ACCUMULATED PROFIT'
+                                          : 'PERIOD ACCUMULATED PROFIT')),
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w900,
@@ -619,13 +712,13 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Total Net Profit',
+                                const Text('Total Accumulated Profit',
                                     style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                                 const SizedBox(height: 2),
                                 Text(
                                   AppFormatters.currency(periodProfit),
                                   style: TextStyle(
-                                    fontSize: 22,
+                                    fontSize: 24,
                                     fontWeight: FontWeight.w900,
                                     color: periodProfit >= 0 ? AppColors.success : AppColors.error,
                                   ),
@@ -635,7 +728,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                const Text('Total Sales',
+                                const Text('Total Sales Inflow',
                                     style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                                 const SizedBox(height: 2),
                                 Text(
@@ -653,10 +746,10 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _miniPeriodStat('Orders', '$periodOrders'),
+                            _miniPeriodStat('Total Orders', '$periodOrders'),
                             _miniPeriodStat('COGS', AppFormatters.currency(periodCogs)),
                             _miniPeriodStat('Expenses', AppFormatters.currency(periodExp)),
-                            _miniPeriodStat('Avg/Day', AppFormatters.currency(avgDailyProfit)),
+                            _miniPeriodStat('Daily Avg', AppFormatters.currency(avgDailyProfit)),
                           ],
                         ),
                         if (periodCash > 0 || periodOnline > 0 || periodPending > 0) ...[
@@ -681,14 +774,14 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Daily Profit & Sales Breakdown',
+                        'Daily Ledger & Accumulated Trend',
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       Text(
-                        '${dailyRows.length} Days',
+                        '${dailyRows.length} Days Recorded',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -699,7 +792,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                   ),
                   const SizedBox(height: 12),
 
-                  // Date-by-Date Cards
+                  // Date-by-Date Cards with Running Accumulated Profit Badge
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -708,6 +801,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                       final day = dailyRows[idx];
                       final isProfitableDay = (day['is_profitable'] as bool);
                       final double dailyNetProfit = (day['net_profit'] as double);
+                      final double accumulatedProfit = (day['accumulated_profit'] as num?)?.toDouble() ?? dailyNetProfit;
                       final double dailyRevenue = (day['revenue'] as double);
                       final double dailyCogs = (day['cogs'] as double);
                       final double dailyExp = (day['expenses'] as double);
@@ -729,7 +823,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Header: Date + Day Name + Profit Badge
+                            // Header: Date + Day Name + Day Profit + Running Accumulated Profit Badge
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -760,7 +854,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      '($dailyOrders orders)',
+                                      '($dailyOrders ord)',
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: AppColors.textSecondary,
@@ -785,6 +879,43 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 8),
+
+                            // Running Accumulated Profit Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: (accumulatedProfit >= 0 ? AppColors.primary : Colors.red).withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: (accumulatedProfit >= 0 ? AppColors.primary : Colors.red).withOpacity(0.25),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.timeline_rounded, size: 14, color: accumulatedProfit >= 0 ? AppColors.primary : Colors.red),
+                                      const SizedBox(width: 4),
+                                      const Text(
+                                        'Running Accumulated Profit to this day:',
+                                        style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    AppFormatters.currency(accumulatedProfit),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      color: accumulatedProfit >= 0 ? AppColors.primary : Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                             const Divider(height: 18),
 
                             // Grid of Financial Details for this Day
@@ -831,6 +962,201 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                 ],
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // TAB 3: TODAY VS YESTERDAY DETAILED COMPARISON HUB
+  // ════════════════════════════════════════════════════════════════════════════
+  Widget _buildTodayVsYesterdayTab() {
+    final todayVsYestAsync = ref.watch(todayVsYesterdayProfitProvider);
+
+    return todayVsYestAsync.when(
+      loading: () => const LoadingShimmer(count: 3),
+      error: (err, _) => Center(child: Text('Error loading comparison: $err')),
+      data: (data) {
+        final today = data['today'] as Map<String, dynamic>;
+        final yesterday = data['yesterday'] as Map<String, dynamic>;
+        final double profitDiff = (data['profit_diff'] as num?)?.toDouble() ?? 0.0;
+        final double profitGrowthPct = (data['profit_growth_pct'] as num?)?.toDouble() ?? 0.0;
+        final double revenueDiff = (data['revenue_diff'] as num?)?.toDouble() ?? 0.0;
+        final int ordersDiff = (data['orders_diff'] as num?)?.toInt() ?? 0;
+        final bool isGrowth = data['is_growth'] as bool? ?? true;
+
+        final double todayProfit = (today['net_profit'] as num?)?.toDouble() ?? 0.0;
+        final double yestProfit = (yesterday['net_profit'] as num?)?.toDouble() ?? 0.0;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Head-to-Head Hero Delta Card
+              GlassContainer(
+                padding: const EdgeInsets.all(20),
+                borderRadius: BorderRadius.circular(22),
+                color: (isGrowth ? Colors.green : Colors.red)
+                    .withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.20 : 0.10),
+                borderColor: (isGrowth ? Colors.green : Colors.red).withOpacity(0.4),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'DAILY PROFIT DELTA',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.0,
+                            color: isGrowth ? AppColors.success : AppColors.error,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: (isGrowth ? AppColors.success : AppColors.error).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${isGrowth ? '+' : ''}${profitGrowthPct.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                              color: isGrowth ? AppColors.success : AppColors.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isGrowth ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                          size: 32,
+                          color: isGrowth ? AppColors.success : AppColors.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${profitDiff >= 0 ? '+' : ''}${AppFormatters.currency(profitDiff)}',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: isGrowth ? AppColors.success : AppColors.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      isGrowth ? 'Profit increased compared to yesterday!' : 'Profit dropped compared to yesterday',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                    ),
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _miniPeriodStat('Revenue Change', '${revenueDiff >= 0 ? '+' : ''}${AppFormatters.currency(revenueDiff)}'),
+                        _miniPeriodStat('Orders Change', '${ordersDiff >= 0 ? '+' : ''}$ordersDiff ord'),
+                        _miniPeriodStat('Today Margin', '${((today['profit_margin_pct'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(1)}%'),
+                        _miniPeriodStat('Yest Margin', '${((yesterday['profit_margin_pct'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(1)}%'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Side-by-Side Comparison Matrix Table
+              Text(
+                'Metrics Comparison Matrix',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 10),
+
+              GlassContainer(
+                padding: const EdgeInsets.all(16),
+                borderRadius: BorderRadius.circular(20),
+                child: Column(
+                  children: [
+                    _matrixHeader(),
+                    const Divider(height: 20),
+                    _matrixRow('Net Profit', AppFormatters.currency(todayProfit), AppFormatters.currency(yestProfit), isHighlight: true, isProfit: true),
+                    _matrixRow('Total Sales Revenue', AppFormatters.currency((today['revenue'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['revenue'] as num?)?.toDouble() ?? 0.0)),
+                    _matrixRow('Cost of Goods (COGS)', AppFormatters.currency((today['cogs'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['cogs'] as num?)?.toDouble() ?? 0.0)),
+                    _matrixRow('Operating Expenses', AppFormatters.currency((today['expenses'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['expenses'] as num?)?.toDouble() ?? 0.0)),
+                    _matrixRow('Delivery Income', AppFormatters.currency((today['delivery_income'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['delivery_income'] as num?)?.toDouble() ?? 0.0)),
+                    _matrixRow('Discounts Given', AppFormatters.currency((today['discounts'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['discounts'] as num?)?.toDouble() ?? 0.0)),
+                    _matrixRow('Orders Completed', '${today['orders_count']}', '${yesterday['orders_count']}'),
+                    _matrixRow('Cash Collected', AppFormatters.currency((today['cash_collected'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['cash_collected'] as num?)?.toDouble() ?? 0.0)),
+                    _matrixRow('Online / UPI Collected', AppFormatters.currency((today['online_collected'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['online_collected'] as num?)?.toDouble() ?? 0.0)),
+                    _matrixRow('Pending Debt', AppFormatters.currency((today['pending_debt'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['pending_debt'] as num?)?.toDouble() ?? 0.0)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _matrixHeader() {
+    return const Row(
+      children: [
+        Expanded(flex: 4, child: Text('METRIC', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.textSecondary))),
+        Expanded(flex: 3, child: Text('TODAY', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.primary))),
+        Expanded(flex: 3, child: Text('YESTERDAY', textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.textSecondary))),
+      ],
+    );
+  }
+
+  Widget _matrixRow(String label, String todayVal, String yestVal, {bool isHighlight = false, bool isProfit = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isHighlight ? FontWeight.w900 : FontWeight.w500,
+                color: isHighlight ? AppColors.primary : null,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              todayVal,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isHighlight ? FontWeight.w900 : FontWeight.w700,
+                color: isProfit ? AppColors.success : null,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              yestVal,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isHighlight ? FontWeight.w900 : FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
         ],
       ),
@@ -887,6 +1213,16 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
         Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
         const SizedBox(height: 2),
         Text(val, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+      ],
+    );
+  }
+
+  Widget _metricBox(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary)),
+        const SizedBox(height: 2),
+        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: color)),
       ],
     );
   }
@@ -986,54 +1322,6 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
           color: color,
           minHeight: 8,
           borderRadius: BorderRadius.circular(4),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRadarBar(String label, double val, double ratio, Color col) {
-    final safeRatio = (ratio.isNaN || ratio.isInfinite)
-        ? 0.0
-        : ratio.clamp(0.0, 1.0);
-
-    return Column(
-      children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary)),
-        const SizedBox(height: 6),
-        Stack(
-          alignment: Alignment.bottomCenter,
-          children: [
-            Container(
-              height: 60,
-              width: 14,
-              decoration: BoxDecoration(
-                color: col.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 400),
-              height: (60 * safeRatio).clamp(4.0, 60.0),
-              width: 14,
-              decoration: BoxDecoration(
-                color: col,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            '${(ratio * 100).toStringAsFixed(0)}%',
-            style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.bold, color: col),
-          ),
         ),
       ],
     );

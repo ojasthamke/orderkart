@@ -573,8 +573,13 @@ class _AppStartupScreenState extends ConsumerState<AppStartupScreen> {
         final nextRoute = (mode == AppMode.worker)
             ? AppRoutes.workerDashboard
             : AppRoutes.dashboard;
+        final settings = ref.watch(settingsProvider).valueOrNull;
+        final ownerDisplayName =
+            (settings != null && settings.ownerName.trim().isNotEmpty)
+                ? settings.ownerName.trim()
+                : 'Owner';
         final name = (mode == AppMode.owner)
-            ? 'Nayan'
+            ? ownerDisplayName
             : (WorkerSession.instance.currentWorkerName ?? 'Worker');
 
         if (mode == AppMode.owner) {

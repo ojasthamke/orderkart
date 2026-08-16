@@ -17,12 +17,17 @@ void main() {
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
-      await DatabaseHelper.instance.close();
-      final dbPath = await databaseFactory.getDatabasesPath();
-      final path = '$dbPath/orderkart.db';
-      await databaseFactory.deleteDatabase(path);
-
       final db = await DatabaseHelper.instance.database;
+      await db.delete('order_items');
+      await db.delete('orders');
+      await db.delete('payments');
+      await db.delete('expenses');
+      await db.delete('items');
+      await db.delete('item_price_history');
+      await db.delete('customers');
+      await db.delete('locations');
+      await db.delete('streets');
+      await db.delete('areas');
 
       final now = DateTime.now();
       final todayStr =
@@ -247,8 +252,8 @@ void main() {
       expect(todayRow['discounts'], 10.0);
       expect(todayRow['expenses'], 15.0);
       expect(todayRow['gross_profit'], 65.0); // 130 - 65
-      // Net Profit = Gross (65) + Delivery (20) - Discount (10) - Expenses (15) = 60
-      expect(todayRow['net_profit'], 60.0);
+      // Net Profit = Gross (65) - Expenses (15) = 50 (Delivery & discounts already factored into revenue 130)
+      expect(todayRow['net_profit'], 50.0);
       expect(todayRow['is_profitable'], true);
       expect(todayRow['cash_collected'], 100.0);
       expect(todayRow['online_collected'], 0.0);
