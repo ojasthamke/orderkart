@@ -4,20 +4,29 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:orderkart/core/database/database_helper.dart';
 import 'package:orderkart/features/analytics/data/analytics_dao.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   // Initialize FFI for local SQLite tests
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
   group('AnalyticsDao Queries Tests', () {
     setUp(() async {
-      await DatabaseHelper.instance.close();
-      final dbPath = await databaseFactory.getDatabasesPath();
-      final path = '$dbPath/orderkart.db';
-      await databaseFactory.deleteDatabase(path);
-
+      SharedPreferences.setMockInitialValues({'app_mode': 'owner'});
       final db = await DatabaseHelper.instance.database;
+
+      await db.delete('payments');
+      await db.delete('order_items');
+      await db.delete('orders');
+      await db.delete('expenses');
+      await db.delete('customers');
+      await db.delete('locations');
+      await db.delete('streets');
+      await db.delete('areas');
+      await db.delete('workers');
+
       // Seed mock data for verification
       await db.insert('workers', {
         'id': 'worker-1',

@@ -181,6 +181,7 @@ class AnalyticsDao {
       SELECT 
         DATE(created_at) AS date,
         COUNT(id) AS orders_count,
+        COALESCE(SUM(subtotal), 0) AS subtotal,
         COALESCE(SUM(grand_total), 0) AS revenue,
         COALESCE(SUM(delivery_charge), 0) AS delivery_income,
         COALESCE(SUM(discount), 0) AS discounts,
@@ -268,6 +269,7 @@ class AnalyticsDao {
       final ord = orderMap[dateKey];
       final int ordersCount = (ord?['orders_count'] as num?)?.toInt() ?? 0;
       final double revenue = (ord?['revenue'] as num?)?.toDouble() ?? 0.0;
+      final double subtotal = (ord?['subtotal'] as num?)?.toDouble() ?? 0.0;
       final double deliveryIncome =
           (ord?['delivery_income'] as num?)?.toDouble() ?? 0.0;
       final double discounts = (ord?['discounts'] as num?)?.toDouble() ?? 0.0;
@@ -285,6 +287,10 @@ class AnalyticsDao {
       final double cashCollected = payMap[dateKey]?['cash'] ?? 0.0;
       final double onlineCollected = payMap[dateKey]?['online'] ?? 0.0;
 
+      // Pure Profit = subtotal - discounts - cogs (no expenses, no delivery charges)
+      final double pureProfit = subtotal - discounts - cogs;
+      final double pureProfitPerOrder = ordersCount > 0 ? pureProfit / ordersCount : 0.0;
+
       runningAccumulatedProfit += netProfit;
 
       chronologicalList.add({
@@ -293,6 +299,7 @@ class AnalyticsDao {
         'display_date': "${curDate.day} ${_monthName(curDate.month)} ($dayName)",
         'orders_count': ordersCount,
         'revenue': revenue,
+        'subtotal': subtotal,
         'cogs': cogs,
         'delivery_income': deliveryIncome,
         'discounts': discounts,
@@ -305,6 +312,8 @@ class AnalyticsDao {
         'cash_collected': cashCollected,
         'online_collected': onlineCollected,
         'pending_debt': pendingDebt,
+        'pure_profit': pureProfit,
+        'pure_profit_per_order': pureProfitPerOrder,
       });
     }
 
@@ -337,6 +346,7 @@ class AnalyticsDao {
         'display_date': 'Today',
         'orders_count': 0,
         'revenue': 0.0,
+        'subtotal': 0.0,
         'cogs': 0.0,
         'delivery_income': 0.0,
         'discounts': 0.0,
@@ -349,6 +359,8 @@ class AnalyticsDao {
         'cash_collected': 0.0,
         'online_collected': 0.0,
         'pending_debt': 0.0,
+        'pure_profit': 0.0,
+        'pure_profit_per_order': 0.0,
       },
     );
 
@@ -360,6 +372,7 @@ class AnalyticsDao {
         'display_date': 'Yesterday',
         'orders_count': 0,
         'revenue': 0.0,
+        'subtotal': 0.0,
         'cogs': 0.0,
         'delivery_income': 0.0,
         'discounts': 0.0,
@@ -372,6 +385,8 @@ class AnalyticsDao {
         'cash_collected': 0.0,
         'online_collected': 0.0,
         'pending_debt': 0.0,
+        'pure_profit': 0.0,
+        'pure_profit_per_order': 0.0,
       },
     );
 
@@ -381,6 +396,10 @@ class AnalyticsDao {
     final double profitGrowthPct = yesterdayProfit != 0
         ? ((profitDiff / yesterdayProfit.abs()) * 100.0)
         : (todayProfit > 0 ? 100.0 : (todayProfit < 0 ? -100.0 : 0.0));
+
+    final double todayPureProfit = (todayData['pure_profit'] as num?)?.toDouble() ?? 0.0;
+    final double yesterdayPureProfit = (yesterdayData['pure_profit'] as num?)?.toDouble() ?? 0.0;
+    final double pureProfitDiff = todayPureProfit - yesterdayPureProfit;
 
     final double todayRevenue = (todayData['revenue'] as num?)?.toDouble() ?? 0.0;
     final double yesterdayRevenue = (yesterdayData['revenue'] as num?)?.toDouble() ?? 0.0;
@@ -395,6 +414,7 @@ class AnalyticsDao {
       'yesterday': yesterdayData,
       'profit_diff': profitDiff,
       'profit_growth_pct': profitGrowthPct,
+      'pure_profit_diff': pureProfitDiff,
       'revenue_diff': revenueDiff,
       'orders_diff': ordersDiff,
       'is_growth': profitDiff >= 0,

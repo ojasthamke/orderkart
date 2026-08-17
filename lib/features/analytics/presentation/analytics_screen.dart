@@ -326,6 +326,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                               color: AppColors
                                                   .textSecondary),
                                         ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Pure: ${AppFormatters.currency((today['pure_profit'] as num?)?.toDouble() ?? 0.0)} (${((today['orders_count'] as num?)?.toInt() ?? 0) > 0 ? AppFormatters.currency((today['pure_profit_per_order'] as num?)?.toDouble() ?? 0.0) : "₹0"}/ord)',
+                                          style: const TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.teal),
+                                        ),
                                       ],
                                     ),
                                   ),

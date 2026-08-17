@@ -634,26 +634,30 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
               double periodCogs = 0;
               double periodExp = 0;
               double periodProfit = 0;
+              double periodPureProfit = 0;
               int periodOrders = 0;
               double periodCash = 0;
               double periodOnline = 0;
               double periodPending = 0;
 
               for (final r in dailyRows) {
-                periodSales += (r['revenue'] as double);
-                periodCogs += (r['cogs'] as double);
-                periodExp += (r['expenses'] as double);
-                periodProfit += (r['net_profit'] as double);
-                periodOrders += (r['orders_count'] as int);
-                periodCash += (r['cash_collected'] as double);
-                periodOnline += (r['online_collected'] as double);
-                periodPending += (r['pending_debt'] as double);
+                periodSales += (r['revenue'] as num?)?.toDouble() ?? 0.0;
+                periodCogs += (r['cogs'] as num?)?.toDouble() ?? 0.0;
+                periodExp += (r['expenses'] as num?)?.toDouble() ?? 0.0;
+                periodProfit += (r['net_profit'] as num?)?.toDouble() ?? 0.0;
+                periodPureProfit += (r['pure_profit'] as num?)?.toDouble() ?? 0.0;
+                periodOrders += (r['orders_count'] as num?)?.toInt() ?? 0;
+                periodCash += (r['cash_collected'] as num?)?.toDouble() ?? 0.0;
+                periodOnline += (r['online_collected'] as num?)?.toDouble() ?? 0.0;
+                periodPending += (r['pending_debt'] as num?)?.toDouble() ?? 0.0;
               }
 
               final double periodMargin =
                   periodSales > 0 ? (periodProfit / periodSales) * 100.0 : 0.0;
               final double avgDailyProfit =
                   dailyRows.isNotEmpty ? periodProfit / dailyRows.length : 0.0;
+              final double avgPureProfitPerOrder =
+                  periodOrders > 0 ? periodPureProfit / periodOrders : 0.0;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,7 +679,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                           children: [
                             Text(
                               _selectedDays == 7
-                                  ? '7-DAY ACCUMULATED PROFIT'
+                                   ? '7-DAY ACCUMULATED PROFIT'
                                   : (_selectedDays == 14
                                       ? '14-DAY ACCUMULATED PROFIT'
                                       : (_selectedDays == 30
@@ -746,10 +750,10 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _miniPeriodStat('Total Orders', '$periodOrders'),
+                            _miniPeriodStat('Pure Profit', AppFormatters.currency(periodPureProfit)),
+                            _miniPeriodStat('Profit/Order', AppFormatters.currency(avgPureProfitPerOrder)),
                             _miniPeriodStat('COGS', AppFormatters.currency(periodCogs)),
                             _miniPeriodStat('Expenses', AppFormatters.currency(periodExp)),
-                            _miniPeriodStat('Daily Avg', AppFormatters.currency(avgDailyProfit)),
                           ],
                         ),
                         if (periodCash > 0 || periodOnline > 0 || periodPending > 0) ...[
@@ -799,17 +803,19 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                     itemCount: dailyRows.length,
                     itemBuilder: (ctx, idx) {
                       final day = dailyRows[idx];
-                      final isProfitableDay = (day['is_profitable'] as bool);
-                      final double dailyNetProfit = (day['net_profit'] as double);
+                      final isProfitableDay = (day['is_profitable'] as bool? ?? true);
+                      final double dailyNetProfit = (day['net_profit'] as num?)?.toDouble() ?? 0.0;
+                      final double dailyPureProfit = (day['pure_profit'] as num?)?.toDouble() ?? 0.0;
+                      final double dailyPureProfitPerOrder = (day['pure_profit_per_order'] as num?)?.toDouble() ?? 0.0;
                       final double accumulatedProfit = (day['accumulated_profit'] as num?)?.toDouble() ?? dailyNetProfit;
-                      final double dailyRevenue = (day['revenue'] as double);
-                      final double dailyCogs = (day['cogs'] as double);
-                      final double dailyExp = (day['expenses'] as double);
-                      final double dailyMargin = (day['profit_margin_pct'] as double);
-                      final int dailyOrders = (day['orders_count'] as int);
-                      final double dailyCash = (day['cash_collected'] as double);
-                      final double dailyOnline = (day['online_collected'] as double);
-                      final double dailyPending = (day['pending_debt'] as double);
+                      final double dailyRevenue = (day['revenue'] as num?)?.toDouble() ?? 0.0;
+                      final double dailyCogs = (day['cogs'] as num?)?.toDouble() ?? 0.0;
+                      final double dailyExp = (day['expenses'] as num?)?.toDouble() ?? 0.0;
+                      final double dailyMargin = (day['profit_margin_pct'] as num?)?.toDouble() ?? 0.0;
+                      final int dailyOrders = (day['orders_count'] as num?)?.toInt() ?? 0;
+                      final double dailyCash = (day['cash_collected'] as num?)?.toDouble() ?? 0.0;
+                      final double dailyOnline = (day['online_collected'] as num?)?.toDouble() ?? 0.0;
+                      final double dailyPending = (day['pending_debt'] as num?)?.toDouble() ?? 0.0;
 
                       final isDark = Theme.of(ctx).brightness == Brightness.dark;
 
@@ -899,7 +905,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                                       Icon(Icons.timeline_rounded, size: 14, color: accumulatedProfit >= 0 ? AppColors.primary : Colors.red),
                                       const SizedBox(width: 4),
                                       const Text(
-                                        'Running Accumulated Profit to this day:',
+                                        'Running Accumulated Profit:',
                                         style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                                       ),
                                     ],
@@ -910,6 +916,42 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                                       fontSize: 12,
                                       fontWeight: FontWeight.w900,
                                       color: accumulatedProfit >= 0 ? AppColors.primary : Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Pure Profit Badge (No Expenses, No Delivery Charges)
+                            Container(
+                              margin: const EdgeInsets.only(top: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.teal.withOpacity(0.25),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.monetization_on_outlined, size: 14, color: Colors.teal),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Pure Profit (No Exp / Del):',
+                                        style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    '${AppFormatters.currency(dailyPureProfit)}  (${dailyOrders > 0 ? AppFormatters.currency(dailyPureProfitPerOrder) : "₹0"}/ord)',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.teal,
                                     ),
                                   ),
                                 ],
@@ -1087,7 +1129,9 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
                   children: [
                     _matrixHeader(),
                     const Divider(height: 20),
-                    _matrixRow('Net Profit', AppFormatters.currency(todayProfit), AppFormatters.currency(yestProfit), isHighlight: true, isProfit: true),
+                    _matrixRow('Pure Profit (No Exp/Del)', AppFormatters.currency((today['pure_profit'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['pure_profit'] as num?)?.toDouble() ?? 0.0), isHighlight: true, isProfit: true),
+                    _matrixRow('Pure Profit / Order', AppFormatters.currency((today['pure_profit_per_order'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['pure_profit_per_order'] as num?)?.toDouble() ?? 0.0)),
+                    _matrixRow('Net Profit (With Exp/Del)', AppFormatters.currency(todayProfit), AppFormatters.currency(yestProfit), isProfit: true),
                     _matrixRow('Total Sales Revenue', AppFormatters.currency((today['revenue'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['revenue'] as num?)?.toDouble() ?? 0.0)),
                     _matrixRow('Cost of Goods (COGS)', AppFormatters.currency((today['cogs'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['cogs'] as num?)?.toDouble() ?? 0.0)),
                     _matrixRow('Operating Expenses', AppFormatters.currency((today['expenses'] as num?)?.toDouble() ?? 0.0), AppFormatters.currency((yesterday['expenses'] as num?)?.toDouble() ?? 0.0)),

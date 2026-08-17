@@ -13,9 +13,11 @@ void main() {
   group('Accumulated Profit & Mandi Market Checklist Tests', () {
     final analyticsDao = AnalyticsDao();
     final itemDao = ItemDao();
+    late String todayStr;
+    late String yesterdayStr;
 
     setUp(() async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'app_mode': 'owner'});
       final db = await DatabaseHelper.instance.database;
       await db.delete('order_items');
       await db.delete('orders');
@@ -29,10 +31,10 @@ void main() {
       await db.delete('areas');
 
       final now = DateTime.now();
-      final todayStr =
+      todayStr =
           "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
       final yesterday = now.subtract(const Duration(days: 1));
-      final yesterdayStr =
+      yesterdayStr =
           "${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}";
 
       // 1. Seed Locations & Customer
@@ -200,6 +202,19 @@ void main() {
       // Today's net profit = (1000 - 650) + 20 (delivery) - 50 (expense) = 320
       // Cumulative accumulated profit = 100 + 320 = 420
       expect(newest['accumulated_profit'], closeTo(420.0, 0.01));
+
+      // Pure Profit Verification (No expenses, no delivery charges)
+      // Today: subtotal (1000) - discounts (0) - cogs (650) = 350.0
+      // 1 order today -> Pure profit per order = 350.0
+      expect(newest['pure_profit'], closeTo(350.0, 0.01));
+      expect(newest['pure_profit_per_order'], closeTo(350.0, 0.01));
+      expect(newest['subtotal'], closeTo(1000.0, 0.01));
+      expect(newest['cogs'], closeTo(650.0, 0.01));
+
+      // Yesterday's Pure Profit: subtotal (300) - discounts (0) - cogs (200) = 100.0
+      final yesterdayRow = rows.firstWhere((r) => r['date'] == yesterdayStr);
+      expect(yesterdayRow['pure_profit'], closeTo(100.0, 0.01));
+      expect(yesterdayRow['pure_profit_per_order'], closeTo(100.0, 0.01));
     });
 
     test('Today vs Yesterday Profit Comparison returns accurate growth metrics', () async {
@@ -210,6 +225,11 @@ void main() {
 
       expect(yesterday['net_profit'], closeTo(100.0, 0.01));
       expect(today['net_profit'], closeTo(320.0, 0.01));
+
+      // Pure profit verification in comparison
+      expect(today['pure_profit'], closeTo(350.0, 0.01));
+      expect(yesterday['pure_profit'], closeTo(100.0, 0.01));
+      expect(summary['pure_profit_diff'], closeTo(250.0, 0.01));
 
       // Profit difference = 320 - 100 = 220
       expect(summary['profit_diff'], closeTo(220.0, 0.01));
