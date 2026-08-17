@@ -654,8 +654,6 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen>
 
               final double periodMargin =
                   periodSales > 0 ? (periodProfit / periodSales) * 100.0 : 0.0;
-              final double avgDailyProfit =
-                  dailyRows.isNotEmpty ? periodProfit / dailyRows.length : 0.0;
               final double avgPureProfitPerOrder =
                   periodOrders > 0 ? periodPureProfit / periodOrders : 0.0;
 

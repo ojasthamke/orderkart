@@ -243,7 +243,7 @@ void main() {
 
     test('2. EDIT ORDER: Successfully modifies order items, recalculates totals, restores/adjusts stock, and syncs customer balance offline', () async {
       final now = DateTime.now();
-      final orderId = 'OW99999';
+      const orderId = 'OW99999';
 
       // ── Step A: Create initial order (3 Apple = 360, Grand Total 360, Paid 360, Remaining 0) ──
       final initialItems = [
