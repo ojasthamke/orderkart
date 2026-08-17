@@ -35,20 +35,22 @@ class AreaDao {
     final maps = await db.rawQuery('''
       SELECT
         l.*,
-        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.is_archived = 0) AS street_count,
+        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND s.is_archived = 0) AS street_count,
         (SELECT COUNT(DISTINCT c.id) FROM customers c
           LEFT JOIN locations st ON (c.location_id = st.id OR c.street_id = st.id)
           WHERE (c.is_archived IS NULL OR c.is_archived = 0)
             AND (c.location_id = l.id OR c.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')
         ) AS customer_count,
-        (SELECT COUNT(*) FROM orders o
+        (SELECT COUNT(DISTINCT o.id) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
           LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id)
-          WHERE cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%') AS order_count,
+          WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+            AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS order_count,
         (SELECT COALESCE(SUM(o.grand_total), 0.0) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
           LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id)
-          WHERE cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%') AS total_revenue
+          WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+            AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS total_revenue
       FROM locations l
       $whereClauseSection
       ORDER BY $orderClause
@@ -62,20 +64,22 @@ class AreaDao {
     final maps = await db.rawQuery('''
       SELECT
         l.*,
-        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.is_archived = 0) AS street_count,
+        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND s.is_archived = 0) AS street_count,
         (SELECT COUNT(DISTINCT c.id) FROM customers c
           LEFT JOIN locations st ON (c.location_id = st.id OR c.street_id = st.id)
           WHERE (c.is_archived IS NULL OR c.is_archived = 0)
             AND (c.location_id = l.id OR c.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')
         ) AS customer_count,
-        (SELECT COUNT(*) FROM orders o
+        (SELECT COUNT(DISTINCT o.id) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
           LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id)
-          WHERE cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%') AS order_count,
+          WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+            AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS order_count,
         (SELECT COALESCE(SUM(o.grand_total), 0.0) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
           LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id)
-          WHERE cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%') AS total_revenue
+          WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+            AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS total_revenue
       FROM locations l
       WHERE l.id = ?
     ''', [id]);
@@ -231,10 +235,14 @@ class AreaDao {
       if (allIds.isNotEmpty) {
         final placeholders = List.filled(allIds.length, '?').join(',');
 
+        // Ensure unassigned area & street exist in legacy tables to satisfy foreign key constraints
+        await DatabaseHelper.instance
+            .ensureLegacyStreetAndAreaExists(txn, 'unassigned');
+
         // Unassign customers from deleted area & its streets
         await txn.update(
           'customers',
-          {'street_id': '', 'location_id': ''},
+          {'street_id': 'unassigned', 'location_id': 'unassigned'},
           where:
               "street_id IN ($placeholders) OR location_id IN ($placeholders)",
           whereArgs: [...allIds, ...allIds],
