@@ -50,7 +50,9 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     _ref.invalidate(searchProvider);
     _ref.invalidate(pendingCustomersProvider);
     _ref.invalidate(allCustomersProvider);
-    _ref.invalidate(sameHouseCustomersProvider);
+    _ref.invalidate(orderManagementProvider);
+    _ref.invalidate(orderDetailProvider);
+    _ref.invalidate(customerOrdersProvider);
   }
 
   void search(String q) {
@@ -69,6 +71,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await load(silent: true);
     _invalidateAll();
     _ref.invalidate(customerDetailProvider(c.id));
+    _ref.invalidate(customerOrdersProvider(c.id));
   }
 
   Future<void> delete(String id) async {

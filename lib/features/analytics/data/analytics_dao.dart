@@ -36,7 +36,7 @@ class AnalyticsDao {
         COALESCE(SUM(o.paid_amount), 0) AS total_collection,
         COALESCE(SUM(o.remaining_amount), 0) AS total_outstanding
       FROM locations a
-      LEFT JOIN customers c ON (c.location_id = a.id OR c.location_id IN (SELECT id FROM locations WHERE parent_location_id = a.id)) AND (c.is_archived IS NULL OR c.is_archived = 0)
+      LEFT JOIN customers c ON (c.location_id = a.id OR c.street_id = a.id OR c.location_id IN (SELECT id FROM locations WHERE parent_location_id = a.id OR materialized_path LIKE '%/' || a.id || '/%') OR c.street_id IN (SELECT id FROM locations WHERE parent_location_id = a.id OR materialized_path LIKE '%/' || a.id || '/%')) AND (c.is_archived IS NULL OR c.is_archived = 0)
       LEFT JOIN orders o ON o.customer_id = c.id AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
       WHERE a.location_kind = 'area' AND (a.is_archived IS NULL OR a.is_archived = 0)
       GROUP BY a.id
@@ -58,7 +58,7 @@ class AnalyticsDao {
         COALESCE(SUM(o.remaining_amount), 0) AS total_outstanding
       FROM locations s
       LEFT JOIN locations a ON s.parent_location_id = a.id AND (a.is_archived IS NULL OR a.is_archived = 0)
-      LEFT JOIN customers c ON c.location_id = s.id AND (c.is_archived IS NULL OR c.is_archived = 0)
+      LEFT JOIN customers c ON (c.location_id = s.id OR c.street_id = s.id) AND (c.is_archived IS NULL OR c.is_archived = 0)
       LEFT JOIN orders o ON o.customer_id = c.id AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
       WHERE (s.location_kind = 'road' OR s.location_kind = 'street') AND (s.is_archived IS NULL OR s.is_archived = 0)
       GROUP BY s.id

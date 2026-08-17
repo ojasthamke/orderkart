@@ -48,14 +48,57 @@ class AppFormatters {
   static String shortDate(DateTime dt) => _shortDate.format(dt);
 
   /// Format quantity with smart display:
-  /// 1.0 → '1', 0.5 → '0.5', 0.25 → '0.25'
+  /// 1 kg, 3 kg for whole kg; 250 g, 500 g, 670 g for fractional kg / sub-kg grams
   static String quantity(double qty, {String? unit}) {
+    if (unit == null || unit.trim().isEmpty) {
+      return qty == qty.truncateToDouble()
+          ? qty.toInt().toString()
+          : qty
+              .toStringAsFixed(2)
+              .replaceAll(RegExp(r'\.?0+$'), '');
+    }
+
+    final u = unit.trim().toLowerCase();
+    final isKg = u == 'kg' || u == 'kilo' || u == 'kilogram' || u == 'kilograms';
+    final isGm = u == 'g' || u == 'gm' || u == 'gms' || u == 'gram' || u == 'grams';
+
+    if (isKg) {
+      if (qty == qty.truncateToDouble()) {
+        return '${qty.toInt()} kg';
+      }
+      if (qty < 1.0) {
+        final g = (qty * 1000).round();
+        return '$g g';
+      }
+      final wholeKg = qty.floor();
+      final remGrams = ((qty - wholeKg) * 1000).round();
+      if (remGrams == 0) {
+        return '$wholeKg kg';
+      }
+      return '$wholeKg kg $remGrams g';
+    }
+
+    if (isGm) {
+      if (qty >= 1000 && (qty % 1000) == 0) {
+        return '${(qty / 1000).toInt()} kg';
+      }
+      if (qty >= 1000) {
+        final wholeKg = (qty / 1000).floor();
+        final remGrams = (qty % 1000).round();
+        return '$wholeKg kg $remGrams g';
+      }
+      final g = qty == qty.truncateToDouble()
+          ? qty.toInt().toString()
+          : qty.toStringAsFixed(1).replaceAll(RegExp(r'\.?0+$'), '');
+      return '$g g';
+    }
+
     final display = qty == qty.truncateToDouble()
         ? qty.toInt().toString()
         : qty
             .toStringAsFixed(qty < 1 ? 2 : 1)
             .replaceAll(RegExp(r'\.?0+$'), '');
-    return unit != null ? '$display $unit' : display;
+    return '$display $unit';
   }
 
   /// Compact number: 1200 → 1.2K

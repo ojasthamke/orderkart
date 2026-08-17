@@ -1453,20 +1453,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         final db = await DatabaseHelper.instance.database;
                         final uuid = const Uuid().v4();
                         final now = DateTime.now().toIso8601String();
+
+                        final customerOrders = await db.query(
+                          'orders',
+                          columns: ['id'],
+                          where: 'customer_id = ?',
+                          whereArgs: [c.id],
+                          orderBy: 'created_at DESC',
+                          limit: 1,
+                        );
+
+                        String targetOrderId = '';
+                        if (customerOrders.isNotEmpty) {
+                          targetOrderId = customerOrders.first['id'] as String;
+                        } else {
+                          final anyOrder = await db.query('orders', columns: ['id'], limit: 1);
+                          if (anyOrder.isNotEmpty) {
+                            targetOrderId = anyOrder.first['id'] as String;
+                          }
+                        }
+
                         await db.insert('payments', {
                           'id': uuid,
                           'customer_id': c.id,
-                          'order_id': '',
+                          'order_id': targetOrderId,
                           'amount': -amount,
                           'method': method,
                           'notes': notesCon.text.trim(),
                           'created_at': now,
-                          'updated_at': now,
                         });
                         await CustomerDao().recalcCustomerTotals(c.id);
                         ref.invalidate(overpaidCustomersProvider);
                         ref.invalidate(allCustomersProvider);
+                        ref.invalidate(pendingCustomersProvider);
                         ref.invalidate(analyticsSummaryProvider);
+                        ref.invalidate(customerDetailProvider(c.id));
                         if (context.mounted) {
                           Navigator.pop(dialogCtx);
                           SnackbarHelper.showSuccess(context,

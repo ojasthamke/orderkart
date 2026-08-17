@@ -444,17 +444,18 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
               headers: [
                 'Product Name (वस्तूचे नाव)',
                 'Category',
-                'Selling Price',
+                'Rate / Price ( kg )',
                 'Unit',
                 'Stock Status'
               ],
               headerStyle: pw.TextStyle(
                   fontWeight: pw.FontWeight.bold,
-                  fontSize: 9.5,
+                  fontSize: 8.5,
                   color: PdfColors.white),
               headerDecoration:
                   const pw.BoxDecoration(color: PdfColors.teal800),
-              cellStyle: const pw.TextStyle(fontSize: 9),
+              cellStyle: const pw.TextStyle(fontSize: 8.0),
+              cellPadding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2.5),
               cellAlignment: pw.Alignment.centerLeft,
               data: pdfItems.isEmpty
                   ? [
@@ -463,10 +464,14 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
                   : pdfItems.map((i) {
                       final bilingualName =
                           MarathiItemHelper.formatBilingual(i.name);
+                      final isKg = i.unit.toLowerCase().contains('kg') || i.unit.toLowerCase().contains('kilo');
+                      final priceLabel = isKg
+                          ? '$currency ${i.sellingPrice.toStringAsFixed(2)} / kg'
+                          : '$currency ${i.sellingPrice.toStringAsFixed(2)}';
                       return [
                         bilingualName,
                         i.category,
-                        '$currency ${i.sellingPrice.toStringAsFixed(2)}',
+                        priceLabel,
                         i.unit,
                         i.stock > 0 ? 'In Stock (${i.stock})' : 'Out of Stock'
                       ];

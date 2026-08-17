@@ -17,6 +17,7 @@ import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/customer_avatar.dart';
 import '../../../core/widgets/status_dot_badge.dart';
 import '../../customer/presentation/customer_provider.dart';
+import '../../customer/domain/customer.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../inventory/domain/item.dart';
 import '../../settings/presentation/settings_provider.dart';
@@ -1310,10 +1311,22 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       }
     } catch (_) {}
 
+    Customer? liveCust;
+    if (order.customerId.isNotEmpty) {
+      try {
+        liveCust = await CustomerDao().getCustomerById(order.customerId);
+      } catch (_) {}
+    }
+    final custName = liveCust?.name.trim().isNotEmpty == true
+        ? liveCust!.name.trim()
+        : (order.customerName ?? 'Walk-in Customer');
+    final custAddress = liveCust?.address ?? order.customerAddress ?? '';
+    final custPhone = liveCust?.phone1 ?? order.customerPhone ?? '';
+
     final text = BillTextGenerator.generate(
       businessName: settings?.businessName ?? 'My Business',
-      customerName: order.customerName ?? 'Walk-in Customer',
-      customerAddress: order.customerAddress ?? '',
+      customerName: custName,
+      customerAddress: custAddress,
       orderNoLabel: order.orderNoLabel,
       orderDate: order.createdAt,
       items: list,
@@ -1336,7 +1349,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     String encodedText = Uri.encodeComponent(text);
 
     if (isCustomer) {
-      final phone = order.customerPhone ?? '';
+      final phone = custPhone.isNotEmpty ? custPhone : (order.customerPhone ?? '');
       await ExternalLauncher.launchWhatsApp(context, phone, text: text);
       return;
     } else {
@@ -1384,8 +1397,19 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
   }
 
-  void _printThermalReceipt(AppOrder order, String currency) {
+  void _printThermalReceipt(AppOrder order, String currency) async {
     final settings = ref.read(settingsProvider).valueOrNull;
+    Customer? liveCust;
+    if (order.customerId.isNotEmpty) {
+      try {
+        liveCust = await CustomerDao().getCustomerById(order.customerId);
+      } catch (_) {}
+    }
+    final custName = liveCust?.name.trim().isNotEmpty == true
+        ? liveCust!.name.trim()
+        : (order.customerName ?? 'Walk-in Customer');
+    final custAddress = liveCust?.address ?? order.customerAddress ?? '';
+
     final itemsList = order.items
         .map((it) => {
               'item_name': it.itemName,
@@ -1398,8 +1422,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
     final thermalText = BillTextGenerator.generateThermalReceipt(
       businessName: settings?.businessName ?? 'OrderKart Store',
-      customerName: order.customerName ?? 'Walk-in Customer',
-      customerAddress: order.customerAddress ?? '',
+      customerName: custName,
+      customerAddress: custAddress,
       orderNoLabel: order.orderNoLabel,
       orderDate: order.createdAt,
       items: itemsList,

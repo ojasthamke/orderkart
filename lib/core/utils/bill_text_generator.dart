@@ -33,40 +33,31 @@ class BillTextGenerator {
     DateTime? billGeneratedAt,
   }) {
     final buf = StringBuffer();
-    final sep = '─' * 32;
-    final doubleSep = '═' * 32;
+    const sep = '────────────────────────';
     final now = billGeneratedAt ?? DateTime.now();
     final billTimeFormatted = DateFormat('dd MMM yyyy, hh:mm a').format(now);
-    final monthName = DateFormat('MMMM yyyy').format(now);
 
-    buf.writeln(doubleSep);
     buf.writeln('🏪 *${businessName.toUpperCase()}*');
-    buf.writeln('     _Official Tax Invoice & Cash Memo_');
-    buf.writeln(doubleSep);
-    buf.writeln('🧾 *INVOICE DETAILS*');
     buf.writeln('• Order No:       *$orderNoLabel*');
-    buf.writeln('• Order Date:     📅 ${AppFormatters.date(orderDate)}');
-    buf.writeln('• Bill Generated: 🖨️ $billTimeFormatted');
+    buf.writeln('• Order Date:     📅 ${AppFormatters.date(orderDate)} ($billTimeFormatted)');
     buf.writeln('• Customer:       👤 *$customerName*');
-    if (customerAddress.isNotEmpty) {
-      buf.writeln('• Address:        📍 $customerAddress');
+    if (customerAddress.trim().isNotEmpty) {
+      buf.writeln('📍 Address: $customerAddress');
     }
     if (notes.trim().isNotEmpty) {
-      buf.writeln('• Notes:          📝 ${notes.trim()}');
+      buf.writeln('📝 Note: ${notes.trim()}');
     }
     if (questionAnswers.isNotEmpty) {
       buf.writeln(sep);
-      buf.writeln('📋 *ORDER QUESTIONS*');
-      for (int i = 0; i < questionAnswers.length; i++) {
-        final ans = questionAnswers[i];
+      buf.writeln('📋 *Order Details:*');
+      for (final ans in questionAnswers) {
         final qText = ans['question_text'] as String? ?? '';
         final opt = ans['selected_option'] as String? ?? '';
-        buf.writeln('  $qText: *$opt*');
+        buf.writeln('• $qText: *$opt*');
       }
     }
     buf.writeln(sep);
-    buf.writeln('🛒 *ITEMS SUMMARY (मालाचा तपशील)*');
-    buf.writeln(sep);
+    buf.writeln('🛒 *ITEMS*');
 
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
@@ -77,72 +68,60 @@ class BillTextGenerator {
       final unit = item['item_unit']?.toString() ?? item['unit']?.toString() ?? '';
       final price = (item['unit_price'] as num?)?.toDouble() ?? 0.0;
       final total = (item['total_price'] as num?)?.toDouble() ?? (qty * price);
+      final qtyStr = AppFormatters.quantity(qty, unit: unit);
       
-      buf.writeln('${i + 1}. 🔹 *$bilingualName*');
-      buf.writeln(
-          '   Qty: *${AppFormatters.quantity(qty, unit: unit)}*  |  Rate: $currency${price.toStringAsFixed(2)}  |  Total: *$currency${total.toStringAsFixed(2)}*');
-      buf.writeln('');
+      buf.writeln('${i + 1}. *$bilingualName*');
+      buf.writeln('   $qtyStr x $currency${price.toStringAsFixed(2)} = *$currency${total.toStringAsFixed(2)}*');
     }
 
     buf.writeln(sep);
-    buf.writeln('💵 *BILLING DETAILS (हिशोब)*');
+    buf.writeln('💵 *BILL SUMMARY*');
     buf.writeln('• Subtotal:       $currency${subtotal.toStringAsFixed(2)}');
     if (discount > 0) {
-      buf.writeln('• Discount Saved: -$currency${discount.toStringAsFixed(2)}');
+      buf.writeln('• Discount:       -$currency${discount.toStringAsFixed(2)}');
     }
     if (deliveryCharge > 0) {
-      buf.writeln(
-          '• Delivery Fee:   +$currency${deliveryCharge.toStringAsFixed(2)}');
+      buf.writeln('• Delivery Fee:   +$currency${deliveryCharge.toStringAsFixed(2)}');
     }
     buf.writeln('• *Grand Total:    $currency${grandTotal.toStringAsFixed(2)}*');
     buf.writeln(sep);
-    buf.writeln('💳 *PAYMENT STATUS (पेमेंट स्थिती)*');
+    buf.writeln('💳 *PAYMENT STATUS*');
     buf.writeln(
         '• Paid Amount:    $currency${paidAmount.toStringAsFixed(2)} (${AppFormatters.paymentMethod(paymentMethod).toUpperCase()})');
     if (remainingAmount > 0) {
       buf.writeln(
           '• *Due Amount:     $currency${remainingAmount.toStringAsFixed(2)}* ⚠️');
     } else {
-      buf.writeln('• Status:         *Fully Paid (पूर्ण भरले)* ✅');
+      buf.writeln('• Status:         *Fully Paid* ✅');
     }
-    buf.writeln(doubleSep);
 
-    // ── Savings Summary Banner ────────────────────────────────────────
     final totalOrderSavings = discount + marketSavings;
     if (totalOrderSavings > 0 || monthlySavings > 0) {
-      buf.writeln('🎉 *YOUR SAVINGS SUMMARY (तुमची बचत)*');
+      buf.writeln(sep);
       if (totalOrderSavings > 0) {
-        buf.writeln('• *Saved on this order:* $currency${totalOrderSavings.toStringAsFixed(2)} 🥳');
+        buf.writeln('🎉 *You Saved $currency${totalOrderSavings.toStringAsFixed(2)} on this order!*');
       }
       if (monthlySavings > 0) {
-        buf.writeln('• *Total saved this month ($monthName):* $currency${monthlySavings.toStringAsFixed(2)} 🌟');
+        buf.writeln('🌟 *Total Saved This Month: $currency${monthlySavings.toStringAsFixed(2)}*');
       }
-      buf.writeln('Every order with us helps you save more!');
-      buf.writeln(doubleSep);
     }
 
     final hasRx = items.any((it) => it['prescription_required'] == true);
     if (hasRx) {
-      buf.writeln(
-          '⚠️ *Prescription Note (Rx)*: Hand over subject to verification of a valid physical doctor note.');
-      buf.writeln(doubleSep);
+      buf.writeln(sep);
+      buf.writeln('⚠️ *Prescription Note*: Handover subject to valid doctor note verification.');
     }
 
     if (ownerPhone.trim().isNotEmpty) {
-      buf.writeln('📞 *STORE CONTACT*: ${ownerPhone.trim()}');
-      buf.writeln(doubleSep);
+      buf.writeln('📞 *Contact*: ${ownerPhone.trim()}');
     }
 
     if (disclaimer.trim().isNotEmpty) {
-      buf.writeln('📌 *TERMS*: ${disclaimer.trim()}');
-      buf.writeln(doubleSep);
+      buf.writeln('📌 *Note*: ${disclaimer.trim()}');
     }
 
-    // ── Decorative Customer Satisfaction Footer ───────────────────────
-    buf.writeln('🌿 _"Your satisfaction matters to us! If something isn\'t right, just let us know and we\'ll make it right. Thank you for trusting us with your everyday fresh vegetables & groceries!"_ 🙏');
-    buf.writeln('');
-    buf.writeln('🌱 _"तुमचे समाधान आमच्यासाठी सर्वात महत्त्वाचे आहे! काही अडचण असल्यास आम्हाला नक्की कळवा, आम्ही ते लगेच दुरुस्त करू. रोजच्या ताज्या भाज्यांसाठी आमच्यावर विश्वास ठेवल्याबद्दल मनःपूर्वक धन्यवाद!"_');
-    buf.writeln(doubleSep);
+    buf.writeln(sep);
+    buf.writeln('🙏 _Thank you for shopping with us!_');
 
     return buf.toString();
   }
