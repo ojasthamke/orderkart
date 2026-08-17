@@ -35,7 +35,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _selectedFilter =
-      'all'; // 'all', 'today', 'yesterday', 'week', 'month', 'custom'
+      'today'; // 'today', 'all', 'yesterday', 'week', 'month', 'custom'
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -677,8 +677,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        _buildFilterChip('all', 'All'),
                         _buildFilterChip('today', 'Today'),
+                        _buildFilterChip('all', 'All'),
                         _buildFilterChip('yesterday', 'Yesterday'),
                         _buildFilterChip('week', 'This Week'),
                         _buildFilterChip('month', 'This Month'),
@@ -945,9 +945,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _endDate = picked.end;
       });
     } else if (_startDate == null || _endDate == null) {
-      // Revert back to all if they cancel without picking
+      // Revert back to today if they cancel without picking
       setState(() {
-        _selectedFilter = 'all';
+        _selectedFilter = 'today';
       });
     }
   }
