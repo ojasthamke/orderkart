@@ -69,6 +69,30 @@ class CustomerOrderSyncService {
                   final locCheck = await txn.query('locations', columns: ['id'], limit: 1);
                   if (locCheck.isNotEmpty) {
                     streetId = locCheck.first['id'] as String;
+                  } else {
+                    // Force insert default_area and default_street to satisfy SQLite FOREIGN KEY check
+                    final areaCheck = await txn.query('areas', where: 'id = ?', whereArgs: ['default_area']);
+                    if (areaCheck.isEmpty) {
+                      await txn.insert('areas', {
+                        'id': 'default_area',
+                        'name': 'Online Area',
+                        'description': 'Default area for online customers',
+                        'color': 0,
+                        'created_at': DateTime.now().toIso8601String(),
+                        'updated_at': DateTime.now().toIso8601String(),
+                      });
+                    }
+                    final defaultStreetCheck = await txn.query('streets', where: 'id = ?', whereArgs: ['default_street']);
+                    if (defaultStreetCheck.isEmpty) {
+                      await txn.insert('streets', {
+                        'id': 'default_street',
+                        'area_id': 'default_area',
+                        'name': 'Online Street',
+                        'description': 'Default street for online customers',
+                        'created_at': DateTime.now().toIso8601String(),
+                      });
+                    }
+                    streetId = 'default_street';
                   }
                 }
 
@@ -105,7 +129,7 @@ class CustomerOrderSyncService {
               
               await txn.insert('orders', {
                 'id': orderId,
-                'customer_id': customerId.isNotEmpty ? customerId : null,
+                'customer_id': customerId.isNotEmpty ? customerId : 'generic_app_customer',
                 'subtotal': grandTotal,
                 'discount': 0.0,
                 'delivery_charge': 0.0,
