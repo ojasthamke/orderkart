@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'core/database/database_helper.dart';
 import 'core/constants/app_constants.dart';
@@ -20,6 +21,17 @@ import 'core/utils/image_utils.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Try initializing Supabase
+  try {
+    await Supabase.initialize(
+      url: 'https://xsqaxvbrjvhgemlfgoxn.supabase.co',
+      anonKey: 'sb_publishable_7w2JdGBs0yI-P1pKfz7eOg_p2yV1qd_',
+    );
+    debugPrint('Supabase initialized in OrderKart successfully.');
+  } catch (e) {
+    debugPrint('Supabase initialization failed in OrderKart: $e');
+  }
 
   try {
     // Lock orientation to portrait for better UX on phones
