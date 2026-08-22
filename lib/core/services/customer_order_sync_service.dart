@@ -251,13 +251,26 @@ class CustomerOrderSyncService {
 
       // D. Clean up deleted orders: Find local SQLite orders with UUID IDs that no longer exist on Supabase
       try {
-        final localOrders = await db.query('orders', columns: ['id', 'delivery_status', 'customer_id']);
+        final localOrders = await db.query('orders', columns: ['id', 'delivery_status', 'customer_id', 'created_at']);
         final remoteIds = orders.map((o) => o['id'] as String).toSet();
         
         for (var localOrd in localOrders) {
           final String localId = localOrd['id'] as String;
           // UUID check: 36 characters with hyphens
           if (localId.length == 36 && localId.contains('-')) {
+            // Check if the order is older than 90 days (3 months)
+            // If it is, keep it in SQLite permanently, even if deleted on Supabase
+            final String createdAtStr = localOrd['created_at'] as String? ?? '';
+            if (createdAtStr.isNotEmpty) {
+              final localCreated = DateTime.tryParse(createdAtStr);
+              if (localCreated != null) {
+                final ageDays = DateTime.now().difference(localCreated).inDays;
+                if (ageDays > 90) {
+                  continue; // Skip cleanup deletion
+                }
+              }
+            }
+
             if (!remoteIds.contains(localId)) {
               // Delete locally
               await db.transaction((txn) async {
