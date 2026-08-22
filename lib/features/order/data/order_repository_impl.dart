@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
 import '../domain/payment.dart';
@@ -177,6 +178,15 @@ class OrderRepositoryImpl implements OrderRepository {
       if (order != null) {
         await _customerDao.recalcCustomerTotals(order.customerId,
             executor: txn);
+      }
+      
+      // Delete on Supabase
+      try {
+        final client = Supabase.instance.client;
+        await client.from('order_items').delete().eq('order_id', id);
+        await client.from('orders').delete().eq('id', id);
+      } catch (e) {
+        // Safe check for offline mode - it won't block local transaction completion
       }
     });
   }
