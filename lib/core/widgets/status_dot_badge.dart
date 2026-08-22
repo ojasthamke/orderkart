@@ -32,6 +32,22 @@ class StatusDotBadge extends StatelessWidget {
         color = const Color(0xFFEF4444); // Crimson Red
         label = 'Cancelled';
         break;
+      case 'confirmed':
+        color = const Color(0xFF3B82F6); // Blue
+        label = 'Confirmed';
+        shouldPulse = true;
+        break;
+      case 'preparing':
+        color = const Color(0xFF8B5CF6); // Purple
+        label = 'Preparing';
+        shouldPulse = true;
+        break;
+      case 'out for delivery':
+      case 'out_for_delivery':
+        color = const Color(0xFFEC4899); // Pink / Magenta
+        label = 'Out for Delivery';
+        shouldPulse = true;
+        break;
       case 'pending':
       default:
         color = const Color(0xFFF59E0B); // Amber Orange

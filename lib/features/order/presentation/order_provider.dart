@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import '../data/order_dao.dart';
@@ -27,10 +28,24 @@ class OrderManagementNotifier
   String _filter = 'all';
   final String? _customerId;
 
+  Timer? _pollTimer;
+
   OrderManagementNotifier(this._ref, this._repo, {String? customerId})
       : _customerId = customerId,
         super(const AsyncValue.loading()) {
     load();
+    // Periodically sync and reload from database every 15 seconds to pull remote admin-confirmed orders automatically
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) {
+        load(silent: true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> load({bool silent = false}) async {

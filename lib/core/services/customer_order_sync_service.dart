@@ -40,7 +40,10 @@ class CustomerOrderSyncService {
         try {
           await db.transaction((txn) async {
             final String orderId = ord['id'];
-            final String customerId = ord['customer_id'] ?? '';
+            String customerId = ord['customer_id'] ?? '';
+            if (customerId.isEmpty) {
+              customerId = 'generic_app_customer';
+            }
             
             // Get customer details from nested customers object
             String customerName = 'App Customer';

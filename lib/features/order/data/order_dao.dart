@@ -71,8 +71,12 @@ class OrderDao {
       args.add(customerId);
     }
     if (status != null && status != 'all') {
-      conditions.add('o.delivery_status = ?');
-      args.add(status);
+      if (status == 'pending') {
+        conditions.add("(o.delivery_status = 'pending' OR o.delivery_status = 'confirmed' OR o.delivery_status = 'preparing' OR o.delivery_status = 'out for delivery')");
+      } else {
+        conditions.add('o.delivery_status = ?');
+        args.add(status);
+      }
     }
 
     // Date filters
