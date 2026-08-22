@@ -249,73 +249,8 @@ class CustomerOrderSyncService {
         }
       }
 
-      // D. Clean up deleted orders: Find local SQLite orders with UUID IDs that no longer exist on Supabase
-      try {
-        final localOrders = await db.query('orders', columns: ['id', 'delivery_status', 'customer_id', 'created_at']);
-        final remoteIds = orders.map((o) => o['id'] as String).toSet();
-        
-        for (var localOrd in localOrders) {
-          final String localId = localOrd['id'] as String;
-          // UUID check: 36 characters with hyphens
-          if (localId.length == 36 && localId.contains('-')) {
-            // Check if the order is older than 90 days (3 months)
-            // If it is, keep it in SQLite permanently, even if deleted on Supabase
-            final String createdAtStr = localOrd['created_at'] as String? ?? '';
-            if (createdAtStr.isNotEmpty) {
-              final localCreated = DateTime.tryParse(createdAtStr);
-              if (localCreated != null) {
-                final ageDays = DateTime.now().difference(localCreated).inDays;
-                if (ageDays > 90) {
-                  continue; // Skip cleanup deletion
-                }
-              }
-            }
-
-            if (!remoteIds.contains(localId)) {
-              // Delete locally
-              await db.transaction((txn) async {
-                final status = localOrd['delivery_status'] as String? ?? '';
-                final customerId = localOrd['customer_id'] as String? ?? '';
-                
-                if (status != 'cancelled') {
-                  // Restore stock locally
-                  final localItems = await txn.query('order_items', where: 'order_id = ?', whereArgs: [localId]);
-                  for (var localItem in localItems) {
-                    final String itemId = localItem['item_id'] as String? ?? '';
-                    final double qty = (localItem['quantity'] as num?)?.toDouble() ?? 0.0;
-                    
-                    if (itemId.isNotEmpty) {
-                      await txn.rawUpdate(
-                        'UPDATE items SET stock = stock + ?, updated_at = ? WHERE id = ?',
-                        [qty, DateTime.now().toIso8601String(), itemId],
-                      );
-                      await txn.insert('stock_history', {
-                        'id': const Uuid().v4(),
-                        'item_id': itemId,
-                        'item_name': localItem['item_name'] ?? 'Item',
-                        'change_amount': qty,
-                        'reason': 'Online Order Deleted on Server #$localId',
-                        'order_id': localId,
-                        'created_at': DateTime.now().toIso8601String(),
-                      });
-                    }
-                  }
-                }
-                
-                await txn.delete('order_items', where: 'order_id = ?', whereArgs: [localId]);
-                await txn.delete('orders', where: 'id = ?', whereArgs: [localId]);
-                
-                if (customerId.isNotEmpty) {
-                  await CustomerDao().recalcCustomerTotals(customerId, executor: txn);
-                }
-                debugPrint('CustomerOrderSyncService: Deleted local order $localId (removed from server)');
-              });
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('CustomerOrderSyncService cleanup error: $e');
-      }
+      // D. Clean up deleted orders: Disabled to support permanent local offline order retention history.
+      // Missing remote orders are no longer synchronized as deletions.
 
     } catch (e) {
       debugPrint('CustomerOrderSyncService sync error: $e');
