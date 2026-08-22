@@ -131,6 +131,17 @@ class InventoryNotifier extends StateNotifier<AsyncValue<List<Item>>> {
       state = AsyncValue<List<Item>>.error(e, st).copyWithPrevious(state);
     }
   }
+
+  Future<void> syncWithServer() async {
+    state = const AsyncValue.loading();
+    try {
+      await _repo.syncWithServer();
+      await load(silent: true);
+      _invalidateAll();
+    } catch (e, st) {
+      state = AsyncValue<List<Item>>.error(e, st).copyWithPrevious(state);
+    }
+  }
 }
 
 final inventoryProvider =

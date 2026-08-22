@@ -138,12 +138,46 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(inventoryProvider);
     final isWorker = ref.watch(appModeProvider).value == AppMode.worker;
-
     return AppScaffold(
       title: 'Inventory & Prices',
       showBack: widget.showBack,
       actions: [
-        if (!isWorker)
+        if (!isWorker) ...[
+          IconButton(
+            icon: const Icon(Icons.sync_rounded),
+            tooltip: 'Sync with Server',
+            onPressed: () async {
+              AppHaptics.buttonClick();
+              try {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        ),
+                        SizedBox(width: 16),
+                        Text('Syncing with database server...'),
+                      ],
+                    ),
+                    duration: Duration(seconds: 15),
+                  ),
+                );
+                await ref.read(inventoryProvider.notifier).syncWithServer();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  SnackbarHelper.showSuccess(context, '✅ Synchronized with database server successfully!');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  SnackbarHelper.showError(context, 'Sync failed: $e');
+                }
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.edit_note_rounded),
             tooltip: 'Quick Adjust Inventory',
@@ -152,6 +186,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               Navigator.of(context).pushNamed(AppRoutes.quickInventoryAdjust);
             },
           ),
+        ],
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert_rounded),
           onSelected: (v) {

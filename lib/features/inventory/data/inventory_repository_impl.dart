@@ -152,52 +152,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   @override
   Future<List<Item>> getAllItems({String? category, String? searchQuery, String? sortBy}) async {
-    try {
-      await _ensureSupabaseAuth();
-      final client = Supabase.instance.client;
-      
-      // Fetch products and categories
-      final List<dynamic> productsJson = await client.from('products').select('*, categories(id, name)');
-      
-      // Keep track of Supabase product IDs
-      final Set<String> remoteIds = {};
-      
-      // Update local SQLite db with remote products
-      for (final p in productsJson) {
-        final item = _mapProductToItem(p);
-        remoteIds.add(item.id);
-        await _dao.insertItem(item);
-      }
-      
-      // Delete any items from local SQLite that are not present in Supabase anymore
-      final localItems = await _dao.getAllItems();
-      for (final localItem in localItems) {
-        if (!remoteIds.contains(localItem.id)) {
-          await _dao.deleteItem(localItem.id);
-        }
-      }
-    } catch (e) {
-      debugPrint('Supabase products fetch/sync failed (offline mode): $e');
-    }
-    
-    // Always return local items from SQLite matching the filters
     return _dao.getAllItems(category: category, searchQuery: searchQuery, sortBy: sortBy);
   }
 
   @override
   Future<Item?> getItemById(String id) async {
-    try {
-      await _ensureSupabaseAuth();
-      final client = Supabase.instance.client;
-      final product = await client.from('products').select('*, categories(id, name)').eq('id', id).maybeSingle();
-      if (product != null) {
-        final item = _mapProductToItem(product);
-        await _dao.insertItem(item);
-        return item;
-      }
-    } catch (e) {
-      debugPrint('Supabase getItemById failed (offline fallback): $e');
-    }
     return _dao.getItemById(id);
   }
 
@@ -208,127 +167,31 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   @override
   Future<String> addItem(Item item) async {
-    await _ensureSupabaseAuth();
-    final client = Supabase.instance.client;
-    final categoryId = await _getOrCreateCategoryId(item.category);
-    final pMap = await _itemToProductMap(item, categoryId);
-    
-    // Insert into Supabase
-    final newProd = await client.from('products').insert(pMap).select().single();
-    final newId = newProd['id'] as String;
-    
-    final itemWithId = item.copyWith(id: newId);
+    final localId = _uuid.v4();
+    final itemWithId = item.copyWith(id: localId);
     await _dao.insertItem(itemWithId);
-    return newId;
+    return localId;
   }
 
   @override
   Future<void> updateItem(Item item) async {
-    await _ensureSupabaseAuth();
-    final client = Supabase.instance.client;
-    final categoryId = await _getOrCreateCategoryId(item.category);
-    
-    // Handle conflict check by fetching latest remote product description JSON
-    String mergedDescription = json.encode({
-      'cost_price': item.costPrice,
-      'stock': item.stock,
-      'min_stock': item.minStock,
-      'barcode': item.barcode,
-      'weight_per_piece': item.weightPerPiece,
-      'sequence_no': item.sequenceNo,
-      'expiry_date': item.expiryDate,
-      'batch_number': item.batchNumber,
-      'prescription_required': item.prescriptionRequired,
-      'dosage_info': item.dosageInfo,
-      'best_before': item.bestBefore,
-      'pack_date': item.packDate,
-    });
-    
-    try {
-      final remoteProd = await client.from('products').select('description').eq('id', item.id).maybeSingle();
-      if (remoteProd != null) {
-        final remoteDesc = remoteProd['description'] as String? ?? '';
-        if (remoteDesc.trim().startsWith('{') && remoteDesc.trim().endsWith('}')) {
-          final Map<String, dynamic> remoteJson = json.decode(remoteDesc);
-          final mergedJson = {
-            ...remoteJson,
-            'cost_price': item.costPrice,
-            'stock': item.stock,
-            'min_stock': item.minStock,
-            'barcode': item.barcode,
-            'weight_per_piece': item.weightPerPiece,
-            'sequence_no': item.sequenceNo,
-            'expiry_date': item.expiryDate,
-            'batch_number': item.batchNumber,
-            'prescription_required': item.prescriptionRequired,
-            'dosage_info': item.dosageInfo,
-            'best_before': item.bestBefore,
-            'pack_date': item.packDate,
-          };
-          mergedDescription = json.encode(mergedJson);
-        }
-      }
-    } catch (e) {
-      debugPrint('Conflict check failed: $e');
-    }
-    
-    final pMap = {
-      'name': item.name,
-      'category_id': categoryId,
-      'price': item.sellingPrice,
-      'unit': item.unit,
-      'image_path': item.photoPath,
-      'description': mergedDescription,
-      'is_available': item.stock > 0,
-      'is_enabled': true,
-    };
-    
-    await client.from('products').update(pMap).eq('id', item.id);
     await _dao.updateItem(item);
   }
 
   @override
   Future<void> updateItems(List<Item> items) async {
     for (final item in items) {
-      await updateItem(item);
+      await _dao.updateItem(item);
     }
   }
 
   @override
   Future<void> deleteItem(String id) async {
-    await _ensureSupabaseAuth();
-    final client = Supabase.instance.client;
-    await client.from('products').delete().eq('id', id);
     await _dao.deleteItem(id);
   }
 
   @override
   Future<void> adjustStock(String itemId, double change, String reason, {String? orderId}) async {
-    await _ensureSupabaseAuth();
-    final client = Supabase.instance.client;
-    
-    final remoteProd = await client.from('products').select('description').eq('id', itemId).maybeSingle();
-    double currentRemoteStock = 0.0;
-    Map<String, dynamic> remoteJson = {};
-    
-    if (remoteProd != null) {
-      final remoteDesc = remoteProd['description'] as String? ?? '';
-      if (remoteDesc.trim().startsWith('{') && remoteDesc.trim().endsWith('}')) {
-        try {
-          remoteJson = json.decode(remoteDesc);
-          currentRemoteStock = (remoteJson['stock'] as num?)?.toDouble() ?? 0.0;
-        } catch (_) {}
-      }
-    }
-    
-    final double updatedStock = currentRemoteStock + change;
-    remoteJson['stock'] = updatedStock;
-    
-    await client.from('products').update({
-      'description': json.encode(remoteJson),
-      'is_available': updatedStock > 0,
-    }).eq('id', itemId);
-    
     final item = await _dao.getItemById(itemId);
     await _dao.adjustStock(itemId, change);
     if (item != null) {
@@ -351,32 +214,74 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   @override
   Future<void> updateItemSequences(List<String> itemIds) async {
-    await _ensureSupabaseAuth();
-    final client = Supabase.instance.client;
-    for (int i = 0; i < itemIds.length; i++) {
-      final itemId = itemIds[i];
-      final seqNo = i + 1;
-      
-      final remoteProd = await client.from('products').select('description').eq('id', itemId).maybeSingle();
-      Map<String, dynamic> remoteJson = {};
-      if (remoteProd != null) {
-        final remoteDesc = remoteProd['description'] as String? ?? '';
-        if (remoteDesc.trim().startsWith('{') && remoteDesc.trim().endsWith('}')) {
-          try {
-            remoteJson = json.decode(remoteDesc);
-          } catch (_) {}
-        }
-      }
-      remoteJson['sequence_no'] = seqNo;
-      await client.from('products').update({
-        'description': json.encode(remoteJson),
-      }).eq('id', itemId);
-    }
     await _dao.updateItemSequences(itemIds);
   }
 
   @override
   Future<List<StockHistory>> getSpillageHistory() async {
     return _dao.getSpillageHistory();
+  }
+
+  @override
+  Future<void> syncWithServer() async {
+    await _ensureSupabaseAuth();
+    final client = Supabase.instance.client;
+
+    // 1. Fetch remote products from Supabase
+    final List<dynamic> productsJson = await client.from('products').select('*, categories(id, name)');
+    final Map<String, Map<String, dynamic>> remoteProductsById = {};
+    final Map<String, Map<String, dynamic>> remoteProductsByName = {};
+
+    for (final p in productsJson) {
+      final id = p['id'] as String;
+      final name = p['name'] as String? ?? '';
+      remoteProductsById[id] = Map<String, dynamic>.from(p);
+      remoteProductsByName[name.toLowerCase()] = Map<String, dynamic>.from(p);
+    }
+
+    // 2. Fetch all local items from SQLite
+    final localItems = await _dao.getAllItems();
+    final Set<String> syncedLocalIds = {};
+
+    for (final localItem in localItems) {
+      // Check if local item already has a Supabase ID or name match on remote
+      Map<String, dynamic>? matchingRemote = remoteProductsById[localItem.id] ?? remoteProductsByName[localItem.name.toLowerCase()];
+
+      if (matchingRemote != null) {
+        final remoteId = matchingRemote['id'] as String;
+        syncedLocalIds.add(remoteId);
+
+        // Update the local item to use the correct remote ID in case of name match
+        if (localItem.id != remoteId) {
+          await _dao.deleteItem(localItem.id);
+          await _dao.insertItem(localItem.copyWith(id: remoteId));
+        }
+
+        // Update Supabase product with local item values
+        final categoryId = await _getOrCreateCategoryId(localItem.category);
+        final pMap = await _itemToProductMap(localItem.copyWith(id: remoteId), categoryId);
+        await client.from('products').update(pMap).eq('id', remoteId);
+      } else {
+        // Does not exist on remote, insert it to Supabase
+        final categoryId = await _getOrCreateCategoryId(localItem.category);
+        final pMap = await _itemToProductMap(localItem, categoryId);
+        final insertedProd = await client.from('products').insert(pMap).select().single();
+        final insertedId = insertedProd['id'] as String;
+
+        // Update SQLite database with the new remote ID
+        await _dao.deleteItem(localItem.id);
+        await _dao.insertItem(localItem.copyWith(id: insertedId));
+        syncedLocalIds.add(insertedId);
+      }
+    }
+
+    // 3. For any remote products that do not exist locally, download them
+    for (final p in productsJson) {
+      final remoteId = p['id'] as String;
+      if (!syncedLocalIds.contains(remoteId)) {
+        final item = _mapProductToItem(p);
+        await _dao.insertItem(item);
+      }
+    }
   }
 }
