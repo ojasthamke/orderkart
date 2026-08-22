@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import '../data/order_dao.dart';
 import '../data/order_questions_dao.dart';
 import '../data/order_repository_impl.dart';
@@ -11,6 +12,8 @@ import '../../inventory/data/item_dao.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../search/presentation/search_provider.dart';
+import '../../../core/services/customer_order_sync_service.dart';
+
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   return OrderRepositoryImpl(OrderDao(), CustomerDao(), ItemDao());
@@ -33,6 +36,11 @@ class OrderManagementNotifier
   Future<void> load({bool silent = false}) async {
     if (!silent && state.valueOrNull == null) {
       state = const AsyncValue.loading();
+    }
+    try {
+      await CustomerOrderSyncService.instance.syncOrders();
+    } catch (e) {
+      debugPrint('Syncing Supabase orders failed: $e');
     }
     try {
       final orders = await _repo.getAllOrders(
