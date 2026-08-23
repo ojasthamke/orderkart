@@ -167,9 +167,10 @@ class CustomerDao {
       WHERE (c.is_archived IS NULL OR c.is_archived = 0)
         AND (c.name LIKE ? OR c.phone1 LIKE ? OR c.phone2 LIKE ?
              OR c.house_number LIKE ? OR c.address LIKE ?
+             OR c.customer_code LIKE ?
              OR street.name LIKE ? OR area.name LIKE ?)
       LIMIT 50
-    ''', [q, q, q, q, q, q, q]);
+    ''', [q, q, q, q, q, q, q, q]);
     return maps.map(Customer.fromMap).toList();
   }
 

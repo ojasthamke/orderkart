@@ -49,6 +49,7 @@ class Customer {
   final int visitCount; // Total app visits count
   final bool isGuest; // True if registered as Path B guest without code
   final String locality; // Customer locality / neighborhood
+  final String customerCode; // Manually assigned OK2 login code
 
   const Customer({
     required this.id,
@@ -96,6 +97,7 @@ class Customer {
     this.visitCount = 14,
     this.isGuest = false,
     this.locality = 'Baner, Pune',
+    this.customerCode = '',
   });
 
   Customer copyWith({
@@ -143,6 +145,7 @@ class Customer {
     int? visitCount,
     bool? isGuest,
     String? locality,
+    String? customerCode,
   }) {
     return Customer(
       id: id ?? this.id,
@@ -189,6 +192,7 @@ class Customer {
       visitCount: visitCount ?? this.visitCount,
       isGuest: isGuest ?? this.isGuest,
       locality: locality ?? this.locality,
+      customerCode: customerCode ?? this.customerCode,
     );
   }
 
@@ -237,6 +241,7 @@ class Customer {
         'visit_count': visitCount,
         'is_guest': isGuest ? 1 : 0,
         'locality': locality,
+        'customer_code': customerCode,
       };
 
   factory Customer.fromMap(Map<String, dynamic> map) {
@@ -306,6 +311,7 @@ class Customer {
         visitCount: (map['visit_count'] as num?)?.toInt() ?? 0,
         isGuest: map['is_guest'] == 1 || map['is_guest'] == true,
         locality: map['locality'] as String? ?? 'Baner, Pune',
+        customerCode: map['customer_code'] as String? ?? '',
       );
   }
 

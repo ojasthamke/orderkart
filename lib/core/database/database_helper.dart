@@ -77,6 +77,7 @@ class DatabaseHelper {
           'ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
     } catch (_) {}
     await _ensureGeoMapTables(db);
+    await _ensureCustomerCodeColumn(db);
   }
 
   static Future<void> _autoRecoverAndBackup(String internalDbPath) async {
@@ -161,6 +162,7 @@ class DatabaseHelper {
         } catch (_) {}
         await _ensureGeoMapTables(db);
         await ensureCustomerDeviceColumns(db);
+        await _ensureCustomerCodeColumn(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
         _autoRecoverAndBackup(path);
@@ -330,6 +332,7 @@ class DatabaseHelper {
         visit_count         INTEGER DEFAULT 0,
         is_guest            INTEGER DEFAULT 0,
         locality            TEXT DEFAULT '',
+        customer_code       TEXT DEFAULT '',
         FOREIGN KEY(street_id) REFERENCES streets(id) ON DELETE CASCADE
       )
     ''');
@@ -3102,5 +3105,11 @@ class DatabaseHelper {
             "Migration Validation Failed: Duplicate sequence keys detected among siblings: ${duplicateSeqRes.first}");
       }
     });
+  }
+
+  Future<void> _ensureCustomerCodeColumn(Database db) async {
+    try {
+      await db.execute("ALTER TABLE customers ADD COLUMN customer_code TEXT DEFAULT ''");
+    } catch (_) {}
   }
 }

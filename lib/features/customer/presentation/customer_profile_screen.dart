@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -501,6 +502,47 @@ class CustomerProfileScreen extends ConsumerWidget {
                             .textTheme
                             .bodySmall
                             ?.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                    if (customer.customerCode.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.vpn_key_rounded, color: AppColors.primary, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Customer Code: ',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              customer.customerCode,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: () {
+                                Clipboard.setData(ClipboardData(text: customer.customerCode));
+                                SnackbarHelper.showSuccess(context, 'Customer code copied');
+                              },
+                              child: const Icon(Icons.copy_rounded, color: AppColors.primary, size: 16),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                     if (customer.isVip) ...[

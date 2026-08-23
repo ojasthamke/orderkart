@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/database/database_helper.dart';
@@ -51,6 +53,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   final _addressCon = TextEditingController();
   final _notesCon = TextEditingController();
   final _mapsCon = TextEditingController();
+  final _customerCodeCon = TextEditingController();
 
   String? _streetId;
   String _photoPath = '';
@@ -144,6 +147,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   String _initialHouse = '';
   String _initialAddress = '';
   String _initialNotes = '';
+  String _initialCustomerCode = '';
 
   Future<void> _loadCustomer() async {
     final customer = await ref
@@ -160,6 +164,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         _initialHouse = customer.houseNumber;
         _initialAddress = customer.address;
         _initialNotes = customer.notes;
+        _initialCustomerCode = customer.customerCode;
 
         _nameCon.text = _initialName;
         _phone1Con.text = _initialPhone;
@@ -172,6 +177,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         _mapsCon.text = customer.mapsLocation;
         _photoPath = customer.photoPath;
         _dietaryPreference = customer.dietaryPreference;
+        _customerCodeCon.text = _initialCustomerCode;
       });
       _checkHousehold(customer.houseNumber);
     }
@@ -183,13 +189,15 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           _phone1Con.text != _initialPhone ||
           _houseCon.text != _initialHouse ||
           _addressCon.text != _initialAddress ||
-          _notesCon.text != _initialNotes;
+          _notesCon.text != _initialNotes ||
+          _customerCodeCon.text != _initialCustomerCode;
     }
     return _nameCon.text.trim().isNotEmpty ||
         _phone1Con.text.trim().isNotEmpty ||
         _houseCon.text.trim().isNotEmpty ||
         _addressCon.text.trim().isNotEmpty ||
         _notesCon.text.trim().isNotEmpty ||
+        _customerCodeCon.text.trim().isNotEmpty ||
         _photoPath.isNotEmpty;
   }
 
@@ -238,6 +246,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     _addressCon.dispose();
     _notesCon.dispose();
     _mapsCon.dispose();
+    _customerCodeCon.dispose();
     for (final controller in _customFieldControllers.values) {
       controller.dispose();
     }
@@ -401,6 +410,27 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                   prefixIcon: Icon(Icons.chat_rounded),
                 ),
                 validator: AppValidators.phone,
+              ),
+              const SizedBox(height: 16),
+              
+              // Customer Code
+              TextFormField(
+                controller: _customerCodeCon,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  labelText: 'Customer Code (OK2 Login)',
+                  prefixIcon: const Icon(Icons.vpn_key_rounded),
+                  hintText: 'e.g. OK1025, CUST001',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.copy_rounded),
+                    onPressed: () {
+                      if (_customerCodeCon.text.trim().isNotEmpty) {
+                        Clipboard.setData(ClipboardData(text: _customerCodeCon.text.trim().toUpperCase()));
+                        SnackbarHelper.showSuccess(context, 'Customer code copied');
+                      }
+                    },
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -879,6 +909,30 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     try {
       final now = DateTime.now();
       final customerId = widget.customerId ?? const Uuid().v4();
+      final String codeRaw = _customerCodeCon.text.trim().toUpperCase();
+      final db = await DatabaseHelper.instance.database;
+
+      if (codeRaw.isNotEmpty) {
+        final RegExp allowedChars = RegExp(r'^[A-Z0-9\-]+$');
+        if (!allowedChars.hasMatch(codeRaw)) {
+          throw Exception('Customer Code can only contain letters, numbers, and hyphens.');
+        }
+        if (codeRaw.length < 3) {
+          throw Exception('Customer Code must be at least 3 characters long.');
+        }
+        if (codeRaw.length > 20) {
+          throw Exception('Customer Code must be at most 20 characters long.');
+        }
+        final codeCheck = await db.query(
+          'customers',
+          columns: ['name'],
+          where: 'customer_code = ? AND id != ? AND (is_archived IS NULL OR is_archived = 0)',
+          whereArgs: [codeRaw, customerId],
+        );
+        if (codeCheck.isNotEmpty) {
+          throw Exception('Customer code already assigned. Please enter another code.');
+        }
+      }
 
       // For ghost houses: auto-fill placeholder name and phone so DB constraints are satisfied
       final String finalName =
@@ -886,7 +940,6 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       final String finalPhone =
           _isGhostHouse ? '0000000000' : _phone1Con.text.trim();
 
-      final db = await DatabaseHelper.instance.database;
       // Skip duplicate-phone check for ghost houses (they all share the same placeholder phone)
       if (!_isGhostHouse) {
         final duplicateCheck = await db.query(
@@ -947,6 +1000,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               dietaryPreference: _dietaryPreference,
               latitude: latitude,
               longitude: longitude,
+              customerCode: codeRaw,
               updatedAt: now,
             )
           : Customer(
@@ -968,6 +1022,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               customerSince: now,
               createdAt: now,
               updatedAt: now,
+              customerCode: codeRaw,
             );
 
       final notifier = ref.read(customerListProvider(_streetId!).notifier);
@@ -1010,6 +1065,24 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           await db.delete('custom_field_values',
               where: 'entity_id = ? AND field_id = ?',
               whereArgs: [customerId, fieldId]);
+        }
+      }
+
+      // Sync customer code to Supabase asynchronously
+      if (codeRaw.isNotEmpty) {
+        try {
+          final client = Supabase.instance.client;
+          await client.rpc('sync_customer_with_code', params: {
+            'p_id': customerId,
+            'p_name': finalName,
+            'p_phone': finalPhone,
+            'p_email': '',
+            'p_address': _addressCon.text.trim(),
+            'p_customer_code': codeRaw,
+          });
+          debugPrint('CustomerCode: Synced code $codeRaw for customer $customerId to Supabase.');
+        } catch (e) {
+          debugPrint('CustomerCode: Supabase sync failed: $e');
         }
       }
 
