@@ -279,8 +279,10 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                                     const Text('📍 Routes', style: TextStyle(fontWeight: FontWeight.bold)),
                                     Text('  Areas synced: ${stats['areasUploaded']}'),
                                     Text('  Roads synced: ${stats['roadsUploaded']}'),
-                                    if ((stats['areasFailed'] ?? 0) > 0 || (stats['roadsFailed'] ?? 0) > 0)
-                                      Text('  Failed: ${stats['areasFailed']} areas, ${stats['roadsFailed']} roads',
+                                    if ((stats['subRoadsUploaded'] ?? 0) > 0)
+                                      Text('  Sub-roads synced: ${stats['subRoadsUploaded']}'),
+                                    if ((stats['areasFailed'] ?? 0) > 0 || (stats['roadsFailed'] ?? 0) > 0 || (stats['subRoadsFailed'] ?? 0) > 0)
+                                      Text('  Failed: ${stats['areasFailed']} areas, ${stats['roadsFailed']} roads, ${stats['subRoadsFailed']} sub-roads',
                                           style: const TextStyle(color: Colors.red)),
                                     const SizedBox(height: 12),
                                     const Text('👥 Customers', style: TextStyle(fontWeight: FontWeight.bold)),

@@ -55,7 +55,38 @@ class CustomerOrderSyncService {
       final client = Supabase.instance.client;
       final db = await DatabaseHelper.instance.database;
 
-      // Pre-load street→area mapping for route lookup
+      // Try to load locations for recursive ancestor mapping
+      List<Map<String, dynamic>> localLocations = [];
+      bool useLocationsTable = false;
+      try {
+        localLocations = await db.query(
+          'locations',
+          where: "is_archived IS NULL OR is_archived = 0",
+        );
+        if (localLocations.isNotEmpty) {
+          useLocationsTable = true;
+        }
+      } catch (_) {}
+
+      // Build hierarchy helper maps
+      final Map<String, Map<String, dynamic>> locationMap = {
+        for (final loc in localLocations) loc['id'] as String: loc
+      };
+
+      List<Map<String, dynamic>> getAncestors(String startId) {
+        final path = <Map<String, dynamic>>[];
+        String? currentId = startId;
+        int maxDepth = 20;
+        while (currentId != null && maxDepth-- > 0) {
+          final loc = locationMap[currentId];
+          if (loc == null) break;
+          path.insert(0, loc);
+          currentId = loc['parent_location_id'] as String?;
+        }
+        return path;
+      }
+
+      // Legacy pre-load mapping
       final List<Map<String, dynamic>> streets = await db.query('streets');
       final Map<String, String> streetToArea = {};
       for (final s in streets) {
@@ -111,17 +142,37 @@ class CustomerOrderSyncService {
           }
         }
 
-        // Resolve route IDs: street_id → area_id, street_id → road_id
+        // Resolve route IDs for area_id, road_id, sub_road_id
         final String streetId = cust['street_id'] as String? ?? '';
-        final String localAreaId = streetToArea[streetId] ?? '';
-        
-        // Generate deterministic UUIDs matching syncAreasAndRoads()
         String? supabaseAreaId;
         String? supabaseRoadId;
-        if (localAreaId.isNotEmpty) {
-          supabaseAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localAreaId');
-        }
-        if (streetId.isNotEmpty) {
+        String? supabaseSubRoadId;
+
+        if (useLocationsTable && streetId.isNotEmpty) {
+          final ancestors = getAncestors(streetId);
+          if (ancestors.isNotEmpty) {
+            // Area is root (index 0)
+            final areaLocalId = ancestors[0]['id'] as String;
+            supabaseAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$areaLocalId');
+
+            // Road is depth 1 (index 1)
+            if (ancestors.length > 1) {
+              final roadLocalId = ancestors[1]['id'] as String;
+              supabaseRoadId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.road.$roadLocalId');
+            }
+
+            // Sub-road is depth >= 2 (use the leaf location ID)
+            if (ancestors.length > 2) {
+              final subRoadLocalId = ancestors.last['id'] as String;
+              supabaseSubRoadId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.subroad.$subRoadLocalId');
+            }
+          }
+        } else if (streetId.isNotEmpty) {
+          // Legacy mapping fallback
+          final localAreaId = streetToArea[streetId] ?? '';
+          if (localAreaId.isNotEmpty) {
+            supabaseAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localAreaId');
+          }
           supabaseRoadId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.road.$streetId');
         }
 
@@ -130,11 +181,9 @@ class CustomerOrderSyncService {
         try {
           final serverCheck = await client.from('customers').select('id').eq('id', customerId).maybeSingle();
           existsOnServer = serverCheck != null;
-        } catch (_) {
-          // Safe fallback if network check fails, assume false to proceed with RPC upsert
-        }
+        } catch (_) {}
 
-        debugPrint('[SYNC] Customer $rawId ($name) area=$supabaseAreaId road=$supabaseRoadId');
+        debugPrint('[SYNC] Customer $rawId ($name) area=$supabaseAreaId road=$supabaseRoadId subroad=$supabaseSubRoadId');
 
         try {
           await client.rpc('sync_customer_with_code', params: {
@@ -146,6 +195,7 @@ class CustomerOrderSyncService {
             'p_customer_code': codeRaw,
             'p_area_id': supabaseAreaId,
             'p_road_id': supabaseRoadId,
+            'p_sub_road_id': supabaseSubRoadId,
           });
 
           // Mark synced in local settings
@@ -162,7 +212,7 @@ class CustomerOrderSyncService {
           }
         } catch (e) {
           failed++;
-          debugPrint('[SYNC] FAILED: $e');
+          debugPrint('[SYNC] Customer sync FAILED: $e');
         }
       }
     } catch (e) {
@@ -185,82 +235,201 @@ class CustomerOrderSyncService {
   }
 
   // =====================================================
-  // SYNC AREAS & ROADS (SQLite areas/streets → Supabase areas/roads)
+  // SYNC AREAS & ROADS (SQLite locations/areas/streets → Supabase areas/roads/sub_roads)
   // =====================================================
   Future<Map<String, int>> syncAreasAndRoads() async {
     int areasUploaded = 0;
     int roadsUploaded = 0;
+    int subRoadsUploaded = 0;
     int areasFailed = 0;
     int roadsFailed = 0;
+    int subRoadsFailed = 0;
 
     try {
       await _ensureSupabaseAuth();
       final client = Supabase.instance.client;
       final db = await DatabaseHelper.instance.database;
 
-      // 1. Sync Areas
-      final List<Map<String, dynamic>> localAreas = await db.query(
-        'areas',
-        where: "is_archived IS NULL OR is_archived = 0",
-      );
-
-      for (int i = 0; i < localAreas.length; i++) {
-        final area = localAreas[i];
-        final localId = area['id'] as String;
-        final name = (area['name'] as String? ?? '').trim();
-        if (name.isEmpty) continue;
-
-        final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localId');
-        final areaCode = 'AREA-${(i + 1).toString().padLeft(6, '0')}';
-
-        try {
-          // Try insert, on conflict update
-          await client.from('areas').upsert({
-            'id': supabaseId,
-            'area_code': areaCode,
-            'name': name,
-            'delivery_schedule': [],
-          }, onConflict: 'id');
-          areasUploaded++;
-        } catch (e) {
-          areasFailed++;
-          debugPrint('[SYNC] Area "$name" FAILED: $e');
+      // Try to query the new hierarchical locations table
+      List<Map<String, dynamic>> localLocations = [];
+      bool useLocationsTable = false;
+      try {
+        localLocations = await db.query(
+          'locations',
+          where: "is_archived IS NULL OR is_archived = 0",
+        );
+        if (localLocations.isNotEmpty) {
+          useLocationsTable = true;
         }
+      } catch (e) {
+        debugPrint('[SYNC] Locations table query failed or empty, falling back to legacy: $e');
       }
 
-      // 2. Sync Streets → Roads
-      final List<Map<String, dynamic>> localStreets = await db.query(
-        'streets',
-        where: "is_archived IS NULL OR is_archived = 0",
-      );
+      if (useLocationsTable) {
+        // Group locations by depth or build hierarchies
+        final rootLocations = localLocations.where((loc) => loc['parent_location_id'] == null || loc['depth'] == 0).toList();
+        final depth1Locations = localLocations.where((loc) => loc['parent_location_id'] != null && loc['depth'] == 1).toList();
+        final depth2OrMoreLocations = localLocations.where((loc) => loc['parent_location_id'] != null && (loc['depth'] ?? 0) >= 2).toList();
 
-      for (int i = 0; i < localStreets.length; i++) {
-        final street = localStreets[i];
-        final localId = street['id'] as String;
-        final localAreaId = street['area_id'] as String? ?? '';
-        final name = (street['name'] as String? ?? '').trim();
-        if (name.isEmpty || localAreaId.isEmpty) continue;
+        // Build location lookup map
+        final Map<String, Map<String, dynamic>> locationMap = {
+          for (final loc in localLocations) loc['id'] as String: loc
+        };
 
-        final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.road.$localId');
-        final supabaseAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localAreaId');
-        final roadCode = 'ROAD-${(i + 1).toString().padLeft(6, '0')}';
+        // Helper to trace root-to-leaf path
+        List<Map<String, dynamic>> getAncestors(String startId) {
+          final path = <Map<String, dynamic>>[];
+          String? currentId = startId;
+          int maxDepth = 20;
+          while (currentId != null && maxDepth-- > 0) {
+            final loc = locationMap[currentId];
+            if (loc == null) break;
+            path.insert(0, loc);
+            currentId = loc['parent_location_id'] as String?;
+          }
+          return path;
+        }
 
-        try {
-          await client.from('roads').upsert({
-            'id': supabaseId,
-            'road_code': roadCode,
-            'area_id': supabaseAreaId,
-            'name': name,
-          }, onConflict: 'id');
-          roadsUploaded++;
-        } catch (e) {
-          roadsFailed++;
-          debugPrint('[SYNC] Road "$name" FAILED: $e');
+        // 1. Upload Areas (depth == 0)
+        for (final loc in rootLocations) {
+          final localId = loc['id'] as String;
+          final name = (loc['name'] as String? ?? '').trim();
+          if (name.isEmpty) continue;
+
+          final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localId');
+          final areaCode = 'AREA-${supabaseId.substring(0, 8).toUpperCase()}';
+
+          try {
+            await client.from('areas').upsert({
+              'id': supabaseId,
+              'area_code': areaCode,
+              'name': name,
+              'delivery_schedule': [],
+            }, onConflict: 'id');
+            areasUploaded++;
+          } catch (e) {
+            areasFailed++;
+            debugPrint('[SYNC] Area "$name" FAILED: $e');
+          }
+        }
+
+        // 2. Upload Roads (depth == 1)
+        for (final loc in depth1Locations) {
+          final localId = loc['id'] as String;
+          final localAreaId = loc['parent_location_id'] as String;
+          final name = (loc['name'] as String? ?? '').trim();
+          if (name.isEmpty || localAreaId.isEmpty) continue;
+
+          final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.road.$localId');
+          final supabaseAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localAreaId');
+          final roadCode = 'ROAD-${supabaseId.substring(0, 8).toUpperCase()}';
+
+          try {
+            await client.from('roads').upsert({
+              'id': supabaseId,
+              'road_code': roadCode,
+              'area_id': supabaseAreaId,
+              'name': name,
+            }, onConflict: 'id');
+            roadsUploaded++;
+          } catch (e) {
+            roadsFailed++;
+            debugPrint('[SYNC] Road "$name" FAILED: $e');
+          }
+        }
+
+        // 3. Upload Sub-Roads (depth >= 2)
+        for (final loc in depth2OrMoreLocations) {
+          final localId = loc['id'] as String;
+          final name = (loc['name'] as String? ?? '').trim();
+          if (name.isEmpty) continue;
+
+          // Find depth 1 ancestor to act as road_id in Supabase
+          final ancestors = getAncestors(localId);
+          if (ancestors.length < 2) continue; // must have at least [Area, Road]
+
+          final roadLocalId = ancestors[1]['id'] as String;
+
+          final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.subroad.$localId');
+          final supabaseRoadId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.road.$roadLocalId');
+          final subroadCode = 'SUBROAD-${supabaseId.substring(0, 8).toUpperCase()}';
+
+          try {
+            await client.from('sub_roads').upsert({
+              'id': supabaseId,
+              'subroad_code': subroadCode,
+              'road_id': supabaseRoadId,
+              'name': name,
+            }, onConflict: 'id');
+            subRoadsUploaded++;
+          } catch (e) {
+            subRoadsFailed++;
+            debugPrint('[SYNC] Sub-Road "$name" FAILED: $e');
+          }
+        }
+
+      } else {
+        // Fallback to legacy areas and streets (treating streets as Roads under Areas)
+        final List<Map<String, dynamic>> localAreas = await db.query(
+          'areas',
+          where: "is_archived IS NULL OR is_archived = 0",
+        );
+
+        for (final area in localAreas) {
+          final localId = area['id'] as String;
+          final name = (area['name'] as String? ?? '').trim();
+          if (name.isEmpty) continue;
+
+          final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localId');
+          final areaCode = 'AREA-${supabaseId.substring(0, 8).toUpperCase()}';
+
+          try {
+            await client.from('areas').upsert({
+              'id': supabaseId,
+              'area_code': areaCode,
+              'name': name,
+              'delivery_schedule': [],
+            }, onConflict: 'id');
+            areasUploaded++;
+          } catch (e) {
+            areasFailed++;
+            debugPrint('[SYNC] Area "$name" FAILED: $e');
+          }
+        }
+
+        final List<Map<String, dynamic>> localStreets = await db.query(
+          'streets',
+          where: "is_archived IS NULL OR is_archived = 0",
+        );
+
+        for (final street in localStreets) {
+          final localId = street['id'] as String;
+          final localAreaId = street['area_id'] as String? ?? '';
+          final name = (street['name'] as String? ?? '').trim();
+          if (name.isEmpty || localAreaId.isEmpty) continue;
+
+          final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.road.$localId');
+          final supabaseAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localAreaId');
+          final roadCode = 'ROAD-${supabaseId.substring(0, 8).toUpperCase()}';
+
+          try {
+            await client.from('roads').upsert({
+              'id': supabaseId,
+              'road_code': roadCode,
+              'area_id': supabaseAreaId,
+              'name': name,
+            }, onConflict: 'id');
+            roadsUploaded++;
+          } catch (e) {
+            roadsFailed++;
+            debugPrint('[SYNC] Road "$name" FAILED: $e');
+          }
         }
       }
 
       debugPrint('[SYNC] Areas: $areasUploaded uploaded, $areasFailed failed');
       debugPrint('[SYNC] Roads: $roadsUploaded uploaded, $roadsFailed failed');
+      debugPrint('[SYNC] Sub-Roads: $subRoadsUploaded uploaded, $subRoadsFailed failed');
     } catch (e) {
       debugPrint('SyncService: Error during syncAreasAndRoads: $e');
     }
@@ -268,8 +437,10 @@ class CustomerOrderSyncService {
     return {
       'areasUploaded': areasUploaded,
       'roadsUploaded': roadsUploaded,
+      'subRoadsUploaded': subRoadsUploaded,
       'areasFailed': areasFailed,
       'roadsFailed': roadsFailed,
+      'subRoadsFailed': subRoadsFailed,
     };
   }
 
