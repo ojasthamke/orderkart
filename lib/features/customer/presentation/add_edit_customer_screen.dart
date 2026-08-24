@@ -1068,22 +1068,21 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         }
       }
 
-      // Sync customer code to Supabase asynchronously
-      if (codeRaw.isNotEmpty) {
-        try {
-          final client = Supabase.instance.client;
-          await client.rpc('sync_customer_with_code', params: {
-            'p_id': customerId,
-            'p_name': finalName,
-            'p_phone': finalPhone,
-            'p_email': '',
-            'p_address': _addressCon.text.trim(),
-            'p_customer_code': codeRaw,
-          });
-          debugPrint('CustomerCode: Synced code $codeRaw for customer $customerId to Supabase.');
-        } catch (e) {
-          debugPrint('CustomerCode: Supabase sync failed: $e');
-        }
+      // Sync customer to Supabase asynchronously
+      try {
+        final client = Supabase.instance.client;
+        final cleanId = _getValidUuid(customerId);
+        await client.rpc('sync_customer_with_code', params: {
+          'p_id': cleanId,
+          'p_name': finalName,
+          'p_phone': finalPhone,
+          'p_email': '',
+          'p_address': _addressCon.text.trim(),
+          'p_customer_code': codeRaw,
+        });
+        debugPrint('CustomerCode: Synced customer $finalName ($customerId) to Supabase.');
+      } catch (e) {
+        debugPrint('CustomerCode: Supabase sync failed: $e');
       }
 
       if (!mounted) return;
@@ -1100,5 +1099,14 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _getValidUuid(String rawId) {
+    final uuidRegex = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    if (uuidRegex.hasMatch(rawId)) {
+      return rawId;
+    }
+    return const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.customer.$rawId');
   }
 }

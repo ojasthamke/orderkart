@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
 import '../../features/customer/data/customer_dao.dart';
+import 'notification_service.dart';
 
 class CustomerOrderSyncService {
   CustomerOrderSyncService._();
@@ -35,7 +36,8 @@ class CustomerOrderSyncService {
       );
 
       for (final cust in customers) {
-        final customerId = cust['id'] as String;
+        final rawId = cust['id'] as String;
+        final customerId = _getValidUuid(rawId);
         final name = cust['name'] as String? ?? '';
         final phone = cust['phone1'] as String? ?? '';
         final address = cust['address'] as String? ?? '';
@@ -50,9 +52,9 @@ class CustomerOrderSyncService {
             'p_address': address,
             'p_customer_code': codeRaw,
           });
-          debugPrint('SyncService: Synced customer $customerId ($name) to Supabase.');
+          debugPrint('SyncService: Synced customer $rawId -> $customerId ($name) to Supabase.');
         } catch (e) {
-          debugPrint('SyncService: Failed to sync customer $customerId: $e');
+          debugPrint('SyncService: Failed to sync customer $rawId ($customerId): $e');
         }
       }
     } catch (e) {
@@ -232,6 +234,18 @@ class CustomerOrderSyncService {
               if (customerId.isNotEmpty) {
                 await CustomerDao().recalcCustomerTotals(customerId, executor: txn);
               }
+              
+              // Trigger local notification for the new order!
+              try {
+                await NotificationService.instance.showNotification(
+                  id: orderId.hashCode,
+                  title: 'New Online Order Received!',
+                  body: 'Order #$orderId from $customerName ($customerPhone) for ₹${grandTotal.toStringAsFixed(2)}',
+                  payload: 'order_$orderId',
+                );
+              } catch (e) {
+                debugPrint('Failed to show local notification: $e');
+              }
             } else {
               // C. Order exists locally - check for status sync (Remote Supabase -> Local POS)
               final String localStatus = orderCheck.first['delivery_status'] as String;
@@ -297,5 +311,14 @@ class CustomerOrderSyncService {
     } catch (e) {
       debugPrint('CustomerOrderSyncService sync error: $e');
     }
+  }
+
+  String _getValidUuid(String rawId) {
+    final uuidRegex = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    if (uuidRegex.hasMatch(rawId)) {
+      return rawId;
+    }
+    return const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.customer.$rawId');
   }
 }
