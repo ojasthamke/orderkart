@@ -354,23 +354,16 @@ class CustomerDao {
             where: 'order_id = ?', whereArgs: [orderId]);
       }
 
-      // 2. Delete customer's orders
-      await txn.delete('orders', where: 'customer_id = ?', whereArgs: [id]);
-
-      // 3. Delete payments linked directly to the customer
-      await txn.delete('payments', where: 'customer_id = ?', whereArgs: [id]);
-
-      // 4. Delete customer specific records
-      await txn.delete('customer_question_answers',
-          where: 'customer_id = ?', whereArgs: [id]);
-      await txn.delete('customer_item_prices',
-          where: 'customer_id = ?', whereArgs: [id]);
-      await txn.delete('call_logs', where: 'customer_id = ?', whereArgs: [id]);
-      await txn.delete('worker_assignments',
-          where: "entity_type = 'customer' AND entity_id = ?", whereArgs: [id]);
-
-      // 5. Finally delete the customer
-      await txn.delete('customers', where: 'id = ?', whereArgs: [id]);
+      // Soft-delete the customer locally by marking as archived
+      await txn.update(
+        'customers',
+        {
+          'is_archived': 1,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
     });
   }
 

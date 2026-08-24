@@ -15,6 +15,7 @@ import '../domain/customer.dart';
 import 'customer_provider.dart';
 import 'widgets/instant_ledger_sheet.dart';
 import '../../area/presentation/area_provider.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 
 class CustomerListScreen extends ConsumerStatefulWidget {
   final String? streetId;
@@ -245,6 +246,35 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                       });
                     },
                     tooltip: 'Bulk Move',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.sync_rounded),
+                    onPressed: () async {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Syncing customers to server database...')),
+                      );
+                      try {
+                        await CustomerOrderSyncService.instance.syncCustomersToRemote();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Customer sync completed successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Customer sync failed: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    tooltip: 'Sync Customers',
                   ),
                   IconButton(
                     icon: const Icon(Icons.search_rounded),

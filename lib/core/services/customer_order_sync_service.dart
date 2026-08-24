@@ -43,6 +43,21 @@ class CustomerOrderSyncService {
         final address = cust['address'] as String? ?? '';
         final codeRaw = cust['customer_code'] as String? ?? '';
 
+        // Ghost House Detection: skip syncing empty structural houses
+        final cleanName = name.trim();
+        final cleanPhone = phone.trim();
+        final bool isGhost = cleanName.isEmpty ||
+            cleanName == '[Ghost House]' ||
+            cleanName.toLowerCase() == 'ghost house' ||
+            cleanName.startsWith('[Ghost House]') ||
+            cleanPhone == '0000000000' ||
+            cleanPhone.isEmpty;
+
+        if (isGhost) {
+          debugPrint('SyncService: Skipping ghost house $rawId ($cleanName).');
+          continue;
+        }
+
         try {
           await client.rpc('sync_customer_with_code', params: {
             'p_id': customerId,
