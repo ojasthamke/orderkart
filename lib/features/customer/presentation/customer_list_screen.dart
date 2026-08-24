@@ -250,25 +250,63 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                   IconButton(
                     icon: const Icon(Icons.sync_rounded),
                     onPressed: () async {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Syncing customers to server database...')),
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const AlertDialog(
+                          content: Row(
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(width: 20),
+                              Text('Syncing customers... Please wait.'),
+                            ],
+                          ),
+                        ),
                       );
                       try {
-                        await CustomerOrderSyncService.instance.syncCustomersToRemote();
+                        final stats = await CustomerOrderSyncService.instance.syncAllExistingCustomers();
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Customer sync completed successfully!'),
-                              backgroundColor: Colors.green,
+                          Navigator.pop(context); // close loader
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Customer Sync Results'),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Total local customers: ${stats['total']}'),
+                                  Text('Real customers: ${stats['real']}'),
+                                  Text('Ghost houses skipped: ${stats['ghost']}'),
+                                  Text('Already synchronized: ${stats['alreadySynced']}'),
+                                  Text('Uploaded: ${stats['uploaded']}'),
+                                  Text('Updated: ${stats['updated']}'),
+                                  Text('Failed: ${stats['failed']}'),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
                             ),
                           );
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Customer sync failed: $e'),
-                              backgroundColor: Colors.red,
+                          Navigator.pop(context); // close loader
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Customer Sync Failed'),
+                              content: Text('Error: $e'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
                             ),
                           );
                         }

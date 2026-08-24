@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../../features/customer/data/customer_dao.dart';
 import 'notification_service.dart';
@@ -12,10 +13,26 @@ class CustomerOrderSyncService {
 
   Timer? _syncTimer;
 
+  Future<void> _ensureSupabaseAuth() async {
+    final client = Supabase.instance.client;
+    if (client.auth.currentUser == null) {
+      try {
+        await client.auth.signInWithPassword(
+          email: 'admin@aplibhaji.com',
+          password: 'adminpassword',
+        );
+        debugPrint('SyncService: Successfully authenticated Supabase client for OrderKart.');
+      } catch (e) {
+        debugPrint('SyncService: Supabase auto-authentication failed: $e');
+      }
+    }
+  }
+
   void startSync() {
     _syncTimer?.cancel();
     // Run sync check every 10 seconds
     _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      await syncAllExistingCustomers();
       await syncOrders();
     });
   }
@@ -24,8 +41,17 @@ class CustomerOrderSyncService {
     _syncTimer?.cancel();
   }
 
-  Future<void> syncCustomersToRemote() async {
+  Future<Map<String, int>> syncAllExistingCustomers() async {
+    int total = 0;
+    int real = 0;
+    int ghost = 0;
+    int alreadySynced = 0;
+    int uploaded = 0;
+    int updated = 0;
+    int failed = 0;
+
     try {
+      await _ensureSupabaseAuth();
       final client = Supabase.instance.client;
       final db = await DatabaseHelper.instance.database;
 
@@ -35,6 +61,8 @@ class CustomerOrderSyncService {
         where: "is_archived IS NULL OR is_archived = 0",
       );
 
+      total = customers.length;
+
       for (final cust in customers) {
         final rawId = cust['id'] as String;
         final customerId = _getValidUuid(rawId);
@@ -43,9 +71,10 @@ class CustomerOrderSyncService {
         final address = cust['address'] as String? ?? '';
         final codeRaw = cust['customer_code'] as String? ?? '';
 
-        // Ghost House Detection: skip syncing empty structural houses
         final cleanName = name.trim();
         final cleanPhone = phone.trim();
+
+        // Ghost house check
         final bool isGhost = cleanName.isEmpty ||
             cleanName == '[Ghost House]' ||
             cleanName.toLowerCase() == 'ghost house' ||
@@ -54,9 +83,44 @@ class CustomerOrderSyncService {
             cleanPhone.isEmpty;
 
         if (isGhost) {
-          debugPrint('SyncService: Skipping ghost house $rawId ($cleanName).');
+          ghost++;
+          debugPrint('[SYNC] Customer $rawId\n'
+              '[SYNC] Name: $name\n'
+              '[SYNC] Phone: $phone\n'
+              '[SYNC] IS GHOST: true\n'
+              '[SYNC] CUSTOMER CODE: $codeRaw\n'
+              '[SYNC] RESULT: SKIPPED (Ghost House)');
           continue;
         }
+
+        real++;
+
+        // Check if already synced in settings
+        final syncCheck = await db.query(
+          'settings',
+          where: "key = ?",
+          whereArgs: ['customer_sync_status:$rawId'],
+        );
+        final bool hasSyncedBefore = syncCheck.isNotEmpty && syncCheck.first['value'] == '1';
+
+        if (hasSyncedBefore) {
+          alreadySynced++;
+          continue;
+        }
+
+        // Check if server customer exists by searching by ID
+        bool existsOnServer = false;
+        try {
+          final serverCheck = await client.from('customers').select('id').eq('id', customerId).maybeSingle();
+          existsOnServer = serverCheck != null;
+        } catch (_) {
+          // Safe fallback if network check fails, assume false to proceed with RPC upsert
+        }
+
+        debugPrint('[SYNC] Customer $rawId ($name)\n'
+            '[SYNC] Real customer: true\n'
+            '[SYNC] Server lookup... Found: $existsOnServer\n'
+            '[SYNC] Operation: ${existsOnServer ? 'UPDATE' : 'INSERT'}');
 
         try {
           await client.rpc('sync_customer_with_code', params: {
@@ -67,21 +131,47 @@ class CustomerOrderSyncService {
             'p_address': address,
             'p_customer_code': codeRaw,
           });
-          debugPrint('SyncService: Synced customer $rawId -> $customerId ($name) to Supabase.');
+
+          // Mark synced in local settings
+          await db.insert(
+            'settings',
+            {'key': 'customer_sync_status:$rawId', 'value': '1'},
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+
+          if (existsOnServer) {
+            updated++;
+          } else {
+            uploaded++;
+          }
+          debugPrint('[SYNC] SUCCESS');
         } catch (e) {
-          debugPrint('SyncService: Failed to sync customer $rawId ($customerId): $e');
+          failed++;
+          debugPrint('[SYNC] FAILED\n[SYNC] Error: $e');
         }
       }
     } catch (e) {
-      debugPrint('SyncService: Error in syncCustomersToRemote: $e');
+      debugPrint('SyncService: Error during syncAllExistingCustomers: $e');
     }
+
+    return {
+      'total': total,
+      'real': real,
+      'ghost': ghost,
+      'alreadySynced': alreadySynced,
+      'uploaded': uploaded,
+      'updated': updated,
+      'failed': failed,
+    };
+  }
+
+  Future<void> syncCustomersToRemote() async {
+    await syncAllExistingCustomers();
   }
 
   Future<void> syncOrders() async {
     try {
-      // Sync all POS customers to Supabase
-      await syncCustomersToRemote();
-      
+      await _ensureSupabaseAuth();
       final client = Supabase.instance.client;
       
       // Fetch remote orders from Supabase (confirmed, delivered, preparing, out for delivery, cancelled)
