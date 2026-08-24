@@ -23,15 +23,15 @@ class CustomerOrderSyncService {
     _syncTimer?.cancel();
   }
 
-  Future<void> syncCustomerCodes() async {
+  Future<void> syncCustomersToRemote() async {
     try {
       final client = Supabase.instance.client;
       final db = await DatabaseHelper.instance.database;
 
-      // Find all customers with a non-empty customer_code
+      // Find all active customers to sync to Supabase
       final List<Map<String, dynamic>> customers = await db.query(
         'customers',
-        where: "customer_code != '' AND (is_archived IS NULL OR is_archived = 0)",
+        where: "is_archived IS NULL OR is_archived = 0",
       );
 
       for (final cust in customers) {
@@ -50,20 +50,20 @@ class CustomerOrderSyncService {
             'p_address': address,
             'p_customer_code': codeRaw,
           });
-          debugPrint('SyncService: Synced code $codeRaw for customer $customerId to Supabase.');
+          debugPrint('SyncService: Synced customer $customerId ($name) to Supabase.');
         } catch (e) {
-          debugPrint('SyncService: Failed to sync customer code for $customerId: $e');
+          debugPrint('SyncService: Failed to sync customer $customerId: $e');
         }
       }
     } catch (e) {
-      debugPrint('SyncService: Error in syncCustomerCodes: $e');
+      debugPrint('SyncService: Error in syncCustomersToRemote: $e');
     }
   }
 
   Future<void> syncOrders() async {
     try {
-      // Sync customer codes first so they are uploaded
-      await syncCustomerCodes();
+      // Sync all POS customers to Supabase
+      await syncCustomersToRemote();
       
       final client = Supabase.instance.client;
       
