@@ -3116,6 +3116,9 @@ class DatabaseHelper {
 
   Future<void> _auditAndSelfHealCustomerIds(Database db) async {
     try {
+      // Temporarily turn off foreign keys to perform safe parent-child ID re-keying migration
+      await db.execute('PRAGMA foreign_keys = OFF');
+
       await db.transaction((txn) async {
         // 1. Audit and resolve customers with missing, null or empty IDs
         final invalidCusts = await txn.rawQuery(
@@ -3123,16 +3126,29 @@ class DatabaseHelper {
         for (final c in invalidCusts) {
           final newId = const Uuid().v4();
           final rowid = c['rowid'];
-          final oldPhone = (c['phone1'] as String? ?? '').trim();
+          
           await txn.rawUpdate(
               "UPDATE customers SET id = ? WHERE rowid = ?", [newId, rowid]);
 
-          if (oldPhone.isNotEmpty) {
-            // Re-link orphaned orders
-            await txn.rawUpdate(
-                "UPDATE orders SET customer_id = ? WHERE customer_id IS NULL OR customer_id = ''",
-                [newId]);
-          }
+          // Cascading updates for child tables referencing customer_id
+          await txn.rawUpdate(
+              "UPDATE orders SET customer_id = ? WHERE customer_id IS NULL OR customer_id = ''",
+              [newId]);
+          await txn.rawUpdate(
+              "UPDATE payments SET customer_id = ? WHERE customer_id IS NULL OR customer_id = ''",
+              [newId]);
+          await txn.rawUpdate(
+              "UPDATE visits SET customer_id = ? WHERE customer_id IS NULL OR customer_id = ''",
+              [newId]);
+          await txn.rawUpdate(
+              "UPDATE customer_item_prices SET customer_id = ? WHERE customer_id IS NULL OR customer_id = ''",
+              [newId]);
+          await txn.rawUpdate(
+              "UPDATE order_questions SET customer_id = ? WHERE customer_id IS NULL OR customer_id = ''",
+              [newId]);
+          await txn.rawUpdate(
+              "UPDATE customer_question_answers SET customer_id = ? WHERE customer_id IS NULL OR customer_id = ''",
+              [newId]);
         }
 
         // 2. Audit duplicate customer codes or missing codes
@@ -3149,12 +3165,16 @@ class DatabaseHelper {
             generatedCode = 'OK$seqCode';
             seqCode++;
           }
-          // Ensure uniqueness of generated code
-          final dupCheck = await txn.rawQuery(
-              "SELECT COUNT(*) as cnt FROM customers WHERE customer_code = ? AND rowid != ?",
-              [generatedCode, rowid]);
-          if ((Sqflite.firstIntValue(dupCheck) ?? 0) > 0) {
-            generatedCode = 'OK${(DateTime.now().millisecondsSinceEpoch + seqCode) % 10000}';
+          // Ensure uniqueness of generated code via a loop check
+          int attempts = 0;
+          while (attempts < 100) {
+            final dupCheck = await txn.rawQuery(
+                "SELECT COUNT(*) as cnt FROM customers WHERE customer_code = ? AND rowid != ?",
+                [generatedCode, rowid]);
+            final exists = (Sqflite.firstIntValue(dupCheck) ?? 0) > 0;
+            if (!exists) break;
+            generatedCode = 'OK${1000 + (rowid as int) + seqCode + attempts}';
+            attempts++;
           }
           await txn.rawUpdate(
               "UPDATE customers SET customer_code = ? WHERE rowid = ?",
@@ -3163,6 +3183,10 @@ class DatabaseHelper {
       });
     } catch (e) {
       debugPrint('[DatabaseHelper] Customer ID audit exception: $e');
+    } finally {
+      try {
+        await db.execute('PRAGMA foreign_keys = ON');
+      } catch (_) {}
     }
   }
 }

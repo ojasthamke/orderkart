@@ -409,7 +409,7 @@ class CustomerDao {
         COALESCE(SUM(grand_total), 0)  AS total_amount,
         COALESCE(MAX(created_at), '')  AS last_order
       FROM orders
-      WHERE customer_id = ? AND (delivery_status IS NULL OR delivery_status != 'cancelled')
+      WHERE customer_id = ? AND (delivery_status IS NULL OR (delivery_status != 'cancelled' AND delivery_status != 'denied'))
     ''', [customerId]);
 
     final paymentsResult = await db.rawQuery('''

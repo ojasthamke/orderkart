@@ -168,8 +168,10 @@ class CustomerOrderSyncService {
                   'total_price': subtotal,
                 });
 
-                // Deduct stock in SQLite items table & record stock history
-                if (itemId.isNotEmpty) {
+                // Deduct stock in SQLite items table & record stock history (only for active, non-cancelled/non-denied orders)
+                if (itemId.isNotEmpty &&
+                    serverStatus.toLowerCase() != 'cancelled' &&
+                    serverStatus.toLowerCase() != 'denied') {
                   await txn.rawUpdate(
                     'UPDATE items SET stock = stock - ?, updated_at = ? WHERE id = ?',
                     [qty, nowStr, itemId],
@@ -196,7 +198,7 @@ class CustomerOrderSyncService {
               final targetStatus = serverStatus.toLowerCase();
 
               if (localStatus != targetStatus) {
-                if (targetStatus == 'cancelled') {
+                 if (targetStatus == 'cancelled' || targetStatus == 'denied') {
                   // Revert stock for all items of this order in SQLite items table
                   final localItems = await txn.query('order_items', where: 'order_id = ?', whereArgs: [orderId]);
                   for (var localItem in localItems) {
@@ -214,7 +216,7 @@ class CustomerOrderSyncService {
                         'item_id': itemId,
                         'item_name': itemName,
                         'change_amount': qty,
-                        'reason': 'Online Order Cancelled #$orderId',
+                        'reason': 'Online Order ${targetStatus == 'cancelled' ? 'Cancelled' : 'Denied'} #$orderId',
                         'order_id': orderId,
                         'created_at': DateTime.now().toIso8601String(),
                       });
@@ -223,7 +225,7 @@ class CustomerOrderSyncService {
                   
                   await txn.update(
                     'orders',
-                    {'delivery_status': 'cancelled', 'updated_at': DateTime.now().toIso8601String()},
+                    {'delivery_status': targetStatus, 'updated_at': DateTime.now().toIso8601String()},
                     where: 'id = ?',
                     whereArgs: [orderId],
                   );
