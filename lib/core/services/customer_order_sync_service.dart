@@ -13,8 +13,8 @@ class CustomerOrderSyncService {
 
   void startSync() {
     _syncTimer?.cancel();
-    // Run sync check every 15 seconds
-    _syncTimer = Timer.periodic(const Duration(seconds: 15), (_) async {
+    // Run sync check every 10 seconds
+    _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
       await syncOrders();
     });
   }
@@ -23,8 +23,48 @@ class CustomerOrderSyncService {
     _syncTimer?.cancel();
   }
 
+  Future<void> syncCustomerCodes() async {
+    try {
+      final client = Supabase.instance.client;
+      final db = await DatabaseHelper.instance.database;
+
+      // Find all customers with a non-empty customer_code
+      final List<Map<String, dynamic>> customers = await db.query(
+        'customers',
+        where: "customer_code != '' AND (is_archived IS NULL OR is_archived = 0)",
+      );
+
+      for (final cust in customers) {
+        final customerId = cust['id'] as String;
+        final name = cust['name'] as String? ?? '';
+        final phone = cust['phone1'] as String? ?? '';
+        final address = cust['address'] as String? ?? '';
+        final codeRaw = cust['customer_code'] as String? ?? '';
+
+        try {
+          await client.rpc('sync_customer_with_code', params: {
+            'p_id': customerId,
+            'p_name': name,
+            'p_phone': phone,
+            'p_email': '',
+            'p_address': address,
+            'p_customer_code': codeRaw,
+          });
+          debugPrint('SyncService: Synced code $codeRaw for customer $customerId to Supabase.');
+        } catch (e) {
+          debugPrint('SyncService: Failed to sync customer code for $customerId: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('SyncService: Error in syncCustomerCodes: $e');
+    }
+  }
+
   Future<void> syncOrders() async {
     try {
+      // Sync customer codes first so they are uploaded
+      await syncCustomerCodes();
+      
       final client = Supabase.instance.client;
       
       // Fetch remote orders from Supabase (confirmed, delivered, preparing, out for delivery, cancelled)

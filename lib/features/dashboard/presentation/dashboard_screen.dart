@@ -25,6 +25,7 @@ import '../../note/presentation/note_provider.dart';
 import '../../notification/presentation/notification_provider.dart';
 import '../../area/presentation/area_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -55,6 +56,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       showBack: false,
       drawer: const AppDrawer(),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.sync_rounded),
+          tooltip: 'Sync Database',
+          onPressed: () async {
+            SnackbarHelper.showInfo(context, 'Syncing database... Please wait.');
+            try {
+              await CustomerOrderSyncService.instance.syncOrders();
+              
+              ref.invalidate(analyticsSummaryProvider);
+              ref.invalidate(inventoryProvider);
+              ref.invalidate(lowStockProvider);
+              ref.invalidate(dashboardOrdersProvider(params));
+              ref.invalidate(visitListProvider);
+              ref.invalidate(pendingCustomersProvider);
+              ref.invalidate(noteListNotifier);
+              ref.invalidate(notificationListProvider);
+              ref.invalidate(areaProvider);
+              ref.invalidate(allCustomersProvider);
+
+              if (context.mounted) {
+                SnackbarHelper.showSuccess(context, 'Database sync completed successfully!');
+              }
+            } catch (e) {
+              if (context.mounted) {
+                SnackbarHelper.showError(context, 'Database sync failed: $e');
+              }
+            }
+          },
+        ),
         IconButton(
           icon: const Icon(Icons.search_rounded),
           onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
