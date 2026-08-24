@@ -41,7 +41,7 @@ class CustomerOrderSyncService {
     _syncTimer?.cancel();
   }
 
-  Future<Map<String, int>> syncAllExistingCustomers() async {
+  Future<Map<String, int>> syncAllExistingCustomers({bool forceSync = false}) async {
     int total = 0;
     int real = 0;
     int ghost = 0;
@@ -54,6 +54,13 @@ class CustomerOrderSyncService {
       await _ensureSupabaseAuth();
       final client = Supabase.instance.client;
       final db = await DatabaseHelper.instance.database;
+
+      // Pre-load street→area mapping for route lookup
+      final List<Map<String, dynamic>> streets = await db.query('streets');
+      final Map<String, String> streetToArea = {};
+      for (final s in streets) {
+        streetToArea[s['id'] as String] = s['area_id'] as String;
+      }
 
       // Find all active customers to sync to Supabase
       final List<Map<String, dynamic>> customers = await db.query(
@@ -84,28 +91,38 @@ class CustomerOrderSyncService {
 
         if (isGhost) {
           ghost++;
-          debugPrint('[SYNC] Customer $rawId\n'
-              '[SYNC] Name: $name\n'
-              '[SYNC] Phone: $phone\n'
-              '[SYNC] IS GHOST: true\n'
-              '[SYNC] CUSTOMER CODE: $codeRaw\n'
-              '[SYNC] RESULT: SKIPPED (Ghost House)');
           continue;
         }
 
         real++;
 
-        // Check if already synced in settings
-        final syncCheck = await db.query(
-          'settings',
-          where: "key = ?",
-          whereArgs: ['customer_sync_status:$rawId'],
-        );
-        final bool hasSyncedBefore = syncCheck.isNotEmpty && syncCheck.first['value'] == '1';
+        // Check if already synced in settings (skip if forceSync is true)
+        if (!forceSync) {
+          final syncCheck = await db.query(
+            'settings',
+            where: "key = ?",
+            whereArgs: ['customer_sync_status:$rawId'],
+          );
+          final bool hasSyncedBefore = syncCheck.isNotEmpty && syncCheck.first['value'] == '1';
 
-        if (hasSyncedBefore) {
-          alreadySynced++;
-          continue;
+          if (hasSyncedBefore) {
+            alreadySynced++;
+            continue;
+          }
+        }
+
+        // Resolve route IDs: street_id → area_id, street_id → road_id
+        final String streetId = cust['street_id'] as String? ?? '';
+        final String localAreaId = streetToArea[streetId] ?? '';
+        
+        // Generate deterministic UUIDs matching syncAreasAndRoads()
+        String? supabaseAreaId;
+        String? supabaseRoadId;
+        if (localAreaId.isNotEmpty) {
+          supabaseAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localAreaId');
+        }
+        if (streetId.isNotEmpty) {
+          supabaseRoadId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.road.$streetId');
         }
 
         // Check if server customer exists by searching by ID
@@ -117,10 +134,7 @@ class CustomerOrderSyncService {
           // Safe fallback if network check fails, assume false to proceed with RPC upsert
         }
 
-        debugPrint('[SYNC] Customer $rawId ($name)\n'
-            '[SYNC] Real customer: true\n'
-            '[SYNC] Server lookup... Found: $existsOnServer\n'
-            '[SYNC] Operation: ${existsOnServer ? 'UPDATE' : 'INSERT'}');
+        debugPrint('[SYNC] Customer $rawId ($name) area=$supabaseAreaId road=$supabaseRoadId');
 
         try {
           await client.rpc('sync_customer_with_code', params: {
@@ -130,6 +144,8 @@ class CustomerOrderSyncService {
             'p_email': '',
             'p_address': address,
             'p_customer_code': codeRaw,
+            'p_area_id': supabaseAreaId,
+            'p_road_id': supabaseRoadId,
           });
 
           // Mark synced in local settings
@@ -144,10 +160,9 @@ class CustomerOrderSyncService {
           } else {
             uploaded++;
           }
-          debugPrint('[SYNC] SUCCESS');
         } catch (e) {
           failed++;
-          debugPrint('[SYNC] FAILED\n[SYNC] Error: $e');
+          debugPrint('[SYNC] FAILED: $e');
         }
       }
     } catch (e) {
@@ -168,6 +183,216 @@ class CustomerOrderSyncService {
   Future<void> syncCustomersToRemote() async {
     await syncAllExistingCustomers();
   }
+
+  // =====================================================
+  // SYNC AREAS & ROADS (SQLite areas/streets → Supabase areas/roads)
+  // =====================================================
+  Future<Map<String, int>> syncAreasAndRoads() async {
+    int areasUploaded = 0;
+    int roadsUploaded = 0;
+    int areasFailed = 0;
+    int roadsFailed = 0;
+
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      final db = await DatabaseHelper.instance.database;
+
+      // 1. Sync Areas
+      final List<Map<String, dynamic>> localAreas = await db.query(
+        'areas',
+        where: "is_archived IS NULL OR is_archived = 0",
+      );
+
+      for (int i = 0; i < localAreas.length; i++) {
+        final area = localAreas[i];
+        final localId = area['id'] as String;
+        final name = (area['name'] as String? ?? '').trim();
+        if (name.isEmpty) continue;
+
+        final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localId');
+        final areaCode = 'AREA-${(i + 1).toString().padLeft(6, '0')}';
+
+        try {
+          // Try insert, on conflict update
+          await client.from('areas').upsert({
+            'id': supabaseId,
+            'area_code': areaCode,
+            'name': name,
+            'delivery_schedule': [],
+          }, onConflict: 'id');
+          areasUploaded++;
+        } catch (e) {
+          areasFailed++;
+          debugPrint('[SYNC] Area "$name" FAILED: $e');
+        }
+      }
+
+      // 2. Sync Streets → Roads
+      final List<Map<String, dynamic>> localStreets = await db.query(
+        'streets',
+        where: "is_archived IS NULL OR is_archived = 0",
+      );
+
+      for (int i = 0; i < localStreets.length; i++) {
+        final street = localStreets[i];
+        final localId = street['id'] as String;
+        final localAreaId = street['area_id'] as String? ?? '';
+        final name = (street['name'] as String? ?? '').trim();
+        if (name.isEmpty || localAreaId.isEmpty) continue;
+
+        final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.road.$localId');
+        final supabaseAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localAreaId');
+        final roadCode = 'ROAD-${(i + 1).toString().padLeft(6, '0')}';
+
+        try {
+          await client.from('roads').upsert({
+            'id': supabaseId,
+            'road_code': roadCode,
+            'area_id': supabaseAreaId,
+            'name': name,
+          }, onConflict: 'id');
+          roadsUploaded++;
+        } catch (e) {
+          roadsFailed++;
+          debugPrint('[SYNC] Road "$name" FAILED: $e');
+        }
+      }
+
+      debugPrint('[SYNC] Areas: $areasUploaded uploaded, $areasFailed failed');
+      debugPrint('[SYNC] Roads: $roadsUploaded uploaded, $roadsFailed failed');
+    } catch (e) {
+      debugPrint('SyncService: Error during syncAreasAndRoads: $e');
+    }
+
+    return {
+      'areasUploaded': areasUploaded,
+      'roadsUploaded': roadsUploaded,
+      'areasFailed': areasFailed,
+      'roadsFailed': roadsFailed,
+    };
+  }
+
+  // =====================================================
+  // SYNC INVENTORY (SQLite items → Supabase categories/products)
+  // =====================================================
+  Future<Map<String, int>> syncInventory() async {
+    int categoriesSynced = 0;
+    int productsUploaded = 0;
+    int productsFailed = 0;
+
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      final db = await DatabaseHelper.instance.database;
+
+      // 1. Collect unique categories from items
+      final List<Map<String, dynamic>> items = await db.query(
+        'items',
+        where: "is_archived IS NULL OR is_archived = 0",
+      );
+
+      final Set<String> categoryNames = {};
+      for (final item in items) {
+        final cat = (item['category'] as String? ?? '').trim();
+        if (cat.isNotEmpty) categoryNames.add(cat);
+      }
+
+      // 2. Upsert categories to Supabase
+      final Map<String, String> categoryNameToId = {};
+      for (final catName in categoryNames) {
+        try {
+          // Check if category exists
+          final existing = await client
+              .from('categories')
+              .select('id')
+              .eq('name', catName)
+              .maybeSingle();
+
+          if (existing != null) {
+            categoryNameToId[catName] = existing['id'] as String;
+          } else {
+            final inserted = await client
+                .from('categories')
+                .insert({'name': catName, 'is_enabled': true})
+                .select('id')
+                .single();
+            categoryNameToId[catName] = inserted['id'] as String;
+          }
+          categoriesSynced++;
+        } catch (e) {
+          debugPrint('[SYNC] Category "$catName" FAILED: $e');
+        }
+      }
+
+      // 3. Upsert products
+      for (final item in items) {
+        final localId = item['id'] as String;
+        final name = (item['name'] as String? ?? '').trim();
+        if (name.isEmpty) continue;
+
+        final category = (item['category'] as String? ?? '').trim();
+        final categoryId = categoryNameToId[category];
+        final sellingPrice = (item['selling_price'] as num?)?.toDouble() ?? 0.0;
+        final stock = (item['stock'] as num?)?.toDouble() ?? 0.0;
+        final unit = (item['unit'] as String? ?? 'kg').trim();
+
+        // Use the local UUID directly if it's valid, else generate deterministic one
+        final productId = _getValidUuid(localId);
+
+        try {
+          await client.from('products').upsert({
+            'id': productId,
+            'name': name,
+            'category_id': categoryId,
+            'price': sellingPrice,
+            'unit': unit,
+            'is_available': stock > 0,
+            'is_enabled': true,
+          }, onConflict: 'id');
+          productsUploaded++;
+        } catch (e) {
+          productsFailed++;
+          debugPrint('[SYNC] Product "$name" FAILED: $e');
+        }
+      }
+
+      debugPrint('[SYNC] Categories: $categoriesSynced, Products: $productsUploaded uploaded, $productsFailed failed');
+    } catch (e) {
+      debugPrint('SyncService: Error during syncInventory: $e');
+    }
+
+    return {
+      'categoriesSynced': categoriesSynced,
+      'productsUploaded': productsUploaded,
+      'productsFailed': productsFailed,
+    };
+  }
+
+  // =====================================================
+  // SYNC ALL — Orchestrates full sync (areas → customers → inventory)
+  // =====================================================
+  Future<Map<String, dynamic>> syncAll({bool forceSync = false}) async {
+    debugPrint('[SYNC] === Starting Full Sync (forceSync=$forceSync) ===');
+
+    final routeStats = await syncAreasAndRoads();
+    debugPrint('[SYNC] Areas/Roads done.');
+
+    final customerStats = await syncAllExistingCustomers(forceSync: forceSync);
+    debugPrint('[SYNC] Customers done.');
+
+    final inventoryStats = await syncInventory();
+    debugPrint('[SYNC] Inventory done.');
+
+    debugPrint('[SYNC] === Full Sync Complete ===');
+
+    return {
+      ...routeStats,
+      ...customerStats,
+      ...inventoryStats,
+    };
+  }
+
 
   Future<void> syncOrders() async {
     try {

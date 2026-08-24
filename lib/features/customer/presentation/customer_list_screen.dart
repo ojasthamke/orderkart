@@ -258,31 +258,48 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                             children: [
                               CircularProgressIndicator(),
                               SizedBox(width: 20),
-                              Text('Syncing customers... Please wait.'),
+                              Expanded(child: Text('Syncing areas, customers & inventory... Please wait.')),
                             ],
                           ),
                         ),
                       );
                       try {
-                        final stats = await CustomerOrderSyncService.instance.syncAllExistingCustomers();
+                        final stats = await CustomerOrderSyncService.instance.syncAll(forceSync: true);
                         if (context.mounted) {
                           Navigator.pop(context); // close loader
                           showDialog(
                             context: context,
                             builder: (context) => AlertDialog(
-                              title: const Text('Customer Sync Results'),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Total local customers: ${stats['total']}'),
-                                  Text('Real customers: ${stats['real']}'),
-                                  Text('Ghost houses skipped: ${stats['ghost']}'),
-                                  Text('Already synchronized: ${stats['alreadySynced']}'),
-                                  Text('Uploaded: ${stats['uploaded']}'),
-                                  Text('Updated: ${stats['updated']}'),
-                                  Text('Failed: ${stats['failed']}'),
-                                ],
+                              title: const Text('Full Sync Results'),
+                              content: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('📍 Routes', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    Text('  Areas synced: ${stats['areasUploaded']}'),
+                                    Text('  Roads synced: ${stats['roadsUploaded']}'),
+                                    if ((stats['areasFailed'] ?? 0) > 0 || (stats['roadsFailed'] ?? 0) > 0)
+                                      Text('  Failed: ${stats['areasFailed']} areas, ${stats['roadsFailed']} roads',
+                                          style: const TextStyle(color: Colors.red)),
+                                    const SizedBox(height: 12),
+                                    const Text('👥 Customers', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    Text('  Total local: ${stats['total']}'),
+                                    Text('  Real customers: ${stats['real']}'),
+                                    Text('  Ghost houses skipped: ${stats['ghost']}'),
+                                    Text('  Uploaded: ${stats['uploaded']}'),
+                                    Text('  Updated: ${stats['updated']}'),
+                                    if ((stats['failed'] ?? 0) > 0)
+                                      Text('  Failed: ${stats['failed']}', style: const TextStyle(color: Colors.red)),
+                                    const SizedBox(height: 12),
+                                    const Text('📦 Inventory', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    Text('  Categories: ${stats['categoriesSynced']}'),
+                                    Text('  Products synced: ${stats['productsUploaded']}'),
+                                    if ((stats['productsFailed'] ?? 0) > 0)
+                                      Text('  Failed: ${stats['productsFailed']}',
+                                          style: const TextStyle(color: Colors.red)),
+                                  ],
+                                ),
                               ),
                               actions: [
                                 TextButton(
@@ -299,7 +316,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                           showDialog(
                             context: context,
                             builder: (context) => AlertDialog(
-                              title: const Text('Customer Sync Failed'),
+                              title: const Text('Sync Failed'),
                               content: Text('Error: $e'),
                               actions: [
                                 TextButton(
@@ -312,7 +329,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                         }
                       }
                     },
-                    tooltip: 'Sync Customers',
+                    tooltip: 'Sync All Data',
                   ),
                   IconButton(
                     icon: const Icon(Icons.search_rounded),
