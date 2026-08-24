@@ -31,8 +31,31 @@ class _QuickInventoryAdjustScreenState
 
   final List<String> _categories = ['All', ...AppConstants.itemCategories];
 
+  // Controllers to avoid recreation and update dynamically
+  final Map<String, TextEditingController> _stockControllers = {};
+  final Map<String, TextEditingController> _sellingPriceControllers = {};
+  final Map<String, TextEditingController> _costPriceControllers = {};
+  final Map<String, TextEditingController> _marketPriceControllers = {};
+
   String get _currency =>
       ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
+
+  @override
+  void dispose() {
+    for (final ctrl in _stockControllers.values) {
+      ctrl.dispose();
+    }
+    for (final ctrl in _sellingPriceControllers.values) {
+      ctrl.dispose();
+    }
+    for (final ctrl in _costPriceControllers.values) {
+      ctrl.dispose();
+    }
+    for (final ctrl in _marketPriceControllers.values) {
+      ctrl.dispose();
+    }
+    super.dispose();
+  }
 
   void _onFieldChanged(Item baseItem, String field, String value) {
     final parsedVal = double.tryParse(value) ?? 0.0;
@@ -71,12 +94,40 @@ class _QuickInventoryAdjustScreenState
         _modifiedItems.remove(baseItem.id);
       }
     });
+
+    // Synchronize controller text if updated externally (slider / button click)
+    _syncControllerText(baseItem.id, field, value);
+  }
+
+  void _syncControllerText(String itemId, String field, String value) {
+    TextEditingController? ctrl;
+    switch (field) {
+      case 'stock':
+        ctrl = _stockControllers[itemId];
+        break;
+      case 'sellingPrice':
+        ctrl = _sellingPriceControllers[itemId];
+        break;
+      case 'costPrice':
+        ctrl = _costPriceControllers[itemId];
+        break;
+      case 'marketPrice':
+        ctrl = _marketPriceControllers[itemId];
+        break;
+    }
+    if (ctrl != null && ctrl.text != value) {
+      ctrl.text = value;
+    }
   }
 
   void _resetChanges() {
     AppHaptics.buttonClick();
     setState(() {
       _modifiedItems.clear();
+      _stockControllers.clear();
+      _sellingPriceControllers.clear();
+      _costPriceControllers.clear();
+      _marketPriceControllers.clear();
     });
     SnackbarHelper.showSuccess(context, 'All pending changes reset');
   }
@@ -98,6 +149,10 @@ class _QuickInventoryAdjustScreenState
             context, '✅ Inventory successfully updated!');
         setState(() {
           _modifiedItems.clear();
+          _stockControllers.clear();
+          _sellingPriceControllers.clear();
+          _costPriceControllers.clear();
+          _marketPriceControllers.clear();
         });
       }
     } catch (e) {
@@ -301,6 +356,23 @@ class _QuickInventoryAdjustScreenState
                       final isModified = _modifiedItems.containsKey(item.id);
                       final workingItem = _modifiedItems[item.id] ?? item;
 
+                      final stockCtrl = _stockControllers.putIfAbsent(
+                          item.id,
+                          () => TextEditingController(
+                              text: workingItem.stock.toString()));
+                      final sellingCtrl = _sellingPriceControllers.putIfAbsent(
+                          item.id,
+                          () => TextEditingController(
+                              text: workingItem.sellingPrice.toString()));
+                      final costCtrl = _costPriceControllers.putIfAbsent(
+                          item.id,
+                          () => TextEditingController(
+                              text: workingItem.costPrice.toString()));
+                      final marketCtrl = _marketPriceControllers.putIfAbsent(
+                          item.id,
+                          () => TextEditingController(
+                              text: workingItem.marketPrice.toString()));
+
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.only(bottom: 12),
@@ -386,8 +458,7 @@ class _QuickInventoryAdjustScreenState
                                       child: _buildInputField(
                                         key: ValueKey('${item.id}_stock'),
                                         label: 'Stock',
-                                        initialValue:
-                                            workingItem.stock.toString(),
+                                        controller: stockCtrl,
                                         suffix: item.unit,
                                         onChanged: (val) =>
                                             _onFieldChanged(item, 'stock', val),
@@ -399,8 +470,7 @@ class _QuickInventoryAdjustScreenState
                                         key:
                                             ValueKey('${item.id}_sellingPrice'),
                                         label: 'Selling Price (Rate)',
-                                        initialValue:
-                                            workingItem.sellingPrice.toString(),
+                                        controller: sellingCtrl,
                                         prefix: _currency,
                                         onChanged: (val) => _onFieldChanged(
                                             item, 'sellingPrice', val),
@@ -414,8 +484,7 @@ class _QuickInventoryAdjustScreenState
                                       child: _buildInputField(
                                         key: ValueKey('${item.id}_costPrice'),
                                         label: 'Cost Price',
-                                        initialValue:
-                                            workingItem.costPrice.toString(),
+                                        controller: costCtrl,
                                         prefix: _currency,
                                         onChanged: (val) => _onFieldChanged(
                                             item, 'costPrice', val),
@@ -426,8 +495,7 @@ class _QuickInventoryAdjustScreenState
                                       child: _buildInputField(
                                         key: ValueKey('${item.id}_marketPrice'),
                                         label: 'MRP (Market Price)',
-                                        initialValue:
-                                            workingItem.marketPrice.toString(),
+                                        controller: marketCtrl,
                                         prefix: _currency,
                                         onChanged: (val) => _onFieldChanged(
                                             item, 'marketPrice', val),
@@ -704,7 +772,7 @@ class _QuickInventoryAdjustScreenState
   Widget _buildInputField({
     required Key key,
     required String label,
-    required String initialValue,
+    required TextEditingController controller,
     String? prefix,
     String? suffix,
     required ValueChanged<String> onChanged,
@@ -725,7 +793,7 @@ class _QuickInventoryAdjustScreenState
         const SizedBox(height: 4),
         TextFormField(
           key: key,
-          initialValue: initialValue,
+          controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           decoration: InputDecoration(

@@ -180,9 +180,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   @override
   Future<void> updateItems(List<Item> items) async {
-    for (final item in items) {
-      await _dao.updateItem(item);
-    }
+    await _dao.updateItems(items);
   }
 
   @override

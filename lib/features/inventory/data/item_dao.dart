@@ -165,7 +165,7 @@ class ItemDao {
     });
 
     await _recordDailyPriceSnapshot(item);
-    await _checkAndTriggerLowStock(item.id, db);
+    await _checkAndTriggerLowStock(item.id, db, previousStock: oldItem?.stock);
   }
 
   Future<void> updateItems(List<Item> items) async {
@@ -212,9 +212,7 @@ class ItemDao {
           DateTime.now().toIso8601String(),
         ]);
 
-        if (item.minStock > 0 && item.stock <= item.minStock) {
-          await _checkAndTriggerLowStock(item.id, txn);
-        }
+        await _checkAndTriggerLowStock(item.id, txn, previousStock: oldItem?.stock);
       }
     });
   }
@@ -278,10 +276,13 @@ class ItemDao {
   Future<void> adjustStock(String itemId, double change,
       {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
+    final itemRes = await db.query('items', columns: ['stock'], where: 'id = ?', whereArgs: [itemId]);
+    final double prevStock = itemRes.isNotEmpty ? ((itemRes.first['stock'] as num?)?.toDouble() ?? 0.0) : 0.0;
+
     await db.rawUpdate(
         'UPDATE items SET stock = stock + ?, updated_at = ? WHERE id = ?',
         [change, DateTime.now().toIso8601String(), itemId]);
-    await _checkAndTriggerLowStock(itemId, db);
+    await _checkAndTriggerLowStock(itemId, db, previousStock: prevStock);
   }
 
   // Stock History
