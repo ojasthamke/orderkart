@@ -665,7 +665,34 @@ class CustomerProfileScreen extends ConsumerWidget {
                                               fontWeight: FontWeight.w700),
                                     ),
                                   ),
-                                if (streetName.isNotEmpty ||
+                                if (loc['fullAddress'] != null &&
+                                    loc['fullAddress']!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.location_on_rounded,
+                                            size: 15,
+                                            color: AppColors.primary),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            loc['fullAddress']!,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                    color: AppColors.primary,
+                                                    fontWeight:
+                                                        FontWeight.w800),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                else if (streetName.isNotEmpty ||
                                     areaName.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 4),
@@ -683,7 +710,7 @@ class CustomerProfileScreen extends ConsumerWidget {
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 4),
                                     child: Text(
-                                      'Address: ${customer.address}',
+                                      'Address Details: ${customer.address}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall

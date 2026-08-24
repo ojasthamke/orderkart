@@ -163,6 +163,7 @@ class DatabaseHelper {
         await _ensureGeoMapTables(db);
         await ensureCustomerDeviceColumns(db);
         await _ensureCustomerCodeColumn(db);
+        await _auditAndSelfHealCustomerIds(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
         _autoRecoverAndBackup(path);
@@ -3111,5 +3112,57 @@ class DatabaseHelper {
     try {
       await db.execute("ALTER TABLE customers ADD COLUMN customer_code TEXT DEFAULT ''");
     } catch (_) {}
+  }
+
+  Future<void> _auditAndSelfHealCustomerIds(Database db) async {
+    try {
+      await db.transaction((txn) async {
+        // 1. Audit and resolve customers with missing, null or empty IDs
+        final invalidCusts = await txn.rawQuery(
+            "SELECT rowid, id, name, phone1 FROM customers WHERE id IS NULL OR TRIM(id) = ''");
+        for (final c in invalidCusts) {
+          final newId = const Uuid().v4();
+          final rowid = c['rowid'];
+          final oldPhone = (c['phone1'] as String? ?? '').trim();
+          await txn.rawUpdate(
+              "UPDATE customers SET id = ? WHERE rowid = ?", [newId, rowid]);
+
+          if (oldPhone.isNotEmpty) {
+            // Re-link orphaned orders
+            await txn.rawUpdate(
+                "UPDATE orders SET customer_id = ? WHERE customer_id IS NULL OR customer_id = ''",
+                [newId]);
+          }
+        }
+
+        // 2. Audit duplicate customer codes or missing codes
+        final missingCodes = await txn.rawQuery(
+            "SELECT rowid, id, name, phone1, customer_code FROM customers WHERE customer_code IS NULL OR TRIM(customer_code) = ''");
+        int seqCode = 1001;
+        for (final c in missingCodes) {
+          final rowid = c['rowid'];
+          final phone = (c['phone1'] as String? ?? '').replaceAll(RegExp(r'\D'), '');
+          String generatedCode = '';
+          if (phone.length >= 4) {
+            generatedCode = 'OK${phone.substring(phone.length - 4)}';
+          } else {
+            generatedCode = 'OK$seqCode';
+            seqCode++;
+          }
+          // Ensure uniqueness of generated code
+          final dupCheck = await txn.rawQuery(
+              "SELECT COUNT(*) as cnt FROM customers WHERE customer_code = ? AND rowid != ?",
+              [generatedCode, rowid]);
+          if ((Sqflite.firstIntValue(dupCheck) ?? 0) > 0) {
+            generatedCode = 'OK${(DateTime.now().millisecondsSinceEpoch + seqCode) % 10000}';
+          }
+          await txn.rawUpdate(
+              "UPDATE customers SET customer_code = ? WHERE rowid = ?",
+              [generatedCode, rowid]);
+        }
+      });
+    } catch (e) {
+      debugPrint('[DatabaseHelper] Customer ID audit exception: $e');
+    }
   }
 }

@@ -171,19 +171,29 @@ final sameHouseCustomersProvider = FutureProvider.family<
   );
 });
 
-// Location info provider (Street and Area name / Breadcrumbs path)
+// Location info provider (Street, Area, and Full Hierarchy Address: Area, Road, Sub-Road, Sub-Sub-Road)
 final customerLocationProvider =
     FutureProvider.family<Map<String, String>, String>((ref, locationId) async {
-  if (locationId.isEmpty) return {'street': '', 'area': ''};
+  if (locationId.isEmpty) {
+    return {
+      'street': '',
+      'area': '',
+      'fullAddress': '',
+      'areaName': '',
+      'roadName': '',
+      'subRoadName': '',
+      'subSubRoadName': '',
+    };
+  }
   try {
     final db = await DatabaseHelper.instance.database;
-    // Query location breadcrumbs recursively
+    // Query location breadcrumbs recursively from leaf to root
     final list = <Map<String, dynamic>>[];
     String? currentId = locationId;
 
     while (currentId != null) {
       final rows = await db.query('locations',
-          columns: ['id', 'parent_location_id', 'name'],
+          columns: ['id', 'parent_location_id', 'name', 'location_kind'],
           where: 'id = ?',
           whereArgs: [currentId],
           limit: 1);
@@ -196,7 +206,17 @@ final customerLocationProvider =
       // Fallback to legacy tables
       final streetRows = await db.query('streets',
           where: 'id = ?', whereArgs: [locationId], limit: 1);
-      if (streetRows.isEmpty) return {'street': '', 'area': ''};
+      if (streetRows.isEmpty) {
+        return {
+          'street': '',
+          'area': '',
+          'fullAddress': '',
+          'areaName': '',
+          'roadName': '',
+          'subRoadName': '',
+          'subSubRoadName': '',
+        };
+      }
       final streetName = streetRows.first['name']?.toString() ?? '';
       final areaId = streetRows.first['area_id']?.toString() ?? '';
       String areaName = '';
@@ -207,20 +227,59 @@ final customerLocationProvider =
           areaName = areaRows.first['name']?.toString() ?? '';
         }
       }
-      return {'street': streetName, 'area': areaName};
+      final parts = [areaName, streetName]
+          .where((p) => p.trim().isNotEmpty)
+          .toList();
+      return {
+        'street': streetName,
+        'area': areaName,
+        'fullAddress': parts.join(', '),
+        'areaName': areaName,
+        'roadName': streetName,
+        'subRoadName': '',
+        'subSubRoadName': '',
+      };
     }
 
     final leafName = list.last['name']?.toString() ?? '';
-    if (list.length == 1) {
-      return {'street': leafName, 'area': ''};
+    final fullAddress = list
+        .map((l) => l['name']?.toString().trim() ?? '')
+        .where((n) => n.isNotEmpty)
+        .join(', ');
+
+    String parentPath = '';
+    if (list.length > 1) {
+      parentPath = list
+          .take(list.length - 1)
+          .map((l) => l['name']?.toString().trim() ?? '')
+          .where((n) => n.isNotEmpty)
+          .join(' > ');
     }
-    final parentPath = list
-        .take(list.length - 1)
-        .map((l) => l['name']?.toString() ?? '')
-        .join(' > ');
-    return {'street': leafName, 'area': parentPath};
+
+    final String areaName = list.isNotEmpty ? (list[0]['name']?.toString() ?? '') : '';
+    final String roadName = list.length > 1 ? (list[1]['name']?.toString() ?? '') : '';
+    final String subRoadName = list.length > 2 ? (list[2]['name']?.toString() ?? '') : '';
+    final String subSubRoadName = list.length > 3 ? (list[3]['name']?.toString() ?? '') : '';
+
+    return {
+      'street': leafName,
+      'area': parentPath.isNotEmpty ? parentPath : areaName,
+      'fullAddress': fullAddress,
+      'areaName': areaName,
+      'roadName': roadName,
+      'subRoadName': subRoadName,
+      'subSubRoadName': subSubRoadName,
+    };
   } catch (_) {
-    return {'street': '', 'area': ''};
+    return {
+      'street': '',
+      'area': '',
+      'fullAddress': '',
+      'areaName': '',
+      'roadName': '',
+      'subRoadName': '',
+      'subSubRoadName': '',
+    };
   }
 });
 
