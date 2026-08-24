@@ -257,7 +257,20 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
         // Update Supabase product with local item values
         final categoryId = await _getOrCreateCategoryId(localItem.category);
-        final pMap = await _itemToProductMap(localItem.copyWith(id: remoteId), categoryId);
+        
+        // Preserve admin-uploaded remote image_path if it exists
+        final remoteImage = matchingRemote['image_path'] as String? ?? '';
+        final localItemWithId = localItem.copyWith(id: remoteId);
+        final itemToSync = remoteImage.isNotEmpty
+            ? localItemWithId.copyWith(photoPath: remoteImage)
+            : localItemWithId;
+
+        // If local SQLite image path differs from remote, update it locally too
+        if (remoteImage.isNotEmpty && localItem.photoPath != remoteImage) {
+          await _dao.updateItem(itemToSync);
+        }
+
+        final pMap = await _itemToProductMap(itemToSync, categoryId);
         await client.from('products').update(pMap).eq('id', remoteId);
       } else {
         // Does not exist on remote, insert it to Supabase
