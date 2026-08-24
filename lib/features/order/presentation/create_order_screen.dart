@@ -835,6 +835,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 }
               }
 
+              if (maxStock < 0.001) {
+                SnackbarHelper.showError(
+                  context,
+                  '"${cartItem.name}" is OUT OF STOCK (0 ${cartItem.unit} available)',
+                );
+                return;
+              }
+
               if (qty > maxStock) {
                 SnackbarHelper.showError(
                   context,
@@ -900,7 +908,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 _cart[e.key] = cartItem.copyWith(
                   quantity: double.parse(newQty.toStringAsFixed(2)),
                   unit: newUnit,
-                  price: double.parse(newPrice.toStringAsFixed(2)),
+                  price: newPrice,
                 );
               });
             },
@@ -2161,59 +2169,187 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         }
       }
 
+      final inventoryList = ref.read(inventoryProvider).valueOrNull ??
+          await ref.read(inventoryRepositoryProvider).getAllItems();
+
       if (items.isEmpty) {
         final topFavs =
             await OrderDao().getCustomerTopOrderedItems(widget.customerId);
         if (topFavs.isNotEmpty) {
+          final List<CartItem> newCartItems = [];
+          final List<String> skippedOos = [];
+          final List<String> adjustedQty = [];
+
+          for (final fav in topFavs) {
+            final itemId = fav['item_id']?.toString() ?? '';
+            final itemName = fav['item_name']?.toString() ?? 'Item';
+            final itemUnit = fav['item_unit']?.toString() ?? 'kg';
+            final dbItem =
+                inventoryList.where((i) => i.id == itemId).firstOrNull;
+
+            double maxStock = dbItem?.stock ?? 0.0;
+            if (dbItem != null) {
+              final conversion =
+                  dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
+              if (dbItem.unit == 'kg' && itemUnit == 'gram') {
+                maxStock = dbItem.stock * 1000.0;
+              } else if (dbItem.unit == 'kg' && itemUnit == 'piece') {
+                maxStock = dbItem.stock / conversion;
+              } else if (dbItem.unit == 'piece' && itemUnit == 'dozen') {
+                maxStock = dbItem.stock / 12.0;
+              } else if (dbItem.unit == 'piece' && itemUnit == 'kg') {
+                maxStock = dbItem.stock * conversion;
+              }
+            }
+
+            if (dbItem != null && maxStock < 0.001) {
+              skippedOos.add(itemName);
+              continue;
+            }
+
+            double unitPrice = (fav['unit_price'] as num?)?.toDouble() ??
+                (fav['selling_price'] as num?)?.toDouble() ??
+                (dbItem?.sellingPrice ?? 0.0);
+            if (unitPrice <= 0 && dbItem != null && dbItem.sellingPrice > 0) {
+              unitPrice = dbItem.sellingPrice;
+            }
+
+            double requestedQty = (fav['avg_qty'] as num?)?.toDouble() ?? 1.0;
+            if (requestedQty <= 0) requestedQty = 1.0;
+
+            if (dbItem != null && requestedQty > maxStock) {
+              adjustedQty.add(
+                  '$itemName (${AppFormatters.quantity(maxStock)} $itemUnit)');
+              requestedQty = maxStock;
+            }
+
+            newCartItems.add(CartItem(
+              itemId: itemId,
+              name: itemName,
+              unit: itemUnit,
+              price: unitPrice,
+              quantity: requestedQty,
+            ));
+          }
+
+          if (newCartItems.isEmpty) {
+            if (mounted) {
+              SnackbarHelper.showError(context,
+                  'All top favorite items are currently OUT OF STOCK.');
+            }
+            return;
+          }
+
           setState(() {
             _cart.clear();
-            for (final fav in topFavs) {
-              final itemId = fav['item_id']?.toString() ?? '';
-              final itemName = fav['item_name']?.toString() ?? 'Item';
-              final itemUnit = fav['item_unit']?.toString() ?? 'kg';
-              final unitPrice = (fav['unit_price'] as num?)?.toDouble() ??
-                  (fav['selling_price'] as num?)?.toDouble() ??
-                  0.0;
-              final defaultQty = (fav['avg_qty'] as num?)?.toDouble() ?? 1.0;
-              _cart.add(CartItem(
-                itemId: itemId,
-                name: itemName,
-                unit: itemUnit,
-                price: unitPrice,
-                quantity: defaultQty > 0 ? defaultQty : 1.0,
-              ));
-            }
+            _cart.addAll(newCartItems);
           });
+
           if (mounted) {
-            SnackbarHelper.showSuccess(context,
-                '⚡ Added ${topFavs.length} previous items to cart');
+            if (skippedOos.isNotEmpty || adjustedQty.isNotEmpty) {
+              final msgs = <String>[];
+              if (skippedOos.isNotEmpty) {
+                msgs.add(
+                    'Skipped ${skippedOos.length} out-of-stock items (${skippedOos.join(", ")})');
+              }
+              if (adjustedQty.isNotEmpty) {
+                msgs.add('Adjusted to available stock: ${adjustedQty.join(", ")}');
+              }
+              SnackbarHelper.showWarning(context, msgs.join('. '));
+            } else {
+              SnackbarHelper.showSuccess(context,
+                  '⚡ Added ${newCartItems.length} previous items to cart');
+            }
           }
           return;
         }
 
         if (mounted) {
-          SnackbarHelper.showInfo(
-              context, 'No previous order items found for ${widget.customerName}');
+          SnackbarHelper.showInfo(context,
+              'No previous order items found for ${widget.customerName}');
+        }
+        return;
+      }
+
+      final List<CartItem> newCartItems = [];
+      final List<String> skippedOos = [];
+      final List<String> adjustedQty = [];
+
+      for (final it in items) {
+        final dbItem =
+            inventoryList.where((i) => i.id == it.itemId).firstOrNull;
+
+        double maxStock = dbItem?.stock ?? 0.0;
+        if (dbItem != null) {
+          final conversion =
+              dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
+          if (dbItem.unit == 'kg' && it.itemUnit == 'gram') {
+            maxStock = dbItem.stock * 1000.0;
+          } else if (dbItem.unit == 'kg' && it.itemUnit == 'piece') {
+            maxStock = dbItem.stock / conversion;
+          } else if (dbItem.unit == 'piece' && it.itemUnit == 'dozen') {
+            maxStock = dbItem.stock / 12.0;
+          } else if (dbItem.unit == 'piece' && it.itemUnit == 'kg') {
+            maxStock = dbItem.stock * conversion;
+          }
+        }
+
+        if (dbItem != null && maxStock < 0.001) {
+          skippedOos.add(it.itemName);
+          continue;
+        }
+
+        double unitPrice = it.unitPrice;
+        if (unitPrice <= 0 && dbItem != null && dbItem.sellingPrice > 0) {
+          unitPrice = dbItem.sellingPrice;
+        }
+
+        double requestedQty = it.quantity;
+        if (requestedQty <= 0) requestedQty = 0.25;
+
+        if (dbItem != null && requestedQty > maxStock) {
+          adjustedQty.add(
+              '${it.itemName} (${AppFormatters.quantity(maxStock)} ${it.itemUnit})');
+          requestedQty = maxStock;
+        }
+
+        newCartItems.add(CartItem(
+          itemId: it.itemId,
+          name: it.itemName,
+          unit: it.itemUnit,
+          price: unitPrice,
+          quantity: requestedQty,
+        ));
+      }
+
+      if (newCartItems.isEmpty) {
+        if (mounted) {
+          SnackbarHelper.showError(context,
+              'All items from previous order are currently OUT OF STOCK.');
         }
         return;
       }
 
       setState(() {
         _cart.clear();
-        for (final it in items) {
-          _cart.add(CartItem(
-            itemId: it.itemId,
-            name: it.itemName,
-            unit: it.itemUnit,
-            price: it.unitPrice,
-            quantity: it.quantity,
-          ));
-        }
+        _cart.addAll(newCartItems);
       });
 
       if (mounted) {
-        SnackbarHelper.showSuccess(context,
-            '⚡ Reordered ${items.length} items from previous order');
+        if (skippedOos.isNotEmpty || adjustedQty.isNotEmpty) {
+          final msgs = <String>[];
+          if (skippedOos.isNotEmpty) {
+            msgs.add(
+                'Skipped ${skippedOos.length} out-of-stock items (${skippedOos.join(", ")})');
+          }
+          if (adjustedQty.isNotEmpty) {
+            msgs.add('Adjusted to available stock: ${adjustedQty.join(", ")}');
+          }
+          SnackbarHelper.showWarning(context, msgs.join('. '));
+        } else {
+          SnackbarHelper.showSuccess(context,
+              '⚡ Reordered ${newCartItems.length} items from previous order');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -2322,8 +2458,24 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         currentCartTotal: _subtotal,
         cartItems: _cart,
         onItemSelected: (item, qty, price) {
+          final stockInBase = UnitConverter.toBase(item.stock, item.unit);
+          if (stockInBase < 0.001 || item.stock < 0.001) {
+            SnackbarHelper.showError(
+              context,
+              '"${item.name}" is OUT OF STOCK (0 ${item.unit} available) and cannot be added.',
+            );
+            return;
+          }
+          if (qty <= 0) {
+            SnackbarHelper.showError(
+              context,
+              'Quantity must be greater than 0.',
+            );
+            return;
+          }
+
           setState(() {
-            double unitPrice = price;
+            double unitPrice = price > 0 ? price : item.sellingPrice;
             if (price == item.sellingPrice) {
               final customer =
                   ref.read(customerDetailProvider(widget.customerId)).value;
@@ -2645,6 +2797,7 @@ class _CartItemTile extends StatelessWidget {
           // Qty picker
           _QtyPicker(
             quantity: cartItem.quantity,
+            maxStock: maxStock,
             onChanged: onQtyChanged,
           ),
           const SizedBox(width: 12),
@@ -2670,8 +2823,13 @@ class _CartItemTile extends StatelessWidget {
 
 class _QtyPicker extends StatefulWidget {
   final double quantity;
+  final double maxStock;
   final ValueChanged<double> onChanged;
-  const _QtyPicker({required this.quantity, required this.onChanged});
+  const _QtyPicker({
+    required this.quantity,
+    this.maxStock = double.infinity,
+    required this.onChanged,
+  });
 
   @override
   State<_QtyPicker> createState() => _QtyPickerState();
@@ -2727,11 +2885,21 @@ class _QtyPickerState extends State<_QtyPicker> {
             children: [
               InkWell(
                 onTap: () {
-                  setState(() {
-                    _qty = double.parse((_qty + 0.25).toStringAsFixed(2));
-                    _ctrl.text = AppFormatters.quantity(_qty);
-                    widget.onChanged(_qty);
-                  });
+                  final nextQty =
+                      double.parse((_qty + 0.25).toStringAsFixed(2));
+                  if (nextQty <= widget.maxStock) {
+                    setState(() {
+                      _qty = nextQty;
+                      _ctrl.text = AppFormatters.quantity(_qty);
+                      widget.onChanged(_qty);
+                    });
+                  } else if (_qty < widget.maxStock) {
+                    setState(() {
+                      _qty = widget.maxStock;
+                      _ctrl.text = AppFormatters.quantity(_qty);
+                      widget.onChanged(_qty);
+                    });
+                  }
                 },
                 child: const Icon(Icons.keyboard_arrow_up_rounded, size: 16),
               ),
@@ -2755,7 +2923,8 @@ class _QtyPickerState extends State<_QtyPicker> {
           if (clean.isEmpty) return;
           final parsed = double.tryParse(clean);
           if (parsed != null && parsed >= 0) {
-            _qty = parsed;
+            final clamped = parsed > widget.maxStock ? widget.maxStock : parsed;
+            _qty = clamped;
             widget.onChanged(_qty);
           }
         },

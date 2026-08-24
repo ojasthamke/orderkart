@@ -14,6 +14,7 @@ import '../../../core/widgets/glass_container.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/utils/pdf_font_helper.dart';
 import '../../../core/utils/marathi_item_helper.dart';
+import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
@@ -39,6 +40,17 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
         pdfItems = all;
       }
     } catch (_) {}
+
+    // Filter out 0-stock items from the PDF Catalog as requested
+    pdfItems = pdfItems.where((item) => item.stock > 0.0001).toList();
+
+    if (pdfItems.isEmpty) {
+      if (mounted) {
+        SnackbarHelper.showInfo(
+            context, 'No in-stock items available to generate catalog PDF.');
+      }
+      return;
+    }
 
     final settingsVal = ref.read(settingsProvider).valueOrNull;
     final currency = settingsVal?.currency ?? '₹';

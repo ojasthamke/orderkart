@@ -366,7 +366,7 @@ class OrderDao {
       }
 
       final dbItems = await db.query('items',
-          columns: ['selling_price'],
+          columns: ['selling_price', 'unit', 'weight_per_piece'],
           where: 'id = ?',
           whereArgs: [item.itemId]);
       if (dbItems.isEmpty) {
@@ -374,7 +374,12 @@ class OrderDao {
         continue;
       }
 
-      double currentPrice = (dbItems.first['selling_price'] as num).toDouble();
+      final dbRow = dbItems.first;
+      double basePrice = (dbRow['selling_price'] as num).toDouble();
+      final String dbUnit = dbRow['unit']?.toString() ?? item.itemUnit;
+      final double weightPerPiece =
+          (dbRow['weight_per_piece'] as num?)?.toDouble() ?? 1.0;
+      final conversion = weightPerPiece > 0 ? weightPerPiece : 1.0;
       bool hasCustomPrice = false;
 
       try {
@@ -385,21 +390,42 @@ class OrderDao {
           whereArgs: [order.customerId, item.itemId],
         );
         if (custPrices.isNotEmpty) {
-          currentPrice = (custPrices.first['custom_price'] as num).toDouble();
+          basePrice = (custPrices.first['custom_price'] as num).toDouble();
           hasCustomPrice = true;
         }
       } catch (_) {}
 
       if (!hasCustomPrice && isVipActive && vipMarkupPct > 0) {
-        currentPrice = currentPrice * (1.0 + (vipMarkupPct / 100.0));
+        basePrice = basePrice * (1.0 + (vipMarkupPct / 100.0));
       }
 
-      final newTotalPrice = currentPrice * item.quantity;
+      // Convert rate to item.itemUnit if different from dbUnit
+      double itemRate = basePrice;
+      if (dbUnit.toLowerCase() == 'kg' &&
+          (item.itemUnit.toLowerCase() == 'gram' ||
+              item.itemUnit.toLowerCase() == 'g' ||
+              item.itemUnit.toLowerCase() == 'gm')) {
+        itemRate = basePrice / 1000.0;
+      } else if (dbUnit.toLowerCase() == 'kg' &&
+          (item.itemUnit.toLowerCase() == 'piece' ||
+              item.itemUnit.toLowerCase() == 'pcs')) {
+        itemRate = basePrice * conversion;
+      } else if (dbUnit.toLowerCase() == 'piece' &&
+          (item.itemUnit.toLowerCase() == 'dozen' ||
+              item.itemUnit.toLowerCase() == 'dz')) {
+        itemRate = basePrice * 12.0;
+      } else if (dbUnit.toLowerCase() == 'piece' &&
+          item.itemUnit.toLowerCase() == 'kg') {
+        itemRate = basePrice / conversion;
+      }
+
+      final newTotalPrice =
+          double.parse((itemRate * item.quantity).toStringAsFixed(2));
 
       await db.update(
         'order_items',
         {
-          'unit_price': currentPrice,
+          'unit_price': itemRate,
           'total_price': newTotalPrice,
         },
         where: 'id = ?',

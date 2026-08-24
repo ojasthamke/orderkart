@@ -1210,9 +1210,24 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                     it.name.toLowerCase().contains(code.toLowerCase()) ||
                                     it.id.toLowerCase() == code.toLowerCase()).firstOrNull;
                                 if (matched != null) {
+                                  final avail = _getAvailableStock(matched);
+                                  if (avail < 0.001) {
+                                    AppHaptics.error();
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('"${matched.name}" is OUT OF STOCK (0 ${matched.unit} available) and cannot be added.'),
+                                        backgroundColor: AppColors.error,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   Navigator.pop(ctx);
                                   setState(() {
                                     _selected = matched;
+                                    _qty = (0.25).clamp(avail < 0.01 ? avail : 0.01, avail);
+                                    _qtyController.text = AppFormatters.quantity(_qty);
                                     _loadCustomPrice(matched.id, matched.sellingPrice);
                                   });
                                 } else {
