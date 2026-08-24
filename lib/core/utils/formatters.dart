@@ -26,19 +26,19 @@ class AppFormatters {
     if (iso.isEmpty) return '—';
     final parsed = DateTime.tryParse(iso);
     if (parsed == null) return '—';
-    return _dateFmt.format(parsed);
+    return _dateFmt.format(parsed.toLocal());
   }
 
   /// Format time: 02:30 PM
-  static String time(DateTime dt) => _timeFmt.format(dt);
+  static String time(DateTime dt) => _timeFmt.format(dt.toLocal());
 
   /// Format date + time: 01 Jan 2024, 02:30 PM
-  static String dateTime(DateTime dt) => _dateTimeFmt.format(dt);
+  static String dateTime(DateTime dt) => _dateTimeFmt.format(dt.toLocal());
   static String dateTimeFromString(String iso) {
     if (iso.isEmpty) return '—';
     final parsed = DateTime.tryParse(iso);
     if (parsed == null) return '—';
-    return _dateTimeFmt.format(parsed);
+    return _dateTimeFmt.format(parsed.toLocal());
   }
 
   /// Month label: January 2024
