@@ -56,21 +56,18 @@ class CustomerOrderSyncService {
       final db = await DatabaseHelper.instance.database;
 
       // Try to load locations for recursive ancestor mapping
-      List<Map<String, dynamic>> localLocations = [];
+      List<Map<String, dynamic>> allLocations = [];
       bool useLocationsTable = false;
       try {
-        localLocations = await db.query(
-          'locations',
-          where: "is_archived IS NULL OR is_archived = 0",
-        );
-        if (localLocations.isNotEmpty) {
+        allLocations = await db.query('locations');
+        if (allLocations.isNotEmpty) {
           useLocationsTable = true;
         }
       } catch (_) {}
 
       // Build hierarchy helper maps
       final Map<String, Map<String, dynamic>> locationMap = {
-        for (final loc in localLocations) loc['id'] as String: loc
+        for (final loc in allLocations) loc['id'] as String: loc
       };
 
       List<Map<String, dynamic>> getAncestors(String startId) {
@@ -259,12 +256,14 @@ class CustomerOrderSyncService {
 
       // Try to query the new hierarchical locations table
       List<Map<String, dynamic>> localLocations = [];
+      List<Map<String, dynamic>> allLocations = [];
       bool useLocationsTable = false;
       try {
         localLocations = await db.query(
           'locations',
           where: "is_archived IS NULL OR is_archived = 0",
         );
+        allLocations = await db.query('locations');
         if (localLocations.isNotEmpty) {
           useLocationsTable = true;
         }
@@ -280,7 +279,7 @@ class CustomerOrderSyncService {
 
         // Build location lookup map
         final Map<String, Map<String, dynamic>> locationMap = {
-          for (final loc in localLocations) loc['id'] as String: loc
+          for (final loc in allLocations) loc['id'] as String: loc
         };
 
         // Helper to trace root-to-leaf path
@@ -656,6 +655,40 @@ class CustomerOrderSyncService {
                         'created_at': DateTime.now().toIso8601String(),
                       });
                     }
+                    // Sync fallback to locations table too
+                    try {
+                      final locAreaCheck = await txn.query('locations', where: 'id = ?', whereArgs: ['default_area']);
+                      if (locAreaCheck.isEmpty) {
+                        await txn.insert('locations', {
+                          'id': 'default_area',
+                          'parent_location_id': null,
+                          'name': 'Online Area',
+                          'description': 'Default area for online customers',
+                          'location_kind': 'area',
+                          'sequence_key': '000001',
+                          'depth': 0,
+                          'materialized_path': '/default_area/',
+                          'color': 0,
+                          'created_at': DateTime.now().toIso8601String(),
+                          'updated_at': DateTime.now().toIso8601String(),
+                        });
+                      }
+                      final locStreetCheck = await txn.query('locations', where: 'id = ?', whereArgs: ['default_street']);
+                      if (locStreetCheck.isEmpty) {
+                        await txn.insert('locations', {
+                          'id': 'default_street',
+                          'parent_location_id': 'default_area',
+                          'name': 'Online Street',
+                          'description': 'Default street for online customers',
+                          'location_kind': 'road',
+                          'sequence_key': '000001',
+                          'depth': 1,
+                          'materialized_path': '/default_area/default_street/',
+                          'created_at': DateTime.now().toIso8601String(),
+                          'updated_at': DateTime.now().toIso8601String(),
+                        });
+                      }
+                    } catch (_) {}
                     streetId = 'default_street';
                   }
                 }
@@ -736,19 +769,22 @@ class CustomerOrderSyncService {
                 if (itemId.isNotEmpty &&
                     serverStatus.toLowerCase() != 'cancelled' &&
                     serverStatus.toLowerCase() != 'denied') {
-                  await txn.rawUpdate(
-                    'UPDATE items SET stock = stock - ?, updated_at = ? WHERE id = ?',
-                    [qty, nowStr, itemId],
-                  );
-                  await txn.insert('stock_history', {
-                    'id': const Uuid().v4(),
-                    'item_id': itemId,
-                    'item_name': itemName,
-                    'change_amount': -qty,
-                    'reason': 'Online App Order #$orderId',
-                    'order_id': orderId,
-                    'created_at': nowStr,
-                  });
+                  final itemCheck = await txn.query('items', columns: ['id'], where: 'id = ?', whereArgs: [itemId]);
+                  if (itemCheck.isNotEmpty) {
+                    await txn.rawUpdate(
+                      'UPDATE items SET stock = stock - ?, updated_at = ? WHERE id = ?',
+                      [qty, nowStr, itemId],
+                    );
+                    await txn.insert('stock_history', {
+                      'id': const Uuid().v4(),
+                      'item_id': itemId,
+                      'item_name': itemName,
+                      'change_amount': -qty,
+                      'reason': 'Online App Order #$orderId',
+                      'order_id': orderId,
+                      'created_at': nowStr,
+                    });
+                  }
                 }
               }
 
@@ -783,19 +819,22 @@ class CustomerOrderSyncService {
                     final String itemName = localItem['item_name'] as String? ?? 'Item';
                     
                     if (itemId.isNotEmpty) {
-                      await txn.rawUpdate(
-                        'UPDATE items SET stock = stock + ?, updated_at = ? WHERE id = ?',
-                        [qty, DateTime.now().toIso8601String(), itemId],
-                      );
-                      await txn.insert('stock_history', {
-                        'id': const Uuid().v4(),
-                        'item_id': itemId,
-                        'item_name': itemName,
-                        'change_amount': qty,
-                        'reason': 'Online Order ${targetStatus == 'cancelled' ? 'Cancelled' : 'Denied'} #$orderId',
-                        'order_id': orderId,
-                        'created_at': DateTime.now().toIso8601String(),
-                      });
+                      final itemCheck = await txn.query('items', columns: ['id'], where: 'id = ?', whereArgs: [itemId]);
+                      if (itemCheck.isNotEmpty) {
+                        await txn.rawUpdate(
+                          'UPDATE items SET stock = stock + ?, updated_at = ? WHERE id = ?',
+                          [qty, DateTime.now().toIso8601String(), itemId],
+                        );
+                        await txn.insert('stock_history', {
+                          'id': const Uuid().v4(),
+                          'item_id': itemId,
+                          'item_name': itemName,
+                          'change_amount': qty,
+                          'reason': 'Online Order ${targetStatus == 'cancelled' ? 'Cancelled' : 'Denied'} #$orderId',
+                          'order_id': orderId,
+                          'created_at': DateTime.now().toIso8601String(),
+                        });
+                      }
                     }
                   }
                   

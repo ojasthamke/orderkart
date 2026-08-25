@@ -34,6 +34,7 @@ class CustomerListScreen extends ConsumerStatefulWidget {
 class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
   bool _isSelectionMode = false;
   final Set<String> _selectedCustomerIds = {};
+  bool _isSyncing = false;
 
   void _toggleSelection(String customerId) {
     setState(() {
@@ -249,88 +250,133 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.sync_rounded),
-                    onPressed: () async {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => const AlertDialog(
-                          content: Row(
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(width: 20),
-                              Expanded(child: Text('Syncing areas, customers & inventory... Please wait.')),
-                            ],
-                          ),
-                        ),
-                      );
-                      try {
-                        final stats = await CustomerOrderSyncService.instance.syncAll(forceSync: true);
-                        if (context.mounted) {
-                          Navigator.pop(context); // close loader
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Full Sync Results'),
-                              content: SingleChildScrollView(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('📍 Routes', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    Text('  Areas synced: ${stats['areasUploaded']}'),
-                                    Text('  Roads synced: ${stats['roadsUploaded']}'),
-                                    if ((stats['subRoadsUploaded'] ?? 0) > 0)
-                                      Text('  Sub-roads synced: ${stats['subRoadsUploaded']}'),
-                                    if ((stats['areasFailed'] ?? 0) > 0 || (stats['roadsFailed'] ?? 0) > 0 || (stats['subRoadsFailed'] ?? 0) > 0)
-                                      Text('  Failed: ${stats['areasFailed']} areas, ${stats['roadsFailed']} roads, ${stats['subRoadsFailed']} sub-roads',
-                                          style: const TextStyle(color: Colors.red)),
-                                    const SizedBox(height: 12),
-                                    const Text('👥 Customers', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    Text('  Total local: ${stats['total']}'),
-                                    Text('  Real customers: ${stats['real']}'),
-                                    Text('  Ghost houses skipped: ${stats['ghost']}'),
-                                    Text('  Uploaded: ${stats['uploaded']}'),
-                                    Text('  Updated: ${stats['updated']}'),
-                                    if ((stats['failed'] ?? 0) > 0)
-                                      Text('  Failed: ${stats['failed']}', style: const TextStyle(color: Colors.red)),
-                                    const SizedBox(height: 12),
-                                    const Text('📦 Inventory', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    Text('  Categories: ${stats['categoriesSynced']}'),
-                                    Text('  Products synced: ${stats['productsUploaded']}'),
-                                    if ((stats['productsFailed'] ?? 0) > 0)
-                                      Text('  Failed: ${stats['productsFailed']}',
-                                          style: const TextStyle(color: Colors.red)),
-                                  ],
+                    onPressed: _isSyncing
+                        ? null
+                        : () async {
+                            setState(() {
+                              _isSyncing = true;
+                            });
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => const PopScope(
+                                canPop: false,
+                                child: AlertDialog(
+                                  content: Row(
+                                    children: [
+                                      CircularProgressIndicator(),
+                                      SizedBox(width: 20),
+                                      Expanded(
+                                          child: Text(
+                                              'Syncing areas, customers & inventory... Please wait.')),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('OK'),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          Navigator.pop(context); // close loader
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Sync Failed'),
-                              content: Text('Error: $e'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('OK'),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                      }
-                    },
+                            );
+                            try {
+                              final stats = await CustomerOrderSyncService.instance
+                                  .syncAll(forceSync: true);
+                              if (context.mounted) {
+                                Navigator.pop(context); // close loader
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Full Sync Results'),
+                                    content: SingleChildScrollView(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text('📍 Routes',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          Text(
+                                              '  Areas synced: ${stats['areasUploaded']}'),
+                                          Text(
+                                              '  Roads synced: ${stats['roadsUploaded']}'),
+                                          if ((stats['subRoadsUploaded'] ?? 0) > 0)
+                                            Text(
+                                                '  Sub-roads synced: ${stats['subRoadsUploaded']}'),
+                                          if ((stats['areasFailed'] ?? 0) > 0 ||
+                                              (stats['roadsFailed'] ?? 0) > 0 ||
+                                              (stats['subRoadsFailed'] ?? 0) > 0)
+                                            Text(
+                                                '  Failed: ${stats['areasFailed']} areas, ${stats['roadsFailed']} roads, ${stats['subRoadsFailed']} sub-roads',
+                                                style: const TextStyle(
+                                                    color: Colors.red)),
+                                          const SizedBox(height: 12),
+                                          const Text('👥 Customers',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          Text('  Total local: ${stats['total']}'),
+                                          Text('  Real customers: ${stats['real']}'),
+                                          Text(
+                                              '  Ghost houses skipped: ${stats['ghost']}'),
+                                          Text('  Uploaded: ${stats['uploaded']}'),
+                                          Text('  Updated: ${stats['updated']}'),
+                                          if ((stats['failed'] ?? 0) > 0)
+                                            Text('  Failed: ${stats['failed']}',
+                                                style: const TextStyle(
+                                                    color: Colors.red)),
+                                          const SizedBox(height: 12),
+                                          const Text('📦 Inventory',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          Text(
+                                              '  Categories: ${stats['categoriesSynced']}'),
+                                          Text(
+                                              '  Products synced: ${stats['productsUploaded']}'),
+                                          if ((stats['productsFailed'] ?? 0) > 0)
+                                            Text(
+                                                '  Failed: ${stats['productsFailed']}',
+                                                style: const TextStyle(
+                                                    color: Colors.red)),
+                                        ],
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                                ).then((_) {
+                                  if (mounted) {
+                                    setState(() {
+                                      _isSyncing = false;
+                                    });
+                                    ref.invalidate(customerListProvider(effectiveStreetId));
+                                  }
+                                });
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                Navigator.pop(context); // close loader
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Sync Failed'),
+                                    content: Text('Error: $e'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                                ).then((_) {
+                                  if (mounted) {
+                                    setState(() {
+                                      _isSyncing = false;
+                                    });
+                                  }
+                                });
+                              }
+                            }
+                          },
                     tooltip: 'Sync All Data',
                   ),
                   IconButton(
