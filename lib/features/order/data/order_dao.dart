@@ -259,6 +259,7 @@ class OrderDao {
             'commission_rate': commRate > 0 ? commRate : 5.0,
             'commission_type': commType.isNotEmpty ? commType : 'pct_order',
             'updated_at': now,
+            'sync_status': 'pending_update',
           },
           where: 'id = ?',
           whereArgs: [id]);
@@ -274,6 +275,7 @@ class OrderDao {
         'commission_type': commType.isNotEmpty ? commType : 'pct_order',
         'created_at': order.createdAt.toIso8601String(),
         'updated_at': now,
+        'sync_status': 'pending_update',
       });
     }
     return id;
@@ -302,7 +304,11 @@ class OrderDao {
     final db = await _getExecutor(executor);
     await db.update(
       'orders',
-      {...order.toMap(), 'updated_at': DateTime.now().toIso8601String()},
+      {
+        ...order.toMap(),
+        'updated_at': DateTime.now().toIso8601String(),
+        'sync_status': 'pending_update',
+      },
       where: 'id = ?',
       whereArgs: [order.id],
     );
@@ -523,7 +529,8 @@ class OrderDao {
       'orders',
       {
         'delivery_status': status,
-        'updated_at': DateTime.now().toIso8601String()
+        'updated_at': DateTime.now().toIso8601String(),
+        'sync_status': 'pending_update',
       },
       where: 'id = ?',
       whereArgs: [orderId],
@@ -593,6 +600,7 @@ class OrderDao {
         'paid_amount': paidAmount,
         'remaining_amount': remainingAmount,
         'updated_at': DateTime.now().toIso8601String(),
+        'sync_status': 'pending_update',
       },
       where: 'id = ?',
       whereArgs: [orderId],

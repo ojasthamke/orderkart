@@ -161,6 +161,7 @@ class DatabaseHelper {
               'ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
         } catch (_) {}
         await _ensureGeoMapTables(db);
+        await _ensureSyncStatusAndSchedulingColumns(db);
         await ensureCustomerDeviceColumns(db);
         await _ensureCustomerCodeColumn(db);
         await _auditAndSelfHealCustomerIds(db);
@@ -581,6 +582,20 @@ class DatabaseHelper {
       } catch (_) {
         // Column already exists, ignore
       }
+    }
+  }
+
+  Future<void> _ensureSyncStatusAndSchedulingColumns(DatabaseExecutor db) async {
+    final columns = [
+      "ALTER TABLE orders ADD COLUMN sync_status TEXT DEFAULT 'synced'",
+      "ALTER TABLE orders ADD COLUMN order_type TEXT DEFAULT 'Normal'",
+      "ALTER TABLE orders ADD COLUMN order_taking_date TEXT",
+      "ALTER TABLE orders ADD COLUMN delivery_date TEXT",
+    ];
+    for (final col in columns) {
+      try {
+        await db.execute(col);
+      } catch (_) {}
     }
   }
 

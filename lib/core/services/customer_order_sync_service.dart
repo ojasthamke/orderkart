@@ -32,7 +32,9 @@ class CustomerOrderSyncService {
     _syncTimer?.cancel();
     // Run sync check every 10 seconds
     _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      await pushModifiedOrders();
       await syncAllExistingCustomers();
+      await syncInventory();
       await syncOrders();
     });
   }
@@ -602,6 +604,10 @@ class CustomerOrderSyncService {
         try {
           await db.transaction((txn) async {
             final String orderId = ord['id'];
+            final localCheck = await txn.query('orders', columns: ['sync_status'], where: 'id = ?', whereArgs: [orderId]);
+            if (localCheck.isNotEmpty && localCheck.first['sync_status'] == 'pending_update') {
+              return;
+            }
             String customerId = ord['customer_id'] ?? '';
             if (customerId.isEmpty) {
               customerId = 'generic_app_customer';
@@ -738,6 +744,10 @@ class CustomerOrderSyncService {
                 'savings': 0.0,
                 'created_at': ord['order_date'] ?? nowStr,
                 'updated_at': ord['order_date'] ?? nowStr,
+                'order_type': ord['order_type'] ?? 'Normal',
+                'order_taking_date': ord['order_taking_date'],
+                'delivery_date': ord['delivery_date'] != null ? ord['delivery_date'].toString() : null,
+                'sync_status': 'synced',
               });
 
               // Fetch order items from Supabase
@@ -804,12 +814,17 @@ class CustomerOrderSyncService {
                 debugPrint('Failed to show local notification: $e');
               }
             } else {
-              // C. Order exists locally - check for status sync (Remote Supabase -> Local POS)
+              // C. Order exists locally - update all fields from Supabase
               final String localStatus = orderCheck.first['delivery_status'] as String;
               final targetStatus = serverStatus.toLowerCase();
+              final double remoteTotal = (ord['total_amount'] as num?)?.toDouble() ?? 0.0;
+              final String remoteNotes = ord['notes'] ?? '';
+              final String? remoteOrderType = ord['order_type'];
+              final String? remoteOrderTakingDate = ord['order_taking_date'];
+              final String? remoteDeliveryDate = ord['delivery_date'] != null ? ord['delivery_date'].toString() : null;
 
               if (localStatus != targetStatus) {
-                 if (targetStatus == 'cancelled' || targetStatus == 'denied') {
+                if (targetStatus == 'cancelled' || targetStatus == 'denied') {
                   // Revert stock for all items of this order in SQLite items table
                   final localItems = await txn.query('order_items', where: 'order_id = ?', whereArgs: [orderId]);
                   for (var localItem in localItems) {
@@ -836,27 +851,59 @@ class CustomerOrderSyncService {
                       }
                     }
                   }
-                  
-                  await txn.update(
-                    'orders',
-                    {'delivery_status': targetStatus, 'updated_at': DateTime.now().toIso8601String()},
-                    where: 'id = ?',
-                    whereArgs: [orderId],
-                  );
-                } else {
-                  // Update local status to remote status
-                  await txn.update(
-                    'orders',
-                    {'delivery_status': targetStatus, 'updated_at': DateTime.now().toIso8601String()},
-                    where: 'id = ?',
-                    whereArgs: [orderId],
-                  );
                 }
-                
-                // Recalculate customer totals
-                if (customerId.isNotEmpty) {
-                  await CustomerDao().recalcCustomerTotals(customerId, executor: txn);
+              }
+
+              final double paidAmount = (orderCheck.first['paid_amount'] as num?)?.toDouble() ?? 0.0;
+              await txn.update(
+                'orders',
+                {
+                  'subtotal': remoteTotal,
+                  'grand_total': remoteTotal,
+                  'remaining_amount': (remoteTotal - paidAmount) > 0 ? (remoteTotal - paidAmount) : 0.0,
+                  'delivery_status': targetStatus,
+                  'notes': remoteNotes,
+                  'order_type': remoteOrderType ?? 'Normal',
+                  'order_taking_date': remoteOrderTakingDate,
+                  'delivery_date': remoteDeliveryDate,
+                  'updated_at': ord['updated_at'] ?? DateTime.now().toIso8601String(),
+                  'sync_status': 'synced',
+                },
+                where: 'id = ?',
+                whereArgs: [orderId],
+              );
+
+              // Update order items from Supabase
+              final List<dynamic> remoteItems = await client
+                  .from('order_items')
+                  .select()
+                  .eq('order_id', orderId);
+
+              if (remoteItems.isNotEmpty) {
+                await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+                for (var item in remoteItems) {
+                  final String itemId = item['product_id'] ?? '';
+                  final String itemName = item['product_name'] ?? 'Item';
+                  final double qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
+                  final double unitPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
+                  final double subtotal = (item['total_price'] as num?)?.toDouble() ?? (qty * unitPrice);
+
+                  await txn.insert('order_items', {
+                    'id': item['id'] ?? const Uuid().v4(),
+                    'order_id': orderId,
+                    'item_id': itemId,
+                    'item_name': itemName,
+                    'item_unit': item['unit'] ?? 'kg',
+                    'quantity': qty,
+                    'unit_price': unitPrice,
+                    'total_price': subtotal,
+                  });
                 }
+              }
+
+              // Recalculate customer totals
+              if (customerId.isNotEmpty) {
+                await CustomerDao().recalcCustomerTotals(customerId, executor: txn);
               }
             }
           });
@@ -870,6 +917,96 @@ class CustomerOrderSyncService {
 
     } catch (e) {
       debugPrint('CustomerOrderSyncService sync error: $e');
+    }
+  }
+
+  Future<void> pushModifiedOrders() async {
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      final db = await DatabaseHelper.instance.database;
+
+      final List<Map<String, dynamic>> modifiedOrders = await db.query(
+        'orders',
+        where: "sync_status = 'pending_update'",
+      );
+
+      for (var ord in modifiedOrders) {
+        final String orderId = ord['id'] as String;
+        final String customerId = ord['customer_id'] as String? ?? '';
+        final double grandTotal = (ord['grand_total'] as num?)?.toDouble() ?? 0.0;
+        final String localStatus = ord['delivery_status'] as String? ?? 'pending';
+        final String notes = ord['notes'] as String? ?? '';
+        
+        final String? orderType = ord['order_type'] as String?;
+        final String? orderTakingDate = ord['order_taking_date'] as String?;
+        final String? deliveryDate = ord['delivery_date'] as String?;
+
+        final serverStatus = _toServerStatus(localStatus);
+
+        // 1. Update the order in Supabase
+        await client.from('orders').upsert({
+          'id': orderId,
+          'customer_id': (customerId.isNotEmpty && customerId != 'generic_app_customer') ? customerId : null,
+          'total_amount': grandTotal,
+          'status': serverStatus,
+          'notes': notes,
+          'order_type': orderType ?? 'Normal',
+          'order_taking_date': orderTakingDate,
+          'delivery_date': deliveryDate,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+
+        // 2. Fetch order items from SQLite
+        final List<Map<String, dynamic>> localItems = await db.query(
+          'order_items',
+          where: 'order_id = ?',
+          whereArgs: [orderId],
+        );
+
+        // 3. Clear remote order items
+        await client.from('order_items').delete().eq('order_id', orderId);
+
+        // 4. Upload updated items
+        if (localItems.isNotEmpty) {
+          final itemsToInsert = localItems.map((item) => {
+            'id': item['id'] ?? const Uuid().v4(),
+            'order_id': orderId,
+            'product_id': item['item_id'],
+            'product_name': item['item_name'],
+            'price': (item['unit_price'] as num?)?.toDouble() ?? 0.0,
+            'quantity': (item['quantity'] as num?)?.toDouble() ?? 0.0,
+            'unit': item['item_unit'],
+            'total_price': (item['total_price'] as num?)?.toDouble() ?? 0.0,
+          }).toList();
+          
+          await client.from('order_items').insert(itemsToInsert);
+        }
+
+        // 5. Mark local order as synced
+        await db.update(
+          'orders',
+          {'sync_status': 'synced'},
+          where: 'id = ?',
+          whereArgs: [orderId],
+        );
+
+        debugPrint('[SYNC-UPLOAD] Successfully pushed order $orderId to Supabase.');
+      }
+    } catch (e) {
+      debugPrint('[SYNC-UPLOAD] Error pushing modified orders: $e');
+    }
+  }
+
+  String _toServerStatus(String localStatus) {
+    switch (localStatus.toLowerCase().trim()) {
+      case 'pending': return 'Pending';
+      case 'confirmed': return 'Confirmed';
+      case 'preparing': return 'Preparing';
+      case 'out for delivery': return 'Out for Delivery';
+      case 'delivered': return 'Delivered';
+      case 'cancelled': return 'Cancelled';
+      default: return 'Confirmed';
     }
   }
 
