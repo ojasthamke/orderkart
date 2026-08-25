@@ -594,8 +594,7 @@ class CustomerOrderSyncService {
       // Since the admin accepts them, we fetch all orders where status != 'Pending'
       final List<dynamic> orders = await client
           .from('orders')
-          .select('*, customers(name, phone)')
-          .neq('status', 'Pending');
+          .select('*, customers(name, phone)');
 
       final db = await DatabaseHelper.instance.database;
 
