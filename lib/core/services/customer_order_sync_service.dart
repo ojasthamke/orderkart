@@ -94,10 +94,17 @@ class CustomerOrderSyncService {
       }
 
       // Find all active customers to sync to Supabase
-      final List<Map<String, dynamic>> customers = await db.query(
-        'customers',
-        where: "is_archived IS NULL OR is_archived = 0",
-      );
+      List<Map<String, dynamic>> rawCustomers = [];
+      try {
+        rawCustomers = await db.query('customers');
+      } catch (e) {
+        debugPrint('[SYNC] Failed to query customers: $e');
+      }
+
+      final customers = rawCustomers.where((cust) {
+        final isArch = cust['is_archived'];
+        return isArch == null || isArch == 0;
+      }).toList();
 
       total = customers.length;
 
@@ -370,10 +377,17 @@ class CustomerOrderSyncService {
 
       } else {
         // Fallback to legacy areas and streets (treating streets as Roads under Areas)
-        final List<Map<String, dynamic>> localAreas = await db.query(
-          'areas',
-          where: "is_archived IS NULL OR is_archived = 0",
-        );
+        List<Map<String, dynamic>> rawAreas = [];
+        try {
+          rawAreas = await db.query('areas');
+        } catch (e) {
+          debugPrint('[SYNC] Failed to query areas: $e');
+        }
+
+        final localAreas = rawAreas.where((area) {
+          final isArch = area['is_archived'];
+          return isArch == null || isArch == 0;
+        }).toList();
 
         for (final area in localAreas) {
           final localId = area['id'] as String;
@@ -397,10 +411,17 @@ class CustomerOrderSyncService {
           }
         }
 
-        final List<Map<String, dynamic>> localStreets = await db.query(
-          'streets',
-          where: "is_archived IS NULL OR is_archived = 0",
-        );
+        List<Map<String, dynamic>> rawStreets = [];
+        try {
+          rawStreets = await db.query('streets');
+        } catch (e) {
+          debugPrint('[SYNC] Failed to query streets: $e');
+        }
+
+        final localStreets = rawStreets.where((street) {
+          final isArch = street['is_archived'];
+          return isArch == null || isArch == 0;
+        }).toList();
 
         for (final street in localStreets) {
           final localId = street['id'] as String;
