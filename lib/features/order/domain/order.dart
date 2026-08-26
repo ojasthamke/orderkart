@@ -18,6 +18,11 @@ class AppOrder {
   final DateTime updatedAt;
   final int? orderNumber; // Sequential rowid from SQLite
 
+  // Preorder-related fields
+  final String orderType; // 'Normal' or 'Pre-Order'
+  final String? orderTakingDate;
+  final String? deliveryDate;
+
   // Joined / computed fields
   final String? customerName;
   final String? customerAddress;
@@ -62,6 +67,9 @@ class AppOrder {
     required this.updatedAt,
     this.orderNumber,
     this.orderNumberStr = '',
+    this.orderType = 'Normal',
+    this.orderTakingDate,
+    this.deliveryDate,
     this.customerName,
     this.customerAddress,
     this.customerPhone,
@@ -92,6 +100,9 @@ class AppOrder {
     DateTime? updatedAt,
     int? orderNumber,
     String? orderNumberStr,
+    String? orderType,
+    String? orderTakingDate,
+    String? deliveryDate,
     String? customerName,
     String? customerAddress,
     String? customerPhone,
@@ -121,6 +132,9 @@ class AppOrder {
       updatedAt: updatedAt ?? this.updatedAt,
       orderNumber: orderNumber ?? this.orderNumber,
       orderNumberStr: orderNumberStr ?? this.orderNumberStr,
+      orderType: orderType ?? this.orderType,
+      orderTakingDate: orderTakingDate ?? this.orderTakingDate,
+      deliveryDate: deliveryDate ?? this.deliveryDate,
       customerName: customerName ?? this.customerName,
       customerAddress: customerAddress ?? this.customerAddress,
       customerPhone: customerPhone ?? this.customerPhone,
@@ -157,6 +171,9 @@ class AppOrder {
         'commission_rate': commissionRate,
         'commission_type': commissionType,
         'order_number': orderNumberStr,
+        'order_type': orderType,
+        'order_taking_date': orderTakingDate,
+        'delivery_date': deliveryDate,
       };
 
   factory AppOrder.fromMap(Map<String, dynamic> map) => AppOrder(
@@ -179,6 +196,9 @@ class AppOrder {
             DateTime.now(),
         orderNumber: map['order_number'] is int ? map['order_number'] as int? : null,
         orderNumberStr: map['order_number_str'] as String? ?? (map['order_number'] is String ? map['order_number'] as String : ''),
+        orderType: map['order_type'] as String? ?? 'Normal',
+        orderTakingDate: map['order_taking_date'] as String?,
+        deliveryDate: map['delivery_date'] as String?,
         customerName: map['customer_name'] as String?,
         customerAddress: map['customer_address'] as String?,
         customerPhone: map['customer_phone'] as String?,

@@ -48,6 +48,7 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
     {'label': 'Pending', 'status': 'pending'},
     {'label': 'Delivered', 'status': 'delivered'},
     {'label': 'Cancelled', 'status': 'cancelled'},
+    {'label': 'Pre-Orders', 'status': 'preorder'},
   ];
 
   final _filters = [
@@ -207,9 +208,22 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
                         data: (orders) {
                           final statusKey = t['status']!;
                           var filtered = orders;
-                          if (statusKey != 'all') {
+                          if (statusKey == 'preorder') {
                             filtered = filtered
-                                .where((o) => o.deliveryStatus == statusKey)
+                                .where((o) => o.orderType == 'Pre-Order')
+                                .toList();
+                            filtered.sort((a, b) {
+                              final aDate = a.orderTakingDate ?? '';
+                              final bDate = b.orderTakingDate ?? '';
+                              return aDate.compareTo(bDate);
+                            });
+                          } else if (statusKey != 'all') {
+                            filtered = filtered
+                                .where((o) => o.deliveryStatus == statusKey && o.orderType != 'Pre-Order')
+                                .toList();
+                          } else {
+                            filtered = filtered
+                                .where((o) => o.orderType != 'Pre-Order')
                                 .toList();
                           }
                           if (_sourceMode == 'owner') {
@@ -977,11 +991,20 @@ class _OrderCard extends ConsumerWidget {
                         size: 12, color: AppColors.gray400),
                     const SizedBox(width: 4),
                     Text(
-                      AppFormatters.dateTime(order.createdAt),
+                      order.orderType == 'Pre-Order'
+                          ? 'Taking: ${order.orderTakingDate ?? '-'} | Delivery: ${order.deliveryDate ?? '-'}'
+                          : AppFormatters.dateTime(order.createdAt),
                       style: Theme.of(context)
                           .textTheme
                           .labelSmall
-                          ?.copyWith(color: AppColors.textHint),
+                          ?.copyWith(
+                            color: order.orderType == 'Pre-Order'
+                                ? AppColors.primary
+                                : AppColors.textHint,
+                            fontWeight: order.orderType == 'Pre-Order'
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
                     ),
                     const SizedBox(width: 6),
                     Expanded(

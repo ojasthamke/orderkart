@@ -598,13 +598,20 @@ class CustomerOrderSyncService {
           final remoteUpdatedStr = matchingRemote['updated_at']?.toString() ?? matchingRemote['created_at']?.toString() ?? '';
           final remoteUpdatedAt = DateTime.tryParse(remoteUpdatedStr) ?? DateTime.fromMillisecondsSinceEpoch(0);
 
+          // OrderKart is the absolute source of truth for pricing (price/selling_price, mrp/market_price, cost_price) and stock.
+          // We always push local values of these fields to Supabase.
+          // For other metadata fields (name, category_id, unit, image_path), we follow the updated_at rule.
+
           if (localUpdatedAt.isAfter(remoteUpdatedAt)) {
-            // Local is newer -> push/update remote product
+            // Local is newer -> push/update remote product (includes metadata and prices/stock)
             try {
               await client.from('products').update({
                 'name': name,
                 'category_id': categoryId,
                 'price': sellingPrice,
+                'selling_price': sellingPrice,
+                'mrp': marketPrice,
+                'stock': stock,
                 'unit': unit,
                 'description': json.encode(extra),
                 'image_path': photoPath,
@@ -617,15 +624,13 @@ class CustomerOrderSyncService {
               debugPrint('[SYNC] Product "$name" update FAILED: $e');
             }
           } else {
-            // Remote is newer -> update local SQLite
-            final double remotePrice = (matchingRemote['price'] as num?)?.toDouble() ?? sellingPrice;
+            // Remote is newer -> update local SQLite metadata, but DO NOT overwrite local prices/stock/mrp/cost.
+            // Also, push local prices/stock/mrp/cost back to remote so they stay authoritative.
+            final String remoteName = matchingRemote['name'] as String? ?? name;
             final String remoteUnit = matchingRemote['unit'] as String? ?? unit;
             final String remoteImage = matchingRemote['image_path'] as String? ?? photoPath;
             
-            // Extract remote description JSON values
-            double parsedStock = stock;
-            double parsedCost = costPrice;
-            double parsedMrp = marketPrice;
+            // Extract remote description JSON values for other non-price/stock metadata fields if needed
             double parsedMinStock = minStock;
             String parsedBarcode = barcode;
             String parsedExpiry = expiryDate;
@@ -641,9 +646,6 @@ class CustomerOrderSyncService {
             if (desc.trim().startsWith('{') && desc.trim().endsWith('}')) {
               try {
                 final Map<String, dynamic> decoded = json.decode(desc);
-                parsedCost = (decoded['cost_price'] as num?)?.toDouble() ?? parsedCost;
-                parsedMrp = ((decoded['market_price'] ?? decoded['mrp']) as num?)?.toDouble() ?? parsedMrp;
-                parsedStock = (decoded['stock'] as num?)?.toDouble() ?? parsedStock;
                 parsedMinStock = (decoded['min_stock'] as num?)?.toDouble() ?? parsedMinStock;
                 parsedBarcode = decoded['barcode'] as String? ?? parsedBarcode;
                 parsedWeight = (decoded['weight_per_piece'] as num?)?.toDouble() ?? parsedWeight;
@@ -658,21 +660,22 @@ class CustomerOrderSyncService {
             }
 
             try {
-              // Update core columns first (which always exist!)
+              // Update local SQLite with remote metadata (but strictly preserve local prices, stock, mrp, cost_price!)
               await db.update(
                 'items',
                 {
-                  'name': name,
-                  'selling_price': remotePrice,
+                  'name': remoteName,
                   'unit': remoteUnit,
                   'photo_path': remoteImage,
-                  'stock': parsedStock,
                   'min_stock': parsedMinStock,
-                  'cost_price': parsedCost,
-                  'market_price': parsedMrp,
                   'weight_per_piece': parsedWeight,
                   'sequence_no': parsedSeq,
                   'updated_at': remoteUpdatedAt.toIso8601String(),
+                  // Preserve local values explicitly:
+                  'selling_price': sellingPrice,
+                  'stock': stock,
+                  'cost_price': costPrice,
+                  'market_price': marketPrice,
                 },
                 where: 'id = ?',
                 whereArgs: [localId],
@@ -689,23 +692,39 @@ class CustomerOrderSyncService {
                 'best_before': parsedBestBefore,
                 'pack_date': parsedPackDate,
               };
+
               for (final col in optColumns) {
                 try {
                   await db.update('items', {col: optUpdates[col]}, where: 'id = ?', whereArgs: [localId]);
                 } catch (_) {}
               }
+
+              // Since OrderKart is the authority, push local price/stock/mrp/cost back to remote products table
+              await client.from('products').update({
+                'price': sellingPrice,
+                'selling_price': sellingPrice,
+                'mrp': marketPrice,
+                'stock': stock,
+                'description': json.encode(extra),
+                'is_available': stock > 0,
+              }).eq('id', matchingRemote['id']);
+              
+              productsUploaded++;
             } catch (e) {
-              debugPrint('[SYNC] Local item "$name" update FAILED: $e');
+              debugPrint('[SYNC] Local metadata update for "$name" FAILED: $e');
             }
           }
         } else {
-          // Does not exist remotely -> insert
+          // Does not exist remotely -> insert with new columns
           try {
             await client.from('products').insert({
               'id': productId,
               'name': name,
               'category_id': categoryId,
               'price': sellingPrice,
+              'selling_price': sellingPrice,
+              'mrp': marketPrice,
+              'stock': stock,
               'unit': unit,
               'description': json.encode(extra),
               'image_path': photoPath,
@@ -774,6 +793,18 @@ class CustomerOrderSyncService {
         try {
           await db.transaction((txn) async {
             final String orderId = ord['id'];
+
+            // Build a map of UUID to local SQLite item ID
+            final List<Map<String, dynamic>> dbItems = await txn.query('items', columns: ['id']);
+            final Map<String, String> uuidToLocalId = {};
+            for (final row in dbItems) {
+              final String rawId = row['id'] as String? ?? '';
+              if (rawId.isNotEmpty) {
+                final String uuid = _getValidUuid(rawId);
+                uuidToLocalId[uuid] = rawId;
+              }
+            }
+
             final localCheck = await txn.query('orders', columns: ['sync_status'], where: 'id = ?', whereArgs: [orderId]);
             if (localCheck.isNotEmpty && localCheck.first['sync_status'] == 'pending_update') {
               return;
@@ -928,7 +959,8 @@ class CustomerOrderSyncService {
                   .eq('order_id', orderId);
 
               for (var item in items) {
-                final String itemId = item['product_id'] ?? '';
+                final String remoteItemId = item['product_id'] ?? '';
+                final String localItemId = uuidToLocalId[remoteItemId] ?? remoteItemId;
                 final String itemName = item['product_name'] ?? 'Item';
                 final double qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
                 final double unitPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
@@ -937,7 +969,7 @@ class CustomerOrderSyncService {
                 await txn.insert('order_items', {
                   'id': const Uuid().v4(),
                   'order_id': orderId,
-                  'item_id': itemId,
+                  'item_id': localItemId,
                   'item_name': itemName,
                   'item_unit': item['unit'] ?? 'kg',
                   'quantity': qty,
@@ -946,18 +978,18 @@ class CustomerOrderSyncService {
                 });
 
                 // Deduct stock in SQLite items table & record stock history (only for active, non-cancelled/non-denied orders)
-                if (itemId.isNotEmpty &&
+                if (localItemId.isNotEmpty &&
                     serverStatus.toLowerCase() != 'cancelled' &&
                     serverStatus.toLowerCase() != 'denied') {
-                  final itemCheck = await txn.query('items', columns: ['id'], where: 'id = ?', whereArgs: [itemId]);
+                  final itemCheck = await txn.query('items', columns: ['id'], where: 'id = ?', whereArgs: [localItemId]);
                   if (itemCheck.isNotEmpty) {
                     await txn.rawUpdate(
                       'UPDATE items SET stock = stock - ?, updated_at = ? WHERE id = ?',
-                      [qty, nowStr, itemId],
+                      [qty, nowStr, localItemId],
                     );
                     await txn.insert('stock_history', {
                       'id': const Uuid().v4(),
-                      'item_id': itemId,
+                      'item_id': localItemId,
                       'item_name': itemName,
                       'change_amount': -qty,
                       'reason': 'Online App Order #$orderId',
@@ -1054,7 +1086,8 @@ class CustomerOrderSyncService {
               if (remoteItems.isNotEmpty) {
                 await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
                 for (var item in remoteItems) {
-                  final String itemId = item['product_id'] ?? '';
+                  final String remoteItemId = item['product_id'] ?? '';
+                  final String localItemId = uuidToLocalId[remoteItemId] ?? remoteItemId;
                   final String itemName = item['product_name'] ?? 'Item';
                   final double qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
                   final double unitPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
@@ -1063,7 +1096,7 @@ class CustomerOrderSyncService {
                   await txn.insert('order_items', {
                     'id': item['id'] ?? const Uuid().v4(),
                     'order_id': orderId,
-                    'item_id': itemId,
+                    'item_id': localItemId,
                     'item_name': itemName,
                     'item_unit': item['unit'] ?? 'kg',
                     'quantity': qty,
@@ -1149,7 +1182,7 @@ class CustomerOrderSyncService {
           final itemsToInsert = localItems.map((item) => {
             'id': item['id'] ?? const Uuid().v4(),
             'order_id': orderId,
-            'product_id': item['item_id'],
+            'product_id': _getValidUuid(item['item_id'] as String? ?? ''),
             'product_name': item['item_name'],
             'price': (item['unit_price'] as num?)?.toDouble() ?? 0.0,
             'quantity': (item['quantity'] as num?)?.toDouble() ?? 0.0,

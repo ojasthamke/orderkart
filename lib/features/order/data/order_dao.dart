@@ -475,6 +475,7 @@ class OrderDao {
         'grand_total': newGrandTotal,
         'remaining_amount': newRemaining,
         'updated_at': DateTime.now().toIso8601String(),
+        'sync_status': 'pending_update',
       },
       where: 'id = ?',
       whereArgs: [orderId],
