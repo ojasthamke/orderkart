@@ -13,6 +13,7 @@ class CustomerOrderSyncService {
   static final CustomerOrderSyncService instance = CustomerOrderSyncService._();
 
   Timer? _syncTimer;
+  bool _isSyncing = false;
 
   Future<void> _ensureSupabaseAuth() async {
     final client = Supabase.instance.client;
@@ -33,10 +34,16 @@ class CustomerOrderSyncService {
     _syncTimer?.cancel();
     // Run sync check every 10 seconds
     _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      await pushModifiedOrders();
-      await syncAllExistingCustomers();
-      await syncInventory();
-      await syncOrders();
+      if (_isSyncing) return; // Prevent concurrent sync cycles
+      _isSyncing = true;
+      try {
+        await pushModifiedOrders();
+        await syncAllExistingCustomers();
+        await syncInventory();
+        await syncOrders();
+      } finally {
+        _isSyncing = false;
+      }
     });
   }
 
@@ -779,7 +786,8 @@ class CustomerOrderSyncService {
   Future<void> syncOrders() async {
     try {
       await _ensureSupabaseAuth();
-      await pushModifiedOrders();
+      // NOTE: pushModifiedOrders() is already called by startSync() before syncOrders().
+      // Do NOT call it again here to avoid double-inserting order items on Supabase.
       final client = Supabase.instance.client;
       
       // Fetch remote orders from Supabase (confirmed, delivered, preparing, out for delivery, cancelled)
@@ -1176,6 +1184,16 @@ class CustomerOrderSyncService {
       for (var ord in modifiedOrders) {
         try {
           final String orderId = ord['id'] as String;
+
+          // Optimistic lock: mark as 'syncing' immediately to prevent
+          // a concurrent push from re-processing the same order and
+          // duplicating items on Supabase.
+          await db.update(
+            'orders',
+            {'sync_status': 'syncing'},
+            where: "id = ? AND sync_status = 'pending_update'",
+            whereArgs: [orderId],
+          );
           final double grandTotal = (ord['grand_total'] as num?)?.toDouble() ?? 0.0;
           final String localStatus = ord['delivery_status'] as String? ?? 'pending';
           
@@ -1272,6 +1290,15 @@ class CustomerOrderSyncService {
           debugPrint('[SYNC-UPLOAD] Successfully pushed order $orderId to Supabase.');
         } catch (itemErr) {
           debugPrint('[SYNC-UPLOAD] Error pushing individual order: $itemErr');
+          // Revert sync_status so the order is retried on the next cycle
+          try {
+            await db.update(
+              'orders',
+              {'sync_status': 'pending_update'},
+              where: "id = ? AND sync_status = 'syncing'",
+              whereArgs: [ord['id'] as String],
+            );
+          } catch (_) {}
         }
       }
     } catch (e) {
