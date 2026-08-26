@@ -2019,6 +2019,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       deviceName: _existingOrder?.deviceName ?? '',
       commissionRate: _existingOrder?.commissionRate ?? 0.0,
       commissionType: _existingOrder?.commissionType ?? '',
+      orderNumber: _existingOrder?.orderNumber,
+      orderNumberStr: _existingOrder?.orderNumberStr ?? '',
+      orderType: _existingOrder?.orderType ?? 'Normal',
+      orderTakingDate: _existingOrder?.orderTakingDate,
+      deliveryDate: _existingOrder?.deliveryDate,
     );
 
     try {
