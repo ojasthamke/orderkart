@@ -226,6 +226,15 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Widget _buildHeaderCard(AppOrder order, String currency) {
+    String deliveryDateFormatted = '';
+    if (order.deliveryDate != null && order.deliveryDate!.trim().isNotEmpty) {
+      deliveryDateFormatted = AppFormatters.dateFromString(order.deliveryDate!);
+    } else {
+      deliveryDateFormatted = AppFormatters.date(order.createdAt);
+    }
+
+    final String orderDateFormatted = AppFormatters.dateTime(order.createdAt);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -235,23 +244,80 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         boxShadow: AppColors.cardShadow,
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Order ${order.orderNoLabel}',
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                AppFormatters.dateTime(order.createdAt),
-                style: const TextStyle(fontSize: 12, color: AppColors.textHint),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Order ${order.orderNoLabel}',
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (order.orderType == 'Pre-Order') ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Pre-Order',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purple,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.access_time_rounded,
+                        size: 13, color: AppColors.textHint),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Order Date: $orderDateFormatted',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textHint,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.local_shipping_outlined,
+                        size: 14, color: AppColors.primary),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Delivery Date: $deliveryDateFormatted',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           StatusDotBadge(status: order.deliveryStatus),
         ],
       ),

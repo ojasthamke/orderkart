@@ -383,30 +383,32 @@ class ItemDao {
     final today = DateTime(now.year, now.month, now.day);
     final todayStr = DateFormat('yyyy-MM-dd').format(today);
 
+    const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN DATE(o.delivery_date) ELSE DATE(o.created_at) END)";
+
     if (startDate != null && endDate != null) {
       final startStr = DateFormat('yyyy-MM-dd').format(startDate);
       final endStr = DateFormat('yyyy-MM-dd').format(endDate);
-      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      whereClause += " AND $effectiveDateSql >= DATE(?) AND $effectiveDateSql <= DATE(?)";
       args.add(startStr);
       args.add(endStr);
     } else if (dateFilter == 'today') {
-      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      whereClause += " AND $effectiveDateSql = DATE(?)";
       args.add(todayStr);
     } else if (dateFilter == 'yesterday') {
       final yest = today.subtract(const Duration(days: 1));
       final yestStr = DateFormat('yyyy-MM-dd').format(yest);
-      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      whereClause += " AND $effectiveDateSql = DATE(?)";
       args.add(yestStr);
     } else if (dateFilter == 'week') {
       final start = today.subtract(const Duration(days: 7));
       final startStr = DateFormat('yyyy-MM-dd').format(start);
-      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      whereClause += " AND $effectiveDateSql >= DATE(?) AND $effectiveDateSql <= DATE(?)";
       args.add(startStr);
       args.add(todayStr);
     } else if (dateFilter == 'month') {
       final start = DateTime(now.year, now.month, 1);
       final startStr = DateFormat('yyyy-MM-dd').format(start);
-      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      whereClause += " AND $effectiveDateSql >= DATE(?) AND $effectiveDateSql <= DATE(?)";
       args.add(startStr);
       args.add(todayStr);
     }
@@ -622,30 +624,32 @@ class ItemDao {
     final today = DateTime(now.year, now.month, now.day);
     final todayStr = DateFormat('yyyy-MM-dd').format(today);
 
+    const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN DATE(o.delivery_date) ELSE DATE(o.created_at) END)";
+
     if (startDate != null && endDate != null) {
       final startStr = DateFormat('yyyy-MM-dd').format(startDate);
       final endStr = DateFormat('yyyy-MM-dd').format(endDate);
-      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      whereClause += " AND $effectiveDateSql >= DATE(?) AND $effectiveDateSql <= DATE(?)";
       args.add(startStr);
       args.add(endStr);
     } else if (dateFilter == 'today') {
-      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      whereClause += " AND $effectiveDateSql = DATE(?)";
       args.add(todayStr);
     } else if (dateFilter == 'yesterday') {
       final yest = today.subtract(const Duration(days: 1));
       final yestStr = DateFormat('yyyy-MM-dd').format(yest);
-      whereClause += " AND DATE(o.created_at) = DATE(?)";
+      whereClause += " AND $effectiveDateSql = DATE(?)";
       args.add(yestStr);
     } else if (dateFilter == 'week') {
       final start = today.subtract(const Duration(days: 7));
       final startStr = DateFormat('yyyy-MM-dd').format(start);
-      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      whereClause += " AND $effectiveDateSql >= DATE(?) AND $effectiveDateSql <= DATE(?)";
       args.add(startStr);
       args.add(todayStr);
     } else if (dateFilter == 'month') {
       final start = DateTime(now.year, now.month, 1);
       final startStr = DateFormat('yyyy-MM-dd').format(start);
-      whereClause += " AND DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?)";
+      whereClause += " AND $effectiveDateSql >= DATE(?) AND $effectiveDateSql <= DATE(?)";
       args.add(startStr);
       args.add(todayStr);
     }

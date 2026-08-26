@@ -176,10 +176,13 @@ class AnalyticsDao {
     final String endStr =
         "${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')}";
 
+    const effectiveDateSql = "(CASE WHEN order_type = 'Pre-Order' AND order_taking_date IS NOT NULL AND order_taking_date != '' THEN DATE(order_taking_date) WHEN order_type = 'Pre-Order' AND delivery_date IS NOT NULL AND delivery_date != '' THEN DATE(delivery_date) ELSE DATE(created_at) END)";
+    const effectiveDateSqlWithO = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN DATE(o.delivery_date) ELSE DATE(o.created_at) END)";
+
     // 1. Fetch daily order aggregates
     final orderRows = await db.rawQuery('''
       SELECT 
-        (CASE WHEN order_type = 'Pre-Order' AND order_taking_date IS NOT NULL AND order_taking_date != '' THEN DATE(order_taking_date) ELSE DATE(created_at) END) AS date,
+        $effectiveDateSql AS date,
         COUNT(id) AS orders_count,
         COALESCE(SUM(subtotal), 0) AS subtotal,
         COALESCE(SUM(grand_total), 0) AS revenue,
@@ -188,14 +191,14 @@ class AnalyticsDao {
         COALESCE(SUM(paid_amount), 0) AS total_collected,
         COALESCE(SUM(remaining_amount), 0) AS pending_debt
       FROM orders
-      WHERE (CASE WHEN order_type = 'Pre-Order' AND order_taking_date IS NOT NULL AND order_taking_date != '' THEN DATE(order_taking_date) ELSE DATE(created_at) END) >= DATE(?) AND (CASE WHEN order_type = 'Pre-Order' AND order_taking_date IS NOT NULL AND order_taking_date != '' THEN DATE(order_taking_date) ELSE DATE(created_at) END) <= DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'
-      GROUP BY (CASE WHEN order_type = 'Pre-Order' AND order_taking_date IS NOT NULL AND order_taking_date != '' THEN DATE(order_taking_date) ELSE DATE(created_at) END)
+      WHERE $effectiveDateSql >= DATE(?) AND $effectiveDateSql <= DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'
+      GROUP BY $effectiveDateSql
     ''', [startStr, endStr]);
 
     // 2. Fetch daily COGS with unit scaling
     final cogsRows = await db.rawQuery('''
       SELECT 
-        (CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) ELSE DATE(o.created_at) END) AS date,
+        $effectiveDateSqlWithO AS date,
         COALESCE(SUM(
           CASE
             WHEN oi.item_id != '' AND (LOWER(COALESCE(oi.item_unit, '')) = 'gram' OR LOWER(COALESCE(oi.item_unit, '')) = 'gm') AND LOWER(COALESCE(i.unit, '')) = 'kg'
@@ -208,8 +211,8 @@ class AnalyticsDao {
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN items i ON oi.item_id = i.id
-      WHERE (CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) ELSE DATE(o.created_at) END) >= DATE(?) AND (CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) ELSE DATE(o.created_at) END) <= DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
-      GROUP BY (CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) ELSE DATE(o.created_at) END)
+      WHERE $effectiveDateSqlWithO >= DATE(?) AND $effectiveDateSqlWithO <= DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
+      GROUP BY $effectiveDateSqlWithO
     ''', [startStr, endStr]);
 
     // 3. Fetch daily expenses

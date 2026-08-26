@@ -141,7 +141,7 @@ class AreaCard extends StatelessWidget {
                                   },
                                   child: _chip(
                                       context,
-                                      '📍 Location',
+                                      'Location',
                                       Icons.location_on_rounded,
                                       Colors.deepOrange),
                                 ),

@@ -851,6 +851,52 @@ class _OrderCard extends ConsumerWidget {
 
                 const SizedBox(height: 6),
 
+                // Order Date & Delivery Date Row
+                Row(
+                  children: [
+                    const Icon(Icons.access_time_rounded,
+                        size: 12, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      AppFormatters.dateTime(order.createdAt),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                    ),
+                    if (order.deliveryDate != null &&
+                        order.deliveryDate!.trim().isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.local_shipping_outlined,
+                                size: 11, color: AppColors.primary),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Delivery: ${AppFormatters.dateFromString(order.deliveryDate!)}',
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 6),
+
                 // Address / phone
                 customerAsync.when(
                   data: (cust) {

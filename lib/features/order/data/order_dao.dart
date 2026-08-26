@@ -79,8 +79,7 @@ class OrderDao {
       }
     }
 
-    // Date filters - Use effective schedule date (order_taking_date for pre-orders, created_at for normal orders)
-    const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) ELSE DATE(o.created_at) END)";
+    const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN DATE(o.delivery_date) ELSE DATE(o.created_at) END)";
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final todayStr = "${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
@@ -648,22 +647,25 @@ class OrderDao {
     final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
 
+    const effectiveDateSql = "(CASE WHEN order_type = 'Pre-Order' AND order_taking_date IS NOT NULL AND order_taking_date != '' THEN DATE(order_taking_date) WHEN order_type = 'Pre-Order' AND delivery_date IS NOT NULL AND delivery_date != '' THEN DATE(delivery_date) ELSE DATE(created_at) END)";
+    const effectiveDateSqlWithO = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN DATE(o.delivery_date) ELSE DATE(o.created_at) END)";
+
     final todaySales = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
         isWorker ? [today, workerId, workerId] : [today]);
 
     final todayOrders = await db.rawQuery(
         isWorker
-            ? "SELECT COUNT(*) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COUNT(*) AS v FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COUNT(*) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
         isWorker ? [today, workerId, workerId] : [today]);
 
     final monthlySales = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ? AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', created_at) = ? AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', $effectiveDateSql) = ? AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', $effectiveDateSql) = ? AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
         isWorker ? [month, workerId, workerId] : [month]);
 
     final pendingPayments = await db.rawQuery(
@@ -731,8 +733,8 @@ class OrderDao {
 
     final todayCogsRes = await db.rawQuery(
         isWorker
-            ? "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
-            : "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'",
+            ? "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE $effectiveDateSqlWithO = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE $effectiveDateSqlWithO = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'",
         isWorker ? [today, workerId, workerId] : [today]);
 
     final monthlyExpensesRes = await db.rawQuery(
@@ -743,8 +745,8 @@ class OrderDao {
 
     final monthlyCogsRes = await db.rawQuery(
         isWorker
-            ? "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', o.created_at) = ? AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
-            : "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', o.created_at) = ? AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'",
+            ? "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', $effectiveDateSqlWithO) = ? AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', $effectiveDateSqlWithO) = ? AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'",
         isWorker ? [month, workerId, workerId] : [month]);
 
     final double tSales = (todaySales.first['v'] as num?)?.toDouble() ?? 0.0;
