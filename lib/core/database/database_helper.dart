@@ -77,7 +77,10 @@ class DatabaseHelper {
           'ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
     } catch (_) {}
     await _ensureGeoMapTables(db);
+    await _ensureSyncStatusAndSchedulingColumns(db);
+    await ensureCustomerDeviceColumns(db);
     await _ensureCustomerCodeColumn(db);
+    await _dropLegacyTriggers(db);
   }
 
   static Future<void> _autoRecoverAndBackup(String internalDbPath) async {
@@ -164,6 +167,7 @@ class DatabaseHelper {
         await _ensureSyncStatusAndSchedulingColumns(db);
         await ensureCustomerDeviceColumns(db);
         await _ensureCustomerCodeColumn(db);
+        await _dropLegacyTriggers(db);
         await _auditAndSelfHealCustomerIds(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
@@ -2336,6 +2340,19 @@ class DatabaseHelper {
     try {
       await db.execute(
           "ALTER TABLE import_history ADD COLUMN summary_json TEXT DEFAULT ''");
+    } catch (_) {}
+  }
+
+  Future<void> _dropLegacyTriggers(DatabaseExecutor db) async {
+    try {
+      final List<Map<String, dynamic>> triggers = await db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type = 'trigger'");
+      for (final t in triggers) {
+        final name = t['name'];
+        if (name != null) {
+          await db.execute('DROP TRIGGER IF EXISTS "$name"');
+        }
+      }
     } catch (_) {}
   }
 
