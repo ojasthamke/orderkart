@@ -79,30 +79,35 @@ class OrderDao {
       }
     }
 
-    // Date filters
+    // Date filters - Use effective schedule date (order_taking_date for pre-orders, created_at for normal orders)
+    const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) ELSE DATE(o.created_at) END)";
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final todayStr = "${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+
     if (startDate != null && endDate != null) {
-      conditions.add('o.created_at >= ? AND o.created_at <= ?');
-      args.add(DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0)
-          .toIso8601String());
-      args.add(
-          DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999)
-              .toIso8601String());
+      final startStr = "${startDate.year.toString().padLeft(4, '0')}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}";
+      final endStr = "${endDate.year.toString().padLeft(4, '0')}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}";
+      conditions.add('$effectiveDateSql >= ? AND $effectiveDateSql <= ?');
+      args.add(startStr);
+      args.add(endStr);
     } else if (filter == 'today') {
-      conditions.add('DATE(o.created_at) = DATE(?)');
-      args.add(today.toIso8601String());
+      conditions.add('$effectiveDateSql = ?');
+      args.add(todayStr);
     } else if (filter == 'yesterday') {
       final yesterday = today.subtract(const Duration(days: 1));
-      conditions.add('DATE(o.created_at) = DATE(?)');
-      args.add(yesterday.toIso8601String());
+      final yestStr = "${yesterday.year.toString().padLeft(4, '0')}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}";
+      conditions.add('$effectiveDateSql = ?');
+      args.add(yestStr);
     } else if (filter == 'week') {
-      conditions.add('o.created_at >= ?');
-      args.add(today.subtract(const Duration(days: 7)).toIso8601String());
+      final weekAgo = today.subtract(const Duration(days: 7));
+      final weekStr = "${weekAgo.year.toString().padLeft(4, '0')}-${weekAgo.month.toString().padLeft(2, '0')}-${weekAgo.day.toString().padLeft(2, '0')}";
+      conditions.add('$effectiveDateSql >= ?');
+      args.add(weekStr);
     } else if (filter == 'month') {
-      conditions
-          .add('strftime(\'%Y-%m\', o.created_at) = strftime(\'%Y-%m\', ?)');
-      args.add(now.toIso8601String());
+      final monthStr = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}";
+      conditions.add('strftime(\'%Y-%m\', $effectiveDateSql) = ?');
+      args.add(monthStr);
     }
 
     final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
@@ -1023,6 +1028,8 @@ class OrderDao {
 
     final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
+    const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) ELSE DATE(o.created_at) END)";
+    const effectiveDateSubSql = "(CASE WHEN order_type = 'Pre-Order' AND order_taking_date IS NOT NULL AND order_taking_date != '' THEN DATE(order_taking_date) ELSE DATE(created_at) END)";
 
     // Today's orders
     final orderMaps = await db.rawQuery(
@@ -1031,14 +1038,14 @@ class OrderDao {
               SELECT o.*, o.rowid AS order_number, o.order_number AS order_number_str, c.name AS customer_name
               FROM orders o
               LEFT JOIN customers c ON o.customer_id = c.id
-              WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)
+              WHERE $effectiveDateSql = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)
               ORDER BY o.created_at DESC
               '''
             : '''
               SELECT o.*, o.rowid AS order_number, o.order_number AS order_number_str, c.name AS customer_name
               FROM orders o
               LEFT JOIN customers c ON o.customer_id = c.id
-              WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
+              WHERE $effectiveDateSql = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
               ORDER BY o.created_at DESC
               ''',
         isWorker ? [today, workerId, workerId] : [today]);
@@ -1049,14 +1056,14 @@ class OrderDao {
             ? '''
               SELECT item_name, item_unit, SUM(quantity) AS qty, SUM(total_price) AS total
               FROM order_items
-              WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?))
+              WHERE order_id IN (SELECT id FROM orders WHERE $effectiveDateSubSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?))
               GROUP BY item_name, item_unit
               ORDER BY qty DESC
               '''
             : '''
               SELECT item_name, item_unit, SUM(quantity) AS qty, SUM(total_price) AS total
               FROM order_items
-              WHERE order_id IN (SELECT id FROM orders WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied')
+              WHERE order_id IN (SELECT id FROM orders WHERE $effectiveDateSubSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied')
               GROUP BY item_name, item_unit
               ORDER BY qty DESC
               ''',
@@ -1069,13 +1076,13 @@ class OrderDao {
               SELECT COALESCE(SUM(p.amount), 0) AS v
               FROM payments p
               JOIN orders o ON p.order_id = o.id
-              WHERE DATE(p.created_at) = DATE(?) AND p.method = 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)
+              WHERE $effectiveDateSql = DATE(?) AND p.method = 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)
               '''
             : '''
               SELECT COALESCE(SUM(p.amount), 0) AS v
               FROM payments p
               JOIN orders o ON p.order_id = o.id
-              WHERE DATE(p.created_at) = DATE(?) AND p.method = 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
+              WHERE $effectiveDateSql = DATE(?) AND p.method = 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
               ''',
         isWorker ? [today, workerId, workerId] : [today]);
 
@@ -1085,13 +1092,13 @@ class OrderDao {
               SELECT COALESCE(SUM(p.amount), 0) AS v
               FROM payments p
               JOIN orders o ON p.order_id = o.id
-              WHERE DATE(p.created_at) = DATE(?) AND p.method != 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)
+              WHERE $effectiveDateSql = DATE(?) AND p.method != 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)
               '''
             : '''
               SELECT COALESCE(SUM(p.amount), 0) AS v
               FROM payments p
               JOIN orders o ON p.order_id = o.id
-              WHERE DATE(p.created_at) = DATE(?) AND p.method != 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
+              WHERE $effectiveDateSql = DATE(?) AND p.method != 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
               ''',
         isWorker ? [today, workerId, workerId] : [today]);
 
@@ -1100,12 +1107,12 @@ class OrderDao {
             ? '''
               SELECT COALESCE(SUM(grand_total), 0) AS v
               FROM orders
-              WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)
+              WHERE $effectiveDateSubSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)
               '''
             : '''
               SELECT COALESCE(SUM(grand_total), 0) AS v
               FROM orders
-              WHERE DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'
+              WHERE $effectiveDateSubSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'
               ''',
         isWorker ? [today, workerId, workerId] : [today]);
 

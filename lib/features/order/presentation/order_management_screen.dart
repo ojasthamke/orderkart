@@ -206,11 +206,13 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
                         loading: () => const LoadingShimmer(),
                         error: (e, _) => Center(child: Text('Error: $e')),
                         data: (orders) {
+                          final now = DateTime.now();
+                          final todayStr = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
                           final statusKey = t['status']!;
                           var filtered = orders;
                           if (statusKey == 'preorder') {
                             filtered = filtered
-                                .where((o) => o.orderType == 'Pre-Order')
+                                .where((o) => o.orderType == 'Pre-Order' && (o.orderTakingDate == null || o.orderTakingDate!.compareTo(todayStr) > 0))
                                 .toList();
                             filtered.sort((a, b) {
                               final aDate = a.orderTakingDate ?? '';
@@ -219,11 +221,11 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
                             });
                           } else if (statusKey != 'all') {
                             filtered = filtered
-                                .where((o) => o.deliveryStatus == statusKey && o.orderType != 'Pre-Order')
+                                .where((o) => o.deliveryStatus == statusKey && (o.orderType != 'Pre-Order' || (o.orderTakingDate != null && o.orderTakingDate!.compareTo(todayStr) <= 0)))
                                 .toList();
                           } else {
                             filtered = filtered
-                                .where((o) => o.orderType != 'Pre-Order')
+                                .where((o) => o.orderType != 'Pre-Order' || (o.orderTakingDate != null && o.orderTakingDate!.compareTo(todayStr) <= 0))
                                 .toList();
                           }
                           if (_sourceMode == 'owner') {
