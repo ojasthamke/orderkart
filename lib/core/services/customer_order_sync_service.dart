@@ -779,6 +779,7 @@ class CustomerOrderSyncService {
   Future<void> syncOrders() async {
     try {
       await _ensureSupabaseAuth();
+      await pushModifiedOrders();
       final client = Supabase.instance.client;
       
       // Fetch remote orders from Supabase (confirmed, delivered, preparing, out for delivery, cancelled)
@@ -1136,75 +1137,124 @@ class CustomerOrderSyncService {
         where: "sync_status = 'pending_update'",
       );
 
-      for (var ord in modifiedOrders) {
-        final String orderId = ord['id'] as String;
-        final String customerId = ord['customer_id'] as String? ?? '';
-        final double grandTotal = (ord['grand_total'] as num?)?.toDouble() ?? 0.0;
-        final String localStatus = ord['delivery_status'] as String? ?? 'pending';
-        final String notes = ord['notes'] as String? ?? '';
-        
-        final String? orderType = ord['order_type'] as String?;
-        final String? orderTakingDate = ord['order_taking_date'] as String?;
-        final String? deliveryDate = ord['delivery_date'] as String?;
+      if (modifiedOrders.isEmpty) return;
 
-        final serverStatus = _toServerStatus(localStatus);
-
-        final String? localOrderNo = ord['order_number'] as String?;
-
-        // 1. Update the order in Supabase & retrieve canonical order_number
-        final response = await client.from('orders').upsert({
-          'id': orderId,
-          'order_number': localOrderNo,
-          'customer_id': (customerId.isNotEmpty && customerId != 'generic_app_customer') ? customerId : null,
-          'total_amount': grandTotal,
-          'status': serverStatus,
-          'notes': notes,
-          'order_type': orderType ?? 'Normal',
-          'order_taking_date': orderTakingDate,
-          'delivery_date': deliveryDate,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).select('order_number').single();
-
-        final String canonicalOrderNo = response['order_number'] as String;
-
-        // 2. Fetch order items from SQLite
-        final List<Map<String, dynamic>> localItems = await db.query(
-          'order_items',
-          where: 'order_id = ?',
-          whereArgs: [orderId],
-        );
-
-        // 3. Clear remote order items
-        await client.from('order_items').delete().eq('order_id', orderId);
-
-        // 4. Upload updated items
-        if (localItems.isNotEmpty) {
-          final itemsToInsert = localItems.map((item) => {
-            'id': item['id'] ?? const Uuid().v4(),
-            'order_id': orderId,
-            'product_id': _getValidUuid(item['item_id'] as String? ?? ''),
-            'product_name': item['item_name'],
-            'price': (item['unit_price'] as num?)?.toDouble() ?? 0.0,
-            'quantity': (item['quantity'] as num?)?.toDouble() ?? 0.0,
-            'unit': item['item_unit'],
-            'total_price': (item['total_price'] as num?)?.toDouble() ?? 0.0,
-          }).toList();
-          
-          await client.from('order_items').insert(itemsToInsert);
+      // 0. Fetch products from Supabase to resolve exact product_id foreign keys reliably
+      final List<dynamic> remoteProducts = await client.from('products').select('id, name, mrp, price');
+      final Map<String, String> remoteProdById = {};
+      final Map<String, String> remoteProdByName = {};
+      final Map<String, double> remoteMrpByName = {};
+      for (final p in remoteProducts) {
+        final String pid = p['id'] as String;
+        final String pname = (p['name'] as String? ?? '').toLowerCase().trim();
+        final double pmrp = (p['mrp'] as num?)?.toDouble() ?? (p['price'] as num?)?.toDouble() ?? 0.0;
+        remoteProdById[pid] = pid;
+        if (pname.isNotEmpty) {
+          remoteProdByName[pname] = pid;
+          remoteMrpByName[pname] = pmrp;
         }
+      }
 
-        // 5. Mark local order as synced & update local order_number
-        await db.update(
-          'orders',
-          {
-            'sync_status': 'synced',
-            'order_number': canonicalOrderNo,
-          },
-          where: 'id = ?',
-          whereArgs: [orderId],
-        );
+      for (var ord in modifiedOrders) {
+        try {
+          final String orderId = ord['id'] as String;
+          final double grandTotal = (ord['grand_total'] as num?)?.toDouble() ?? 0.0;
+          final String localStatus = ord['delivery_status'] as String? ?? 'pending';
+          
+          final String? orderType = ord['order_type'] as String?;
+          final String? orderTakingDate = ord['order_taking_date'] as String?;
+          final String? deliveryDate = ord['delivery_date'] as String?;
+          final String? localOrderNo = ord['order_number'] as String?;
 
-        debugPrint('[SYNC-UPLOAD] Successfully pushed order $orderId to Supabase.');
+          final serverStatus = _toServerStatus(localStatus);
+
+          // 1. Update the order in Supabase using valid columns
+          final updatePayload = <String, dynamic>{
+            'total_amount': grandTotal,
+            'status': serverStatus,
+          };
+          if (orderType != null && orderType.isNotEmpty) {
+            updatePayload['order_type'] = orderType;
+          }
+          if (orderTakingDate != null && orderTakingDate.isNotEmpty) {
+            updatePayload['order_taking_date'] = orderTakingDate;
+          }
+          if (deliveryDate != null && deliveryDate.isNotEmpty) {
+            updatePayload['delivery_date'] = deliveryDate;
+          }
+          if (localOrderNo != null && localOrderNo.isNotEmpty) {
+            updatePayload['order_number'] = localOrderNo;
+          }
+
+          final List<dynamic> updatedOrders = await client
+              .from('orders')
+              .update(updatePayload)
+              .eq('id', orderId)
+              .select('order_number');
+
+          String canonicalOrderNo = localOrderNo ?? '';
+          if (updatedOrders.isNotEmpty) {
+            canonicalOrderNo = updatedOrders.first['order_number'] as String? ?? canonicalOrderNo;
+          }
+
+          // 2. Fetch order items from SQLite
+          final List<Map<String, dynamic>> localItems = await db.query(
+            'order_items',
+            where: 'order_id = ?',
+            whereArgs: [orderId],
+          );
+
+          // 3. Clear remote order items
+          await client.from('order_items').delete().eq('order_id', orderId);
+
+          // 4. Upload updated items
+          if (localItems.isNotEmpty) {
+            final itemsToInsert = localItems.map((item) {
+              final String rawItemId = item['item_id'] as String? ?? '';
+              final String itemName = (item['item_name'] as String? ?? '').trim();
+              final String targetProductId = remoteProdById[rawItemId] ??
+                  remoteProdByName[itemName.toLowerCase()] ??
+                  _getValidUuid(rawItemId);
+
+              final double unitPrice = (item['unit_price'] as num?)?.toDouble() ?? 0.0;
+              final double qty = (item['quantity'] as num?)?.toDouble() ?? 0.0;
+              final double totalPrice = (item['total_price'] as num?)?.toDouble() ?? (unitPrice * qty);
+              final double mrp = remoteMrpByName[itemName.toLowerCase()] ?? unitPrice;
+
+              return {
+                'id': const Uuid().v4(),
+                'order_id': orderId,
+                'product_id': targetProductId,
+                'product_name': itemName,
+                'price': unitPrice,
+                'quantity': qty,
+                'unit': (item['item_unit'] as String? ?? 'kg').trim(),
+                'total_price': totalPrice,
+                'product_name_snapshot': itemName,
+                'mrp_snapshot': mrp,
+                'selling_price_snapshot': unitPrice,
+                'line_total': totalPrice,
+              };
+            }).toList();
+
+            await client.from('order_items').insert(itemsToInsert);
+          }
+
+          // 5. Mark local order as synced & update local order_number
+          await db.update(
+            'orders',
+            {
+              'sync_status': 'synced',
+              if (canonicalOrderNo.isNotEmpty) 'order_number': canonicalOrderNo,
+            },
+            where: 'id = ?',
+            whereArgs: [orderId],
+          );
+
+          debugPrint('[SYNC-UPLOAD] Successfully pushed order $orderId to Supabase.');
+        } catch (itemErr) {
+          debugPrint('[SYNC-UPLOAD] Error pushing individual order: $itemErr');
+        }
       }
     } catch (e) {
       debugPrint('[SYNC-UPLOAD] Error pushing modified orders: $e');
