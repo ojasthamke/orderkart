@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -518,7 +519,28 @@ class CustomerOrderSyncService {
         }
       }
 
-      // 3. Upsert products
+      // 3. Fetch remote products for conflict resolution
+      List<dynamic> productsJson = [];
+      try {
+        productsJson = await client.from('products').select('*, categories(id, name)');
+      } catch (e) {
+        debugPrint('[SYNC] Failed to fetch remote products for conflict resolution: $e');
+      }
+
+      final Map<String, Map<String, dynamic>> remoteProductsById = {};
+      final Map<String, Map<String, dynamic>> remoteProductsByName = {};
+
+      for (final p in productsJson) {
+        final String id = p['id'] as String? ?? '';
+        final String name = p['name'] as String? ?? '';
+        if (id.isNotEmpty) {
+          remoteProductsById[id] = Map<String, dynamic>.from(p);
+        }
+        if (name.isNotEmpty) {
+          remoteProductsByName[name.toLowerCase()] = Map<String, dynamic>.from(p);
+        }
+      }
+
       for (final item in items) {
         final localId = item['id'] as String;
         final name = (item['name'] as String? ?? '').trim();
@@ -529,24 +551,172 @@ class CustomerOrderSyncService {
         final sellingPrice = (item['selling_price'] as num?)?.toDouble() ?? 0.0;
         final stock = (item['stock'] as num?)?.toDouble() ?? 0.0;
         final unit = (item['unit'] as String? ?? 'kg').trim();
+        
+        final localUpdatedStr = item['updated_at']?.toString() ?? '';
+        final localUpdatedAt = DateTime.tryParse(localUpdatedStr) ?? DateTime.fromMillisecondsSinceEpoch(0);
 
-        // Use the local UUID directly if it's valid, else generate deterministic one
         final productId = _getValidUuid(localId);
+        
+        final Map<String, dynamic>? matchingRemote = remoteProductsById[productId] ?? remoteProductsByName[name.toLowerCase()];
 
-        try {
-          await client.from('products').upsert({
-            'id': productId,
-            'name': name,
-            'category_id': categoryId,
-            'price': sellingPrice,
-            'unit': unit,
-            'is_available': stock > 0,
-            'is_enabled': true,
-          }, onConflict: 'id');
-          productsUploaded++;
-        } catch (e) {
-          productsFailed++;
-          debugPrint('[SYNC] Product "$name" FAILED: $e');
+        // Build the description JSON block containing extra properties (MRP, cost, min stock, weight per piece, sequence, etc.)
+        final double costPrice = (item['cost_price'] as num?)?.toDouble() ?? 0.0;
+        final double marketPrice = (item['market_price'] as num?)?.toDouble() ?? 0.0;
+        final double minStock = (item['min_stock'] as num?)?.toDouble() ?? 0.0;
+        final String barcode = (item['barcode'] as String? ?? '').trim();
+        final String expiryDate = (item['expiry_date'] as String? ?? '').trim();
+        final String batchNumber = (item['batch_number'] as String? ?? '').trim();
+        final bool prescriptionRequired = (item['prescription_required'] == 1 || item['prescription_required'] == true);
+        final String dosageInfo = (item['dosage_info'] as String? ?? '').trim();
+        final String bestBefore = (item['best_before'] as String? ?? '').trim();
+        final String packDate = (item['pack_date'] as String? ?? '').trim();
+        final double weightPerPiece = (item['weight_per_piece'] as num?)?.toDouble() ?? 0.25;
+        final String photoPath = (item['photo_path'] as String? ?? '').trim();
+        final int sequenceNo = (item['sequence_no'] as num?)?.toInt() ?? 0;
+        final String notes = (item['description'] as String? ?? '').trim();
+
+        final extra = {
+          'text': notes,
+          'cost_price': costPrice,
+          'market_price': marketPrice,
+          'mrp': marketPrice,
+          'stock': stock,
+          'min_stock': minStock,
+          'barcode': barcode,
+          'expiry_date': expiryDate,
+          'batch_number': batchNumber,
+          'prescription_required': prescriptionRequired,
+          'dosage_info': dosageInfo,
+          'best_before': bestBefore,
+          'pack_date': packDate,
+          'weight_per_piece': weightPerPiece,
+          'photo_path': photoPath,
+          'sequence_no': sequenceNo,
+        };
+
+        if (matchingRemote != null) {
+          final remoteUpdatedStr = matchingRemote['updated_at']?.toString() ?? matchingRemote['created_at']?.toString() ?? '';
+          final remoteUpdatedAt = DateTime.tryParse(remoteUpdatedStr) ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+          if (localUpdatedAt.isAfter(remoteUpdatedAt)) {
+            // Local is newer -> push/update remote product
+            try {
+              await client.from('products').update({
+                'name': name,
+                'category_id': categoryId,
+                'price': sellingPrice,
+                'unit': unit,
+                'description': json.encode(extra),
+                'image_path': photoPath,
+                'is_available': stock > 0,
+                'is_enabled': true,
+              }).eq('id', matchingRemote['id']);
+              productsUploaded++;
+            } catch (e) {
+              productsFailed++;
+              debugPrint('[SYNC] Product "$name" update FAILED: $e');
+            }
+          } else {
+            // Remote is newer -> update local SQLite
+            final double remotePrice = (matchingRemote['price'] as num?)?.toDouble() ?? sellingPrice;
+            final String remoteUnit = matchingRemote['unit'] as String? ?? unit;
+            final String remoteImage = matchingRemote['image_path'] as String? ?? photoPath;
+            
+            // Extract remote description JSON values
+            double parsedStock = stock;
+            double parsedCost = costPrice;
+            double parsedMrp = marketPrice;
+            double parsedMinStock = minStock;
+            String parsedBarcode = barcode;
+            String parsedExpiry = expiryDate;
+            String parsedBatch = batchNumber;
+            bool parsedRx = prescriptionRequired;
+            String parsedDosage = dosageInfo;
+            String parsedBestBefore = bestBefore;
+            String parsedPackDate = packDate;
+            double parsedWeight = weightPerPiece;
+            int parsedSeq = sequenceNo;
+
+            final desc = matchingRemote['description'] as String? ?? '';
+            if (desc.trim().startsWith('{') && desc.trim().endsWith('}')) {
+              try {
+                final Map<String, dynamic> decoded = json.decode(desc);
+                parsedCost = (decoded['cost_price'] as num?)?.toDouble() ?? parsedCost;
+                parsedMrp = ((decoded['market_price'] ?? decoded['mrp']) as num?)?.toDouble() ?? parsedMrp;
+                parsedStock = (decoded['stock'] as num?)?.toDouble() ?? parsedStock;
+                parsedMinStock = (decoded['min_stock'] as num?)?.toDouble() ?? parsedMinStock;
+                parsedBarcode = decoded['barcode'] as String? ?? parsedBarcode;
+                parsedWeight = (decoded['weight_per_piece'] as num?)?.toDouble() ?? parsedWeight;
+                parsedSeq = decoded['sequence_no'] as int? ?? decoded['serial_no'] as int? ?? parsedSeq;
+                parsedExpiry = decoded['expiry_date'] as String? ?? parsedExpiry;
+                parsedBatch = decoded['batch_number'] as String? ?? parsedBatch;
+                parsedRx = decoded['prescription_required'] as bool? ?? parsedRx;
+                parsedDosage = decoded['dosage_info'] as String? ?? parsedDosage;
+                parsedBestBefore = decoded['best_before'] as String? ?? parsedBestBefore;
+                parsedPackDate = decoded['pack_date'] as String? ?? parsedPackDate;
+              } catch (_) {}
+            }
+
+            try {
+              // Update core columns first (which always exist!)
+              await db.update(
+                'items',
+                {
+                  'name': name,
+                  'selling_price': remotePrice,
+                  'unit': remoteUnit,
+                  'photo_path': remoteImage,
+                  'stock': parsedStock,
+                  'min_stock': parsedMinStock,
+                  'cost_price': parsedCost,
+                  'market_price': parsedMrp,
+                  'weight_per_piece': parsedWeight,
+                  'sequence_no': parsedSeq,
+                  'updated_at': remoteUpdatedAt.toIso8601String(),
+                },
+                where: 'id = ?',
+                whereArgs: [localId],
+              );
+
+              // Update optional columns inside separate try-catches in case they are missing in SQLite
+              final List<String> optColumns = ['barcode', 'expiry_date', 'batch_number', 'prescription_required', 'dosage_info', 'best_before', 'pack_date'];
+              final Map<String, dynamic> optUpdates = {
+                'barcode': parsedBarcode,
+                'expiry_date': parsedExpiry,
+                'batch_number': parsedBatch,
+                'prescription_required': parsedRx ? 1 : 0,
+                'dosage_info': parsedDosage,
+                'best_before': parsedBestBefore,
+                'pack_date': parsedPackDate,
+              };
+              for (final col in optColumns) {
+                try {
+                  await db.update('items', {col: optUpdates[col]}, where: 'id = ?', whereArgs: [localId]);
+                } catch (_) {}
+              }
+            } catch (e) {
+              debugPrint('[SYNC] Local item "$name" update FAILED: $e');
+            }
+          }
+        } else {
+          // Does not exist remotely -> insert
+          try {
+            await client.from('products').insert({
+              'id': productId,
+              'name': name,
+              'category_id': categoryId,
+              'price': sellingPrice,
+              'unit': unit,
+              'description': json.encode(extra),
+              'image_path': photoPath,
+              'is_available': stock > 0,
+              'is_enabled': true,
+            });
+            productsUploaded++;
+          } catch (e) {
+            productsFailed++;
+            debugPrint('[SYNC] Product "$name" insert FAILED: $e');
+          }
         }
       }
 
@@ -746,8 +916,9 @@ class CustomerOrderSyncService {
                 'updated_at': ord['order_date'] ?? nowStr,
                 'order_type': ord['order_type'] ?? 'Normal',
                 'order_taking_date': ord['order_taking_date'],
-                'delivery_date': ord['delivery_date'] != null ? ord['delivery_date'].toString() : null,
+                'delivery_date': ord['delivery_date']?.toString(),
                 'sync_status': 'synced',
+                'order_number': ord['order_number'],
               });
 
               // Fetch order items from Supabase
@@ -821,7 +992,7 @@ class CustomerOrderSyncService {
               final String remoteNotes = ord['notes'] ?? '';
               final String? remoteOrderType = ord['order_type'];
               final String? remoteOrderTakingDate = ord['order_taking_date'];
-              final String? remoteDeliveryDate = ord['delivery_date'] != null ? ord['delivery_date'].toString() : null;
+              final String? remoteDeliveryDate = ord['delivery_date']?.toString();
 
               if (localStatus != targetStatus) {
                 if (targetStatus == 'cancelled' || targetStatus == 'denied') {
@@ -868,6 +1039,7 @@ class CustomerOrderSyncService {
                   'delivery_date': remoteDeliveryDate,
                   'updated_at': ord['updated_at'] ?? DateTime.now().toIso8601String(),
                   'sync_status': 'synced',
+                  'order_number': ord['order_number'],
                 },
                 where: 'id = ?',
                 whereArgs: [orderId],
@@ -944,9 +1116,12 @@ class CustomerOrderSyncService {
 
         final serverStatus = _toServerStatus(localStatus);
 
-        // 1. Update the order in Supabase
-        await client.from('orders').upsert({
+        final String? localOrderNo = ord['order_number'] as String?;
+
+        // 1. Update the order in Supabase & retrieve canonical order_number
+        final response = await client.from('orders').upsert({
           'id': orderId,
+          'order_number': localOrderNo,
           'customer_id': (customerId.isNotEmpty && customerId != 'generic_app_customer') ? customerId : null,
           'total_amount': grandTotal,
           'status': serverStatus,
@@ -955,7 +1130,9 @@ class CustomerOrderSyncService {
           'order_taking_date': orderTakingDate,
           'delivery_date': deliveryDate,
           'updated_at': DateTime.now().toIso8601String(),
-        });
+        }).select('order_number').single();
+
+        final String canonicalOrderNo = response['order_number'] as String;
 
         // 2. Fetch order items from SQLite
         final List<Map<String, dynamic>> localItems = await db.query(
@@ -983,10 +1160,13 @@ class CustomerOrderSyncService {
           await client.from('order_items').insert(itemsToInsert);
         }
 
-        // 5. Mark local order as synced
+        // 5. Mark local order as synced & update local order_number
         await db.update(
           'orders',
-          {'sync_status': 'synced'},
+          {
+            'sync_status': 'synced',
+            'order_number': canonicalOrderNo,
+          },
           where: 'id = ?',
           whereArgs: [orderId],
         );

@@ -376,6 +376,7 @@ class DatabaseHelper {
         savings              REAL DEFAULT 0,
         created_at           TEXT NOT NULL,
         updated_at           TEXT NOT NULL,
+        order_number         TEXT,
         FOREIGN KEY(customer_id) REFERENCES customers(id) ON DELETE CASCADE
       )
     ''');
@@ -591,6 +592,7 @@ class DatabaseHelper {
       "ALTER TABLE orders ADD COLUMN order_type TEXT DEFAULT 'Normal'",
       "ALTER TABLE orders ADD COLUMN order_taking_date TEXT",
       "ALTER TABLE orders ADD COLUMN delivery_date TEXT",
+      "ALTER TABLE orders ADD COLUMN order_number TEXT",
     ];
     for (final col in columns) {
       try {

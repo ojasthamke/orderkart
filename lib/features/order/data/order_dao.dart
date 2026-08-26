@@ -113,6 +113,7 @@ class OrderDao {
       SELECT
         o.*,
         o.rowid   AS order_number,
+        o.order_number AS order_number_str,
         c.name    AS customer_name,
         c.address AS customer_address,
         c.phone1  AS customer_phone
@@ -162,7 +163,7 @@ class OrderDao {
       {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     final maps = await db.rawQuery('''
-      SELECT o.*, o.rowid AS order_number, c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone
+      SELECT o.*, o.rowid AS order_number, o.order_number AS order_number_str, c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone
       FROM orders o LEFT JOIN customers c ON o.customer_id = c.id
       WHERE o.id = ?
     ''', [id]);
@@ -244,6 +245,9 @@ class OrderDao {
     }
 
     final map = order.toMap();
+    final String finalOrderNumber = order.orderNumberStr.isNotEmpty
+        ? order.orderNumberStr
+        : 'OFF-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}-${(DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0')}';
 
     final existing = await db.query('orders',
         columns: ['id'], where: 'id = ?', whereArgs: [id]);
@@ -252,6 +256,7 @@ class OrderDao {
           'orders',
           {
             ...map,
+            'order_number': finalOrderNumber,
             'assigned_worker_id': assignedWorkerId,
             'created_by': createdBy,
             'worker_name': workerName,
@@ -267,6 +272,7 @@ class OrderDao {
       await db.insert('orders', {
         ...map,
         'id': id,
+        'order_number': finalOrderNumber,
         'assigned_worker_id': assignedWorkerId,
         'created_by': createdBy,
         'worker_name': workerName,
@@ -1020,14 +1026,14 @@ class OrderDao {
     final orderMaps = await db.rawQuery(
         isWorker
             ? '''
-              SELECT o.*, o.rowid AS order_number, c.name AS customer_name
+              SELECT o.*, o.rowid AS order_number, o.order_number AS order_number_str, c.name AS customer_name
               FROM orders o
               LEFT JOIN customers c ON o.customer_id = c.id
               WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled' AND (o.created_by = ? OR o.assigned_worker_id = ?)
               ORDER BY o.created_at DESC
               '''
             : '''
-              SELECT o.*, o.rowid AS order_number, c.name AS customer_name
+              SELECT o.*, o.rowid AS order_number, o.order_number AS order_number_str, c.name AS customer_name
               FROM orders o
               LEFT JOIN customers c ON o.customer_id = c.id
               WHERE DATE(o.created_at) = DATE(?) AND o.delivery_status != 'cancelled'

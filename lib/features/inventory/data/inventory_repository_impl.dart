@@ -65,6 +65,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     // Parse description for JSON extra fields
     final desc = p['description'] as String? ?? '';
     double costPrice = 0.0;
+    double marketPrice = price; // Default to selling price
     double stock = 0.0;
     double minStock = 0.0;
     String barcode = '';
@@ -81,6 +82,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
       try {
         final Map<String, dynamic> extra = json.decode(desc);
         costPrice = (extra['cost_price'] as num?)?.toDouble() ?? 0.0;
+        marketPrice = ((extra['market_price'] ?? extra['mrp']) as num?)?.toDouble() ?? price;
         stock = (extra['stock'] as num?)?.toDouble() ?? 0.0;
         minStock = (extra['min_stock'] as num?)?.toDouble() ?? 0.0;
         barcode = extra['barcode'] as String? ?? '';
@@ -97,19 +99,22 @@ class InventoryRepositoryImpl implements InventoryRepository {
       }
     }
     
+    final remoteUpdatedStr = p['updated_at']?.toString() ?? p['created_at']?.toString() ?? '';
+    final remoteUpdatedAt = DateTime.tryParse(remoteUpdatedStr) ?? DateTime.now();
+
     return Item(
       id: id,
       name: name,
       category: categoryName,
       costPrice: costPrice,
       sellingPrice: price,
-      marketPrice: price,
+      marketPrice: marketPrice,
       stock: stock,
       minStock: minStock,
       unit: unit,
       barcode: barcode,
       createdAt: DateTime.tryParse(p['created_at']?.toString() ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.now(),
+      updatedAt: remoteUpdatedAt,
       photoPath: imagePath,
       weightPerPiece: weightPerPiece,
       sequenceNo: seqNo,
@@ -125,6 +130,8 @@ class InventoryRepositoryImpl implements InventoryRepository {
   Future<Map<String, dynamic>> _itemToProductMap(Item item, String? categoryId) async {
     final extra = {
       'cost_price': item.costPrice,
+      'market_price': item.marketPrice,
+      'mrp': item.marketPrice,
       'stock': item.stock,
       'min_stock': item.minStock,
       'barcode': item.barcode,
@@ -255,23 +262,30 @@ class InventoryRepositoryImpl implements InventoryRepository {
           await _dao.insertItem(localItem.copyWith(id: remoteId));
         }
 
-        // Update Supabase product with local item values
-        final categoryId = await _getOrCreateCategoryId(localItem.category);
-        
-        // Preserve admin-uploaded remote image_path if it exists
-        final remoteImage = matchingRemote['image_path'] as String? ?? '';
+        final remoteUpdatedStr = matchingRemote['updated_at']?.toString() ?? matchingRemote['created_at']?.toString() ?? '';
+        final remoteUpdatedAt = DateTime.tryParse(remoteUpdatedStr) ?? DateTime.fromMillisecondsSinceEpoch(0);
+
         final localItemWithId = localItem.copyWith(id: remoteId);
-        final itemToSync = remoteImage.isNotEmpty
-            ? localItemWithId.copyWith(photoPath: remoteImage)
-            : localItemWithId;
 
-        // If local SQLite image path differs from remote, update it locally too
-        if (remoteImage.isNotEmpty && localItem.photoPath != remoteImage) {
-          await _dao.updateItem(itemToSync);
+        if (localItem.updatedAt.isAfter(remoteUpdatedAt)) {
+          // Local is newer -> push/update remote product
+          final categoryId = await _getOrCreateCategoryId(localItem.category);
+          
+          // Preserve admin-uploaded remote image_path if local is empty
+          final remoteImage = matchingRemote['image_path'] as String? ?? '';
+          final itemToSync = (localItemWithId.photoPath.isEmpty && remoteImage.isNotEmpty)
+              ? localItemWithId.copyWith(photoPath: remoteImage)
+              : localItemWithId;
+
+          final pMap = await _itemToProductMap(itemToSync, categoryId);
+          await client.from('products').update(pMap).eq('id', remoteId);
+          debugPrint('[SYNC-INVENTORY] Local item ${localItem.name} is newer, pushed to server.');
+        } else {
+          // Remote is newer -> update local SQLite
+          final updatedItem = _mapProductToItem(matchingRemote);
+          await _dao.updateItem(updatedItem);
+          debugPrint('[SYNC-INVENTORY] Remote item ${localItem.name} is newer, pulled to SQLite.');
         }
-
-        final pMap = await _itemToProductMap(itemToSync, categoryId);
-        await client.from('products').update(pMap).eq('id', remoteId);
       } else {
         // Does not exist on remote, insert it to Supabase
         final categoryId = await _getOrCreateCategoryId(localItem.category);
@@ -283,6 +297,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
         await _dao.deleteItem(localItem.id);
         await _dao.insertItem(localItem.copyWith(id: insertedId));
         syncedLocalIds.add(insertedId);
+        debugPrint('[SYNC-INVENTORY] Inserted new local item ${localItem.name} to remote.');
       }
     }
 

@@ -31,8 +31,10 @@ class AppOrder {
   final String deviceName;
   final double commissionRate;
   final String commissionType;
+  final String orderNumberStr;
 
   String get orderNoLabel {
+    if (orderNumberStr.isNotEmpty) return orderNumberStr;
     if (orderNumber != null && orderNumber! > 0) {
       return '#ORD-${orderNumber.toString().padLeft(4, '0')}';
     }
@@ -59,6 +61,7 @@ class AppOrder {
     required this.createdAt,
     required this.updatedAt,
     this.orderNumber,
+    this.orderNumberStr = '',
     this.customerName,
     this.customerAddress,
     this.customerPhone,
@@ -88,6 +91,7 @@ class AppOrder {
     DateTime? createdAt,
     DateTime? updatedAt,
     int? orderNumber,
+    String? orderNumberStr,
     String? customerName,
     String? customerAddress,
     String? customerPhone,
@@ -116,6 +120,7 @@ class AppOrder {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       orderNumber: orderNumber ?? this.orderNumber,
+      orderNumberStr: orderNumberStr ?? this.orderNumberStr,
       customerName: customerName ?? this.customerName,
       customerAddress: customerAddress ?? this.customerAddress,
       customerPhone: customerPhone ?? this.customerPhone,
@@ -151,6 +156,7 @@ class AppOrder {
         'device_name': deviceName,
         'commission_rate': commissionRate,
         'commission_type': commissionType,
+        'order_number': orderNumberStr,
       };
 
   factory AppOrder.fromMap(Map<String, dynamic> map) => AppOrder(
@@ -171,7 +177,8 @@ class AppOrder {
             DateTime.now(),
         updatedAt: DateTime.tryParse(map['updated_at']?.toString() ?? '') ??
             DateTime.now(),
-        orderNumber: map['order_number'] as int?,
+        orderNumber: map['order_number'] is int ? map['order_number'] as int? : null,
+        orderNumberStr: map['order_number_str'] as String? ?? (map['order_number'] is String ? map['order_number'] as String : ''),
         customerName: map['customer_name'] as String?,
         customerAddress: map['customer_address'] as String?,
         customerPhone: map['customer_phone'] as String?,
