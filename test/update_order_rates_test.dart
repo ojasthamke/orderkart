@@ -96,6 +96,10 @@ void main() {
       expect(updatedOrder!.subtotal, equals(160.0));
       expect(updatedOrder.grandTotal, equals(170.0));
 
+      final db = await DatabaseHelper.instance.database;
+      final rawOrder = await db.query('orders', columns: ['sync_status'], where: 'id = ?', whereArgs: ['ord-101']);
+      expect(rawOrder.first['sync_status'], equals('pending_update'));
+
       final updatedItems = await orderDao.getOrderItems('ord-101');
       expect(updatedItems.length, equals(1));
       expect(updatedItems.first.unitPrice, equals(80.0));
