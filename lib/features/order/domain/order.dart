@@ -176,15 +176,27 @@ class AppOrder {
         'delivery_date': deliveryDate,
       };
 
-  factory AppOrder.fromMap(Map<String, dynamic> map) => AppOrder(
+  factory AppOrder.fromMap(Map<String, dynamic> map) {
+    final double rawSubtotal = (map['subtotal'] as num?)?.toDouble() ?? 0.0;
+    final double rawDiscount = (map['discount'] as num?)?.toDouble() ?? 0.0;
+    final double rawGrandTotal = (map['grand_total'] as num?)?.toDouble() ?? 0.0;
+    final double rawDelivery = (map['delivery_charge'] as num?)?.toDouble() ?? 0.0;
+
+    final double effectiveDelivery = rawDelivery > 0
+        ? rawDelivery
+        : ((rawGrandTotal > (rawSubtotal - rawDiscount) + 0.05 && rawSubtotal > 0)
+            ? (rawGrandTotal - (rawSubtotal - rawDiscount))
+            : 0.0);
+
+    return AppOrder(
         id: map['id'] as String? ?? '',
         customerId: map['customer_id'] as String? ?? '',
-        subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0.0,
-        discount: (map['discount'] as num?)?.toDouble() ?? 0.0,
-        deliveryCharge: (map['delivery_charge'] as num?)?.toDouble() ?? 0.0,
+        subtotal: rawSubtotal,
+        discount: rawDiscount,
+        deliveryCharge: effectiveDelivery,
         smartRoundedAmount:
             (map['smart_rounded_amount'] as num?)?.toDouble() ?? 0.0,
-        grandTotal: (map['grand_total'] as num?)?.toDouble() ?? 0.0,
+        grandTotal: rawGrandTotal,
         paidAmount: (map['paid_amount'] as num?)?.toDouble() ?? 0.0,
         remainingAmount: (map['remaining_amount'] as num?)?.toDouble() ?? 0.0,
         deliveryStatus: map['delivery_status'] as String? ?? 'pending',
@@ -209,7 +221,10 @@ class AppOrder {
         deviceName: map['device_name'] as String? ?? '',
         commissionRate: (map['commission_rate'] as num?)?.toDouble() ?? 0.0,
         commissionType: map['commission_type'] as String? ?? '',
+        payments: const [],
+        items: const [],
       );
+  }
 
   @override
   bool operator ==(Object other) => other is AppOrder && other.id == id;

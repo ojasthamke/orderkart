@@ -199,8 +199,15 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
         setState(() {
           _existingOrder = order;
           _discount = order.discount;
-          _deliveryCharge = order.deliveryCharge;
-          _deliveryEnabled = order.deliveryCharge > 0;
+
+          final itemsTotal = order.items.fold(0.0, (s, i) => s + i.totalPrice);
+          double effDelivery = order.deliveryCharge;
+          if (effDelivery <= 0 && order.grandTotal > itemsTotal + 0.05 && itemsTotal > 0) {
+            effDelivery = order.grandTotal - itemsTotal;
+          }
+
+          _deliveryCharge = effDelivery;
+          _deliveryEnabled = effDelivery > 0;
           _paidAmount = order.paidAmount;
           _noteCon.text = order.notes;
 

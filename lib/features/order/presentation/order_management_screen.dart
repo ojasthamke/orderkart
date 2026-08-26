@@ -967,20 +967,30 @@ class _OrderCard extends ConsumerWidget {
                         'Total',
                         '$currency${order.grandTotal.toStringAsFixed(2)}',
                         AppColors.primary),
-                    const SizedBox(width: 8),
-                    if (order.paidAmount > 0)
+                    if (order.deliveryCharge > 0) ...[
+                      const SizedBox(width: 8),
+                      _amountChip(
+                          context,
+                          'Delivery',
+                          '+$currency${order.deliveryCharge.toStringAsFixed(0)}',
+                          const Color(0xFF6366F1)),
+                    ],
+                    if (order.paidAmount > 0) ...[
+                      const SizedBox(width: 8),
                       _amountChip(
                           context,
                           'Paid',
                           '$currency${order.paidAmount.toStringAsFixed(2)}',
                           AppColors.success),
-                    const SizedBox(width: 8),
-                    if (order.remainingAmount > 0)
+                    ],
+                    if (order.remainingAmount > 0) ...[
+                      const SizedBox(width: 8),
                       _amountChip(
                           context,
                           'Due',
                           '$currency${order.remainingAmount.toStringAsFixed(2)}',
                           AppColors.warning),
+                    ],
                   ],
                 ),
 

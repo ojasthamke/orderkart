@@ -925,18 +925,37 @@ class CustomerOrderSyncService {
             // B. Check if order already exists in POS SQLite DB
             final orderCheck = await txn.query('orders', where: 'id = ?', whereArgs: [orderId]);
             final String serverStatus = ord['status'] ?? 'Confirmed';
+            final double grandTotal = (ord['total_amount'] as num?)?.toDouble() ?? 0.0;
+
+            // Fetch order items from Supabase
+            final List<dynamic> items = await client
+                .from('order_items')
+                .select()
+                .eq('order_id', orderId);
+
+            double itemsSubtotal = 0.0;
+            for (var item in items) {
+              final double qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
+              final double unitPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
+              final double subtotal = (item['total_price'] as num?)?.toDouble() ?? (qty * unitPrice);
+              itemsSubtotal += subtotal;
+            }
+
+            final double calculatedDeliveryCharge = (grandTotal > itemsSubtotal + 0.05 && itemsSubtotal > 0)
+                ? (grandTotal - itemsSubtotal)
+                : 0.0;
+            final double actualSubtotal = itemsSubtotal > 0 ? itemsSubtotal : grandTotal;
 
             if (orderCheck.isEmpty) {
               // Write new order
-              final double grandTotal = (ord['total_amount'] as num?)?.toDouble() ?? 0.0;
               final nowStr = DateTime.now().toIso8601String();
               
               await txn.insert('orders', {
                 'id': orderId,
                 'customer_id': customerId.isNotEmpty ? customerId : 'generic_app_customer',
-                'subtotal': grandTotal,
+                'subtotal': actualSubtotal,
                 'discount': 0.0,
-                'delivery_charge': 0.0,
+                'delivery_charge': calculatedDeliveryCharge,
                 'smart_rounded_amount': 0.0,
                 'grand_total': grandTotal,
                 'paid_amount': 0.0,
@@ -952,12 +971,6 @@ class CustomerOrderSyncService {
                 'sync_status': 'synced',
                 'order_number': ord['order_number'],
               });
-
-              // Fetch order items from Supabase
-              final List<dynamic> items = await client
-                  .from('order_items')
-                  .select()
-                  .eq('order_id', orderId);
 
               for (var item in items) {
                 final String remoteItemId = item['product_id'] ?? '';
@@ -1058,11 +1071,46 @@ class CustomerOrderSyncService {
                 }
               }
 
+              // Update order items from Supabase
+              if (items.isNotEmpty) {
+                await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+                for (var item in items) {
+                  final String remoteItemId = item['product_id'] ?? '';
+                  final String localItemId = uuidToLocalId[remoteItemId] ?? remoteItemId;
+                  final String itemName = item['product_name'] ?? 'Item';
+                  final double qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
+                  final double unitPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
+                  final double subtotal = (item['total_price'] as num?)?.toDouble() ?? (qty * unitPrice);
+
+                  await txn.insert('order_items', {
+                    'id': const Uuid().v4(),
+                    'order_id': orderId,
+                    'item_id': localItemId,
+                    'item_name': itemName,
+                    'item_unit': item['unit'] ?? 'kg',
+                    'quantity': qty,
+                    'unit_price': unitPrice,
+                    'total_price': subtotal,
+                  });
+                }
+              }
+
               final double paidAmount = (orderCheck.first['paid_amount'] as num?)?.toDouble() ?? 0.0;
+              final double existingDelivery = (orderCheck.first['delivery_charge'] as num?)?.toDouble() ?? 0.0;
+              final double effectiveDelivery = existingDelivery > 0
+                  ? existingDelivery
+                  : ((remoteTotal > itemsSubtotal + 0.05 && itemsSubtotal > 0)
+                      ? (remoteTotal - itemsSubtotal)
+                      : 0.0);
+              final double effectiveSubtotal = itemsSubtotal > 0
+                  ? itemsSubtotal
+                  : (remoteTotal - effectiveDelivery);
+
               await txn.update(
                 'orders',
                 {
-                  'subtotal': remoteTotal,
+                  'subtotal': effectiveSubtotal,
+                  'delivery_charge': effectiveDelivery,
                   'grand_total': remoteTotal,
                   'remaining_amount': (remoteTotal - paidAmount) > 0 ? (remoteTotal - paidAmount) : 0.0,
                   'delivery_status': targetStatus,
@@ -1077,40 +1125,10 @@ class CustomerOrderSyncService {
                 where: 'id = ?',
                 whereArgs: [orderId],
               );
-
-              // Update order items from Supabase
-              final List<dynamic> remoteItems = await client
-                  .from('order_items')
-                  .select()
-                  .eq('order_id', orderId);
-
-              if (remoteItems.isNotEmpty) {
-                await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
-                for (var item in remoteItems) {
-                  final String remoteItemId = item['product_id'] ?? '';
-                  final String localItemId = uuidToLocalId[remoteItemId] ?? remoteItemId;
-                  final String itemName = item['product_name'] ?? 'Item';
-                  final double qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
-                  final double unitPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
-                  final double subtotal = (item['total_price'] as num?)?.toDouble() ?? (qty * unitPrice);
-
-                  await txn.insert('order_items', {
-                    'id': item['id'] ?? const Uuid().v4(),
-                    'order_id': orderId,
-                    'item_id': localItemId,
-                    'item_name': itemName,
-                    'item_unit': item['unit'] ?? 'kg',
-                    'quantity': qty,
-                    'unit_price': unitPrice,
-                    'total_price': subtotal,
-                  });
-                }
-              }
-
-              // Recalculate customer totals
-              if (customerId.isNotEmpty) {
-                await CustomerDao().recalcCustomerTotals(customerId, executor: txn);
-              }
+            }
+            // Recalculate customer totals
+            if (customerId.isNotEmpty) {
+              await CustomerDao().recalcCustomerTotals(customerId, executor: txn);
             }
           });
         } catch (e) {
