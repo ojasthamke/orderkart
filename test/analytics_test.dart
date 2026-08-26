@@ -148,5 +148,55 @@ void main() {
       expect(stats['total_outstanding'], equals(50.0));
       expect(stats['collection_efficiency_pct'], closeTo(66.67, 0.1));
     });
+
+    test('Analytics queries exclude cancelled and denied orders', () async {
+      final db = await DatabaseHelper.instance.database;
+
+      // Insert a cancelled order for worker-1 and cust-1
+      await db.insert('orders', {
+        'id': 'order-cancelled',
+        'customer_id': 'cust-1',
+        'assigned_worker_id': 'worker-1',
+        'grand_total': 500.0,
+        'paid_amount': 200.0,
+        'remaining_amount': 300.0,
+        'delivery_status': 'cancelled',
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      // Insert a denied order for worker-1 and cust-1
+      await db.insert('orders', {
+        'id': 'order-denied',
+        'customer_id': 'cust-1',
+        'assigned_worker_id': 'worker-1',
+        'grand_total': 1000.0,
+        'paid_amount': 400.0,
+        'remaining_amount': 600.0,
+        'delivery_status': 'denied',
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      final dao = AnalyticsDao();
+
+      // Top workers should only show 150.0 sales (excluding cancelled & denied)
+      final topWorkers = await dao.getTopWorkers();
+      expect(topWorkers.first['total_sales'], equals(150.0));
+
+      // Area performance should only show 150.0 sales
+      final areaPerf = await dao.getAreaPerformance();
+      expect(areaPerf.first['total_sales'], equals(150.0));
+
+      // Street performance should only show 150.0 sales
+      final streetPerf = await dao.getStreetPerformance();
+      expect(streetPerf.first['total_sales'], equals(150.0));
+
+      // Collection efficiency should only show 150.0 sales
+      final efficiency = await dao.getCollectionEfficiency();
+      expect(efficiency['total_sales'], equals(150.0));
+      expect(efficiency['total_collection'], equals(100.0));
+      expect(efficiency['total_outstanding'], equals(50.0));
+    });
   });
 }

@@ -12,8 +12,8 @@ class MapDataDao {
       SELECT l.*,
         (SELECT COUNT(*) FROM locations c WHERE c.parent_location_id = l.id AND c.is_archived = 0) AS child_count,
         (SELECT COUNT(*) FROM customers cust WHERE cust.location_id = l.id) AS customer_count,
-        (SELECT COUNT(*) FROM orders o JOIN customers cust ON o.customer_id = cust.id WHERE cust.location_id = l.id) AS order_count,
-        COALESCE((SELECT SUM(o.grand_total) FROM orders o JOIN customers cust ON o.customer_id = cust.id WHERE cust.location_id = l.id), 0.0) AS total_revenue
+        (SELECT COUNT(*) FROM orders o JOIN customers cust ON o.customer_id = cust.id WHERE cust.location_id = l.id AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied') AS order_count,
+        COALESCE((SELECT SUM(o.grand_total) FROM orders o JOIN customers cust ON o.customer_id = cust.id WHERE cust.location_id = l.id AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'), 0.0) AS total_revenue
       FROM locations l
       WHERE l.id = ? OR l.materialized_path LIKE ?
       ''',

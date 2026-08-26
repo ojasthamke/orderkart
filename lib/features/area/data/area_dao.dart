@@ -44,12 +44,12 @@ class AreaDao {
         (SELECT COUNT(DISTINCT o.id) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
           LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id)
-          WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+          WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
             AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS order_count,
         (SELECT COALESCE(SUM(o.grand_total), 0.0) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
           LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id)
-          WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+          WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
             AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS total_revenue
       FROM locations l
       $whereClauseSection
@@ -73,12 +73,12 @@ class AreaDao {
         (SELECT COUNT(DISTINCT o.id) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
           LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id)
-          WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+          WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
             AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS order_count,
         (SELECT COALESCE(SUM(o.grand_total), 0.0) FROM orders o
           JOIN customers cust ON o.customer_id = cust.id
           LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id)
-          WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+          WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
             AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS total_revenue
       FROM locations l
       WHERE l.id = ?

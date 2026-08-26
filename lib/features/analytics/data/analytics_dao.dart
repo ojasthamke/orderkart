@@ -18,7 +18,7 @@ class AnalyticsDao {
         COALESCE(SUM(o.paid_amount), 0) AS total_collection,
         COALESCE(SUM(o.grand_total - o.paid_amount), 0) AS total_outstanding
       FROM workers w
-      LEFT JOIN orders o ON o.assigned_worker_id = w.id AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+      LEFT JOIN orders o ON o.assigned_worker_id = w.id AND (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
       GROUP BY w.id
       ORDER BY total_sales DESC
     ''');
@@ -37,7 +37,7 @@ class AnalyticsDao {
         COALESCE(SUM(o.remaining_amount), 0) AS total_outstanding
       FROM locations a
       LEFT JOIN customers c ON (c.location_id = a.id OR c.street_id = a.id OR c.location_id IN (SELECT id FROM locations WHERE parent_location_id = a.id OR materialized_path LIKE '%/' || a.id || '/%') OR c.street_id IN (SELECT id FROM locations WHERE parent_location_id = a.id OR materialized_path LIKE '%/' || a.id || '/%')) AND (c.is_archived IS NULL OR c.is_archived = 0)
-      LEFT JOIN orders o ON o.customer_id = c.id AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+      LEFT JOIN orders o ON o.customer_id = c.id AND (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
       WHERE a.location_kind = 'area' AND (a.is_archived IS NULL OR a.is_archived = 0)
       GROUP BY a.id
       ORDER BY total_sales DESC
@@ -59,7 +59,7 @@ class AnalyticsDao {
       FROM locations s
       LEFT JOIN locations a ON s.parent_location_id = a.id AND (a.is_archived IS NULL OR a.is_archived = 0)
       LEFT JOIN customers c ON (c.location_id = s.id OR c.street_id = s.id) AND (c.is_archived IS NULL OR c.is_archived = 0)
-      LEFT JOIN orders o ON o.customer_id = c.id AND (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+      LEFT JOIN orders o ON o.customer_id = c.id AND (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
       WHERE (s.location_kind = 'road' OR s.location_kind = 'street') AND (s.is_archived IS NULL OR s.is_archived = 0)
       GROUP BY s.id
       ORDER BY total_sales DESC
@@ -90,13 +90,13 @@ class AnalyticsDao {
         (SELECT COALESCE(SUM(o.grand_total), 0)
          FROM orders o
          LEFT JOIN customers c ON o.customer_id = c.id
-         WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled') AND (c.is_archived IS NULL OR c.is_archived = 0)) AS total_sales,
+         WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied')) AND (c.is_archived IS NULL OR c.is_archived = 0)) AS total_sales,
         (SELECT COALESCE(SUM(oi.quantity * COALESCE(NULLIF(oi.cost_price, 0.0), i.cost_price, 0.0)), 0) 
          FROM order_items oi
          JOIN orders o ON oi.order_id = o.id
          LEFT JOIN customers c ON o.customer_id = c.id
          LEFT JOIN items i ON oi.item_id = i.id
-         WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled') AND (c.is_archived IS NULL OR c.is_archived = 0)) AS total_cost
+         WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied')) AND (c.is_archived IS NULL OR c.is_archived = 0)) AS total_cost
     ''');
 
     final double sales =
@@ -132,7 +132,7 @@ class AnalyticsDao {
         COALESCE(SUM(paid_amount), 0) AS total_collection,
         COALESCE(SUM(remaining_amount), 0) AS total_outstanding
       FROM orders
-      WHERE (delivery_status IS NULL OR delivery_status != 'cancelled')
+      WHERE (delivery_status IS NULL OR (delivery_status != 'cancelled' AND delivery_status != 'denied'))
     ''');
 
     final double sales = (res.first['total_sales'] as num?)?.toDouble() ?? 0.0;
@@ -188,7 +188,7 @@ class AnalyticsDao {
         COALESCE(SUM(paid_amount), 0) AS total_collected,
         COALESCE(SUM(remaining_amount), 0) AS pending_debt
       FROM orders
-      WHERE DATE(created_at) >= DATE(?) AND DATE(created_at) <= DATE(?) AND delivery_status != 'cancelled'
+      WHERE DATE(created_at) >= DATE(?) AND DATE(created_at) <= DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'
       GROUP BY DATE(created_at)
     ''', [startStr, endStr]);
 
@@ -208,7 +208,7 @@ class AnalyticsDao {
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN items i ON oi.item_id = i.id
-      WHERE DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?) AND o.delivery_status != 'cancelled'
+      WHERE DATE(o.created_at) >= DATE(?) AND DATE(o.created_at) <= DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
       GROUP BY DATE(o.created_at)
     ''', [startStr, endStr]);
 
@@ -230,7 +230,7 @@ class AnalyticsDao {
         COALESCE(SUM(CASE WHEN LOWER(p.method) != 'cash' THEN p.amount ELSE 0 END), 0) AS online_collected
       FROM payments p
       JOIN orders o ON p.order_id = o.id
-      WHERE DATE(p.created_at) >= DATE(?) AND DATE(p.created_at) <= DATE(?) AND o.delivery_status != 'cancelled'
+      WHERE DATE(p.created_at) >= DATE(?) AND DATE(p.created_at) <= DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
       GROUP BY DATE(p.created_at)
     ''', [startStr, endStr]);
 
@@ -451,7 +451,7 @@ class AnalyticsDao {
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN items i ON oi.item_id = i.id
-      WHERE DATE(o.created_at) >= DATE(?) AND o.delivery_status != 'cancelled'
+      WHERE DATE(o.created_at) >= DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
       GROUP BY oi.item_name
       HAVING total_revenue > 0
       ORDER BY (total_revenue - total_cogs) DESC
@@ -561,7 +561,7 @@ class AnalyticsDao {
           MIN(created_at) AS first_order_date,
           MAX(created_at) AS last_order_date
         FROM orders
-        WHERE delivery_status != 'cancelled'
+        WHERE delivery_status != 'cancelled' AND delivery_status != 'denied'
         GROUP BY customer_id
       ) ord ON c.id = ord.customer_id
       LEFT JOIN (
@@ -579,7 +579,7 @@ class AnalyticsDao {
         FROM order_items oi
         JOIN orders o ON oi.order_id = o.id
         LEFT JOIN items i ON oi.item_id = i.id
-        WHERE o.delivery_status != 'cancelled'
+        WHERE o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
         GROUP BY o.customer_id
       ) cogs_sub ON c.id = cogs_sub.customer_id
       WHERE (c.is_archived IS NULL OR c.is_archived = 0)
@@ -627,7 +627,7 @@ class AnalyticsDao {
         COUNT(id) AS orders_count,
         COALESCE(SUM(grand_total), 0) AS revenue
       FROM orders
-      WHERE delivery_status != 'cancelled'
+      WHERE delivery_status != 'cancelled' AND delivery_status != 'denied'
       GROUP BY hour
       ORDER BY hour ASC
     ''');
@@ -672,7 +672,7 @@ class AnalyticsDao {
         COUNT(id) AS orders_count,
         COALESCE(SUM(grand_total), 0) AS revenue
       FROM orders
-      WHERE delivery_status != 'cancelled'
+      WHERE delivery_status != 'cancelled' AND delivery_status != 'denied'
       GROUP BY dow
       ORDER BY dow ASC
     ''');
@@ -736,7 +736,7 @@ class AnalyticsDao {
         MAX(o.created_at) AS last_sold_date
       FROM items i
       LEFT JOIN order_items oi ON i.id = oi.item_id
-      LEFT JOIN orders o ON oi.order_id = o.id AND o.delivery_status != 'cancelled'
+      LEFT JOIN orders o ON oi.order_id = o.id AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
       WHERE i.is_archived = 0 AND i.stock > 0
       GROUP BY i.id
       HAVING last_sold_date IS NULL OR last_sold_date < ?
@@ -809,7 +809,7 @@ class AnalyticsDao {
         COUNT(p.id) AS tx_count
       FROM payments p
       JOIN orders o ON p.order_id = o.id
-      WHERE o.delivery_status != 'cancelled'
+      WHERE o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
       GROUP BY p.method
       ORDER BY total_amount DESC
     ''');
@@ -840,7 +840,7 @@ class AnalyticsDao {
         c.phone1 AS phone
       FROM orders o
       JOIN customers c ON o.customer_id = c.id
-      WHERE o.remaining_amount > 0 AND o.delivery_status != 'cancelled'
+      WHERE o.remaining_amount > 0 AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
       ORDER BY o.created_at ASC
     ''');
 

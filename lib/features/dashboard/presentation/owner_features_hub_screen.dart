@@ -120,7 +120,7 @@ class _OwnerFeaturesHubScreenState extends ConsumerState<OwnerFeaturesHubScreen>
       final cashToday = (cashRes.first['total'] as num?)?.toDouble() ?? 0.0;
 
       final duesRes = await db.rawQuery(
-          "SELECT SUM(remaining_amount) as total FROM orders WHERE remaining_amount > 0 AND (delivery_status IS NULL OR delivery_status != 'cancelled')");
+          "SELECT SUM(remaining_amount) as total FROM orders WHERE remaining_amount > 0 AND (delivery_status IS NULL OR (delivery_status != 'cancelled' AND delivery_status != 'denied'))");
       final totalDues = (duesRes.first['total'] as num?)?.toDouble() ?? 0.0;
 
       if (mounted) {

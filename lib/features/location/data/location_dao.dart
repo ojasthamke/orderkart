@@ -22,16 +22,16 @@ class LocationDao {
         (SELECT COUNT(DISTINCT cust.id) FROM customers cust 
          LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id) 
          WHERE (cust.is_archived IS NULL OR cust.is_archived = 0) 
-           AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS customer_count,
+            AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS customer_count,
         (SELECT COUNT(DISTINCT o.id) FROM orders o 
          JOIN customers cust ON o.customer_id = cust.id 
          LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id) 
-         WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+         WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
            AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS order_count,
         COALESCE((SELECT SUM(o.grand_total) FROM orders o 
                   JOIN customers cust ON o.customer_id = cust.id 
                   LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id) 
-                  WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+                  WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
                     AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')), 0.0) AS total_revenue
       FROM locations l
       WHERE 1=1
@@ -95,12 +95,12 @@ class LocationDao {
         (SELECT COUNT(DISTINCT o.id) FROM orders o 
          JOIN customers cust ON o.customer_id = cust.id 
          LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id) 
-         WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+         WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
            AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS order_count,
         COALESCE((SELECT SUM(o.grand_total) FROM orders o 
                   JOIN customers cust ON o.customer_id = cust.id 
                   LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id) 
-                  WHERE (o.delivery_status IS NULL OR o.delivery_status != 'cancelled')
+                  WHERE (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
                     AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')), 0.0) AS total_revenue
       FROM locations l
       WHERE l.id = ?

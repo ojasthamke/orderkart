@@ -50,17 +50,17 @@ class _ChurnRiskScreenState extends ConsumerState<ChurnRiskScreen>
           (
             SELECT MAX(created_at) 
             FROM orders 
-            WHERE customer_id = c.id AND (delivery_status IS NULL OR delivery_status != 'cancelled')
+            WHERE customer_id = c.id AND (delivery_status IS NULL OR (delivery_status != 'cancelled' AND delivery_status != 'denied'))
           ) as last_order_date,
           (
             SELECT SUM(grand_total)
             FROM orders
-            WHERE customer_id = c.id AND (delivery_status IS NULL OR delivery_status != 'cancelled')
+            WHERE customer_id = c.id AND (delivery_status IS NULL OR (delivery_status != 'cancelled' AND delivery_status != 'denied'))
           ) as lifetime_value,
           (
             SELECT COUNT(id)
             FROM orders
-            WHERE customer_id = c.id AND (delivery_status IS NULL OR delivery_status != 'cancelled')
+            WHERE customer_id = c.id AND (delivery_status IS NULL OR (delivery_status != 'cancelled' AND delivery_status != 'denied'))
           ) as order_count
         FROM customers c
         WHERE c.is_archived = 0

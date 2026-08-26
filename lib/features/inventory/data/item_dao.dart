@@ -372,7 +372,7 @@ class ItemDao {
   }) async {
     final db = await _db;
     String whereClause =
-        "(o.delivery_status IS NULL OR o.delivery_status != 'cancelled')";
+        "(o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))";
     List<dynamic> args = [];
     if (status != 'all' && status.isNotEmpty) {
       whereClause += " AND o.delivery_status = ?";
@@ -601,7 +601,7 @@ class ItemDao {
   }) async {
     final db = await _db;
     String whereClause =
-        "(o.delivery_status IS NULL OR o.delivery_status != 'cancelled')";
+        "(o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))";
     List<dynamic> args = [];
 
     if (itemId != null && itemId.isNotEmpty) {

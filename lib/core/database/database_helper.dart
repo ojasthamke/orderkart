@@ -1808,23 +1808,23 @@ class DatabaseHelper {
       UPDATE customers SET
         total_orders = (
           SELECT COUNT(*) FROM orders 
-          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled' AND delivery_status != 'denied'
         ),
         total_paid = (
           SELECT COALESCE(SUM(paid_amount), 0) FROM orders 
-          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled' AND delivery_status != 'denied'
         ),
         total_pending = (
           SELECT COALESCE(SUM(remaining_amount), 0) FROM orders 
-          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled' AND delivery_status != 'denied'
         ),
         outstanding_balance = (
           SELECT COALESCE(SUM(remaining_amount), 0) FROM orders 
-          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled' AND delivery_status != 'denied'
         ),
         last_order_date = COALESCE((
           SELECT MAX(created_at) FROM orders 
-          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled'
+          WHERE orders.customer_id = customers.id AND delivery_status != 'cancelled' AND delivery_status != 'denied'
         ), '')
     ''');
 
@@ -1848,7 +1848,7 @@ class DatabaseHelper {
         final ordersRes = await db.rawQuery('''
           SELECT COUNT(*) as count, SUM(grand_total) as sales, SUM(paid_amount) as paid, SUM(remaining_amount) as pending
           FROM orders
-          WHERE assigned_worker_id = ? AND DATE(created_at) = DATE(?) AND delivery_status != 'cancelled'
+          WHERE assigned_worker_id = ? AND DATE(created_at) = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'
         ''', [workerId, dateStr]);
 
         final paymentsRes = await db.rawQuery('''
