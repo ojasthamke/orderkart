@@ -80,7 +80,23 @@ class DatabaseHelper {
     await _ensureSyncStatusAndSchedulingColumns(db);
     await ensureCustomerDeviceColumns(db);
     await _ensureCustomerCodeColumn(db);
+    await _ensureOrderNowColumns(db);
     await _dropLegacyTriggers(db);
+  }
+
+  static Future<void> _ensureOrderNowColumns(Database db) async {
+    final cols = [
+      'ALTER TABLE items ADD COLUMN order_now_stock REAL DEFAULT 0.0',
+      'ALTER TABLE items ADD COLUMN order_now_selling_price REAL DEFAULT 0.0',
+      'ALTER TABLE items ADD COLUMN order_now_mrp REAL DEFAULT 0.0',
+      'ALTER TABLE items ADD COLUMN order_now_cost_price REAL DEFAULT 0.0',
+      'ALTER TABLE items ADD COLUMN order_now_is_available INTEGER DEFAULT 1',
+    ];
+    for (final sql in cols) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
   }
 
   static Future<void> _autoRecoverAndBackup(String internalDbPath) async {

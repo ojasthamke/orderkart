@@ -637,6 +637,14 @@ class CustomerOrderSyncService {
           'sequence_no': sequenceNo,
         };
 
+        final double orderNowStock = (item['order_now_stock'] as num?)?.toDouble() ?? 0.0;
+        final double orderNowPrice = (item['order_now_selling_price'] as num?)?.toDouble() ?? (item['order_now_price'] as num?)?.toDouble() ?? 0.0;
+        final double orderNowMrp = (item['order_now_mrp'] as num?)?.toDouble() ?? 0.0;
+        final double orderNowCostPrice = (item['order_now_cost_price'] as num?)?.toDouble() ?? 0.0;
+        final bool orderNowIsAvailable = item['order_now_is_available'] == null
+            ? true
+            : (item['order_now_is_available'] == 1 || item['order_now_is_available'] == true);
+
         if (matchingRemote != null) {
           final remoteUpdatedStr = matchingRemote['updated_at']?.toString() ?? matchingRemote['created_at']?.toString() ?? '';
           final remoteUpdatedAt = DateTime.tryParse(remoteUpdatedStr) ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -660,6 +668,11 @@ class CustomerOrderSyncService {
                 'image_path': photoPath,
                 'is_available': stock > 0,
                 'is_enabled': true,
+                'order_now_stock': orderNowStock,
+                'order_now_price': orderNowPrice,
+                'order_now_mrp': orderNowMrp,
+                'order_now_cost_price': orderNowCostPrice,
+                'order_now_is_available': orderNowIsAvailable,
               }).eq('id', matchingRemote['id']);
               productsUploaded++;
             } catch (e) {
@@ -742,7 +755,7 @@ class CustomerOrderSyncService {
                 } catch (_) {}
               }
 
-              // Since OrderKart is the authority, push local price/stock/mrp/cost back to remote products table
+              // Since OrderKart is the authority, push local price/stock/mrp/cost and order now fields back to remote products table
               await client.from('products').update({
                 'price': sellingPrice,
                 'selling_price': sellingPrice,
@@ -750,6 +763,11 @@ class CustomerOrderSyncService {
                 'stock': stock,
                 'description': json.encode(extra),
                 'is_available': stock > 0,
+                'order_now_stock': orderNowStock,
+                'order_now_price': orderNowPrice,
+                'order_now_mrp': orderNowMrp,
+                'order_now_cost_price': orderNowCostPrice,
+                'order_now_is_available': orderNowIsAvailable,
               }).eq('id', matchingRemote['id']);
               
               productsUploaded++;
@@ -773,6 +791,11 @@ class CustomerOrderSyncService {
               'image_path': photoPath,
               'is_available': stock > 0,
               'is_enabled': true,
+              'order_now_stock': orderNowStock,
+              'order_now_price': orderNowPrice,
+              'order_now_mrp': orderNowMrp,
+              'order_now_cost_price': orderNowCostPrice,
+              'order_now_is_available': orderNowIsAvailable,
             });
             productsUploaded++;
           } catch (e) {

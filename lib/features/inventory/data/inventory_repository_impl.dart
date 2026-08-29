@@ -203,11 +203,37 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<void> updateItem(Item item) async {
     await _dao.updateItem(item);
+    // Push directly to Supabase products table
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      final categoryId = await _getOrCreateCategoryId(item.category);
+      final pMap = await _itemToProductMap(item, categoryId);
+      pMap['updated_at'] = DateTime.now().toIso8601String();
+      await client.from('products').update(pMap).eq('id', item.id);
+      debugPrint('[INVENTORY-SYNC] Directly synced updated item ${item.name} (${item.id}) to Supabase.');
+    } catch (e) {
+      debugPrint('[INVENTORY-SYNC] Direct Supabase update failed (will sync later): $e');
+    }
   }
 
   @override
   Future<void> updateItems(List<Item> items) async {
     await _dao.updateItems(items);
+    // Push bulk updates to Supabase products table
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      for (final item in items) {
+        final categoryId = await _getOrCreateCategoryId(item.category);
+        final pMap = await _itemToProductMap(item, categoryId);
+        pMap['updated_at'] = DateTime.now().toIso8601String();
+        await client.from('products').update(pMap).eq('id', item.id);
+      }
+      debugPrint('[INVENTORY-SYNC] Directly synced ${items.length} items to Supabase.');
+    } catch (e) {
+      debugPrint('[INVENTORY-SYNC] Direct bulk Supabase update failed: $e');
+    }
   }
 
   @override
