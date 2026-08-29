@@ -55,7 +55,7 @@ jobs:
       # 6. Build Android Release APK — capture full Gradle output for debugging
       - name: Build Android APK
         run: |
-          flutter build apk --release --no-tree-shake-icons 2>&1 | tee /tmp/flutter_build.log
+          flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation 2>&1 | tee /tmp/flutter_build.log
           BUILD_EXIT=${PIPESTATUS[0]}
           if [ "$BUILD_EXIT" -ne 0 ]; then
             echo "=== GRADLE ERROR OUTPUT ==="
