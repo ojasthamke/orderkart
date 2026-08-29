@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -219,21 +220,42 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   @override
   Future<void> updateItems(List<Item> items) async {
+    // 1. Update SQLite locally instantly (<20ms)
     await _dao.updateItems(items);
-    // Push bulk updates to Supabase products table
-    try {
-      await _ensureSupabaseAuth();
-      final client = Supabase.instance.client;
-      for (final item in items) {
-        final categoryId = await _getOrCreateCategoryId(item.category);
-        final pMap = await _itemToProductMap(item, categoryId);
-        pMap['updated_at'] = DateTime.now().toIso8601String();
-        await client.from('products').update(pMap).eq('id', item.id);
+
+    // 2. Trigger remote Supabase sync in the background so bulk updates never block the UI
+    unawaited(() async {
+      try {
+        await _ensureSupabaseAuth();
+        final client = Supabase.instance.client;
+
+        // Pre-fetch categories once instead of per-item
+        final List<dynamic> catRows = await client.from('categories').select('id, name');
+        final Map<String, String> catMap = {};
+        for (final c in catRows) {
+          final name = (c['name'] as String? ?? '').toLowerCase();
+          if (name.isNotEmpty) catMap[name] = c['id'] as String;
+        }
+
+        for (final item in items) {
+          try {
+            String? catId = catMap[item.category.toLowerCase()];
+            if (catId == null) {
+              catId = await _getOrCreateCategoryId(item.category);
+              if (catId != null) catMap[item.category.toLowerCase()] = catId;
+            }
+            final pMap = await _itemToProductMap(item, catId);
+            pMap['updated_at'] = DateTime.now().toIso8601String();
+            await client.from('products').update(pMap).eq('id', item.id);
+          } catch (e) {
+            debugPrint('[INVENTORY-SYNC] Item sync failed for ${item.name}: $e');
+          }
+        }
+        debugPrint('[INVENTORY-SYNC] Background synced ${items.length} items to Supabase.');
+      } catch (e) {
+        debugPrint('[INVENTORY-SYNC] Background bulk Supabase update error: $e');
       }
-      debugPrint('[INVENTORY-SYNC] Directly synced ${items.length} items to Supabase.');
-    } catch (e) {
-      debugPrint('[INVENTORY-SYNC] Direct bulk Supabase update failed: $e');
-    }
+    }());
   }
 
   @override

@@ -3386,13 +3386,30 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
             TextButton(
               style: TextButton.styleFrom(foregroundColor: AppColors.primary),
               onPressed: () async {
-                Navigator.pop(context);
+                Navigator.of(context).pop();
+                AppHaptics.buttonClick();
+
+                final scaffoldContext = this.context;
+                BuildContext? progressDialogContext;
                 
-                // Show loading
                 showDialog(
-                  context: context,
+                  context: scaffoldContext,
                   barrierDismissible: false,
-                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                  builder: (ctx) {
+                    progressDialogContext = ctx;
+                    return const PopScope(
+                      canPop: false,
+                      child: Center(
+                        child: Card(
+                          shape: CircleBorder(),
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 );
 
                 try {
@@ -3427,16 +3444,19 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                   }
 
                   await ref.read(inventoryProvider.notifier).updateItems(updatedList);
-                  ref.invalidate(inventoryProvider);
                   
-                  if (context.mounted) {
-                    Navigator.pop(context); // Close loading
-                    SnackbarHelper.showSuccess(context, 'Prices copied successfully!');
+                  if (progressDialogContext != null && progressDialogContext!.mounted) {
+                    Navigator.of(progressDialogContext!).pop();
+                  }
+                  if (mounted) {
+                    SnackbarHelper.showSuccess(scaffoldContext, '✅ Prices copied successfully!');
                   }
                 } catch (e) {
-                  if (context.mounted) {
-                    Navigator.pop(context); // Close loading
-                    SnackbarHelper.showError(context, 'Copy failed: $e');
+                  if (progressDialogContext != null && progressDialogContext!.mounted) {
+                    Navigator.of(progressDialogContext!).pop();
+                  }
+                  if (mounted) {
+                    SnackbarHelper.showError(scaffoldContext, 'Copy failed: $e');
                   }
                 }
               },
