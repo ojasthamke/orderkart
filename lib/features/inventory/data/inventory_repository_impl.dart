@@ -102,6 +102,16 @@ class InventoryRepositoryImpl implements InventoryRepository {
     final remoteUpdatedStr = p['updated_at']?.toString() ?? p['created_at']?.toString() ?? '';
     final remoteUpdatedAt = DateTime.tryParse(remoteUpdatedStr) ?? DateTime.now();
 
+    final orderNowStock = (p['order_now_stock'] as num?)?.toDouble() ?? 0.0;
+    final orderNowSellingPrice = (p['order_now_price'] as num?)?.toDouble() ?? 0.0;
+    final orderNowMrp = (p['order_now_mrp'] as num?)?.toDouble() ?? 0.0;
+    final orderNowCostPrice = (p['order_now_cost_price'] as num?)?.toDouble() ?? 0.0;
+    final orderNowIsAvailable = p['order_now_is_available'] == null
+        ? true
+        : (p['order_now_is_available'] is bool
+            ? p['order_now_is_available'] as bool
+            : (p['order_now_is_available'] as num) == 1);
+
     return Item(
       id: id,
       name: name,
@@ -124,6 +134,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
       dosageInfo: dosageInfo,
       bestBefore: bestBefore,
       packDate: packDate,
+      orderNowStock: orderNowStock,
+      orderNowSellingPrice: orderNowSellingPrice,
+      orderNowMrp: orderNowMrp,
+      orderNowCostPrice: orderNowCostPrice,
+      orderNowIsAvailable: orderNowIsAvailable,
     );
   }
 
@@ -154,6 +169,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
       'description': json.encode(extra),
       'is_available': item.stock > 0,
       'is_enabled': true,
+      'order_now_stock': item.orderNowStock,
+      'order_now_price': item.orderNowSellingPrice,
+      'order_now_mrp': item.orderNowMrp,
+      'order_now_cost_price': item.orderNowCostPrice,
+      'order_now_is_available': item.orderNowIsAvailable,
     };
   }
 

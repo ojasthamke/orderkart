@@ -187,7 +187,9 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
       context: context,
       builder: (_) => AddEditAreaDialog(
         area: area,
-        onSave: (name, description, color, photoPath, mapsLocation) async {
+        onSave: (name, description, color, photoPath, mapsLocation,
+            deliverySchedule, cutoffTime, deliveryCharge, minOrderAmount,
+            isActive) async {
           final now = DateTime.now();
           final areaId = area?.id ?? const Uuid().v4();
 
@@ -213,6 +215,11 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                   mapsLocation: mapsLocation,
                   createdAt: now,
                   updatedAt: now,
+                  deliverySchedule: deliverySchedule,
+                  cutoffTime: cutoffTime,
+                  deliveryCharge: deliveryCharge,
+                  minOrderAmount: minOrderAmount,
+                  isActive: isActive,
                 ));
             if (mounted) {
               SnackbarHelper.showSuccess(context, 'Area added successfully');
@@ -224,6 +231,11 @@ class _AreaScreenState extends ConsumerState<AreaScreen> {
                   color: color,
                   photoPath: finalPhotoPath,
                   mapsLocation: mapsLocation,
+                  deliverySchedule: deliverySchedule,
+                  cutoffTime: cutoffTime,
+                  deliveryCharge: deliveryCharge,
+                  minOrderAmount: minOrderAmount,
+                  isActive: isActive,
                   updatedAt: now,
                 ));
             if (mounted) {

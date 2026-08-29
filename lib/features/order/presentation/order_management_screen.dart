@@ -28,6 +28,7 @@ import '../../location/presentation/location_provider.dart';
 import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../../core/utils/external_launcher.dart';
+import 'widgets/running_month_date_strip.dart';
 
 class OrderManagementScreen extends ConsumerStatefulWidget {
   const OrderManagementScreen({super.key});
@@ -49,14 +50,6 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
     {'label': 'Delivered', 'status': 'delivered'},
     {'label': 'Cancelled', 'status': 'cancelled'},
     {'label': 'Pre-Orders', 'status': 'preorder'},
-  ];
-
-  final _filters = [
-    {'label': 'All Time', 'value': 'all'},
-    {'label': 'Today', 'value': 'today'},
-    {'label': 'Yesterday', 'value': 'yesterday'},
-    {'label': 'This Week', 'value': 'week'},
-    {'label': 'This Month', 'value': 'month'},
   ];
 
   @override
@@ -141,61 +134,30 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
             ),
           ),
 
-          // Date filter chips
-          SizedBox(
-            height: 44,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              itemCount: _filters.length,
-              itemBuilder: (_, i) {
-                final f = _filters[i];
-                final isDark = Theme.of(context).brightness == Brightness.dark;
-                final selected = f['value'] == _filter;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _filter = f['value']!);
+          // Date filter chips strip (Running Month & Custom Range)
+          ref.watch(preOrderDateCountsProvider).maybeWhen(
+                data: (dateCounts) => RunningMonthDateStrip(
+                  selectedFilter: _filter,
+                  dateCounts: dateCounts,
+                  onFilterSelected: (val) {
+                    setState(() => _filter = val);
                     ref
                         .read(orderManagementProvider.notifier)
-                        .setFilter(f['value']!);
+                        .setFilter(val);
                   },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(right: 8),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppColors.primary
-                          : (isDark
-                              ? const Color(0xFF1E293B)
-                              : AppColors.gray100),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.primary
-                            : (isDark
-                                ? Colors.white.withOpacity(0.12)
-                                : AppColors.gray300),
-                      ),
-                    ),
-                    child: Text(
-                      f['label']!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: selected
-                            ? Colors.white
-                            : (isDark
-                                ? Colors.white70
-                                : AppColors.textSecondary),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+                ),
+                orElse: () => RunningMonthDateStrip(
+                  selectedFilter: _filter,
+                  onFilterSelected: (val) {
+                    setState(() => _filter = val);
+                    ref
+                        .read(orderManagementProvider.notifier)
+                        .setFilter(val);
+                  },
+                ),
+              ),
+
+          const SizedBox(height: 4),
 
           // Orders list
           Expanded(
@@ -210,10 +172,17 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
                           final todayStr = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
                           final statusKey = t['status']!;
                           var filtered = orders;
+
                           if (statusKey == 'preorder') {
                             filtered = filtered
-                                .where((o) => o.orderType == 'Pre-Order' && (o.orderTakingDate == null || o.orderTakingDate!.compareTo(todayStr) > 0))
+                                .where((o) => o.orderType == 'Pre-Order')
                                 .toList();
+                            if (_filter.startsWith('date:')) {
+                              final targetDate = _filter.substring(5);
+                              filtered = filtered.where((o) => (o.orderTakingDate ?? '').startsWith(targetDate) || (o.deliveryDate ?? '').startsWith(targetDate)).toList();
+                            } else if (_filter == 'today') {
+                              filtered = filtered.where((o) => (o.orderTakingDate ?? '').startsWith(todayStr) || (o.deliveryDate ?? '').startsWith(todayStr)).toList();
+                            }
                             filtered.sort((a, b) {
                               final aDate = a.orderTakingDate ?? '';
                               final bDate = b.orderTakingDate ?? '';
@@ -221,11 +190,7 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
                             });
                           } else if (statusKey != 'all') {
                             filtered = filtered
-                                .where((o) => o.deliveryStatus == statusKey && (o.orderType != 'Pre-Order' || (o.orderTakingDate != null && o.orderTakingDate!.compareTo(todayStr) <= 0)))
-                                .toList();
-                          } else {
-                            filtered = filtered
-                                .where((o) => o.orderType != 'Pre-Order' || (o.orderTakingDate != null && o.orderTakingDate!.compareTo(todayStr) <= 0))
+                                .where((o) => o.deliveryStatus == statusKey)
                                 .toList();
                           }
                           if (_sourceMode == 'owner') {

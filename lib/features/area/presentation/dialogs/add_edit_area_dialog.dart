@@ -10,8 +10,18 @@ import 'package:latlong2/latlong.dart';
 
 class AddEditAreaDialog extends StatefulWidget {
   final Area? area;
-  final Future<void> Function(String name, String description, int color,
-      String photoPath, String mapsLocation) onSave;
+  final Future<void> Function(
+    String name,
+    String description,
+    int color,
+    String photoPath,
+    String mapsLocation,
+    List<String> deliverySchedule,
+    String cutoffTime,
+    double deliveryCharge,
+    double minOrderAmount,
+    bool isActive,
+  ) onSave;
 
   const AddEditAreaDialog({super.key, this.area, required this.onSave});
 
@@ -27,6 +37,13 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
   String _photoPath = '';
   int _color = 0xFF1565C0;
   bool _loading = false;
+
+  // New settings fields
+  List<String> _deliverySchedule = [];
+  final _cutoffTimeCon = TextEditingController(text: '23:59');
+  final _deliveryChargeCon = TextEditingController(text: '0.0');
+  final _minOrderAmountCon = TextEditingController(text: '0.0');
+  bool _isActive = true;
 
   final _colorOptions = [
     0xFF1565C0, // Blue
@@ -48,6 +65,11 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
       _locationCon.text = widget.area!.mapsLocation;
       _photoPath = widget.area!.photoPath;
       _color = widget.area!.color;
+      _deliverySchedule = List<String>.from(widget.area!.deliverySchedule);
+      _cutoffTimeCon.text = widget.area!.cutoffTime;
+      _deliveryChargeCon.text = widget.area!.deliveryCharge.toString();
+      _minOrderAmountCon.text = widget.area!.minOrderAmount.toString();
+      _isActive = widget.area!.isActive;
     }
   }
 
@@ -56,6 +78,9 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
     _nameCon.dispose();
     _descCon.dispose();
     _locationCon.dispose();
+    _cutoffTimeCon.dispose();
+    _deliveryChargeCon.dispose();
+    _minOrderAmountCon.dispose();
     super.dispose();
   }
 
@@ -152,7 +177,7 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
               TextFormField(
                 controller: _descCon,
                 decoration: const InputDecoration(
-                  labelText: 'Description (Full visibility enabled)',
+                  labelText: 'Description',
                   prefixIcon: Icon(Icons.notes_rounded),
                 ),
                 maxLines: 3,
@@ -203,6 +228,119 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
                 ],
               ),
               const SizedBox(height: 16),
+              
+              const Text('Delivery Days Schedule *', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+                ].map((day) {
+                  final isSelected = _deliverySchedule.contains(day);
+                  return FilterChip(
+                    label: Text(day.substring(0, 3)),
+                    selected: isSelected,
+                    selectedColor: AppColors.primary.withOpacity(0.2),
+                    checkmarkColor: AppColors.primary,
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? AppColors.primary : AppColors.gray800,
+                    ),
+                    onSelected: (_) {
+                      setState(() {
+                        if (isSelected) {
+                          _deliverySchedule.remove(day);
+                        } else {
+                          _deliverySchedule.add(day);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _cutoffTimeCon,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: 'Cutoff Time *',
+                  hintText: 'Select Cutoff Time (e.g. 18:00)',
+                  prefixIcon: Icon(Icons.timer_outlined),
+                ),
+                onTap: () async {
+                  int hour = 23;
+                  int minute = 59;
+                  final parts = _cutoffTimeCon.text.split(':');
+                  if (parts.length >= 2) {
+                    hour = int.tryParse(parts[0]) ?? 23;
+                    minute = int.tryParse(parts[1]) ?? 59;
+                  }
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay(hour: hour, minute: minute),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _cutoffTimeCon.text = 
+                          "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 14),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _deliveryChargeCon,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Delivery Charge (₹)',
+                        prefixIcon: Icon(Icons.delivery_dining_rounded),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return null;
+                        if (double.tryParse(v) == null) return 'Must be a number';
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _minOrderAmountCon,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Min Order (₹)',
+                        prefixIcon: Icon(Icons.shopping_bag_outlined),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return null;
+                        if (double.tryParse(v) == null) return 'Must be a number';
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Area Active Status', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Enable/disable delivery and order placement for this area'),
+                value: _isActive,
+                activeColor: AppColors.primary,
+                onChanged: (val) {
+                  setState(() => _isActive = val);
+                },
+              ),
+              const SizedBox(height: 16),
+
               Text('Colour', style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: 8),
               Wrap(
@@ -262,12 +400,19 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
+      final charge = double.tryParse(_deliveryChargeCon.text.trim()) ?? 0.0;
+      final minAmt = double.tryParse(_minOrderAmountCon.text.trim()) ?? 0.0;
       await widget.onSave(
         _nameCon.text.trim(),
         _descCon.text.trim(),
         _color,
         _photoPath,
         _locationCon.text.trim(),
+        _deliverySchedule,
+        _cutoffTimeCon.text.trim(),
+        charge,
+        minAmt,
+        _isActive,
       );
       if (mounted) Navigator.of(context).pop();
     } finally {

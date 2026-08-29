@@ -163,11 +163,34 @@ class DatabaseHelper {
           await db.execute(
               'ALTER TABLE items ADD COLUMN sequence_no INTEGER DEFAULT 0');
         } catch (_) {}
+        try {
+          await db.execute(
+              'ALTER TABLE order_items ADD COLUMN is_available INTEGER DEFAULT 1');
+        } catch (_) {}
         await _ensureGeoMapTables(db);
         await _ensureSyncStatusAndSchedulingColumns(db);
         await ensureCustomerDeviceColumns(db);
         await _ensureCustomerCodeColumn(db);
         await _dropLegacyTriggers(db);
+        try {
+          await db.execute(
+              'CREATE TABLE IF NOT EXISTS deleted_orders (id TEXT PRIMARY KEY, deleted_at TEXT)');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE items ADD COLUMN order_now_stock REAL DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE items ADD COLUMN order_now_selling_price REAL DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE items ADD COLUMN order_now_mrp REAL DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE items ADD COLUMN order_now_cost_price REAL DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE items ADD COLUMN order_now_is_available INTEGER DEFAULT 1');
+        } catch (_) {}
         await _auditAndSelfHealCustomerIds(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
@@ -280,6 +303,41 @@ class DatabaseHelper {
     await _createTables(db);
     await _ensureVipColumns(db);
     await _ensureV4Columns(db);
+    await _ensureAreaScheduleColumns(db);
+  }
+
+  Future<void> _ensureAreaScheduleColumns(Database db) async {
+    try {
+      await db.execute("ALTER TABLE locations ADD COLUMN delivery_schedule TEXT DEFAULT '[]'");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE locations ADD COLUMN cutoff_time TEXT DEFAULT '23:59'");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE locations ADD COLUMN delivery_charge REAL DEFAULT 0.0");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE locations ADD COLUMN min_order_amount REAL DEFAULT 0.0");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE locations ADD COLUMN is_active INTEGER DEFAULT 1");
+    } catch (_) {}
+
+    try {
+      await db.execute("ALTER TABLE areas ADD COLUMN delivery_schedule TEXT DEFAULT '[]'");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE areas ADD COLUMN cutoff_time TEXT DEFAULT '23:59'");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE areas ADD COLUMN delivery_charge REAL DEFAULT 0.0");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE areas ADD COLUMN min_order_amount REAL DEFAULT 0.0");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE areas ADD COLUMN is_active INTEGER DEFAULT 1");
+    } catch (_) {}
   }
 
   Future<void> _createTables(Database db) async {
@@ -358,6 +416,11 @@ class DatabaseHelper {
         weight_per_piece REAL DEFAULT 0.25,
         photo_path    TEXT DEFAULT '',
         sequence_no   INTEGER DEFAULT 0,
+        order_now_stock REAL DEFAULT 0,
+        order_now_selling_price REAL DEFAULT 0,
+        order_now_mrp REAL DEFAULT 0,
+        order_now_cost_price REAL DEFAULT 0,
+        order_now_is_available INTEGER DEFAULT 1,
         created_at    TEXT NOT NULL,
         updated_at    TEXT NOT NULL
       )

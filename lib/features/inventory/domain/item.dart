@@ -26,6 +26,13 @@ class Item {
   final String photoPath;
   final int sequenceNo;
 
+  // Order Now Fields
+  final double orderNowStock;
+  final double orderNowSellingPrice;
+  final double orderNowMrp;
+  final double orderNowCostPrice;
+  final bool orderNowIsAvailable;
+
   bool get isLowStock => stock <= minStock && minStock > 0;
   double get profitMargin =>
       sellingPrice > 0 ? ((sellingPrice - costPrice) / sellingPrice) * 100 : 0;
@@ -56,6 +63,11 @@ class Item {
     this.weightPerPiece = 0.25,
     this.photoPath = '',
     this.sequenceNo = 0,
+    this.orderNowStock = 0,
+    this.orderNowSellingPrice = 0,
+    this.orderNowMrp = 0,
+    this.orderNowCostPrice = 0,
+    this.orderNowIsAvailable = true,
   });
 
   Item copyWith({
@@ -80,6 +92,11 @@ class Item {
     double? weightPerPiece,
     String? photoPath,
     int? sequenceNo,
+    double? orderNowStock,
+    double? orderNowSellingPrice,
+    double? orderNowMrp,
+    double? orderNowCostPrice,
+    bool? orderNowIsAvailable,
   }) {
     return Item(
       id: id ?? this.id,
@@ -103,6 +120,11 @@ class Item {
       weightPerPiece: weightPerPiece ?? this.weightPerPiece,
       photoPath: photoPath ?? this.photoPath,
       sequenceNo: sequenceNo ?? this.sequenceNo,
+      orderNowStock: orderNowStock ?? this.orderNowStock,
+      orderNowSellingPrice: orderNowSellingPrice ?? this.orderNowSellingPrice,
+      orderNowMrp: orderNowMrp ?? this.orderNowMrp,
+      orderNowCostPrice: orderNowCostPrice ?? this.orderNowCostPrice,
+      orderNowIsAvailable: orderNowIsAvailable ?? this.orderNowIsAvailable,
     );
   }
 
@@ -128,6 +150,11 @@ class Item {
         'weight_per_piece': weightPerPiece,
         'photo_path': photoPath,
         'sequence_no': sequenceNo,
+        'order_now_stock': orderNowStock,
+        'order_now_selling_price': orderNowSellingPrice,
+        'order_now_mrp': orderNowMrp,
+        'order_now_cost_price': orderNowCostPrice,
+        'order_now_is_available': orderNowIsAvailable ? 1 : 0,
       };
 
   factory Item.fromMap(Map<String, dynamic> map) => Item(
@@ -154,6 +181,15 @@ class Item {
         weightPerPiece: (map['weight_per_piece'] as num?)?.toDouble() ?? 0.25,
         photoPath: map['photo_path'] as String? ?? '',
         sequenceNo: map['sequence_no'] as int? ?? 0,
+        orderNowStock: (map['order_now_stock'] as num?)?.toDouble() ?? 0,
+        orderNowSellingPrice: (map['order_now_selling_price'] as num?)?.toDouble() ?? 0,
+        orderNowMrp: (map['order_now_mrp'] as num?)?.toDouble() ?? 0,
+        orderNowCostPrice: (map['order_now_cost_price'] as num?)?.toDouble() ?? 0,
+        orderNowIsAvailable: map['order_now_is_available'] == null
+            ? true
+            : (map['order_now_is_available'] is bool
+                ? map['order_now_is_available'] as bool
+                : (map['order_now_is_available'] as num) == 1),
       );
 
   @override

@@ -102,6 +102,7 @@ class OrderManagementNotifier
     _ref.invalidate(customerSavingsProvider);
     _ref.invalidate(profitLossProvider);
     _ref.invalidate(orderAnswersProvider);
+    _ref.invalidate(preOrderDateCountsProvider);
   }
 
   void setStatus(String status) {
@@ -126,9 +127,10 @@ class OrderManagementNotifier
   }
 
   Future<void> deleteOrder(String id) async {
+    final order = await _repo.getOrderById(id);
     await _repo.deleteOrder(id);
     await load(silent: true);
-    _invalidateAll(orderId: id);
+    _invalidateAll(orderId: id, customerId: order?.customerId);
   }
 
   Future<void> createOrder(AppOrder order, List<OrderItem> items) async {
@@ -244,4 +246,8 @@ final customerSavingsProvider =
 final orderAnswersProvider =
     FutureProvider.family<List<Map<String, dynamic>>, String>((ref, orderId) {
   return OrderQuestionDao.instance.getOrderAnswers(orderId);
+});
+
+final preOrderDateCountsProvider = FutureProvider<Map<String, int>>((ref) {
+  return OrderDao().getPreOrderDateCounts();
 });

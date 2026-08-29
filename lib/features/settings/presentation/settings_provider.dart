@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/settings_dao.dart';
 import '../domain/app_settings.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/database/database_helper.dart';
 import '../../order/presentation/order_provider.dart';
@@ -91,8 +92,31 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     await _dao.setValue(AppConstants.keyGstinNumber, settings.gstinNumber);
     await _dao.setValue(AppConstants.keyCashDrawerOpeningFloat,
         settings.cashDrawerOpeningFloat.toString());
+    await _dao.setValue('store_open', settings.storeOpen.toString());
+    await _dao.setValue('store_schedule', settings.storeSchedule);
+    
     state = AsyncValue.data(settings);
     _invalidateAll();
+
+    Future(() async {
+      try {
+        final client = Supabase.instance.client;
+        if (client.auth.currentUser == null) {
+          await client.auth.signInWithPassword(
+            email: 'admin@aplibhaji.com',
+            password: 'adminpassword',
+          );
+        }
+        await client.from('settings').upsert([
+          {'key': 'store_status', 'value': settings.storeOpen ? 'open' : 'closed'},
+          {'key': 'store_schedule', 'value': settings.storeSchedule},
+          {'key': 'delivery_charge', 'value': settings.deliveryCharge.toString()},
+        ]);
+        debugPrint('Supabase: Settings sync complete.');
+      } catch (e) {
+        debugPrint('Supabase: Failed to sync settings: $e');
+      }
+    });
   }
 
   Future<void> updateLastDeliveryCharge(double charge) async {

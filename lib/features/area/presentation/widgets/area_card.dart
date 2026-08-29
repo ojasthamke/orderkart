@@ -95,6 +95,26 @@ class AreaCard extends StatelessWidget {
                                       ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: area.isActive ? const Color(0xFF10B981).withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: area.isActive ? const Color(0xFF10B981) : Colors.red,
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  area.isActive ? 'ACTIVE' : 'INACTIVE',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: area.isActive ? const Color(0xFF10B981) : Colors.red,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                           if (area.description.isNotEmpty) ...[
@@ -109,6 +129,40 @@ class AreaCard extends StatelessWidget {
                                   ),
                             ),
                           ],
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              if (area.deliverySchedule.isNotEmpty)
+                                _chip(
+                                  context,
+                                  area.deliverySchedule.map((d) => d.substring(0, 3)).join(", "),
+                                  Icons.calendar_today_rounded,
+                                  Colors.purple,
+                                )
+                              else
+                                _chip(
+                                  context,
+                                  'No Days Set',
+                                  Icons.calendar_today_rounded,
+                                  Colors.red,
+                                ),
+                              _chip(
+                                context,
+                                'Cutoff: ${area.cutoffTime}',
+                                Icons.timer_outlined,
+                                Colors.indigo,
+                              ),
+                              if (area.minOrderAmount > 0 || area.deliveryCharge > 0)
+                                _chip(
+                                  context,
+                                  'Min: ₹${area.minOrderAmount.toInt()} | Del: ₹${area.deliveryCharge.toInt()}',
+                                  Icons.delivery_dining_rounded,
+                                  Colors.teal,
+                                ),
+                            ],
+                          ),
                           const SizedBox(height: 8),
                           // Stats & Location row
                           Wrap(

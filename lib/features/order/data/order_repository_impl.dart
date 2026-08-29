@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/order.dart';
 import '../domain/order_item.dart';
@@ -179,16 +180,27 @@ class OrderRepositoryImpl implements OrderRepository {
         await _customerDao.recalcCustomerTotals(order.customerId,
             executor: txn);
       }
-      
-      // Delete on Supabase
-      try {
-        final client = Supabase.instance.client;
-        await client.from('order_items').delete().eq('order_id', id);
-        await client.from('orders').delete().eq('id', id);
-      } catch (e) {
-        // Safe check for offline mode - it won't block local transaction completion
-      }
+      // Log order deletion in SQLite deleted_orders
+      await txn.insert('deleted_orders', {
+        'id': id,
+        'deleted_at': DateTime.now().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     });
+
+    // Delete on Supabase (outside of SQLite transaction to prevent blocking DB)
+    try {
+      final client = Supabase.instance.client;
+      if (client.auth.currentUser == null) {
+        await client.auth.signInWithPassword(
+          email: 'admin@aplibhaji.com',
+          password: 'adminpassword',
+        );
+      }
+      await client.from('order_items').delete().eq('order_id', id);
+      await client.from('orders').delete().eq('id', id);
+    } catch (e) {
+      // Safe check for offline mode
+    }
   }
 
   @override

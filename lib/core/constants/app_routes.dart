@@ -29,6 +29,7 @@ class AppRoutes {
   static const String search = '/search';
   static const String qrPreview = '/qr-preview';
   static const String quickInventoryAdjust = '/quick-inventory-adjust';
+  static const String quickOrderNowAdjust = '/quick-order-now-adjust';
 
   // Notes
   static const String notes = '/notes';

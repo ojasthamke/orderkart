@@ -79,7 +79,7 @@ class OrderDao {
       }
     }
 
-    const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN DATE(o.delivery_date) ELSE DATE(o.created_at) END)";
+    const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN (CASE WHEN o.order_taking_date LIKE '____-__-__%' THEN DATE(o.order_taking_date) WHEN o.order_taking_date LIKE '__-__-____%' THEN (SUBSTR(o.order_taking_date,7,4) || '-' || SUBSTR(o.order_taking_date,4,2) || '-' || SUBSTR(o.order_taking_date,1,2)) ELSE DATE(o.order_taking_date) END) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN (CASE WHEN o.delivery_date LIKE '____-__-__%' THEN DATE(o.delivery_date) WHEN o.delivery_date LIKE '__-__-____%' THEN (SUBSTR(o.delivery_date,7,4) || '-' || SUBSTR(o.delivery_date,4,2) || '-' || SUBSTR(o.delivery_date,1,2)) ELSE DATE(o.delivery_date) END) ELSE DATE(o.created_at) END)";
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final todayStr = "${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
@@ -107,6 +107,10 @@ class OrderDao {
       final monthStr = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}";
       conditions.add('strftime(\'%Y-%m\', $effectiveDateSql) = ?');
       args.add(monthStr);
+    } else if (filter != null && filter.startsWith('date:')) {
+      final targetDate = filter.substring(5);
+      conditions.add('$effectiveDateSql = ?');
+      args.add(targetDate);
     }
 
     final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
@@ -1203,5 +1207,35 @@ class OrderDao {
       'total': allDisc + allMarket,
       'monthly': monDisc + monMarket,
     };
+  }
+
+  /// Get pre-order counts grouped by order_taking_date for the current running month
+  Future<Map<String, int>> getPreOrderDateCounts() async {
+    final db = await _db;
+    const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN (CASE WHEN o.order_taking_date LIKE '____-__-__%' THEN DATE(o.order_taking_date) WHEN o.order_taking_date LIKE '__-__-____%' THEN (SUBSTR(o.order_taking_date,7,4) || '-' || SUBSTR(o.order_taking_date,4,2) || '-' || SUBSTR(o.order_taking_date,1,2)) ELSE DATE(o.order_taking_date) END) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN (CASE WHEN o.delivery_date LIKE '____-__-__%' THEN DATE(o.delivery_date) WHEN o.delivery_date LIKE '__-__-____%' THEN (SUBSTR(o.delivery_date,7,4) || '-' || SUBSTR(o.delivery_date,4,2) || '-' || SUBSTR(o.delivery_date,1,2)) ELSE DATE(o.delivery_date) END) ELSE DATE(o.created_at) END)";
+
+    final now = DateTime.now();
+    final monthStr = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}";
+
+    final rows = await db.rawQuery('''
+      SELECT 
+        $effectiveDateSql AS order_date,
+        COUNT(*) AS count
+      FROM orders o
+      WHERE o.order_type = 'Pre-Order'
+        AND strftime('%Y-%m', $effectiveDateSql) = ?
+        AND (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
+      GROUP BY order_date
+    ''', [monthStr]);
+
+    final Map<String, int> counts = {};
+    for (final row in rows) {
+      final d = row['order_date'] as String?;
+      final c = (row['count'] as num?)?.toInt() ?? 0;
+      if (d != null && d.isNotEmpty) {
+        counts[d] = c;
+      }
+    }
+    return counts;
   }
 }

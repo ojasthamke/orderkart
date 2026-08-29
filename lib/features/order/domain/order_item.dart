@@ -10,6 +10,7 @@ class OrderItem {
   final double quantity;
   final double unitPrice;
   final double totalPrice;
+  final bool isAvailable;
 
   const OrderItem({
     required this.id,
@@ -20,6 +21,7 @@ class OrderItem {
     required this.quantity,
     required this.unitPrice,
     required this.totalPrice,
+    this.isAvailable = true,
   });
 
   OrderItem copyWith({
@@ -31,6 +33,7 @@ class OrderItem {
     double? quantity,
     double? unitPrice,
     double? totalPrice,
+    bool? isAvailable,
   }) {
     return OrderItem(
       id: id ?? this.id,
@@ -41,6 +44,7 @@ class OrderItem {
       quantity: quantity ?? this.quantity,
       unitPrice: unitPrice ?? this.unitPrice,
       totalPrice: totalPrice ?? this.totalPrice,
+      isAvailable: isAvailable ?? this.isAvailable,
     );
   }
 
@@ -53,6 +57,7 @@ class OrderItem {
         'quantity': quantity,
         'unit_price': unitPrice,
         'total_price': totalPrice,
+        'is_available': isAvailable ? 1 : 0,
       };
 
   factory OrderItem.fromMap(Map<String, dynamic> map) => OrderItem(
@@ -64,5 +69,10 @@ class OrderItem {
         quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
         unitPrice: (map['unit_price'] as num?)?.toDouble() ?? 0.0,
         totalPrice: (map['total_price'] as num?)?.toDouble() ?? 0.0,
+        isAvailable: map['is_available'] == null
+            ? true
+            : (map['is_available'] is bool
+                ? map['is_available'] as bool
+                : (map['is_available'] as num) == 1),
       );
 }

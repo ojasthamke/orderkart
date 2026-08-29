@@ -385,12 +385,17 @@ class ItemDao {
 
     const effectiveDateSql = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN DATE(o.delivery_date) ELSE DATE(o.created_at) END)";
 
+
     if (startDate != null && endDate != null) {
       final startStr = DateFormat('yyyy-MM-dd').format(startDate);
       final endStr = DateFormat('yyyy-MM-dd').format(endDate);
       whereClause += " AND $effectiveDateSql >= DATE(?) AND $effectiveDateSql <= DATE(?)";
       args.add(startStr);
       args.add(endStr);
+    } else if (dateFilter.startsWith('date:')) {
+      final targetDate = dateFilter.substring(5);
+      whereClause += " AND $effectiveDateSql = DATE(?)";
+      args.add(targetDate);
     } else if (dateFilter == 'today') {
       whereClause += " AND $effectiveDateSql = DATE(?)";
       args.add(todayStr);

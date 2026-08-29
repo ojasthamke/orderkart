@@ -24,6 +24,8 @@ class AppSettings {
   final double workerDiscountCap;
   final bool notificationSound;
   final bool notificationVibration;
+  final bool storeOpen;
+  final String storeSchedule;
 
   final bool enableDeliveryCharges;
   final String meshTheme;
@@ -56,6 +58,8 @@ class AppSettings {
     this.workerDiscountCap = 10.0,
     this.notificationSound = true,
     this.notificationVibration = true,
+    this.storeOpen = true,
+    this.storeSchedule = '',
     this.enableDeliveryCharges = true,
     this.meshTheme = 'sunset',
     this.invoiceDisclaimer =
@@ -89,6 +93,8 @@ class AppSettings {
     double? workerDiscountCap,
     bool? notificationSound,
     bool? notificationVibration,
+    bool? storeOpen,
+    String? storeSchedule,
     bool? enableDeliveryCharges,
     String? meshTheme,
     String? invoiceDisclaimer,
@@ -121,6 +127,8 @@ class AppSettings {
       notificationSound: notificationSound ?? this.notificationSound,
       notificationVibration:
           notificationVibration ?? this.notificationVibration,
+      storeOpen: storeOpen ?? this.storeOpen,
+      storeSchedule: storeSchedule ?? this.storeSchedule,
       enableDeliveryCharges:
           enableDeliveryCharges ?? this.enableDeliveryCharges,
       meshTheme: meshTheme ?? this.meshTheme,

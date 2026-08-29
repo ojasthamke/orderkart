@@ -23,7 +23,7 @@ dependencies:
 
   # Networking / Sharing
   url_launcher: ^6.3.0
-  share_plus: ^9.0.0
+  share_plus: ^10.0.0
   connectivity_plus: ^6.0.3
   network_info_plus: ^6.0.0
   http: ^1.2.2
@@ -44,7 +44,7 @@ dependencies:
 
   # Image
   image_picker: ^1.1.2
-  speech_to_text: ^6.6.2
+  speech_to_text: ^7.0.0
 
   # Permissions
   permission_handler: ^11.3.1
@@ -114,3 +114,5 @@ flutter:
   assets:
     - assets/logo.png
     - assets/icon.png
+    - assets/orderkart_logo.jpg
+    - assets/splash_bg.jpg

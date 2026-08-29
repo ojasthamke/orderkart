@@ -315,12 +315,30 @@ class CustomerOrderSyncService {
           final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localId');
           final areaCode = 'AREA-${supabaseId.substring(0, 8).toUpperCase()}';
 
+          List<dynamic> sched = [];
+          if (loc['delivery_schedule'] != null) {
+            try {
+              final decoded = json.decode(loc['delivery_schedule'] as String);
+              if (decoded is List) {
+                sched = decoded;
+              }
+            } catch (_) {}
+          }
+          final cutoffTime = loc['cutoff_time'] as String? ?? '23:59';
+          final deliveryCharge = (loc['delivery_charge'] as num?)?.toDouble() ?? 0.0;
+          final minOrderAmount = (loc['min_order_amount'] as num?)?.toDouble() ?? 0.0;
+          final isActive = (loc['is_active'] == null || loc['is_active'] == 1 || loc['is_active'] == true || loc['is_active'].toString() == 'true');
+
           try {
             await client.from('areas').upsert({
               'id': supabaseId,
               'area_code': areaCode,
               'name': name,
-              'delivery_schedule': [],
+              'delivery_schedule': sched,
+              'cutoff_time': cutoffTime,
+              'delivery_charge': deliveryCharge,
+              'min_order_amount': minOrderAmount,
+              'is_active': isActive,
             }, onConflict: 'id');
             areasUploaded++;
           } catch (e) {
@@ -406,12 +424,30 @@ class CustomerOrderSyncService {
           final supabaseId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$localId');
           final areaCode = 'AREA-${supabaseId.substring(0, 8).toUpperCase()}';
 
+          List<dynamic> sched = [];
+          if (area['delivery_schedule'] != null) {
+            try {
+              final decoded = json.decode(area['delivery_schedule'] as String);
+              if (decoded is List) {
+                sched = decoded;
+              }
+            } catch (_) {}
+          }
+          final cutoffTime = area['cutoff_time'] as String? ?? '23:59';
+          final deliveryCharge = (area['delivery_charge'] as num?)?.toDouble() ?? 0.0;
+          final minOrderAmount = (area['min_order_amount'] as num?)?.toDouble() ?? 0.0;
+          final isActive = (area['is_active'] == null || area['is_active'] == 1 || area['is_active'] == true || area['is_active'].toString() == 'true');
+
           try {
             await client.from('areas').upsert({
               'id': supabaseId,
               'area_code': areaCode,
               'name': name,
-              'delivery_schedule': [],
+              'delivery_schedule': sched,
+              'cutoff_time': cutoffTime,
+              'delivery_charge': deliveryCharge,
+              'min_order_amount': minOrderAmount,
+              'is_active': isActive,
             }, onConflict: 'id');
             areasUploaded++;
           } catch (e) {
@@ -814,6 +850,11 @@ class CustomerOrderSyncService {
               }
             }
 
+            final deletedCheck = await txn.query('deleted_orders', columns: ['id'], where: 'id = ?', whereArgs: [orderId]);
+            if (deletedCheck.isNotEmpty) {
+              return;
+            }
+
             final localCheck = await txn.query('orders', columns: ['sync_status'], where: 'id = ?', whereArgs: [orderId]);
             if (localCheck.isNotEmpty && localCheck.first['sync_status'] == 'pending_update') {
               return;
@@ -997,6 +1038,7 @@ class CustomerOrderSyncService {
                   'quantity': qty,
                   'unit_price': unitPrice,
                   'total_price': subtotal,
+                  'is_available': (subtotal == 0.0 && unitPrice > 0.001) ? 0 : 1,
                 });
 
                 // Deduct stock in SQLite items table & record stock history (only for active, non-cancelled/non-denied orders)
@@ -1099,6 +1141,7 @@ class CustomerOrderSyncService {
                     'quantity': qty,
                     'unit_price': unitPrice,
                     'total_price': subtotal,
+                    'is_available': (subtotal == 0.0 && unitPrice > 0.001) ? 0 : 1,
                   });
                 }
               }

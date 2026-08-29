@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/utils/external_launcher.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/constants/app_colors.dart';
@@ -122,6 +123,9 @@ class CustomerProfileScreen extends ConsumerWidget {
                     ).then((_) =>
                         ref.invalidate(customerDetailProvider(customerId)));
                     break;
+                  case 'reset_password':
+                    await _resetCustomerPassword(context, ref, customer);
+                    break;
                   case 'delete':
                     _confirmDelete(context, ref, customer);
                     break;
@@ -135,6 +139,17 @@ class CustomerProfileScreen extends ConsumerWidget {
                 }
               },
               itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'reset_password',
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_reset_rounded,
+                          color: Colors.orange, size: 20),
+                      SizedBox(width: 12),
+                      Text('Reset Password'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(
                   value: 'contact',
                   child: Row(
@@ -2496,4 +2511,74 @@ Widget _buildStatMiniCard(
       ],
     ),
   );
+}
+
+Future<void> _resetCustomerPassword(BuildContext context, WidgetRef ref, dynamic customer) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Reset Customer Password?'),
+      content: const Text(
+        'This will reset the customer\'s password. They will be logged out of their customer app and must configure a new password upon their next login.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          style: TextButton.styleFrom(foregroundColor: Colors.orange),
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Reset Password'),
+        ),
+      ],
+    ),
+  );
+
+  if (ok != true) return;
+
+  // Show a loading dialog
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(child: CircularProgressIndicator()),
+  );
+
+  try {
+    final client = Supabase.instance.client;
+    
+    // Authenticate as admin before making the update to ensure full access
+    if (client.auth.currentUser == null) {
+      await client.auth.signInWithPassword(
+        email: 'admin@aplibhaji.com',
+        password: 'adminpassword',
+      );
+    }
+    
+    // Update Supabase customers table: initial_login_completed = false, temp_setup_pin_hash = null, auth_user_id = null
+    await client.from('customers').update({
+      'initial_login_completed': false,
+      'temp_setup_pin_hash': null,
+    }).eq('id', customer.id);
+
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Customer password reset successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to reset password: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 }

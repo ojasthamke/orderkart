@@ -136,6 +136,8 @@ class AreaDao {
         ? (int.parse(lastSeq) + 1000).toString().padLeft(6, '0')
         : '001000';
 
+    final areaMap = area.toMap();
+
     // Insert into new locations table
     await db.insert(
         'locations',
@@ -158,16 +160,20 @@ class AreaDao {
           'is_archived': 0,
           'created_at': now,
           'updated_at': now,
+          'delivery_schedule': areaMap['delivery_schedule'],
+          'cutoff_time': areaMap['cutoff_time'],
+          'delivery_charge': areaMap['delivery_charge'],
+          'min_order_amount': areaMap['min_order_amount'],
+          'is_active': areaMap['is_active'],
         },
         conflictAlgorithm: ConflictAlgorithm.replace);
 
     // Keep legacy table updated
     try {
-      final map = area.toMap();
       await db.insert(
           'areas',
           {
-            ...map,
+            ...areaMap,
             'id': id,
             'created_by': createdBy,
             'assigned_worker_id': assignedWorkerId,
@@ -184,6 +190,7 @@ class AreaDao {
   Future<void> updateArea(Area area) async {
     final db = await _db;
     final now = DateTime.now().toIso8601String();
+    final areaMap = area.toMap();
 
     await db.update(
       'locations',
@@ -194,6 +201,11 @@ class AreaDao {
         'maps_location': area.mapsLocation,
         'color': area.color,
         'updated_at': now,
+        'delivery_schedule': areaMap['delivery_schedule'],
+        'cutoff_time': areaMap['cutoff_time'],
+        'delivery_charge': areaMap['delivery_charge'],
+        'min_order_amount': areaMap['min_order_amount'],
+        'is_active': areaMap['is_active'],
       },
       where: 'id = ?',
       whereArgs: [area.id],
@@ -203,7 +215,7 @@ class AreaDao {
     try {
       await db.update(
         'areas',
-        {...area.toMap(), 'updated_at': now},
+        {...areaMap, 'updated_at': now},
         where: 'id = ?',
         whereArgs: [area.id],
       );

@@ -29,6 +29,7 @@ import '../data/item_dao.dart';
 import '../../expense/domain/expense.dart';
 import '../../expense/data/expense_dao.dart';
 import '../../order/presentation/order_provider.dart';
+import '../../order/presentation/widgets/running_month_date_strip.dart';
 import '../../analytics/presentation/analytics_provider.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
@@ -55,7 +56,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
   }
 
   @override
@@ -186,6 +187,19 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
               Navigator.of(context).pushNamed(AppRoutes.quickInventoryAdjust);
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.copy_all_rounded),
+            tooltip: 'Copy Prices',
+            onPressed: () {
+              AppHaptics.buttonClick();
+              final items = ref.read(inventoryProvider).valueOrNull ?? [];
+              if (items.isEmpty) {
+                SnackbarHelper.showError(context, 'No items in inventory to copy');
+                return;
+              }
+              _showCopyPricesDialog(context, items);
+            },
+          ),
         ],
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert_rounded),
@@ -249,6 +263,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
         indicator: AppColors.tabDecoration(context),
         tabs: const [
           Tab(icon: Icon(Icons.inventory_2_rounded), text: 'Stock Items'),
+          Tab(icon: Icon(Icons.bolt_rounded), text: 'Order Now'),
           Tab(icon: Icon(Icons.price_change_rounded), text: 'Market Savings'),
           Tab(icon: Icon(Icons.history_rounded), text: 'Price History'),
           Tab(icon: Icon(Icons.delete_sweep_rounded), text: 'Spillage History'),
@@ -273,7 +288,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           // ── TAB 1: Stock Items List ────────────────────────────────────────
           _buildStockTab(context, itemsAsync, isWorker),
 
-          // ── TAB 2: Market Price & Customer Savings Calculator ──────────────
+          // ── TAB 2: Order Now Inventory ──────────────────────────────────────
+          _buildOrderNowTab(context, itemsAsync, isWorker),
+
+          // ── TAB 3: Market Price & Customer Savings Calculator ──────────────
           _buildMarketSavingsTab(context, itemsAsync),
 
           // ── TAB 3: Daily Price History Tracker (Date-to-Date) ─────────────
@@ -642,7 +660,228 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
     );
   }
 
-  // ── TAB 2: Market Price & Customer Savings Calculator ──────────────────────
+  Widget _buildOrderNowTab(
+      BuildContext context, AsyncValue<List<Item>> itemsAsync, bool isWorker) {
+    final orderNowStatus = ref.watch(orderNowStatusProvider).valueOrNull ?? 'closed';
+
+    return Column(
+      children: [
+        // ── Order Now Status Controls Banner ───────────────────────────────
+        Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: orderNowStatus == 'open'
+                ? Colors.green.withOpacity(0.08)
+                : (orderNowStatus == 'coming_soon'
+                    ? Colors.blue.withOpacity(0.08)
+                    : Colors.orange.withOpacity(0.08)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: orderNowStatus == 'open'
+                  ? Colors.green.withOpacity(0.3)
+                  : (orderNowStatus == 'coming_soon'
+                      ? Colors.blue.withOpacity(0.3)
+                      : Colors.orange.withOpacity(0.3)),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.bolt_rounded,
+                    color: orderNowStatus == 'open'
+                        ? Colors.green
+                        : (orderNowStatus == 'coming_soon'
+                            ? Colors.blue
+                            : Colors.orange),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Quick Delivery (Order Now Status)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: orderNowStatus == 'open'
+                            ? Colors.green.shade800
+                            : (orderNowStatus == 'coming_soon'
+                                ? Colors.blue.shade800
+                                : Colors.orange.shade800),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.playlist_add_check_rounded),
+                    tooltip: 'Bulk Edit Availability',
+                    onPressed: () {
+                      AppHaptics.buttonClick();
+                      Navigator.of(context).pushNamed(AppRoutes.quickOrderNowAdjust);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Control Quick Delivery availability for customers. Changes sync to customer app instantly.',
+                style: TextStyle(fontSize: 11, color: AppColors.gray600),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: orderNowStatus == 'open' ? Colors.green : Colors.transparent,
+                      foregroundColor: orderNowStatus == 'open' ? Colors.white : AppColors.textPrimary,
+                      elevation: orderNowStatus == 'open' ? 2 : 0,
+                      side: BorderSide(color: Colors.green.withOpacity(0.4)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                    onPressed: () {
+                      AppHaptics.buttonClick();
+                      ref.read(orderNowStatusProvider.notifier).setStatus('open');
+                    },
+                    icon: const Icon(Icons.check_circle_rounded, size: 16),
+                    label: const Text('Open', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: orderNowStatus == 'coming_soon' ? Colors.blue : Colors.transparent,
+                      foregroundColor: orderNowStatus == 'coming_soon' ? Colors.white : AppColors.textPrimary,
+                      elevation: orderNowStatus == 'coming_soon' ? 2 : 0,
+                      side: BorderSide(color: Colors.blue.withOpacity(0.4)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                    onPressed: () {
+                      AppHaptics.buttonClick();
+                      ref.read(orderNowStatusProvider.notifier).setStatus('coming_soon');
+                    },
+                    icon: const Icon(Icons.hourglass_empty_rounded, size: 16),
+                    label: const Text('Coming Soon', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: orderNowStatus == 'closed' ? Colors.orange : Colors.transparent,
+                      foregroundColor: orderNowStatus == 'closed' ? Colors.white : AppColors.textPrimary,
+                      elevation: orderNowStatus == 'closed' ? 2 : 0,
+                      side: BorderSide(color: Colors.orange.withOpacity(0.4)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                    onPressed: () {
+                      AppHaptics.buttonClick();
+                      ref.read(orderNowStatusProvider.notifier).setStatus('closed');
+                    },
+                    icon: const Icon(Icons.do_not_disturb_on_rounded, size: 16),
+                    label: const Text('Closed', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        CustomSearchBar(
+          hint: 'Search items for Quick Delivery...',
+          onChanged: (q) => ref.read(inventoryProvider.notifier).search(q),
+        ),
+        
+        // Horizontal category filters for Order Now
+        SizedBox(
+          height: 44,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _categories.length,
+            itemBuilder: (_, i) {
+              final cat = _categories[i];
+              final selected = cat == _category;
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _category = cat);
+                  ref
+                      .read(inventoryProvider.notifier)
+                      .filterByCategory(cat == 'All' ? '' : cat);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.only(right: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary
+                        : (Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF1E293B)
+                            : AppColors.gray100),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: selected
+                          ? AppColors.primary
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white.withOpacity(0.12)
+                              : AppColors.gray300),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      cat,
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white
+                            : (Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white70
+                                : AppColors.textPrimary),
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: itemsAsync.when(
+            loading: () => const LoadingShimmer(),
+            error: (e, _) => Center(child: Text('Error: $e')),
+            data: (items) {
+              if (items.isEmpty) {
+                return const EmptyStateWidget(
+                  icon: Icons.bolt_rounded,
+                  title: 'No Items Found',
+                  subtitle: 'Tap the copy button to sync prices from Normal inventory!',
+                );
+              }
+              
+              return RefreshIndicator(
+                onRefresh: () async => ref.refresh(inventoryProvider),
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: items.length,
+                  itemBuilder: (_, i) => _OrderNowItemTile(
+                    index: i,
+                    item: items[i],
+                    isWorker: isWorker,
+                    onAdjust: () => _showOrderNowAdjustDialog(context, items[i]),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── TAB 3: Market Price & Customer Savings Calculator ──────────────────────
   Widget _buildMarketSavingsTab(
       BuildContext context, AsyncValue<List<Item>> itemsAsync) {
     return itemsAsync.when(
@@ -1443,21 +1682,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       {'label': 'Pending', 'value': 'pending'},
     ];
 
-    String customRangeLabel = 'Custom Range 📅';
-    if (_selectedOrderDateRange != null && _selectedOrderDateFilter == 'custom') {
-      final startStr = DateFormat('dd MMM').format(_selectedOrderDateRange!.start);
-      final endStr = DateFormat('dd MMM').format(_selectedOrderDateRange!.end);
-      customRangeLabel = '$startStr - $endStr 📅';
-    }
-
-    final dateFilters = [
-      {'label': 'All Time', 'value': 'all'},
-      {'label': 'Today', 'value': 'today'},
-      {'label': 'Yesterday', 'value': 'yesterday'},
-      {'label': 'This Week', 'value': 'week'},
-      {'label': 'This Month', 'value': 'month'},
-      {'label': customRangeLabel, 'value': 'custom'},
-    ];
+    final dateCounts = ref.watch(preOrderDateCountsProvider).valueOrNull ?? {};
 
     return Column(
       children: [
@@ -1496,65 +1721,38 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
           ),
         ),
         const SizedBox(height: 6),
-        // Date Filter Row with Custom Range Picker
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: dateFilters.map((f) {
-              final isCustom = f['value'] == 'custom';
-              final isSelected = _selectedOrderDateFilter == f['value'];
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: FilterChip(
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isCustom) const Icon(Icons.date_range_rounded, size: 14),
-                      if (isCustom) const SizedBox(width: 4),
-                      Text(
-                        f['label']!,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected ? AppColors.primary : null,
-                        ),
-                      ),
-                    ],
+        // Running Month Date Strip for Pre-Order Date Categorization
+        RunningMonthDateStrip(
+          selectedFilter: _selectedOrderDateFilter,
+          onFilterSelected: (val) {
+            AppHaptics.selection();
+            setState(() {
+              _selectedOrderDateFilter = val;
+              if (val != 'custom') {
+                _selectedOrderDateRange = null;
+              }
+            });
+          },
+          dateCounts: dateCounts,
+          onCustomRangeTap: () async {
+            AppHaptics.buttonClick();
+            final picked = await showDateRangePicker(
+              context: context,
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
+              initialDateRange: _selectedOrderDateRange ??
+                  DateTimeRange(
+                    start: DateTime.now().subtract(const Duration(days: 7)),
+                    end: DateTime.now(),
                   ),
-                  selected: isSelected,
-                  selectedColor: AppColors.primary.withOpacity(0.15),
-                  checkmarkColor: AppColors.primary,
-                  onSelected: (selected) async {
-                    if (isCustom) {
-                      AppHaptics.buttonClick();
-                      final picked = await showDateRangePicker(
-                        context: context,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime.now(),
-                        initialDateRange: _selectedOrderDateRange ??
-                            DateTimeRange(
-                              start: DateTime.now().subtract(const Duration(days: 7)),
-                              end: DateTime.now(),
-                            ),
-                      );
-                      if (picked != null) {
-                        setState(() {
-                          _selectedOrderDateFilter = 'custom';
-                          _selectedOrderDateRange = picked;
-                        });
-                      }
-                    } else if (selected) {
-                      AppHaptics.selection();
-                      setState(() {
-                        _selectedOrderDateFilter = f['value']!;
-                      });
-                    }
-                  },
-                ),
-              );
-            }).toList(),
-          ),
+            );
+            if (picked != null) {
+              setState(() {
+                _selectedOrderDateFilter = 'custom';
+                _selectedOrderDateRange = picked;
+              });
+            }
+          },
         ),
         const SizedBox(height: 8),
 
@@ -3026,7 +3224,231 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       },
     );
   }
+
+  void _showOrderNowAdjustDialog(BuildContext context, Item item) {
+    final stockCon = TextEditingController(text: item.orderNowStock.toString());
+    final priceCon = TextEditingController(text: item.orderNowSellingPrice.toString());
+    final mrpCon = TextEditingController(text: item.orderNowMrp.toString());
+    final costCon = TextEditingController(text: item.orderNowCostPrice.toString());
+    bool isAvailable = item.orderNowIsAvailable;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Adjust Order Now: ${item.name}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: stockCon,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Order Now Stock (${item.unit})',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: priceCon,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Selling Price (₹)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: mrpCon,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'MRP (₹)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: costCon,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Cost Price (₹)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  title: const Text('Is Available'),
+                  value: isAvailable,
+                  onChanged: (v) {
+                    setDialogState(() {
+                      isAvailable = v;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              onPressed: () async {
+                final double? stock = double.tryParse(stockCon.text);
+                final double? price = double.tryParse(priceCon.text);
+                final double? mrp = double.tryParse(mrpCon.text);
+                final double? cost = double.tryParse(costCon.text);
+
+                if (stock == null || price == null || mrp == null || cost == null) {
+                  SnackbarHelper.showError(context, 'Please enter valid numbers');
+                  return;
+                }
+
+                Navigator.pop(context); // Close dialog
+
+                final updatedItem = item.copyWith(
+                  orderNowStock: stock,
+                  orderNowSellingPrice: price,
+                  orderNowMrp: mrp,
+                  orderNowCostPrice: cost,
+                  orderNowIsAvailable: isAvailable,
+                );
+
+                await ref.read(inventoryProvider.notifier).updateItem(updatedItem);
+                ref.invalidate(inventoryProvider);
+                if (context.mounted) {
+                  SnackbarHelper.showSuccess(context, 'Order Now details updated!');
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCopyPricesDialog(BuildContext context, List<Item> items) {
+    bool directionNormalToOrderNow = true;
+    bool copySellingPrice = true;
+    bool copyMrp = true;
+    bool copyCostPrice = true;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Copy Inventory Prices'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Direction:', style: TextStyle(fontWeight: FontWeight.bold)),
+              RadioListTile<bool>(
+                title: const Text('OrderKart to Order Now'),
+                value: true,
+                groupValue: directionNormalToOrderNow,
+                onChanged: (v) => setDialogState(() => directionNormalToOrderNow = v!),
+              ),
+              RadioListTile<bool>(
+                title: const Text('Order Now to OrderKart'),
+                value: false,
+                groupValue: directionNormalToOrderNow,
+                onChanged: (v) => setDialogState(() => directionNormalToOrderNow = v!),
+              ),
+              const Divider(),
+              const Text('Select Fields to Copy:', style: TextStyle(fontWeight: FontWeight.bold)),
+              CheckboxListTile(
+                title: const Text('Selling Price'),
+                value: copySellingPrice,
+                onChanged: (v) => setDialogState(() => copySellingPrice = v!),
+              ),
+              CheckboxListTile(
+                title: const Text('MRP (Market Price)'),
+                value: copyMrp,
+                onChanged: (v) => setDialogState(() => copyMrp = v!),
+              ),
+              CheckboxListTile(
+                title: const Text('Cost Price'),
+                value: copyCostPrice,
+                onChanged: (v) => setDialogState(() => copyCostPrice = v!),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              onPressed: () async {
+                Navigator.pop(context);
+                
+                // Show loading
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                );
+
+                try {
+                  final List<Item> updatedList = [];
+                  for (final item in items) {
+                    double newSellingPrice = item.sellingPrice;
+                    double newMrp = item.marketPrice;
+                    double newCostPrice = item.costPrice;
+                    
+                    double newOrderNowSellingPrice = item.orderNowSellingPrice;
+                    double newOrderNowMrp = item.orderNowMrp;
+                    double newOrderNowCostPrice = item.orderNowCostPrice;
+
+                    if (directionNormalToOrderNow) {
+                      if (copySellingPrice) newOrderNowSellingPrice = item.sellingPrice;
+                      if (copyMrp) newOrderNowMrp = item.marketPrice;
+                      if (copyCostPrice) newOrderNowCostPrice = item.costPrice;
+                    } else {
+                      if (copySellingPrice) newSellingPrice = item.orderNowSellingPrice;
+                      if (copyMrp) newMrp = item.orderNowMrp;
+                      if (copyCostPrice) newCostPrice = item.orderNowCostPrice;
+                    }
+
+                    updatedList.add(item.copyWith(
+                      sellingPrice: newSellingPrice,
+                      marketPrice: newMrp,
+                      costPrice: newCostPrice,
+                      orderNowSellingPrice: newOrderNowSellingPrice,
+                      orderNowMrp: newOrderNowMrp,
+                      orderNowCostPrice: newOrderNowCostPrice,
+                    ));
+                  }
+
+                  await ref.read(inventoryProvider.notifier).updateItems(updatedList);
+                  ref.invalidate(inventoryProvider);
+                  
+                  if (context.mounted) {
+                    Navigator.pop(context); // Close loading
+                    SnackbarHelper.showSuccess(context, 'Prices copied successfully!');
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    Navigator.pop(context); // Close loading
+                    SnackbarHelper.showError(context, 'Copy failed: $e');
+                  }
+                }
+              },
+              child: const Text('Copy'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
 
 class _ItemTile extends StatelessWidget {
   final int index;
@@ -3213,3 +3635,140 @@ class _ItemTile extends StatelessWidget {
     return tile;
   }
 }
+
+class _OrderNowItemTile extends StatelessWidget {
+  final int index;
+  final Item item;
+  final bool isWorker;
+  final VoidCallback onAdjust;
+
+  const _OrderNowItemTile({
+    required this.index,
+    required this.item,
+    required this.isWorker,
+    required this.onAdjust,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tile = GlassContainer(
+      margin: const EdgeInsets.only(bottom: 8),
+      borderRadius: BorderRadius.circular(14),
+      borderColor: !item.orderNowIsAvailable || item.orderNowStock <= 0
+          ? Colors.orange.shade300
+          : null,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: CircleAvatar(
+          radius: 14,
+          backgroundColor: Colors.orange.withOpacity(0.12),
+          child: Text(
+            '${index + 1}',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Colors.orange,
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                item.name,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (!item.orderNowIsAvailable || item.orderNowStock <= 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  item.orderNowStock <= 0 ? 'OUT OF STOCK' : 'UNAVAILABLE',
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Price: ${AppFormatters.currency(item.orderNowSellingPrice)} / ${item.unit}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.orange,
+                      fontSize: 13),
+                ),
+                if (item.orderNowMrp > 0)
+                  Text(
+                    'MRP: ${AppFormatters.currency(item.orderNowMrp)}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      decoration: TextDecoration.lineThrough,
+                      color: AppColors.textSecondaryColor(context),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Wrap(
+              spacing: 12,
+              runSpacing: 2,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Cost: ${AppFormatters.currency(item.orderNowCostPrice)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: theme.brightness == Brightness.dark
+                        ? const Color(0xFFFFCC80)
+                        : Colors.orange.shade800,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  'Stock: ${AppFormatters.quantity(item.orderNowStock, unit: item.unit)}',
+                  style: TextStyle(
+                    color: item.orderNowStock <= 0
+                        ? Colors.orange
+                        : AppColors.textSecondaryColor(context),
+                    fontWeight:
+                        item.orderNowStock <= 0 ? FontWeight.w800 : FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        trailing: isWorker
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.edit_rounded, color: Colors.orange),
+                onPressed: onAdjust,
+              ),
+      ),
+    );
+
+    return tile;
+  }
+}
+

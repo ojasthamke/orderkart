@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/item_dao.dart';
 import '../data/inventory_repository_impl.dart';
 import '../domain/inventory_repository.dart';
@@ -219,4 +220,51 @@ final orderedItemStatsProvider =
     endDate: endDate,
   );
 });
+
+final orderNowStatusProvider =
+    StateNotifierProvider<OrderNowStatusNotifier, AsyncValue<String>>((ref) {
+  return OrderNowStatusNotifier();
+});
+
+class OrderNowStatusNotifier extends StateNotifier<AsyncValue<String>> {
+  OrderNowStatusNotifier() : super(const AsyncValue.loading()) {
+    load();
+  }
+
+  Future<void> load() async {
+    state = const AsyncValue.loading();
+    try {
+      final client = Supabase.instance.client;
+      final res = await client
+          .from('settings')
+          .select('value')
+          .eq('key', 'order_now_status')
+          .maybeSingle();
+      final status = res?['value'] as String? ?? 'closed';
+      state = AsyncValue.data(status);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> setStatus(String status) async {
+    state = const AsyncValue.loading();
+    try {
+      final client = Supabase.instance.client;
+      if (client.auth.currentUser == null) {
+        await client.auth.signInWithPassword(
+          email: 'admin@aplibhaji.com',
+          password: 'adminpassword',
+        );
+      }
+      await client.from('settings').upsert({
+        'key': 'order_now_status',
+        'value': status,
+      });
+      state = AsyncValue.data(status);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+}
 

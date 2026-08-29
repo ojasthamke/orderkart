@@ -41,6 +41,8 @@ class OrderDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
+  bool _isDeleting = false;
+
   @override
   Widget build(BuildContext context) {
     final orderAsync = ref.watch(orderDetailProvider(widget.orderId));
@@ -57,6 +59,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         body: Center(child: Text('Error loading order: $e')),
       ),
       data: (order) {
+        if (_isDeleting) {
+          return const AppScaffold(
+            title: 'Order Details',
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
         if (order == null) {
           return const AppScaffold(
             title: 'Order Details',
@@ -284,20 +292,52 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time_rounded,
-                        size: 13, color: AppColors.textHint),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Order Date: $orderDateFormatted',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textHint,
-                          fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
+                if (order.orderType == 'Pre-Order' && order.orderTakingDate != null && order.orderTakingDate!.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_rounded,
+                          size: 13, color: Colors.purple),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Order-Taking Date: ${AppFormatters.dateFromString(order.orderTakingDate!)}',
+                        style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.purple,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time_rounded,
+                          size: 13, color: AppColors.textHint),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Placed: $orderDateFormatted',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textHint,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time_rounded,
+                          size: 13, color: AppColors.textHint),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Order Date: $orderDateFormatted',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textHint,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -449,6 +489,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Widget _buildItemsSection(AppOrder order, String currency) {
     final items = order.items;
+    final availableItems = items.where((it) => it.isAvailable).toList();
+    final unavailableItems = items.where((it) => !it.isAvailable).toList();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -503,46 +546,108 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          if (items.isEmpty)
+          if (availableItems.isEmpty && unavailableItems.isEmpty)
             const Text('No items in this order')
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: items.length,
-              itemBuilder: (ctx, i) {
-                final it = items[i];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              it.itemName,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 14),
-                            ),
-                            Text(
-                              '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} × $currency${it.unitPrice.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  color: AppColors.textSecondary, fontSize: 12),
-                            ),
-                          ],
+          else ...[
+            if (availableItems.isNotEmpty)
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: availableItems.length,
+                itemBuilder: (ctx, i) {
+                  final it = availableItems[i];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                it.itemName,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 14),
+                              ),
+                              Text(
+                                '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} × $currency${it.unitPrice.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary, fontSize: 12),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Text(
-                        '$currency${it.totalPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14),
-                      ),
-                    ],
+                        Text(
+                          '$currency${it.totalPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            if (unavailableItems.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Divider(),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.remove_shopping_cart_rounded, color: Colors.orange, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'NOT AVAILABLE ITEMS',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.orange.shade800),
                   ),
-                );
-              },
-            ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: unavailableItems.length,
+                itemBuilder: (ctx, i) {
+                  final it = unavailableItems[i];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                it.itemName,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    decoration: TextDecoration.lineThrough,
+                                    color: Colors.orange),
+                              ),
+                              Text(
+                                '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} × $currency${it.unitPrice.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                    color: Colors.orange, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '${currency}0.00',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 14, color: Colors.orange),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ],
         ],
       ),
     );
@@ -1198,6 +1303,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     );
     if (!ok) return;
     try {
+      setState(() {
+        _isDeleting = true;
+      });
       await ref.read(orderManagementProvider.notifier).deleteOrder(order.id);
       if (mounted) {
         SnackbarHelper.showSuccess(context, 'Order deleted');
@@ -1205,6 +1313,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
         SnackbarHelper.showError(context, 'Failed to delete order: $e');
       }
     }

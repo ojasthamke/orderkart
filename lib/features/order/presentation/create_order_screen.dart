@@ -44,8 +44,10 @@ class CartItem {
   final String unit;
   final double price;
   final double quantity;
+  final bool isAvailable;
 
-  double get total => double.parse((price * quantity).toStringAsFixed(2));
+  double get total => isAvailable ? double.parse((price * quantity).toStringAsFixed(2)) : 0.0;
+  double get fullPrice => double.parse((price * quantity).toStringAsFixed(2));
 
   const CartItem({
     required this.itemId,
@@ -53,15 +55,17 @@ class CartItem {
     required this.unit,
     required this.price,
     required this.quantity,
+    this.isAvailable = true,
   });
 
-  CartItem copyWith({double? quantity, String? unit, double? price}) =>
+  CartItem copyWith({double? quantity, String? unit, double? price, bool? isAvailable}) =>
       CartItem(
         itemId: itemId,
         name: name,
         unit: unit ?? this.unit,
         price: price ?? this.price,
         quantity: quantity ?? this.quantity,
+        isAvailable: isAvailable ?? this.isAvailable,
       );
 }
 
@@ -229,6 +233,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               unit: item.itemUnit,
               price: item.unitPrice,
               quantity: item.quantity,
+              isAvailable: item.isAvailable,
             ));
           }
         });
@@ -919,8 +924,42 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 );
               });
             },
+            onToggleAvailable: () {
+              AppHaptics.selection();
+              setState(() {
+                _cart[e.key] =
+                    cartItem.copyWith(isAvailable: !cartItem.isAvailable);
+              });
+            },
           );
         }),
+        if (_cart.any((i) => !i.isAvailable)) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(isDark ? 0.12 : 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.withOpacity(0.4)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, color: Colors.amber, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '${_cart.where((i) => !i.isAvailable).length} item(s) marked Unavailable. Their price is deducted from the bill total.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1975,6 +2014,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           quantity: c.quantity,
           unitPrice: c.price,
           totalPrice: c.total,
+          isAvailable: c.isAvailable,
         ));
       }
     }
@@ -2642,6 +2682,7 @@ class _CartItemTile extends StatelessWidget {
   final VoidCallback onRemove;
   final bool canToggleUnit;
   final ValueChanged<String>? onUnitChanged;
+  final VoidCallback? onToggleAvailable;
 
   const _CartItemTile({
     required this.cartItem,
@@ -2651,6 +2692,7 @@ class _CartItemTile extends StatelessWidget {
     required this.onRemove,
     this.canToggleUnit = false,
     this.onUnitChanged,
+    this.onToggleAvailable,
   });
 
   @override
@@ -2820,12 +2862,24 @@ class _CartItemTile extends StatelessWidget {
                   color: AppColors.primary,
                 ),
           ),
+          if (onToggleAvailable != null)
+            IconButton(
+              tooltip: cartItem.isAvailable ? 'Mark as Unavailable' : 'Mark as Available',
+              icon: Icon(
+                cartItem.isAvailable ? Icons.block_rounded : Icons.check_circle_outline_rounded,
+                size: 18,
+                color: cartItem.isAvailable ? Colors.amber.shade800 : Colors.green,
+              ),
+              onPressed: onToggleAvailable,
+              constraints: const BoxConstraints(),
+              padding: const EdgeInsets.only(left: 6),
+            ),
           IconButton(
             icon: const Icon(Icons.close_rounded,
                 size: 18, color: AppColors.error),
             onPressed: onRemove,
             constraints: const BoxConstraints(),
-            padding: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.only(left: 6),
           ),
         ],
       ),

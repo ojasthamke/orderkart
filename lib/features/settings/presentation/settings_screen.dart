@@ -207,6 +207,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               const SizedBox(height: 20),
 
+              // ── Store Status & Schedule ──────────────────────────────────────
+              _sectionHeader('Store Status & Schedule', Icons.store_rounded),
+              _card([
+                SwitchListTile(
+                  secondary: Icon(
+                    settings.storeOpen ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                    color: settings.storeOpen ? Colors.green : Colors.red,
+                  ),
+                  title: const Text('Store Open Status'),
+                  subtitle: Text(
+                    settings.storeOpen ? 'Customers can place orders.' : 'Store is CLOSED.',
+                    style: TextStyle(color: settings.storeOpen ? Colors.green[700] : Colors.red[700]),
+                  ),
+                  value: settings.storeOpen,
+                  onChanged: (v) {
+                    ref.read(settingsProvider.notifier).update(
+                          settings.copyWith(storeOpen: v),
+                        );
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.schedule_rounded),
+                  title: const Text('Schedule Date & Time'),
+                  subtitle: Text(
+                    settings.storeSchedule.isEmpty
+                        ? 'Not scheduled (Shows OPEN/CLOSED state)'
+                        : 'Reopening: ${settings.storeSchedule}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  trailing: settings.storeSchedule.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear_rounded, color: Colors.red),
+                          onPressed: () {
+                            ref.read(settingsProvider.notifier).update(
+                                  settings.copyWith(storeSchedule: ''),
+                                );
+                          },
+                        ),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 30)),
+                    );
+                    if (date != null && context.mounted) {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.now(),
+                      );
+                      if (time != null) {
+                        final formattedTime = time.format(context);
+                        final dateStr = "${date.day} ${_getMonthName(date.month)}";
+                        
+                        final now = DateTime.now();
+                        final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+                        final tomorrow = now.add(const Duration(days: 1));
+                        final isTomorrow = date.year == tomorrow.year && date.month == tomorrow.month && date.day == tomorrow.day;
+                        
+                        String finalStr;
+                        if (isToday) {
+                          finalStr = "Today, $formattedTime";
+                        } else if (isTomorrow) {
+                          finalStr = "Tomorrow, $formattedTime";
+                        } else {
+                          finalStr = "$dateStr, $formattedTime";
+                        }
+                        
+                        ref.read(settingsProvider.notifier).update(
+                              settings.copyWith(storeSchedule: finalStr),
+                            );
+                      }
+                    }
+                  },
+                ),
+              ]),
+
+              const SizedBox(height: 20),
+
               // ── Order Defaults ────────────────────────────────────
               _sectionHeader('Order Defaults', Icons.shopping_cart_rounded),
               _card([
@@ -907,6 +988,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
       },
     );
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[month - 1];
   }
 
   Widget _sectionHeader(String title, IconData icon, {Color? color}) {

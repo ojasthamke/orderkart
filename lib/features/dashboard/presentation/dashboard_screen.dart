@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -26,6 +27,7 @@ import '../../notification/presentation/notification_provider.dart';
 import '../../area/presentation/area_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../../../core/services/customer_order_sync_service.dart';
+import '../../order/presentation/widgets/running_month_date_strip.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -56,6 +58,58 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       showBack: false,
       drawer: const AppDrawer(),
       actions: [
+        ref.watch(settingsProvider).when(
+          data: (settings) {
+            final isOpen = settings.storeOpen;
+            return InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () async {
+                HapticFeedback.mediumImpact();
+                final updated = settings.copyWith(storeOpen: !isOpen);
+                await ref.read(settingsProvider.notifier).update(updated);
+                if (context.mounted) {
+                  SnackbarHelper.showSuccess(
+                    context, 
+                    'Store is now ${!isOpen ? "OPEN 🟢" : "CLOSED 🔴"}'
+                  );
+                }
+              },
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isOpen ? const Color(0xFF10B981).withOpacity(0.15) : Colors.red.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isOpen ? const Color(0xFF10B981) : Colors.red,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isOpen ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                      size: 14,
+                      color: isOpen ? const Color(0xFF10B981) : Colors.red,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isOpen ? 'OPEN' : 'CLOSED',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isOpen ? const Color(0xFF10B981) : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
         IconButton(
           icon: const Icon(Icons.sync_rounded),
           tooltip: 'Sync Database',
@@ -152,22 +206,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // App Logo
-                      _buildGlassContainer(
-                        context: context,
-                        width: 56,
-                        height: 56,
-                        borderRadius: BorderRadius.circular(16),
-                        padding: EdgeInsets.zero,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(15),
-                          child: Image.asset(
-                            'assets/logo.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.local_mall_rounded,
-                              color: AppColors.primary,
-                              size: 32,
-                            ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/orderkart_logo.jpg',
+                          height: 48,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.local_mall_rounded,
+                            color: AppColors.primary,
+                            size: 32,
                           ),
                         ),
                       ),
@@ -701,21 +749,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Filter Chips Row
-                  SizedBox(
-                    height: 38,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        _buildFilterChip('today', 'Today'),
-                        _buildFilterChip('all', 'All'),
-                        _buildFilterChip('yesterday', 'Yesterday'),
-                        _buildFilterChip('week', 'This Week'),
-                        _buildFilterChip('month', 'This Month'),
-                        _buildFilterChip('custom', 'Custom'),
-                      ],
-                    ),
-                  ),
+                  // Filter Chips Row (Running Month & Custom Range)
+                  ref.watch(preOrderDateCountsProvider).maybeWhen(
+                        data: (dateCounts) => RunningMonthDateStrip(
+                          selectedFilter: _selectedFilter,
+                          dateCounts: dateCounts,
+                          onFilterSelected: (val) {
+                            setState(() => _selectedFilter = val);
+                          },
+                          onCustomRangeTap: _pickDateRange,
+                        ),
+                        orElse: () => RunningMonthDateStrip(
+                          selectedFilter: _selectedFilter,
+                          onFilterSelected: (val) {
+                            setState(() => _selectedFilter = val);
+                          },
+                          onCustomRangeTap: _pickDateRange,
+                        ),
+                      ),
                   const SizedBox(height: 12),
 
                   if (_selectedFilter == 'custom' &&
@@ -911,50 +962,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String value, String label) {
-    final isSelected = _selectedFilter == value;
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : cs.onSurface.withOpacity(0.75),
-          ),
-        ),
-        selected: isSelected,
-        selectedColor: AppColors.primary,
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFF1A1A1A)
-            : AppColors.gray100,
-        side: BorderSide(
-          color: isSelected
-              ? AppColors.primary
-              : (Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFF2A2A2A)
-                  : AppColors.gray300),
-          width: isSelected ? 1.5 : 1,
-        ),
-        onSelected: (selected) {
-          if (selected) {
-            setState(() {
-              _selectedFilter = value;
-              if (value != 'custom') {
-                _startDate = null;
-                _endDate = null;
-              } else {
-                _pickDateRange();
-              }
-            });
-          }
-        },
       ),
     );
   }
