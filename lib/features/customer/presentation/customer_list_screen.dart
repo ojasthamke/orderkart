@@ -35,6 +35,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
   bool _isSelectionMode = false;
   final Set<String> _selectedCustomerIds = {};
   bool _isSyncing = false;
+  String _customerFilter = 'All';
+
 
   void _toggleSelection(String customerId) {
     setState(() {
@@ -404,75 +406,136 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                     .read(customerListProvider(effectiveStreetId).notifier)
                     .search(q),
               ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    FilterChip(
+                      label: const Text('All'),
+                      selected: _customerFilter == 'All',
+                      selectedColor: AppColors.primary.withOpacity(0.15),
+                      checkmarkColor: AppColors.primary,
+                      onSelected: (_) => setState(() => _customerFilter = 'All'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
+                      label: const Text('Registered (Codes)'),
+                      selected: _customerFilter == 'Registered',
+                      selectedColor: AppColors.primary.withOpacity(0.15),
+                      checkmarkColor: AppColors.primary,
+                      onSelected: (_) => setState(() => _customerFilter = 'Registered'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
+                      label: const Text('Guests'),
+                      selected: _customerFilter == 'Guests',
+                      selectedColor: Colors.amber.withOpacity(0.2),
+                      checkmarkColor: Colors.amber[800],
+                      labelStyle: TextStyle(
+                        color: _customerFilter == 'Guests' ? Colors.amber[900] : null,
+                        fontWeight: _customerFilter == 'Guests' ? FontWeight.bold : null,
+                      ),
+                      onSelected: (_) => setState(() => _customerFilter = 'Guests'),
+                    ),
+                    const SizedBox(width: 8),
+                    ActionChip(
+                      avatar: const Icon(Icons.person_pin_circle_rounded, size: 16, color: Colors.amber),
+                      label: const Text('Guest Hub & Logins', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      backgroundColor: Colors.amber.withOpacity(0.12),
+                      onPressed: () => Navigator.of(context).pushNamed(AppRoutes.guests),
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
-                child: customers.isEmpty
-                    ? EmptyStateWidget(
-                        icon: Icons.people_outline_rounded,
-                        title: 'No Customers Found',
-                        subtitle: 'Try changing search filter',
-                        actionLabel: 'Add Customer',
-                        onAction: () {
-                          if (widget.streetId != null) {
-                            Navigator.of(context).pushNamed(
-                              AppRoutes.addEditCustomer,
-                              arguments: {'streetId': widget.streetId},
-                            ).then((_) => ref.refresh(
-                                customerListProvider(effectiveStreetId)));
-                          }
+                child: () {
+                  final displayCustomers = customers.where((c) {
+                    if (_customerFilter == 'Registered') {
+                      return !c.isGuest && c.customerCode.isNotEmpty;
+                    }
+                    if (_customerFilter == 'Guests') {
+                      return c.isGuest || c.customerCode.isEmpty;
+                    }
+                    return true;
+                  }).toList();
+
+                  if (displayCustomers.isEmpty) {
+                    return EmptyStateWidget(
+                      icon: Icons.people_outline_rounded,
+                      title: 'No Customers Found',
+                      subtitle: _customerFilter != 'All'
+                          ? 'No customers matching "$_customerFilter" filter.'
+                          : 'Try changing search filter',
+                      actionLabel: 'Add Customer',
+                      onAction: () {
+                        if (widget.streetId != null) {
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.addEditCustomer,
+                            arguments: {'streetId': widget.streetId},
+                          ).then((_) => ref.refresh(
+                              customerListProvider(effectiveStreetId)));
+                        }
+                      },
+                    );
+                  }
+
+                  if (_isSelectionMode) {
+                    return ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 96),
+                      itemCount: displayCustomers.length,
+                      itemBuilder: (ctx, i) => _CustomerCard(
+                        key: ValueKey(displayCustomers[i].id),
+                        customer: displayCustomers[i],
+                        streetId: effectiveStreetId,
+                        isSelectionMode: true,
+                        isSelected: _selectedCustomerIds
+                            .contains(displayCustomers[i].id),
+                        onTap: () => _toggleSelection(displayCustomers[i].id),
+                        onLongPress: () {},
+                        index: i,
+                      ),
+                    );
+                  }
+
+                  return ReorderableListView.builder(
+                    padding: const EdgeInsets.only(bottom: 96),
+                    itemCount: displayCustomers.length,
+                    buildDefaultDragHandles: false,
+                    onReorder: (oldIndex, newIndex) {
+                      if (newIndex > oldIndex) {
+                        newIndex -= 1;
+                      }
+                      ref
+                          .read(customerListProvider(effectiveStreetId)
+                              .notifier)
+                          .reorder(oldIndex, newIndex);
+                    },
+                    itemBuilder: (ctx, i) => KeyedSubtree(
+                      key: ValueKey(displayCustomers[i].id),
+                      child: _CustomerCard(
+                        customer: displayCustomers[i],
+                        streetId: effectiveStreetId,
+                        isSelectionMode: false,
+                        isSelected: false,
+                        onTap: () {
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.customerProfile,
+                            arguments: {'customerId': displayCustomers[i].id},
+                          ).then((_) => ref.refresh(
+                              customerListProvider(effectiveStreetId)));
                         },
-                      )
-                    : (_isSelectionMode
-                        ? ListView.builder(
-                            padding: const EdgeInsets.only(bottom: 96),
-                            itemCount: customers.length,
-                            itemBuilder: (ctx, i) => _CustomerCard(
-                              key: ValueKey(customers[i].id),
-                              customer: customers[i],
-                              streetId: effectiveStreetId,
-                              isSelectionMode: true,
-                              isSelected: _selectedCustomerIds
-                                  .contains(customers[i].id),
-                              onTap: () => _toggleSelection(customers[i].id),
-                              onLongPress: () {},
-                              index: i,
-                            ),
-                          )
-                        : ReorderableListView.builder(
-                            padding: const EdgeInsets.only(bottom: 96),
-                            itemCount: customers.length,
-                            buildDefaultDragHandles: false,
-                            onReorder: (oldIndex, newIndex) {
-                              if (newIndex > oldIndex) {
-                                newIndex -= 1;
-                              }
-                              ref
-                                  .read(customerListProvider(effectiveStreetId)
-                                      .notifier)
-                                  .reorder(oldIndex, newIndex);
-                            },
-                            itemBuilder: (ctx, i) => KeyedSubtree(
-                              key: ValueKey(customers[i].id),
-                              child: _CustomerCard(
-                                customer: customers[i],
-                                streetId: effectiveStreetId,
-                                isSelectionMode: false,
-                                isSelected: false,
-                                onTap: () => Navigator.of(context).pushNamed(
-                                    AppRoutes.customerProfile,
-                                    arguments: {
-                                      'customerId': customers[i].id
-                                    }).then((_) => ref.refresh(
-                                    customerListProvider(effectiveStreetId))),
-                                onLongPress: () {
-                                  setState(() {
-                                    _isSelectionMode = true;
-                                    _selectedCustomerIds.add(customers[i].id);
-                                  });
-                                },
-                                index: i,
-                              ),
-                            ),
-                          )),
+                        onLongPress: () {
+                          setState(() {
+                            _isSelectionMode = true;
+                            _selectedCustomerIds.add(displayCustomers[i].id);
+                          });
+                        },
+                        index: i,
+                      ),
+                    ),
+                  );
+                }(),
               ),
             ],
           ),
@@ -777,6 +840,36 @@ class _CustomerCard extends ConsumerWidget {
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
+                                          if (customer.customerCode.isNotEmpty) ...[
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary.withOpacity(0.12),
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                                              ),
+                                              child: Text(
+                                                customer.customerCode,
+                                                style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                          ],
+                                          if (customer.isGuest || customer.customerCode.isEmpty) ...[
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.amber.withOpacity(0.2),
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                                              ),
+                                              child: const Text(
+                                                'GUEST',
+                                                style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.w900),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                          ],
                                           if (customer.isVipActive)
                                             VipGoldBadgeChip(
                                                 planName: customer.vipPlan)

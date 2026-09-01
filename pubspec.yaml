@@ -114,5 +114,6 @@ flutter:
   assets:
     - assets/logo.png
     - assets/icon.png
+    - assets/orderkart_logo.png
     - assets/orderkart_logo.jpg
     - assets/splash_bg.jpg

@@ -2854,13 +2854,18 @@ class _CartItemTile extends StatelessWidget {
             maxStock: maxStock,
             onChanged: onQtyChanged,
           ),
-          const SizedBox(width: 12),
-          Text(
-            '$currency${cartItem.total.toStringAsFixed(2)}',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 48),
+            child: Text(
+              '$currency${cartItem.total.toStringAsFixed(2)}',
+              textAlign: TextAlign.right,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                    fontSize: 13,
+                  ),
+            ),
           ),
           if (onToggleAvailable != null)
             IconButton(
@@ -2872,14 +2877,14 @@ class _CartItemTile extends StatelessWidget {
               ),
               onPressed: onToggleAvailable,
               constraints: const BoxConstraints(),
-              padding: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsets.only(left: 4),
             ),
           IconButton(
             icon: const Icon(Icons.close_rounded,
                 size: 18, color: AppColors.error),
             onPressed: onRemove,
             constraints: const BoxConstraints(),
-            padding: const EdgeInsets.only(left: 6),
+            padding: const EdgeInsets.only(left: 4),
           ),
         ],
       ),
@@ -2933,16 +2938,16 @@ class _QtyPickerState extends State<_QtyPicker> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 108,
+      width: 82,
       child: TextField(
         controller: _ctrl,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           isDense: true,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
           ),

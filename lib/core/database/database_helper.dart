@@ -320,7 +320,9 @@ class DatabaseHelper {
     await _ensureVipColumns(db);
     await _ensureV4Columns(db);
     await _ensureAreaScheduleColumns(db);
+    await _ensureCustomerLoginLogsTable(db);
   }
+
 
   Future<void> _ensureAreaScheduleColumns(Database db) async {
     try {
@@ -722,6 +724,25 @@ class DatabaseHelper {
       )
     ''');
   }
+
+  Future<void> _ensureCustomerLoginLogsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS customer_login_logs (
+        id            TEXT PRIMARY KEY,
+        customer_id   TEXT,
+        customer_code TEXT,
+        customer_name TEXT,
+        customer_phone TEXT,
+        login_method  TEXT,
+        logged_in_at  TEXT,
+        device_info   TEXT,
+        app_version   TEXT,
+        expires_at    TEXT,
+        created_at    TEXT
+      )
+    ''');
+  }
+
 
   Future<void> _ensureCustomerItemPricesTable(Database db) async {
     await db.execute('''

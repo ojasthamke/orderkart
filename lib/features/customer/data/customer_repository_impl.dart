@@ -36,10 +36,28 @@ class CustomerRepositoryImpl implements CustomerRepository {
       _dao.searchCustomers(query);
 
   @override
+  Future<List<Customer>> getGuestCustomers({String? searchQuery}) =>
+      _dao.getGuestCustomers(searchQuery: searchQuery);
+
+  @override
+  Future<List<Customer>> getRegisteredCustomers(String streetId,
+          {String? searchQuery}) =>
+      _dao.getRegisteredCustomers(streetId, searchQuery: searchQuery);
+
+  @override
   Future<void> reorderCustomers(String streetId, List<String> orderedIds) =>
       _dao.saveCustomerOrder(streetId, orderedIds);
 
   @override
   Future<void> moveCustomers(List<String> customerIds, String newStreetId) =>
       _dao.moveCustomers(customerIds, newStreetId);
+
+  @override
+  Future<void> convertToRegisteredCustomer(String customerId, String newCustomerCode, {String? streetId}) =>
+      _dao.convertToRegisteredCustomer(customerId, newCustomerCode, streetId: streetId);
+
+  @override
+  Future<List<Map<String, dynamic>>> getLoginLogs({int limit = 100, String? loginMethodFilter}) =>
+      _dao.getLoginLogs(limit: limit, loginMethodFilter: loginMethodFilter);
 }
+

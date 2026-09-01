@@ -209,8 +209,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.asset(
-                          'assets/orderkart_logo.jpg',
+                          'assets/orderkart_logo.png',
                           height: 48,
+                          width: 48,
                           fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) => const Icon(
                             Icons.local_mall_rounded,
@@ -530,6 +531,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           onTap: () => Navigator.of(context)
                               .pushNamed(AppRoutes.orderManagement),
                         ),
+                        _buildDashboardCard(
+                          context,
+                          title: 'Guest Hub',
+                          icon: Icons.person_pin_circle_rounded,
+                          color: Colors.amber,
+                          providerValue:
+                              ref.watch(guestCustomersProvider).maybeWhen(
+                                    data: (list) => list.length.toString(),
+                                    orElse: () => '0',
+                                  ),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.guests),
+                        ),
+
                         _buildDashboardCard(
                           context,
                           title: 'Pending Dues',

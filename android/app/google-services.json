@@ -1,0 +1,29 @@
+﻿{
+  "project_info": {
+    "project_number": "177314279725",
+    "project_id": "alibhaji-customers",
+    "storage_bucket": "alibhaji-customers.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:177314279725:android:a62c1e924da4b3bcc3e3a4",
+        "android_client_info": {
+          "package_name": "com.example.orderkart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCcpfhCazk8-pVFBH3a6tGKYvx9DY-uibo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

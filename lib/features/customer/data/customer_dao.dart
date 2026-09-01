@@ -235,9 +235,6 @@ class CustomerDao {
     }
 
     final map = customer.toMap();
-    await DatabaseHelper.instance
-        .ensureLegacyStreetAndAreaExists(db, customer.streetId);
-    await DatabaseHelper.instance.ensureCustomerDeviceColumns(db);
     await db.insert(
         'customers',
         {
@@ -260,9 +257,6 @@ class CustomerDao {
 
   Future<void> updateCustomer(Customer customer) async {
     final db = await _db;
-    await DatabaseHelper.instance
-        .ensureLegacyStreetAndAreaExists(db, customer.streetId);
-    await DatabaseHelper.instance.ensureCustomerDeviceColumns(db);
     await db.update(
       'customers',
       {
@@ -410,7 +404,9 @@ class CustomerDao {
       FROM payments p
       LEFT JOIN orders o ON p.order_id = o.id
       WHERE (p.customer_id = ? OR o.customer_id = ?)
+        AND (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
     ''', [customerId, customerId]);
+
 
     if (ordersResult.isNotEmpty) {
       final orderRow = ordersResult.first;
@@ -475,4 +471,101 @@ class CustomerDao {
       whereArgs: [customerId],
     );
   }
+
+  /// Fetch all Guest customers (users without customer code or is_guest = 1)
+  Future<List<Customer>> getGuestCustomers({String? searchQuery}) async {
+    final db = await _db;
+    String where = '(is_archived IS NULL OR is_archived = 0) AND (is_guest = 1 OR customer_code IS NULL OR customer_code = "")';
+    List<dynamic> args = [];
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      where += ' AND (name LIKE ? OR phone1 LIKE ? OR address LIKE ?)';
+      final q = '%${searchQuery.trim()}%';
+      args.addAll([q, q, q]);
+    }
+
+    final maps = await db.query(
+      'customers',
+      where: where,
+      whereArgs: args,
+      orderBy: 'created_at DESC',
+    );
+    return maps.map(Customer.fromMap).toList();
+  }
+
+  /// Fetch Registered customers (users with customer code and is_guest = 0)
+  Future<List<Customer>> getRegisteredCustomers(String streetId, {String? searchQuery}) async {
+    final db = await _db;
+    String where = '(is_archived IS NULL OR is_archived = 0) AND (is_guest = 0 OR is_guest IS NULL) AND (customer_code IS NOT NULL AND customer_code != "")';
+    List<dynamic> args = [];
+    if (streetId.isNotEmpty) {
+      where += ' AND (street_id = ? OR location_id = ?)';
+      args.addAll([streetId, streetId]);
+    }
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      where += ' AND (name LIKE ? OR phone1 LIKE ? OR house_number LIKE ? OR customer_code LIKE ?)';
+      final q = '%${searchQuery.trim()}%';
+      args.addAll([q, q, q, q]);
+    }
+
+    final maps = await db.query(
+      'customers',
+      where: where,
+      whereArgs: args,
+    );
+    final customers = maps.map(Customer.fromMap).toList();
+    customers.sort((a, b) {
+      final aNo = a.serialNo;
+      final bNo = b.serialNo;
+      if (aNo == 0 && bNo == 0) return a.createdAt.compareTo(b.createdAt);
+      if (aNo == 0) return 1;
+      if (bNo == 0) return -1;
+      return aNo.compareTo(bNo);
+    });
+    return customers;
+  }
+
+  /// Convert a Guest to a Registered Customer by assigning a customer code
+  Future<void> convertToRegisteredCustomer(String customerId, String newCustomerCode, {String? streetId}) async {
+    final db = await _db;
+    final cleanCode = newCustomerCode.trim().toUpperCase();
+    final now = DateTime.now().toIso8601String();
+
+    final updates = <String, dynamic>{
+      'is_guest': 0,
+      'customer_code': cleanCode,
+      'updated_at': now,
+    };
+    if (streetId != null && streetId.isNotEmpty) {
+      updates['street_id'] = streetId;
+      updates['location_id'] = streetId;
+    }
+
+    await db.update(
+      'customers',
+      updates,
+      where: 'id = ?',
+      whereArgs: [customerId],
+    );
+  }
+
+  /// Fetch Login audit logs with optional filter
+  Future<List<Map<String, dynamic>>> getLoginLogs({int limit = 100, String? loginMethodFilter}) async {
+    final db = await _db;
+    String? where;
+    List<dynamic>? whereArgs;
+
+    if (loginMethodFilter != null && loginMethodFilter.isNotEmpty && loginMethodFilter != 'All') {
+      where = 'login_method LIKE ?';
+      whereArgs = ['%$loginMethodFilter%'];
+    }
+
+    return await db.query(
+      'customer_login_logs',
+      where: where,
+      whereArgs: whereArgs,
+      orderBy: 'logged_in_at DESC',
+      limit: limit,
+    );
+  }
 }
+

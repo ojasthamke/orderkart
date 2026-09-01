@@ -66,7 +66,9 @@ import 'features/inventory/presentation/quick_inventory_adjust_screen.dart';
 import 'features/inventory/presentation/quick_order_now_adjust_screen.dart';
 import 'features/area_intelligence_map/presentation/area_intelligence_map_screen.dart';
 import 'features/area_intelligence_map/presentation/map_pin_picker_screen.dart';
+import 'features/customer/presentation/guest_management_screen.dart';
 import 'package:latlong2/latlong.dart';
+
 
 class OrderKartApp extends ConsumerStatefulWidget {
   const OrderKartApp({super.key});
@@ -136,6 +138,10 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
               streetName: args?['streetName'] as String?,
             ),
             settings);
+
+      case AppRoutes.guests:
+        return _slide(const GuestManagementScreen(), settings);
+
 
       case AppRoutes.customerProfile:
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};

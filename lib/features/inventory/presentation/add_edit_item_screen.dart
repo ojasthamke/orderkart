@@ -35,6 +35,13 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   final _barcodeCon = TextEditingController();
   final _sequenceCon = TextEditingController();
 
+  // Order Now fields
+  final _orderNowStockCon = TextEditingController();
+  final _orderNowSellCon = TextEditingController();
+  final _orderNowMrpCon = TextEditingController();
+  final _orderNowCostCon = TextEditingController();
+  bool _orderNowIsAvailable = true;
+
   // New V6 fields
   final _expiryCon = TextEditingController();
   final _batchCon = TextEditingController();
@@ -45,6 +52,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   bool _rxRequired = false;
   String _photoPath = '';
   DateTime _createdAt = DateTime.now();
+
 
   String _category = AppConstants.catVegetables;
   String _unit = AppConstants.unitKg;
@@ -106,7 +114,15 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _weightPerPieceCon.text = item.weightPerPiece.toString();
         _photoPath = item.photoPath;
         _createdAt = item.createdAt;
+
+        // Order Now fields
+        _orderNowStockCon.text = item.orderNowStock > 0 ? '${item.orderNowStock}' : '';
+        _orderNowSellCon.text = item.orderNowSellingPrice > 0 ? '${item.orderNowSellingPrice}' : '';
+        _orderNowMrpCon.text = item.orderNowMrp > 0 ? '${item.orderNowMrp}' : '';
+        _orderNowCostCon.text = item.orderNowCostPrice > 0 ? '${item.orderNowCostPrice}' : '';
+        _orderNowIsAvailable = item.orderNowIsAvailable;
       });
+
     }
   }
 
@@ -169,7 +185,12 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     _minStockCon.dispose();
     _barcodeCon.dispose();
     _sequenceCon.dispose();
+    _orderNowStockCon.dispose();
+    _orderNowSellCon.dispose();
+    _orderNowMrpCon.dispose();
+    _orderNowCostCon.dispose();
     _expiryCon.dispose();
+
     _batchCon.dispose();
     _dosageCon.dispose();
     _bestBeforeCon.dispose();
@@ -543,8 +564,10 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                 ],
               ),
 
+              _buildOrderNowFields(),
               _buildCategorySpecificFields(),
               const SizedBox(height: 32),
+
 
               SizedBox(
                 width: double.infinity,
@@ -660,7 +683,13 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         packDate: _category == AppConstants.catGroceries ? _packCon.text : '',
         weightPerPiece: double.tryParse(_weightPerPieceCon.text) ?? 0.25,
         sequenceNo: int.tryParse(_sequenceCon.text.trim()) ?? 0,
+        orderNowStock: double.tryParse(_orderNowStockCon.text) ?? (double.tryParse(_stockCon.text) ?? 0),
+        orderNowSellingPrice: double.tryParse(_orderNowSellCon.text) ?? (double.tryParse(_sellCon.text) ?? 0),
+        orderNowMrp: double.tryParse(_orderNowMrpCon.text) ?? (double.tryParse(_marketCon.text) ?? 0),
+        orderNowCostPrice: double.tryParse(_orderNowCostCon.text) ?? (double.tryParse(_costCon.text) ?? 0),
+        orderNowIsAvailable: _orderNowIsAvailable,
       );
+
 
       if (_isEdit) {
         await ref.read(inventoryProvider.notifier).updateItem(item);
@@ -681,7 +710,140 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     }
   }
 
+  Widget _buildOrderNowFields() {
+    final settings = ref.watch(settingsProvider).valueOrNull;
+    final currency = settings?.currency ?? AppConstants.defaultCurrency;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 32),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3E0),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFFB74D), width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.flash_on_rounded, color: Color(0xFFE65100), size: 22),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Order Now (Quick Delivery)',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFE65100),
+                          ),
+                        ),
+                        Text(
+                          'Priority 1-2 hour delivery inventory & pricing',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF795548)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _orderNowIsAvailable,
+                    activeColor: const Color(0xFFE65100),
+                    onChanged: (val) => setState(() => _orderNowIsAvailable = val),
+                  ),
+                ],
+              ),
+              if (_orderNowIsAvailable) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _orderNowSellCon.text = _sellCon.text;
+                        _orderNowMrpCon.text = _marketCon.text;
+                        _orderNowCostCon.text = _costCon.text;
+                        _orderNowStockCon.text = _stockCon.text;
+                      });
+                    },
+                    icon: const Icon(Icons.copy_rounded, size: 14),
+                    label: const Text('Copy from Normal Rates', style: TextStyle(fontSize: 11)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFE65100),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _orderNowStockCon,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Quick Stock',
+                          prefixIcon: Icon(Icons.flash_on_rounded, color: Color(0xFFE65100)),
+                          helperText: 'Available for Order Now',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _orderNowSellCon,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Quick Price',
+                          prefixText: '$currency ',
+                          helperText: 'Selling rate for Order Now',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _orderNowMrpCon,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Quick MRP',
+                          prefixText: '$currency ',
+                          helperText: 'Market price for savings',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _orderNowCostCon,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Quick Cost Price',
+                          prefixText: '$currency ',
+                          helperText: 'Cost price for Order Now',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCategorySpecificFields() {
+
     if (_category == AppConstants.catMedicines) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,

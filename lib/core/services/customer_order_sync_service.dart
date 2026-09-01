@@ -5,7 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
+import '../utils/unit_converter.dart';
 import '../../features/customer/data/customer_dao.dart';
+
+import '../../features/customer/domain/customer.dart';
 import 'notification_service.dart';
 
 class CustomerOrderSyncService {
@@ -30,22 +33,49 @@ class CustomerOrderSyncService {
     }
   }
 
+  int _syncCycleCount = 0;
+
   void startSync() {
     _syncTimer?.cancel();
-    // Run sync check every 10 seconds
-    _syncTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      if (_isSyncing) return; // Prevent concurrent sync cycles
-      _isSyncing = true;
+    
+    // Immediate initial sync on startup
+    Future.microtask(() async {
       try {
-        await pushModifiedOrders();
+        await _ensureSupabaseAuth();
+        await pullRemoteCustomersAndGuests();
+        await pullLoginLogs();
         await syncAllExistingCustomers();
         await syncInventory();
         await syncOrders();
+      } catch (e) {
+        debugPrint('Initial sync error: $e');
+      }
+    });
+
+    // Run fast order sync every 15 seconds, and customer/inventory sync every 2 minutes
+    _syncTimer = Timer.periodic(const Duration(seconds: 15), (_) async {
+      if (_isSyncing) return; // Prevent concurrent sync cycles
+      _isSyncing = true;
+      _syncCycleCount++;
+      try {
+        await pushModifiedOrders();
+        await syncOrders();
+        if (_syncCycleCount % 4 == 0) {
+          await pullRemoteCustomersAndGuests();
+          await pullLoginLogs();
+        }
+        if (_syncCycleCount % 8 == 0) {
+          await syncAllExistingCustomers();
+          await syncInventory();
+        }
+      } catch (e) {
+        debugPrint('Periodic sync error: $e');
       } finally {
         _isSyncing = false;
       }
     });
   }
+
 
   void stopSync() {
     _syncTimer?.cancel();
@@ -200,17 +230,32 @@ class CustomerOrderSyncService {
         debugPrint('[SYNC] Customer $rawId ($name) area=$supabaseAreaId road=$supabaseRoadId subroad=$supabaseSubRoadId');
 
         try {
-          await client.rpc('sync_customer_with_code', params: {
-            'p_id': customerId,
-            'p_name': name,
-            'p_phone': phone,
-            'p_email': '',
-            'p_address': address,
-            'p_customer_code': codeRaw,
-            'p_area_id': supabaseAreaId,
-            'p_road_id': supabaseRoadId,
-            'p_sub_road_id': supabaseSubRoadId,
-          });
+          try {
+            await client.rpc('sync_customer_with_code', params: {
+              'p_id': customerId,
+              'p_name': name,
+              'p_phone': phone,
+              'p_email': '',
+              'p_address': address,
+              'p_customer_code': codeRaw,
+              'p_area_id': supabaseAreaId,
+              'p_road_id': supabaseRoadId,
+              'p_sub_road_id': supabaseSubRoadId,
+            });
+          } catch (rpcErr) {
+            debugPrint('[SYNC] RPC sync_customer_with_code error: $rpcErr. Falling back to direct upsert.');
+            final Map<String, dynamic> row = {
+              'id': customerId,
+              'name': name,
+              'phone': phone,
+              'address': address,
+              'customer_code': codeRaw,
+            };
+            if (supabaseAreaId != null) row['area_id'] = supabaseAreaId;
+            if (supabaseRoadId != null) row['road_id'] = supabaseRoadId;
+            if (supabaseSubRoadId != null) row['sub_road_id'] = supabaseSubRoadId;
+            await client.from('customers').upsert(row, onConflict: 'id');
+          }
 
           // Mark synced in local settings
           await db.insert(
@@ -242,6 +287,170 @@ class CustomerOrderSyncService {
       'updated': updated,
       'failed': failed,
     };
+  }
+
+  Future<void> pullRemoteCustomersAndGuests() async {
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      final db = await DatabaseHelper.instance.database;
+
+      final List<dynamic> remoteCusts = await client.from('customers').select('*');
+      for (final rc in remoteCusts) {
+        final rawId = rc['id']?.toString() ?? '';
+        if (rawId.isEmpty) continue;
+
+        final phone = (rc['phone']?.toString() ?? '').trim();
+        final name = (rc['name']?.toString() ?? '').trim();
+        final address = (rc['address']?.toString() ?? '').trim();
+        final codeRaw = (rc['customer_code']?.toString() ?? '').trim();
+        final bool isGuest = (rc['is_guest'] == true || rc['is_guest'] == 1 || codeRaw.isEmpty);
+
+        // Check if customer exists in SQLite
+        final existing = await db.query(
+          'customers',
+          where: 'id = ? OR (phone1 = ? AND phone1 != "")',
+          whereArgs: [rawId, phone],
+        );
+
+        if (existing.isEmpty) {
+          // Insert new remote customer / guest into SQLite
+          await db.insert(
+            'customers',
+            {
+              'id': rawId,
+              'name': name.isNotEmpty ? name : (isGuest ? 'Guest Customer' : 'Customer'),
+              'phone1': phone,
+              'phone2': '',
+              'whatsapp': phone,
+              'house_number': '',
+              'address': address,
+              'notes': '',
+              'maps_location': '',
+              'photo_path': '',
+              'serial_no': 0,
+              'outstanding_balance': 0.0,
+              'total_orders': 0,
+              'total_paid': 0.0,
+              'total_pending': 0.0,
+              'customer_since': rc['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+              'last_order_date': '',
+              'created_at': rc['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+              'dietary_preference': '',
+              'custom_welcome_message': '',
+              'device_key': '',
+              'device_status': 'BOUND',
+              'visit_count': 0,
+              'is_guest': isGuest ? 1 : 0,
+              'locality': '',
+              'customer_code': codeRaw,
+              'street_id': '',
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        } else {
+          // Update existing customer record with latest guest status / customer_code
+          final existingId = existing.first['id'] as String;
+          await db.update(
+            'customers',
+            {
+              'is_guest': isGuest ? 1 : 0,
+              if (codeRaw.isNotEmpty) 'customer_code': codeRaw,
+              if (name.isNotEmpty) 'name': name,
+              if (address.isNotEmpty) 'address': address,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+            where: 'id = ?',
+            whereArgs: [existingId],
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('SyncService: Error pulling remote customers/guests: $e');
+    }
+  }
+
+  Future<void> pullLoginLogs() async {
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      final db = await DatabaseHelper.instance.database;
+
+      final List<dynamic> logs = await client
+          .from('customer_login_logs')
+          .select('*')
+          .order('logged_in_at', ascending: false)
+          .limit(100);
+
+      for (final log in logs) {
+        final id = log['id']?.toString() ?? '';
+        if (id.isEmpty) continue;
+
+        await db.insert(
+          'customer_login_logs',
+          {
+            'id': id,
+            'customer_id': log['customer_id']?.toString(),
+            'customer_code': log['customer_code']?.toString(),
+            'customer_name': log['customer_name']?.toString(),
+            'customer_phone': log['customer_phone']?.toString(),
+            'login_method': log['login_method']?.toString(),
+            'logged_in_at': log['logged_in_at']?.toString(),
+            'device_info': log['device_info']?.toString(),
+            'app_version': log['app_version']?.toString(),
+            'expires_at': log['expires_at']?.toString(),
+            'created_at': log['created_at']?.toString(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+
+      // Automatically prune local records older than 5 days
+      final fiveDaysAgo = DateTime.now().toUtc().subtract(const Duration(days: 5)).toIso8601String();
+      await db.delete(
+        'customer_login_logs',
+        where: "logged_in_at < ?",
+        whereArgs: [fiveDaysAgo],
+      );
+    } catch (e) {
+      debugPrint('SyncService: Error pulling login logs: $e');
+    }
+  }
+
+
+  Future<void> syncSingleCustomer(Customer customer) async {
+    final String name = customer.name.trim();
+    final String phone = customer.phone1.trim();
+    final bool isGhost = name.isEmpty ||
+        name == '[Ghost House]' ||
+        name.toLowerCase() == 'ghost house' ||
+        name.startsWith('[Ghost House]') ||
+        phone == '0000000000' ||
+        phone.isEmpty;
+    if (isGhost) return;
+
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      final uuidRegex = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      final cleanId = uuidRegex.hasMatch(customer.id)
+          ? customer.id
+          : const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.customer.${customer.id}');
+
+      await client.rpc('sync_customer_with_code', params: {
+        'p_id': cleanId,
+        'p_name': name,
+        'p_phone': phone,
+        'p_email': '',
+        'p_address': customer.address.trim(),
+        'p_customer_code': customer.customerCode.trim().toUpperCase(),
+      }).timeout(const Duration(seconds: 8));
+      debugPrint('SyncService: Single customer $name synced to Supabase.');
+    } catch (e) {
+      debugPrint('SyncService: Single customer background sync error: $e');
+    }
   }
 
   Future<void> syncCustomersToRemote() async {
@@ -892,11 +1101,19 @@ class CustomerOrderSyncService {
             String customerPhone = 'Online App User';
             final cust = ord['customers'];
             if (cust is Map<String, dynamic>) {
-              customerName = cust['name'] as String? ?? 'App Customer';
-              customerPhone = cust['phone'] as String? ?? 'Online App User';
-            } else if (ord['customer_phone'] != null) {
-              customerPhone = ord['customer_phone'] as String;
+              customerName = cust['name'] as String? ?? ord['customer_name'] as String? ?? ord['name'] as String? ?? 'App Customer';
+              customerPhone = cust['phone'] as String? ?? ord['customer_phone'] as String? ?? 'Online App User';
+            } else {
+              if (ord['customer_name'] != null && (ord['customer_name'] as String).trim().isNotEmpty) {
+                customerName = (ord['customer_name'] as String).trim();
+              } else if (ord['name'] != null && (ord['name'] as String).trim().isNotEmpty) {
+                customerName = (ord['name'] as String).trim();
+              }
+              if (ord['customer_phone'] != null && (ord['customer_phone'] as String).trim().isNotEmpty) {
+                customerPhone = (ord['customer_phone'] as String).trim();
+              }
             }
+
 
             // A. Ensure customer exists in POS SQLite DB to prevent FK violation
             if (customerId.isNotEmpty) {
@@ -1068,23 +1285,28 @@ class CustomerOrderSyncService {
                 if (localItemId.isNotEmpty &&
                     serverStatus.toLowerCase() != 'cancelled' &&
                     serverStatus.toLowerCase() != 'denied') {
-                  final itemCheck = await txn.query('items', columns: ['id'], where: 'id = ?', whereArgs: [localItemId]);
+                  final itemCheck = await txn.query('items', columns: ['id', 'unit'], where: 'id = ?', whereArgs: [localItemId]);
                   if (itemCheck.isNotEmpty) {
+                    final itemUnit = itemCheck.first['unit'] as String? ?? 'kg';
+                    final orderUnit = item['unit'] as String? ?? itemUnit;
+                    final double baseQty = UnitConverter.convert(quantity: qty, fromUnit: orderUnit, toUnit: itemUnit);
+
                     await txn.rawUpdate(
                       'UPDATE items SET stock = stock - ?, updated_at = ? WHERE id = ?',
-                      [qty, nowStr, localItemId],
+                      [baseQty, nowStr, localItemId],
                     );
                     await txn.insert('stock_history', {
                       'id': const Uuid().v4(),
                       'item_id': localItemId,
                       'item_name': itemName,
-                      'change_amount': -qty,
+                      'change_amount': -baseQty,
                       'reason': 'Online App Order #$orderId',
                       'order_id': orderId,
                       'created_at': nowStr,
                     });
                   }
                 }
+
               }
 
               // Recalculate customer totals
@@ -1094,10 +1316,20 @@ class CustomerOrderSyncService {
               
               // Trigger local notification for the new order!
               try {
+                final isQuickOrder = (ord['order_type'] == 'Quick Order' ||
+                    ord['order_type'] == 'Quick Delivery' ||
+                    ord['order_type'] == 'Order Now');
+                final notifTitle = isQuickOrder
+                    ? '⚡ Quick Order (1-2 Hrs) Received!'
+                    : 'New Online Order Received!';
+                final notifBody = isQuickOrder
+                    ? '⚡ 1-2 Hrs Quick Order #${ord['order_number'] ?? orderId} from $customerName for ₹${grandTotal.toStringAsFixed(2)}'
+                    : 'Order #${ord['order_number'] ?? orderId} from $customerName ($customerPhone) for ₹${grandTotal.toStringAsFixed(2)}';
+
                 await NotificationService.instance.showNotification(
                   id: orderId.hashCode,
-                  title: 'New Online Order Received!',
-                  body: 'Order #$orderId from $customerName ($customerPhone) for ₹${grandTotal.toStringAsFixed(2)}',
+                  title: notifTitle,
+                  body: notifBody,
                   payload: 'order_$orderId',
                 );
               } catch (e) {
@@ -1105,8 +1337,16 @@ class CustomerOrderSyncService {
               }
             } else {
               // C. Order exists locally - update all fields from Supabase
+              final currentSyncStatus = orderCheck.first['sync_status'] as String? ?? 'synced';
+              if (currentSyncStatus == 'pending_update' || currentSyncStatus == 'syncing') {
+                // Local edits are pending upload -> preserve local state until pushModifiedOrders succeeds
+                return;
+              }
+
+
               final String localStatus = orderCheck.first['delivery_status'] as String;
               final targetStatus = serverStatus.toLowerCase();
+
               final double remoteTotal = (ord['total_amount'] as num?)?.toDouble() ?? 0.0;
               final String remoteNotes = ord['notes'] ?? '';
               final String? remoteOrderType = ord['order_type'];
@@ -1122,24 +1362,29 @@ class CustomerOrderSyncService {
                     final double qty = (localItem['quantity'] as num?)?.toDouble() ?? 0.0;
                     final String itemName = localItem['item_name'] as String? ?? 'Item';
                     
+                    final String orderUnit = localItem['item_unit'] as String? ?? 'kg';
                     if (itemId.isNotEmpty) {
-                      final itemCheck = await txn.query('items', columns: ['id'], where: 'id = ?', whereArgs: [itemId]);
+                      final itemCheck = await txn.query('items', columns: ['id', 'unit'], where: 'id = ?', whereArgs: [itemId]);
                       if (itemCheck.isNotEmpty) {
+                        final itemUnit = itemCheck.first['unit'] as String? ?? 'kg';
+                        final double baseQty = UnitConverter.convert(quantity: qty, fromUnit: orderUnit, toUnit: itemUnit);
+
                         await txn.rawUpdate(
                           'UPDATE items SET stock = stock + ?, updated_at = ? WHERE id = ?',
-                          [qty, DateTime.now().toIso8601String(), itemId],
+                          [baseQty, DateTime.now().toIso8601String(), itemId],
                         );
                         await txn.insert('stock_history', {
                           'id': const Uuid().v4(),
                           'item_id': itemId,
                           'item_name': itemName,
-                          'change_amount': qty,
+                          'change_amount': baseQty,
                           'reason': 'Online Order ${targetStatus == 'cancelled' ? 'Cancelled' : 'Denied'} #$orderId',
                           'order_id': orderId,
                           'created_at': DateTime.now().toIso8601String(),
                         });
                       }
                     }
+
                   }
                 }
               }
@@ -1270,34 +1515,77 @@ class CustomerOrderSyncService {
 
           final serverStatus = _toServerStatus(localStatus);
 
-          // 1. Update the order in Supabase using valid columns
-          final updatePayload = <String, dynamic>{
-            'total_amount': grandTotal,
-            'status': serverStatus,
-          };
-          if (orderType != null && orderType.isNotEmpty) {
-            updatePayload['order_type'] = orderType;
-          }
-          if (orderTakingDate != null && orderTakingDate.isNotEmpty) {
-            updatePayload['order_taking_date'] = orderTakingDate;
-          }
-          if (deliveryDate != null && deliveryDate.isNotEmpty) {
-            updatePayload['delivery_date'] = deliveryDate;
-          }
-          if (localOrderNo != null && localOrderNo.isNotEmpty) {
-            updatePayload['order_number'] = localOrderNo;
-          }
-
-          final List<dynamic> updatedOrders = await client
+          // 1. Check if the order exists remotely or needs to be inserted
+          final existingRemote = await client
               .from('orders')
-              .update(updatePayload)
+              .select('id, order_number')
               .eq('id', orderId)
-              .select('order_number');
+              .maybeSingle();
 
           String canonicalOrderNo = localOrderNo ?? '';
-          if (updatedOrders.isNotEmpty) {
-            canonicalOrderNo = updatedOrders.first['order_number'] as String? ?? canonicalOrderNo;
+
+          if (existingRemote == null) {
+            // Find customer details in local DB to populate remote order fields
+            final custRows = await db.query('customers', where: 'id = ?', whereArgs: [ord['customer_id']]);
+            final String custPhone = custRows.isNotEmpty ? (custRows.first['phone1'] as String? ?? '') : '';
+            final String custAddress = custRows.isNotEmpty ? (custRows.first['address'] as String? ?? '') : '';
+            final String custName = custRows.isNotEmpty ? (custRows.first['name'] as String? ?? '') : '';
+
+            final insertPayload = <String, dynamic>{
+              'id': orderId,
+              'customer_id': _getValidUuid(ord['customer_id'] as String? ?? ''),
+              'customer_phone': custPhone,
+              'customer_name': custName,
+              'delivery_address': custAddress,
+              'total_amount': grandTotal,
+              'status': serverStatus,
+              'notes': ord['notes'] ?? '',
+              'order_type': orderType ?? 'Normal',
+              if (orderTakingDate != null && orderTakingDate.isNotEmpty) 'order_taking_date': orderTakingDate,
+              if (deliveryDate != null && deliveryDate.isNotEmpty) 'delivery_date': deliveryDate,
+              if (localOrderNo != null && localOrderNo.isNotEmpty) 'order_number': localOrderNo,
+              'order_date': ord['created_at'] ?? DateTime.now().toIso8601String(),
+              'created_at': ord['created_at'] ?? DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            };
+
+            final inserted = await client
+                .from('orders')
+                .insert(insertPayload)
+                .select('order_number')
+                .maybeSingle();
+            if (inserted != null && inserted['order_number'] != null) {
+              canonicalOrderNo = inserted['order_number'].toString();
+            }
+          } else {
+            final updatePayload = <String, dynamic>{
+              'total_amount': grandTotal,
+              'status': serverStatus,
+            };
+            if (orderType != null && orderType.isNotEmpty) {
+              updatePayload['order_type'] = orderType;
+            }
+            if (orderTakingDate != null && orderTakingDate.isNotEmpty) {
+              updatePayload['order_taking_date'] = orderTakingDate;
+            }
+            if (deliveryDate != null && deliveryDate.isNotEmpty) {
+              updatePayload['delivery_date'] = deliveryDate;
+            }
+            if (localOrderNo != null && localOrderNo.isNotEmpty) {
+              updatePayload['order_number'] = localOrderNo;
+            }
+
+            final List<dynamic> updatedOrders = await client
+                .from('orders')
+                .update(updatePayload)
+                .eq('id', orderId)
+                .select('order_number');
+
+            if (updatedOrders.isNotEmpty) {
+              canonicalOrderNo = updatedOrders.first['order_number'] as String? ?? canonicalOrderNo;
+            }
           }
+
 
           // 2. Fetch order items from SQLite
           final List<Map<String, dynamic>> localItems = await db.query(

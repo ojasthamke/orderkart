@@ -102,16 +102,19 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
       try {
         final client = Supabase.instance.client;
         if (client.auth.currentUser == null) {
-          await client.auth.signInWithPassword(
-            email: 'admin@aplibhaji.com',
-            password: 'adminpassword',
-          );
+          try {
+            await client.auth.signInWithPassword(
+              email: 'admin@aplibhaji.com',
+              password: 'adminpassword',
+            );
+          } catch (_) {}
         }
         await client.from('settings').upsert([
           {'key': 'store_status', 'value': settings.storeOpen ? 'open' : 'closed'},
+          {'key': 'store_open', 'value': settings.storeOpen.toString()},
           {'key': 'store_schedule', 'value': settings.storeSchedule},
           {'key': 'delivery_charge', 'value': settings.deliveryCharge.toString()},
-        ]);
+        ], onConflict: 'key');
         debugPrint('Supabase: Settings sync complete.');
       } catch (e) {
         debugPrint('Supabase: Failed to sync settings: $e');

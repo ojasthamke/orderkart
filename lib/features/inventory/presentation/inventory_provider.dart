@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/item_dao.dart';
@@ -7,6 +8,7 @@ import '../domain/item.dart';
 import '../domain/stock_history.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../search/presentation/search_provider.dart';
+import '../../settings/data/settings_dao.dart';
 
 final inventoryRepositoryProvider =
     Provider<InventoryRepository>((ref) => InventoryRepositoryImpl(ItemDao()));
@@ -232,7 +234,14 @@ class OrderNowStatusNotifier extends StateNotifier<AsyncValue<String>> {
   }
 
   Future<void> load() async {
-    state = const AsyncValue.loading();
+    try {
+      final dao = SettingsDao();
+      final localVal = await dao.getValue('order_now_status');
+      if (localVal != null && localVal.isNotEmpty) {
+        state = AsyncValue.data(localVal);
+      }
+    } catch (_) {}
+
     try {
       final client = Supabase.instance.client;
       final res = await client
@@ -240,30 +249,46 @@ class OrderNowStatusNotifier extends StateNotifier<AsyncValue<String>> {
           .select('value')
           .eq('key', 'order_now_status')
           .maybeSingle();
-      final status = res?['value'] as String? ?? 'closed';
-      state = AsyncValue.data(status);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      final status = res?['value'] as String?;
+      if (status != null && status.isNotEmpty) {
+        state = AsyncValue.data(status);
+        try {
+          final dao = SettingsDao();
+          await dao.setValue('order_now_status', status);
+        } catch (_) {}
+      } else if (state.valueOrNull == null) {
+        state = const AsyncValue.data('closed');
+      }
+    } catch (e) {
+      if (state.valueOrNull == null) {
+        state = const AsyncValue.data('closed');
+      }
     }
   }
 
   Future<void> setStatus(String status) async {
-    state = const AsyncValue.loading();
+    state = AsyncValue.data(status); // Optimistic UI update immediately!
+    try {
+      final dao = SettingsDao();
+      await dao.setValue('order_now_status', status);
+    } catch (_) {}
+
     try {
       final client = Supabase.instance.client;
       if (client.auth.currentUser == null) {
-        await client.auth.signInWithPassword(
-          email: 'admin@aplibhaji.com',
-          password: 'adminpassword',
-        );
+        try {
+          await client.auth.signInWithPassword(
+            email: 'admin@aplibhaji.com',
+            password: 'adminpassword',
+          );
+        } catch (_) {}
       }
       await client.from('settings').upsert({
         'key': 'order_now_status',
         'value': status,
-      });
-      state = AsyncValue.data(status);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      }, onConflict: 'key');
+    } catch (e) {
+      debugPrint('Error syncing order_now_status to Supabase: $e');
     }
   }
 }

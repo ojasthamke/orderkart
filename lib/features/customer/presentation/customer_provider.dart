@@ -11,6 +11,7 @@ import '../../area/presentation/area_provider.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../search/presentation/search_provider.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 
 final customerRepositoryProvider = Provider<CustomerRepository>(
     (ref) => CustomerRepositoryImpl(CustomerDao()));
@@ -63,15 +64,28 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
   Future<void> add(Customer c) async {
     await _repo.addCustomer(c);
     await load(silent: true);
-    _invalidateAll();
+    _ref.invalidate(customerDetailProvider(c.id));
+    _ref.invalidate(searchProvider);
+    _ref.invalidate(allCustomersProvider);
+    Future.microtask(() async {
+      try {
+        await CustomerOrderSyncService.instance.syncSingleCustomer(c);
+      } catch (_) {}
+    });
   }
 
   Future<void> update(Customer c) async {
     await _repo.updateCustomer(c);
     await load(silent: true);
-    _invalidateAll();
     _ref.invalidate(customerDetailProvider(c.id));
     _ref.invalidate(customerOrdersProvider(c.id));
+    _ref.invalidate(searchProvider);
+    _ref.invalidate(allCustomersProvider);
+    Future.microtask(() async {
+      try {
+        await CustomerOrderSyncService.instance.syncSingleCustomer(c);
+      } catch (_) {}
+    });
   }
 
   Future<void> delete(String id) async {
@@ -295,3 +309,103 @@ final areaDescendantLocationsProvider =
   );
   return res.map(Location.fromMap).toList();
 });
+
+// ── GUEST CUSTOMERS PROVIDER ────────────────────────────────────────────────
+class GuestCustomersNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
+  final Ref _ref;
+  final CustomerRepository _repo;
+  String _searchQuery = '';
+
+  GuestCustomersNotifier(this._ref, this._repo) : super(const AsyncValue.loading()) {
+    load();
+  }
+
+  Future<void> load({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
+    try {
+      final list = await _repo.getGuestCustomers(searchQuery: _searchQuery);
+      state = AsyncValue.data(list);
+    } catch (e, st) {
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
+    }
+  }
+
+  void search(String q) {
+    _searchQuery = q;
+    load();
+  }
+
+  Future<bool> convertGuest({
+    required String customerId,
+    required String newCustomerCode,
+    String? streetId,
+  }) async {
+    try {
+      await _repo.convertToRegisteredCustomer(customerId, newCustomerCode, streetId: streetId);
+      final customer = await _repo.getCustomerById(customerId);
+      if (customer != null) {
+        Future.microtask(() async {
+          try {
+            await CustomerOrderSyncService.instance.syncSingleCustomer(customer);
+          } catch (_) {}
+        });
+      }
+      await load(silent: true);
+      _ref.invalidate(allCustomersProvider);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
+final guestCustomersProvider =
+    StateNotifierProvider<GuestCustomersNotifier, AsyncValue<List<Customer>>>((ref) {
+  final repo = ref.watch(customerRepositoryProvider);
+  return GuestCustomersNotifier(ref, repo);
+});
+
+// ── CUSTOMER LOGIN LOGS PROVIDER ────────────────────────────────────────────
+class CustomerLoginLogsNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
+  final CustomerRepository _repo;
+  String? _methodFilter;
+
+  CustomerLoginLogsNotifier(this._repo) : super(const AsyncValue.loading()) {
+    load();
+  }
+
+  Future<void> load({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
+    try {
+      // Sync fresh logs from Supabase first if online
+      try {
+        await CustomerOrderSyncService.instance.pullLoginLogs();
+      } catch (_) {}
+
+      final logs = await _repo.getLoginLogs(limit: 100, loginMethodFilter: _methodFilter);
+      state = AsyncValue.data(logs);
+    } catch (e, st) {
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
+    }
+  }
+
+  void filterByMethod(String? method) {
+    _methodFilter = method;
+    load();
+  }
+}
+
+final customerLoginLogsProvider =
+    StateNotifierProvider<CustomerLoginLogsNotifier, AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  final repo = ref.watch(customerRepositoryProvider);
+  return CustomerLoginLogsNotifier(repo);
+});
+

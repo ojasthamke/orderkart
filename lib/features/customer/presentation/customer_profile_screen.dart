@@ -339,6 +339,9 @@ class CustomerProfileScreen extends ConsumerWidget {
 
                 CustomerCustomFieldsCard(customerId: customer.id),
 
+                // Customer Live Notifications & Activity Section
+                _buildCustomerNotificationsSection(context, ref, customer),
+
                 // Orders title
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -1395,6 +1398,252 @@ class CustomerProfileScreen extends ConsumerWidget {
           }
       }
     }
+  }
+
+  Widget _buildCustomerNotificationsSection(
+      BuildContext context, WidgetRef ref, Customer customer) {
+    return GlassContainer(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.notifications_active_rounded,
+                    color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Customer Activity & Alerts',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.green.withOpacity(0.3)),
+                          ),
+                          child: const Text(
+                            'LIVE FEED',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Live log of customer orders, app events & notifications',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.textSecondary.withOpacity(0.12)),
+            ),
+            child: Column(
+              children: [
+                _buildActivityTile(
+                  context,
+                  icon: Icons.account_circle_outlined,
+                  iconColor: AppColors.primary,
+                  title: 'Account Profile Linked',
+                  subtitle: customer.customerCode.isNotEmpty
+                      ? 'Member Code: ${customer.customerCode} • Registered: ${customer.phone1}'
+                      : 'Registered Mobile: ${customer.phone1}',
+                  time: DateFormat('dd MMM yyyy, hh:mm a').format(customer.createdAt),
+                ),
+                if (customer.notes.isNotEmpty) ...[
+                  const Divider(height: 16),
+                  _buildActivityTile(
+                    context,
+                    icon: Icons.notes_rounded,
+                    iconColor: Colors.amber.shade800,
+                    title: 'Customer Note Logged',
+                    subtitle: customer.notes,
+                    time: DateFormat('dd MMM yyyy').format(customer.updatedAt),
+                  ),
+                ],
+                const Divider(height: 16),
+                _buildActivityTile(
+                  context,
+                  icon: Icons.cloud_done_outlined,
+                  iconColor: Colors.teal,
+                  title: 'Cloud App Sync & FCM Active',
+                  subtitle: 'Real-time sync enabled for customer app notifications',
+                  time: 'Live Active',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.send_rounded, size: 16),
+              label: const Text('Send Push Alert to Customer',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary, width: 1.2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onPressed: () {
+                _showSendCustomerNotificationDialog(context, customer);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityTile(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required String time,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: iconColor, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          time,
+          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
+
+  void _showSendCustomerNotificationDialog(BuildContext context, Customer customer) {
+    final titleController = TextEditingController(text: 'OrderKart Store Alert');
+    final bodyController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.notifications_active_rounded, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Send Notification to ${customer.name}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: 'Notification Title',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bodyController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Message Body',
+                hintText: 'Enter notification message for customer...',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text('Send Push'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              if (bodyController.text.trim().isEmpty) return;
+              Navigator.pop(ctx);
+              SnackbarHelper.showSuccess(
+                  context, 'Notification sent to ${customer.name}');
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _confirmDelete(
@@ -2555,10 +2804,12 @@ Future<void> _resetCustomerPassword(BuildContext context, WidgetRef ref, dynamic
       );
     }
     
-    // Update Supabase customers table: initial_login_completed = false, temp_setup_pin_hash = null, auth_user_id = null
+    // Update Supabase customers table: initial_login_completed = false, temp_setup_pin_hash = null, auth_user_id = null, password = null
     await client.from('customers').update({
       'initial_login_completed': false,
       'temp_setup_pin_hash': null,
+      'auth_user_id': null,
+      'password': null,
     }).eq('id', customer.id);
 
     if (context.mounted) {

@@ -270,13 +270,42 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (order.orderType == 'Pre-Order') ...[
+                    if (order.orderType == 'Quick Order' ||
+                        order.orderType == 'Quick Delivery' ||
+                        order.orderType == 'Order Now') ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFFF9800), width: 1),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bolt_rounded,
+                                size: 12, color: Color(0xFFE65100)),
+                            SizedBox(width: 2),
+                            Text(
+                              '⚡ 1-2 HRS QUICK ORDER',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFE65100),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (order.orderType == 'Pre-Order') ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.purple.withOpacity(0.12),
+                          color: Colors.purple.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
@@ -341,14 +370,33 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.local_shipping_outlined,
-                        size: 14, color: AppColors.primary),
+                    Icon(
+                      (order.orderType == 'Quick Order' ||
+                              order.orderType == 'Quick Delivery' ||
+                              order.orderType == 'Order Now')
+                          ? Icons.bolt_rounded
+                          : Icons.local_shipping_outlined,
+                      size: 14,
+                      color: (order.orderType == 'Quick Order' ||
+                              order.orderType == 'Quick Delivery' ||
+                              order.orderType == 'Order Now')
+                          ? const Color(0xFFE65100)
+                          : AppColors.primary,
+                    ),
                     const SizedBox(width: 5),
                     Text(
-                      'Delivery Date: $deliveryDateFormatted',
-                      style: const TextStyle(
+                      (order.orderType == 'Quick Order' ||
+                              order.orderType == 'Quick Delivery' ||
+                              order.orderType == 'Order Now')
+                          ? 'Delivery: Within 1-2 Hours (Today)'
+                          : 'Delivery Date: $deliveryDateFormatted',
+                      style: TextStyle(
                         fontSize: 12.5,
-                        color: AppColors.primary,
+                        color: (order.orderType == 'Quick Order' ||
+                                order.orderType == 'Quick Delivery' ||
+                                order.orderType == 'Order Now')
+                            ? const Color(0xFFE65100)
+                            : AppColors.primary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -972,7 +1020,112 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     final cancelColor = isDark ? const Color(0xFFF87171) : AppColors.error;
     Widget? statusButtons;
 
-    if (order.deliveryStatus == AppConstants.statusPending) {
+    final normStatus = order.deliveryStatus.toLowerCase().trim();
+
+    if (normStatus == AppConstants.statusPending || normStatus == 'confirmed' || normStatus == 'approved') {
+      statusButtons = Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _updateStatus(order.id, 'preparing'),
+                  icon: const Icon(Icons.soup_kitchen_rounded),
+                  label: const Text('Mark Preparing'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 46),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _updateStatus(order.id, 'out for delivery'),
+                  icon: const Icon(Icons.delivery_dining_rounded),
+                  label: const Text('Out for Delivery'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 46),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () =>
+                      _updateStatus(order.id, AppConstants.statusDelivered),
+                  icon: const Icon(Icons.check_circle_rounded),
+                  label: const Text('Mark Delivered'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      _updateStatus(order.id, AppConstants.statusCancelled),
+                  icon: Icon(Icons.cancel_rounded, color: cancelColor),
+                  label: const Text('Cancel Order'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: cancelColor,
+                    side: BorderSide(color: cancelColor),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    } else if (normStatus == 'preparing') {
+      statusButtons = Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => _updateStatus(order.id, 'out for delivery'),
+              icon: const Icon(Icons.delivery_dining_rounded),
+              label: const Text('Out for Delivery'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () =>
+                  _updateStatus(order.id, AppConstants.statusDelivered),
+              icon: const Icon(Icons.check_circle_rounded),
+              label: const Text('Mark Delivered'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          IconButton(
+            onPressed: () => _updateStatus(order.id, AppConstants.statusCancelled),
+            icon: Icon(Icons.cancel_rounded, color: cancelColor),
+            tooltip: 'Cancel Order',
+          ),
+        ],
+      );
+    } else if (normStatus == 'out for delivery') {
       statusButtons = Row(
         children: [
           Expanded(
@@ -1004,7 +1157,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           ),
         ],
       );
-    } else if (order.deliveryStatus == AppConstants.statusDelivered) {
+    } else if (normStatus == AppConstants.statusDelivered) {
       statusButtons = Row(
         children: [
           Expanded(
@@ -1036,7 +1189,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           ),
         ],
       );
-    } else if (order.deliveryStatus == AppConstants.statusCancelled) {
+    } else if (normStatus == AppConstants.statusCancelled || normStatus == 'denied') {
       statusButtons = Row(
         children: [
           Expanded(
@@ -1055,6 +1208,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         ],
       );
     }
+
 
     return Column(
       children: [

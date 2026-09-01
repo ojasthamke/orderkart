@@ -1068,7 +1068,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         }
       }
 
-      // Sync customer to Supabase asynchronously if it is a real customer
+      // Sync customer to Supabase in the background so local save is instant (<20ms)
       final bool isGhost = finalName.isEmpty ||
           finalName == '[Ghost House]' ||
           finalName.toLowerCase() == 'ghost house' ||
@@ -1077,21 +1077,24 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
           finalPhone.isEmpty;
 
       if (!isGhost) {
-        try {
-          final client = Supabase.instance.client;
-          final cleanId = _getValidUuid(customerId);
-          await client.rpc('sync_customer_with_code', params: {
-            'p_id': cleanId,
-            'p_name': finalName,
-            'p_phone': finalPhone,
-            'p_email': '',
-            'p_address': _addressCon.text.trim(),
-            'p_customer_code': codeRaw,
-          });
-          debugPrint('CustomerCode: Synced customer $finalName ($customerId) to Supabase.');
-        } catch (e) {
-          debugPrint('CustomerCode: Supabase sync failed: $e');
-        }
+        // Fire and forget in background so UI pops immediately
+        Future.microtask(() async {
+          try {
+            final client = Supabase.instance.client;
+            final cleanId = _getValidUuid(customerId);
+            await client.rpc('sync_customer_with_code', params: {
+              'p_id': cleanId,
+              'p_name': finalName,
+              'p_phone': finalPhone,
+              'p_email': '',
+              'p_address': _addressCon.text.trim(),
+              'p_customer_code': codeRaw,
+            }).timeout(const Duration(seconds: 8));
+            debugPrint('CustomerCode: Background synced customer $finalName ($customerId) to Supabase.');
+          } catch (e) {
+            debugPrint('CustomerCode: Supabase background sync failed (will be retried by sync service): $e');
+          }
+        });
       } else {
         debugPrint('CustomerCode: Skipping Supabase sync for ghost house $finalName ($customerId).');
       }

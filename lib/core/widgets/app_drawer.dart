@@ -135,6 +135,19 @@ class AppDrawer extends ConsumerWidget {
                       },
                     ),
 
+                    // 3b. Guest Customers & Logins
+                    _DrawerItem(
+                      icon: Icons.person_pin_circle_rounded,
+                      title: 'Guest Customers & Logins',
+                      iconColor: Colors.amber,
+                      onTap: () {
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.guests);
+                      },
+                    ),
+
+
                     // 4. Inventory Catalog
                     _DrawerItem(
                       icon: Icons.inventory_rounded,

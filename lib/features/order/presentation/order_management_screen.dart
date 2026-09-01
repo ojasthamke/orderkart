@@ -47,10 +47,12 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
   final _tabs = [
     {'label': 'All', 'status': 'all'},
     {'label': 'Pending', 'status': 'pending'},
+    {'label': 'Quick Orders ⚡', 'status': 'quick_order'},
     {'label': 'Delivered', 'status': 'delivered'},
     {'label': 'Cancelled', 'status': 'cancelled'},
     {'label': 'Pre-Orders', 'status': 'preorder'},
   ];
+
 
   @override
   void initState() {
@@ -188,11 +190,29 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
                               final bDate = b.orderTakingDate ?? '';
                               return aDate.compareTo(bDate);
                             });
+                          } else if (statusKey == 'pending') {
+                            filtered = filtered
+                                .where((o) =>
+                                    o.deliveryStatus == 'pending' ||
+                                    o.deliveryStatus == 'confirmed' ||
+                                    o.deliveryStatus == 'preparing' ||
+                                    o.deliveryStatus == 'out for delivery' ||
+                                    o.deliveryStatus == 'approved')
+                                .toList();
+                          } else if (statusKey == 'quick_order') {
+                            filtered = filtered
+                                .where((o) =>
+                                    o.orderType == 'Quick Order' ||
+                                    o.orderType == 'Quick Delivery' ||
+                                    o.orderType == 'Order Now')
+                                .toList();
                           } else if (statusKey != 'all') {
                             filtered = filtered
                                 .where((o) => o.deliveryStatus == statusKey)
                                 .toList();
                           }
+
+
                           if (_sourceMode == 'owner') {
                             filtered = filtered
                                 .where((o) => o.assignedWorkerId.isEmpty)
@@ -829,14 +849,43 @@ class _OrderCard extends ConsumerWidget {
                             fontSize: 11,
                           ),
                     ),
-                    if (order.deliveryDate != null &&
+                    if (order.orderType == 'Quick Order' ||
+                        order.orderType == 'Quick Delivery' ||
+                        order.orderType == 'Order Now') ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFFF9800), width: 1),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bolt_rounded,
+                                size: 12, color: Color(0xFFE65100)),
+                            SizedBox(width: 2),
+                            Text(
+                              '⚡ 1-2 HRS QUICK ORDER',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFFE65100),
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (order.deliveryDate != null &&
                         order.deliveryDate!.trim().isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
+                          color: AppColors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Row(

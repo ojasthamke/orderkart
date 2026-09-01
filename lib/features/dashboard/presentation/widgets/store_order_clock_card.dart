@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
+
 import '../../../../core/widgets/glass_container.dart';
 import '../../../../core/database/database_helper.dart';
 
@@ -74,8 +76,17 @@ class _StoreOrderClockCardState extends State<StoreOrderClockCard> {
       await db.insert('settings',
           {'key': 'cutoff_minute', 'value': _cutoffTime.minute.toString()},
           conflictAlgorithm: ConflictAlgorithm.replace);
+
+      final client = Supabase.instance.client;
+      await client.from('settings').upsert([
+        {'key': 'is_accepting_orders', 'value': _isAcceptingOrders.toString()},
+        {'key': 'cutoff_hour', 'value': _cutoffTime.hour.toString()},
+        {'key': 'cutoff_minute', 'value': _cutoffTime.minute.toString()},
+        {'key': 'store_status', 'value': _isAcceptingOrders ? 'open' : 'closed'},
+      ]);
     } catch (_) {}
   }
+
 
   @override
   void dispose() {

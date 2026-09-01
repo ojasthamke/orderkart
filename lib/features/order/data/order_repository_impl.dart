@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:uuid/uuid.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,7 +13,9 @@ import '../../inventory/domain/stock_history.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/unit_converter.dart';
 import '../../../core/security/app_mode_service.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 import 'order_dao.dart';
+
 
 class OrderRepositoryImpl implements OrderRepository {
   final OrderDao _orderDao;
@@ -67,8 +70,9 @@ class OrderRepositoryImpl implements OrderRepository {
     // Read AppMode BEFORE the transaction to avoid database deadlock
     // (AppModeService.getAppMode() may access the DB, which deadlocks inside a txn)
     final appMode = await AppModeService.getAppMode();
-    return await db.transaction((txn) async {
+    final String orderId = await db.transaction((txn) async {
       final existing = await _orderDao.getOrderById(order.id, executor: txn);
+
       if (existing != null && existing.deliveryStatus != 'cancelled') {
         final oldItems = await _orderDao.getOrderItems(order.id, executor: txn);
         for (final oldItem in oldItems) {
@@ -131,6 +135,10 @@ class OrderRepositoryImpl implements OrderRepository {
       await _customerDao.recalcCustomerTotals(order.customerId, executor: txn);
       return orderId;
     });
+
+    // Trigger instant cloud sync for newly created/edited order
+    unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
+    return orderId;
   }
 
   @override
@@ -140,7 +148,11 @@ class OrderRepositoryImpl implements OrderRepository {
       await _orderDao.updateOrder(order, executor: txn);
       await _customerDao.recalcCustomerTotals(order.customerId, executor: txn);
     });
+
+    // Trigger instant cloud sync for updated order
+    unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
   }
+
 
   @override
   Future<void> deleteOrder(String id) async {
@@ -286,7 +298,11 @@ class OrderRepositoryImpl implements OrderRepository {
       await _orderDao.updateDeliveryStatus(orderId, status, executor: txn);
       await _customerDao.recalcCustomerTotals(order.customerId, executor: txn);
     });
+
+    // Push status change to Supabase immediately (outside txn)
+    unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
   }
+
 
   @override
   Future<void> addPayment(Payment payment) async {
@@ -308,18 +324,27 @@ class OrderRepositoryImpl implements OrderRepository {
             executor: txn);
       }
     });
+
+    // Trigger instant cloud sync for new payment
+    unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
   }
 
   @override
   Future<void> updateOrderPayment(
-          String orderId, double paidAmount, double remainingAmount) =>
-      _orderDao.updateOrderPayment(orderId, paidAmount, remainingAmount);
+      String orderId, double paidAmount, double remainingAmount) async {
+    await _orderDao.updateOrderPayment(orderId, paidAmount, remainingAmount);
+    unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
+  }
 
   @override
-  Future<Map<String, dynamic>> updateOrderRates(String orderId) =>
-      _orderDao.updateOrderRates(orderId);
+  Future<Map<String, dynamic>> updateOrderRates(String orderId) async {
+    final result = await _orderDao.updateOrderRates(orderId);
+    unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
+    return result;
+  }
 
   @override
   Future<Map<String, dynamic>> getAnalyticsSummary() =>
       _orderDao.getAnalyticsSummary();
 }
+

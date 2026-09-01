@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
@@ -86,7 +85,7 @@ class _LiquidGlassButtonState extends State<LiquidGlassButton>
         boxShadow: widget.boxShadow ??
             [
               BoxShadow(
-                color: AppColors.primary.withOpacity(isDark ? 0.30 : 0.15),
+                color: AppColors.primary.withValues(alpha: isDark ? 0.30 : 0.15),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               )
@@ -94,23 +93,20 @@ class _LiquidGlassButtonState extends State<LiquidGlassButton>
       ),
       child: ClipRRect(
         borderRadius: r,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: widget.padding,
-            decoration: BoxDecoration(
-              gradient: isDark
-                  ? AppColors.glassGradientDark
-                  : AppColors.glassGradientLight,
-              borderRadius: r,
-              border: Border.all(
-                color: isDark ? Colors.white24 : Colors.white60,
-                width: 1.5,
-              ),
+        child: Container(
+          padding: widget.padding,
+          decoration: BoxDecoration(
+            gradient: isDark
+                ? AppColors.glassGradientDark
+                : AppColors.glassGradientLight,
+            borderRadius: r,
+            border: Border.all(
+              color: isDark ? Colors.white24 : Colors.white60,
+              width: 1.5,
             ),
-            child: Center(
-              child: widget.child,
-            ),
+          ),
+          child: Center(
+            child: widget.child,
           ),
         ),
       ),

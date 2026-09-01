@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -154,77 +153,73 @@ class FloatingGlassBottomBar extends StatelessWidget {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              height: 72,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(32),
-                color: (isDark ? const Color(0xFF1E293B) : Colors.white)
-                    .withOpacity(isDark ? 0.72 : 0.85),
-                border: Border.all(
-                  color:
-                      isDark ? Colors.white12 : Colors.black.withOpacity(0.08),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
-                    blurRadius: 12,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
+        child: Container(
+          height: 72,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(32),
+            color: (isDark ? const Color(0xFF1E293B) : Colors.white)
+                .withValues(alpha: isDark ? 0.92 : 0.96),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, -4),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: List.generate(destinations.length, (index) {
-                  final isSelected = selectedIndex == index;
-                  final item = destinations[index];
-                  final activeColor = theme.colorScheme.primary;
-                  final inactiveColor =
-                      isDark ? Colors.white54 : Colors.black45;
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(destinations.length, (index) {
+                final isSelected = selectedIndex == index;
+                final item = destinations[index];
+                final activeColor = theme.colorScheme.primary;
+                final inactiveColor =
+                    isDark ? Colors.white54 : Colors.black45;
 
-                  return InkWell(
-                    onTap: () => onDestinationSelected(index),
-                    borderRadius: BorderRadius.circular(24),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        color: isSelected
-                            ? activeColor.withOpacity(isDark ? 0.18 : 0.1)
-                            : Colors.transparent,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isSelected ? item.selectedIcon : item.icon,
-                            color: isSelected ? activeColor : inactiveColor,
-                            size: 22,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.label,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: isSelected ? activeColor : inactiveColor,
-                            ),
-                          ),
-                        ],
-                      ),
+                return InkWell(
+                  onTap: () => onDestinationSelected(index),
+                  borderRadius: BorderRadius.circular(24),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      color: isSelected
+                          ? activeColor.withValues(alpha: isDark ? 0.18 : 0.1)
+                          : Colors.transparent,
                     ),
-                  );
-                }),
-              ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isSelected ? item.selectedIcon : item.icon,
+                          color: isSelected ? activeColor : inactiveColor,
+                          size: 22,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: isSelected ? activeColor : inactiveColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
             ),
           ),
         ),
