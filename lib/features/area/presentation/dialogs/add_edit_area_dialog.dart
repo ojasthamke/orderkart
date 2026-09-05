@@ -39,7 +39,15 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
   bool _loading = false;
 
   // New settings fields
-  List<String> _deliverySchedule = [];
+  List<String> _deliverySchedule = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
+  ];
   final _cutoffTimeCon = TextEditingController(text: '23:59');
   final _deliveryChargeCon = TextEditingController(text: '0.0');
   final _minOrderAmountCon = TextEditingController(text: '0.0');
@@ -65,8 +73,20 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
       _locationCon.text = widget.area!.mapsLocation;
       _photoPath = widget.area!.photoPath;
       _color = widget.area!.color;
-      _deliverySchedule = List<String>.from(widget.area!.deliverySchedule);
-      _cutoffTimeCon.text = widget.area!.cutoffTime;
+      _deliverySchedule = widget.area!.deliverySchedule.isNotEmpty
+          ? List<String>.from(widget.area!.deliverySchedule)
+          : [
+              'Monday',
+              'Tuesday',
+              'Wednesday',
+              'Thursday',
+              'Friday',
+              'Saturday',
+              'Sunday'
+            ];
+      _cutoffTimeCon.text = widget.area!.cutoffTime.isNotEmpty
+          ? widget.area!.cutoffTime
+          : '23:59';
       _deliveryChargeCon.text = widget.area!.deliveryCharge.toString();
       _minOrderAmountCon.text = widget.area!.minOrderAmount.toString();
       _isActive = widget.area!.isActive;
@@ -402,19 +422,42 @@ class _AddEditAreaDialogState extends State<AddEditAreaDialog> {
     try {
       final charge = double.tryParse(_deliveryChargeCon.text.trim()) ?? 0.0;
       final minAmt = double.tryParse(_minOrderAmountCon.text.trim()) ?? 0.0;
+      final schedule = _deliverySchedule.isNotEmpty
+          ? _deliverySchedule
+          : [
+              'Monday',
+              'Tuesday',
+              'Wednesday',
+              'Thursday',
+              'Friday',
+              'Saturday',
+              'Sunday'
+            ];
+      final cutoff = _cutoffTimeCon.text.trim().isNotEmpty
+          ? _cutoffTimeCon.text.trim()
+          : '23:59';
       await widget.onSave(
         _nameCon.text.trim(),
         _descCon.text.trim(),
         _color,
         _photoPath,
         _locationCon.text.trim(),
-        _deliverySchedule,
-        _cutoffTimeCon.text.trim(),
+        schedule,
+        cutoff,
         charge,
         minAmt,
         _isActive,
       );
       if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save area: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

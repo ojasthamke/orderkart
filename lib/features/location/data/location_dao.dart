@@ -1,4 +1,6 @@
 import 'package:sqflite/sqflite.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/sequence_key_helper.dart';
 import '../domain/location.dart';
@@ -49,7 +51,7 @@ class LocationDao {
 
     // Archived filter
     if (!showArchived) {
-      sql += ' AND l.is_archived = 0';
+      sql += ' AND (l.is_archived IS NULL OR l.is_archived = 0)';
     }
 
     // Search query filter
@@ -343,43 +345,112 @@ class LocationDao {
   Future<void> deleteLocation(String id) async {
     final db = await _db;
 
-    // Clear location references for all customers belonging to this location or any child/descendant locations
-    final descendantLocations = await db.query(
-      'locations',
-      columns: ['id'],
-      where: "materialized_path LIKE ? OR id = ?",
-      whereArgs: ['%/$id/%', id],
-    );
-    final descIds = descendantLocations.map((l) => l['id'] as String).toList();
-    if (descIds.isNotEmpty) {
-      final placeholders = List.filled(descIds.length, '?').join(',');
-      await db.update(
-        'customers',
-        {'street_id': '', 'location_id': ''},
-        where: "street_id IN ($placeholders) OR location_id IN ($placeholders)",
-        whereArgs: [...descIds, ...descIds],
-      );
+    List<String> allDescIds = [];
 
-      // Cascade delete target location and all child/descendant nodes
-      await db.delete(
+    // Fetch details of locations before deletion to enable matching remote deletion
+    List<Map<String, dynamic>> targetLocs = [];
+    try {
+      targetLocs = await db.query(
         'locations',
-        where: "id IN ($placeholders)",
-        whereArgs: descIds,
+        where: "materialized_path LIKE ? OR id = ?",
+        whereArgs: ['%/$id/%', id],
       );
+      if (targetLocs.isEmpty) {
+        final single = await db.query('locations', where: 'id = ?', whereArgs: [id]);
+        if (single.isNotEmpty) targetLocs = single;
+      }
+    } catch (_) {}
 
-      for (final descId in descIds) {
+    await db.transaction((txn) async {
+      await txn.execute('PRAGMA defer_foreign_keys = ON;');
+
+      // Clear location references for all customers belonging to this location or any child/descendant locations
+      final descendantLocations = await txn.query(
+        'locations',
+        columns: ['id'],
+        where: "materialized_path LIKE ? OR id = ?",
+        whereArgs: ['%/$id/%', id],
+      );
+      final descIds = descendantLocations.map((l) => l['id'] as String).toList();
+      if (!descIds.contains(id)) descIds.add(id);
+      allDescIds = descIds;
+
+      if (descIds.isNotEmpty) {
+        final placeholders = List.filled(descIds.length, '?').join(',');
+
+        // Ensure unassigned area & street exist in legacy tables to satisfy foreign key constraints
+        await DatabaseHelper.instance.ensureLegacyStreetAndAreaExists(txn, 'unassigned');
+
+        // Unassign customers from deleted location/street safely
+        await txn.update(
+          'customers',
+          {'street_id': 'unassigned', 'location_id': 'unassigned'},
+          where: "street_id IN ($placeholders) OR location_id IN ($placeholders)",
+          whereArgs: [...descIds, ...descIds],
+        );
+
+        // Cascade delete target location and all child/descendant nodes
+        await txn.delete(
+          'locations',
+          where: "id IN ($placeholders)",
+          whereArgs: descIds,
+        );
+
+        for (final descId in descIds) {
+          try {
+            await txn.delete('areas', where: 'id = ?', whereArgs: [descId]);
+            await txn.delete('streets', where: 'id = ?', whereArgs: [descId]);
+          } catch (_) {}
+        }
+      } else {
+        await txn.delete('locations', where: 'id = ?', whereArgs: [id]);
         try {
-          await db.delete('areas', where: 'id = ?', whereArgs: [descId]);
-          await db.delete('streets', where: 'id = ?', whereArgs: [descId]);
+          await txn.delete('areas', where: 'id = ?', whereArgs: [id]);
+          await txn.delete('streets', where: 'id = ?', whereArgs: [id]);
         } catch (_) {}
       }
-    } else {
-      await db.delete('locations', where: 'id = ?', whereArgs: [id]);
-      try {
-        await db.delete('areas', where: 'id = ?', whereArgs: [id]);
-        await db.delete('streets', where: 'id = ?', whereArgs: [id]);
-      } catch (_) {}
-    }
+    });
+
+    // Also push deletion to Supabase roads, sub_roads, and areas if configured
+    try {
+      final client = Supabase.instance.client;
+      final locsToPurge = targetLocs.isNotEmpty
+          ? targetLocs
+          : (allDescIds.isNotEmpty ? allDescIds : [id]).map((i) => {'id': i, 'name': ''}).toList();
+
+      for (final loc in locsToPurge) {
+        final locId = loc['id'] as String;
+        final locName = (loc['name'] as String? ?? '').trim();
+        final parentLocId = loc['parent_location_id'] as String?;
+        final supabaseRoadId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.road.$locId');
+        final supabaseSubroadId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.subroad.$locId');
+        final supabaseAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$locId');
+
+        try {
+          await client.from('roads').delete().or('id.eq.$supabaseRoadId,id.eq.$locId');
+          if (locName.isNotEmpty) {
+            if (parentLocId != null && parentLocId.isNotEmpty) {
+              final parentAreaId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.area.$parentLocId');
+              await client.from('roads').delete().match({'name': locName}).or('area_id.eq.$parentLocId,area_id.eq.$parentAreaId');
+            } else {
+              await client.from('roads').delete().match({'name': locName});
+            }
+          }
+        } catch (_) {}
+        try {
+          await client.from('sub_roads').delete().or('id.eq.$supabaseSubroadId,id.eq.$locId');
+          if (locName.isNotEmpty) {
+            await client.from('sub_roads').delete().match({'name': locName});
+          }
+        } catch (_) {}
+        try {
+          await client.from('areas').delete().or('id.eq.$supabaseAreaId,id.eq.$locId');
+          if (locName.isNotEmpty) {
+            await client.from('areas').delete().match({'name': locName});
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   /// Fetch full hierarchical breadcrumb path for a given location ID.

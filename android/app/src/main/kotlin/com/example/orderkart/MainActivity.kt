@@ -17,15 +17,7 @@ class MainActivity: FlutterActivity() {
                     @Suppress("DEPRECATION")
                     windowManager.defaultDisplay
                 }
-                val modes = disp?.supportedModes
-                var maxMode = modes?.firstOrNull()
-                var maxRate = 0f
-                modes?.forEach { mode ->
-                    if (mode.refreshRate > maxRate) {
-                        maxRate = mode.refreshRate
-                        maxMode = mode
-                    }
-                }
+                val maxMode = disp?.supportedModes?.maxByOrNull { it.refreshRate }
                 if (maxMode != null) {
                     val params = win.attributes
                     params.preferredDisplayModeId = maxMode.modeId

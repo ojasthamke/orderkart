@@ -11,6 +11,7 @@ import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
+import '../../../core/security/app_mode_service.dart';
 import '../../expense/presentation/expense_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
 
@@ -39,6 +40,21 @@ class _QuickInventoryAdjustScreenState
 
   String get _currency =>
       ref.watch(settingsProvider).valueOrNull?.currency ?? '₹';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final mode = ref.read(appModeProvider).value;
+      if (mode == AppMode.worker) {
+        if (mounted) {
+          SnackbarHelper.showError(
+              context, 'Access Denied: Workers cannot modify inventory.');
+          Navigator.pop(context);
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {

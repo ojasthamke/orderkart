@@ -9,6 +9,8 @@ import '../domain/payment.dart';
 import '../../customer/data/customer_dao.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/smart_rounding.dart';
+import '../../../core/utils/unit_converter.dart';
+import '../../inventory/data/item_dao.dart';
 
 class OrderDao {
   final _uuid = const Uuid();
@@ -58,7 +60,7 @@ class OrderDao {
     String? customerId,
     DateTime? startDate,
     DateTime? endDate,
-    int limit = 30,
+    int limit = 1000,
     int offset = 0,
   }) async {
     final db = await _db;
@@ -71,11 +73,18 @@ class OrderDao {
       args.add(customerId);
     }
     if (status != null && status != 'all') {
-      if (status == 'pending') {
-        conditions.add("(o.delivery_status = 'pending' OR o.delivery_status = 'confirmed' OR o.delivery_status = 'preparing' OR o.delivery_status = 'out for delivery')");
+      final s = status.toLowerCase().trim();
+      if (s == 'pending') {
+        conditions.add("(LOWER(o.delivery_status) = 'pending' OR LOWER(o.delivery_status) = 'confirmed' OR LOWER(o.delivery_status) = 'preparing' OR LOWER(o.delivery_status) = 'out for delivery' OR LOWER(o.delivery_status) = 'approved')");
+      } else if (s == 'cancelled') {
+        conditions.add("(LOWER(o.delivery_status) = 'cancelled' OR LOWER(o.delivery_status) = 'denied')");
+      } else if (s == 'preorder') {
+        conditions.add("(LOWER(o.order_type) = 'pre-order' OR LOWER(o.order_type) = 'preorder')");
+      } else if (s == 'quick_order') {
+        conditions.add("(LOWER(o.order_type) = 'quick order' OR LOWER(o.order_type) = 'quick_order' OR LOWER(o.order_type) = 'quick-order' OR LOWER(o.order_type) = 'order now' OR LOWER(o.order_type) = 'quick delivery')");
       } else {
-        conditions.add('o.delivery_status = ?');
-        args.add(status);
+        conditions.add('LOWER(o.delivery_status) = ?');
+        args.add(s);
       }
     }
 
@@ -200,7 +209,7 @@ class OrderDao {
   Future<String> insertOrder(AppOrder order,
       {DatabaseExecutor? executor, AppMode? appMode}) async {
     final db = await _getExecutor(executor);
-    final id = order.id.isEmpty ? await generateUniqueOrderNo() : order.id;
+    final id = order.id.isEmpty ? const Uuid().v4() : order.id;
     final now = DateTime.now().toIso8601String();
 
     String workerId = order.assignedWorkerId;
@@ -385,8 +394,9 @@ class OrderDao {
         continue;
       }
 
+      final bool isOrderQuick = order.orderType.toLowerCase() == 'order now' || order.orderType.toLowerCase() == 'quick';
       final dbItems = await db.query('items',
-          columns: ['selling_price', 'unit', 'weight_per_piece'],
+          columns: ['selling_price', 'order_now_selling_price', 'unit', 'weight_per_piece'],
           where: 'id = ?',
           whereArgs: [item.itemId]);
       if (dbItems.isEmpty) {
@@ -395,7 +405,9 @@ class OrderDao {
       }
 
       final dbRow = dbItems.first;
-      double basePrice = (dbRow['selling_price'] as num).toDouble();
+      final rawSelling = (dbRow['selling_price'] as num?)?.toDouble() ?? 0.0;
+      final rawQuick = (dbRow['order_now_selling_price'] as num?)?.toDouble() ?? 0.0;
+      double basePrice = (isOrderQuick && rawQuick > 0) ? rawQuick : rawSelling;
       final String dbUnit = dbRow['unit']?.toString() ?? item.itemUnit;
       final double weightPerPiece =
           (dbRow['weight_per_piece'] as num?)?.toDouble() ?? 1.0;
@@ -439,6 +451,21 @@ class OrderDao {
         itemRate = basePrice / conversion;
       }
 
+      // If the item is marked unavailable or has 0 total price, preserve its unavailable status
+      if (!item.isAvailable || item.totalPrice <= 0.001) {
+        await db.update(
+          'order_items',
+          {
+            'unit_price': itemRate,
+            'total_price': 0.0,
+            'is_available': 0,
+          },
+          where: 'id = ?',
+          whereArgs: [item.id],
+        );
+        continue;
+      }
+
       final newTotalPrice =
           double.parse((itemRate * item.quantity).toStringAsFixed(2));
 
@@ -447,6 +474,7 @@ class OrderDao {
         {
           'unit_price': itemRate,
           'total_price': newTotalPrice,
+          'is_available': 1,
         },
         where: 'id = ?',
         whereArgs: [item.id],
@@ -501,6 +529,177 @@ class OrderDao {
       'oldGrandTotal': order.grandTotal,
       'newGrandTotal': newGrandTotal,
     };
+  }
+
+  /// Toggle an order item's availability safely.
+  /// When marked unavailable:
+  /// - Sets is_available = 0, total_price = 0.0
+  /// - Restores stock back to inventory without counting as spoilage or loss
+  /// When marked available:
+  /// - Sets is_available = 1, total_price = quantity * unit_price
+  /// - Deducts stock from inventory
+  Future<Map<String, dynamic>> toggleOrderItemAvailability(
+      String orderId, String orderItemId) async {
+    final db = await _db;
+    final itemRows = await db.query(
+      'order_items',
+      where: 'id = ? AND order_id = ?',
+      whereArgs: [orderItemId, orderId],
+    );
+    if (itemRows.isEmpty) {
+      return {'success': false, 'message': 'Item not found'};
+    }
+
+    final item = itemRows.first;
+    final rawAvail = item['is_available'];
+    final bool currentAvail = rawAvail == null
+        ? true
+        : (rawAvail is bool
+            ? rawAvail
+            : (rawAvail == 1 ||
+                rawAvail == '1' ||
+                rawAvail.toString().toLowerCase() == 'true'));
+    final bool newAvail = !currentAvail;
+
+    final double unitPrice = (item['unit_price'] as num?)?.toDouble() ?? 0.0;
+    final double quantity = (item['quantity'] as num?)?.toDouble() ?? 0.0;
+    final String itemUnit = item['item_unit'] as String? ?? 'kg';
+    final String itemId = item['item_id'] as String? ?? '';
+    final String itemName = item['item_name'] as String? ?? '';
+    final double newTotalPrice = newAvail
+        ? double.parse((unitPrice * quantity).toStringAsFixed(2))
+        : 0.0;
+
+    final orderRows =
+        await db.query('orders', where: 'id = ?', whereArgs: [orderId]);
+    if (orderRows.isEmpty) {
+      return {'success': false, 'message': 'Order not found'};
+    }
+    final order = AppOrder.fromMap(orderRows.first);
+    final bool isActiveOrder =
+        order.deliveryStatus != 'cancelled' && order.deliveryStatus != 'denied';
+    final bool isQuick = order.orderType.toLowerCase() == 'order now' ||
+        order.orderType.toLowerCase() == 'quick';
+
+    await db.transaction((txn) async {
+      // 1. Update order item
+      await txn.update(
+        'order_items',
+        {
+          'is_available': newAvail ? 1 : 0,
+          'total_price': newTotalPrice,
+        },
+        where: 'id = ?',
+        whereArgs: [orderItemId],
+      );
+
+      // 2. Adjust stock if applicable (NEVER count as wastage or loss)
+      if (itemId.isNotEmpty && isActiveOrder) {
+        final dbItem = await ItemDao().getItemById(itemId, executor: txn);
+        if (dbItem != null) {
+          final baseQty = UnitConverter.convert(
+            quantity: quantity,
+            fromUnit: itemUnit,
+            toUnit: dbItem.unit,
+          );
+
+          if (!newAvail) {
+            // Restoring unsold stock to inventory
+            if (isQuick) {
+              await ItemDao()
+                  .adjustOrderNowStock(itemId, baseQty, executor: txn);
+            } else {
+              await ItemDao().adjustStock(itemId, baseQty, executor: txn);
+            }
+            await txn.insert('stock_history', {
+              'id': _uuid.v4(),
+              'item_id': itemId,
+              'item_name': itemName,
+              'change_amount': baseQty,
+              'reason':
+                  'Item unavailable in Order ${order.orderNoLabel} (Stock Restored)',
+              'order_id': orderId,
+              'created_at': DateTime.now().toIso8601String(),
+            });
+          } else {
+            // Deducting stock for newly available item
+            if (isQuick) {
+              await ItemDao()
+                  .adjustOrderNowStock(itemId, -baseQty, executor: txn);
+            } else {
+              await ItemDao().adjustStock(itemId, -baseQty, executor: txn);
+            }
+            await txn.insert('stock_history', {
+              'id': _uuid.v4(),
+              'item_id': itemId,
+              'item_name': itemName,
+              'change_amount': -baseQty,
+              'reason': 'Item available in Order ${order.orderNoLabel}',
+              'order_id': orderId,
+              'created_at': DateTime.now().toIso8601String(),
+            });
+          }
+        }
+      }
+
+      // 3. Recalculate order totals
+      final allItems = await txn
+          .query('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+      double newSubtotal = 0.0;
+      for (final it in allItems) {
+        final itAvail = it['is_available'] == null
+            ? true
+            : (it['is_available'] == 1 ||
+                it['is_available'] == true ||
+                it['is_available'].toString() == '1' ||
+                it['is_available'].toString().toLowerCase() == 'true');
+        if (itAvail) {
+          newSubtotal += (it['total_price'] as num?)?.toDouble() ?? 0.0;
+        }
+      }
+      newSubtotal = double.parse(newSubtotal.toStringAsFixed(2));
+
+      final unroundedGrandTotal =
+          math.max(0.0, newSubtotal - order.discount + order.deliveryCharge);
+
+      final settingsMap = await txn.query('settings',
+          where: "key = ?", whereArgs: [AppConstants.keySmartRounding]);
+      final bool isSmartRoundingEnabled = settingsMap.isNotEmpty
+          ? (settingsMap.first['value'] == 'true' ||
+              settingsMap.first['value'] == '1')
+          : false;
+
+      double finalGrandTotal = unroundedGrandTotal;
+      double roundingDiff = 0.0;
+
+      if (isSmartRoundingEnabled) {
+        finalGrandTotal = SmartRounding.round(unroundedGrandTotal);
+        roundingDiff = finalGrandTotal - unroundedGrandTotal;
+      }
+
+      final newRemaining = finalGrandTotal - order.paidAmount;
+
+      await txn.update(
+        'orders',
+        {
+          'subtotal': newSubtotal,
+          'smart_rounded_amount': roundingDiff,
+          'grand_total': finalGrandTotal,
+          'remaining_amount': newRemaining,
+          'updated_at': DateTime.now().toIso8601String(),
+          'sync_status': 'pending_update',
+        },
+        where: 'id = ?',
+        whereArgs: [orderId],
+      );
+
+      try {
+        await CustomerDao()
+            .recalcCustomerTotals(order.customerId, executor: txn);
+      } catch (_) {}
+    });
+
+    return {'success': true, 'isAvailable': newAvail};
   }
 
   Future<void> deleteOrder(String id, {DatabaseExecutor? executor}) async {
@@ -878,12 +1077,14 @@ class OrderDao {
               FROM order_items oi
               LEFT JOIN items i ON oi.item_id = i.id
               WHERE oi.order_id IN (SELECT id FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled' AND delivery_status != 'denied')
+                AND (oi.is_available = 1 OR oi.is_available IS NULL) AND oi.total_price > 0
               '''
             : '''
               SELECT $cogsSql AS v
               FROM order_items oi
               LEFT JOIN items i ON oi.item_id = i.id
               WHERE oi.order_id IN (SELECT id FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied')
+                AND (oi.is_available = 1 OR oi.is_available IS NULL) AND oi.total_price > 0
               ''',
         isWorker ? [workerId, workerId] : null);
     final cogs = (cogsRes.first['v'] as num?)?.toDouble() ?? 0.0;

@@ -24,6 +24,7 @@ import '../../settings/presentation/settings_provider.dart';
 import '../data/order_questions_dao.dart';
 import '../data/order_dao.dart';
 import '../domain/order.dart';
+import '../domain/order_item.dart';
 import '../domain/payment.dart';
 import 'order_provider.dart';
 import '../../location/presentation/location_provider.dart';
@@ -454,14 +455,71 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       fontWeight: FontWeight.w700,
                       color: AppColors.gray500),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  (order.customerName != null &&
-                          order.customerName!.trim().isNotEmpty)
-                      ? order.customerName!.trim()
-                      : 'Unknown Customer',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 15),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        (order.customerName != null &&
+                                order.customerName!.trim().isNotEmpty)
+                            ? order.customerName!.trim()
+                            : 'Unknown Customer',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
+                    ),
+                    customerAsync.maybeWhen(
+                      data: (c) {
+                        if (c == null) return const SizedBox.shrink();
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (c.isBrandNewCustomer) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F5E9),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                      color: const Color(0xFF81C784), width: 0.8),
+                                ),
+                                child: const Text(
+                                  '🌱 NEW',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF2E7D32),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            if (c.isGoogleCustomer)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F0FE),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                      color: const Color(0xFF4285F4), width: 0.8),
+                                ),
+                                child: const Text(
+                                  'GOOGLE',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF1967D2),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                      orElse: () => const SizedBox.shrink(),
+                    ),
+                  ],
                 ),
                 if (order.customerPhone != null) ...[
                   const SizedBox(height: 4),
@@ -630,6 +688,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                           style: const TextStyle(
                               fontWeight: FontWeight.w700, fontSize: 14),
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.block_rounded,
+                              size: 18, color: Colors.orange),
+                          tooltip: 'Mark Unavailable',
+                          padding: const EdgeInsets.only(left: 8),
+                          constraints: const BoxConstraints(),
+                          onPressed: () => _toggleItemAvailability(order, it),
+                        ),
                       ],
                     ),
                   );
@@ -688,6 +754,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                           '${currency}0.00',
                           style: const TextStyle(
                               fontWeight: FontWeight.w700, fontSize: 14, color: Colors.orange),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.check_circle_outline_rounded,
+                              size: 18, color: Colors.green),
+                          tooltip: 'Mark Available',
+                          padding: const EdgeInsets.only(left: 8),
+                          constraints: const BoxConstraints(),
+                          onPressed: () => _toggleItemAvailability(order, it),
                         ),
                       ],
                     ),
@@ -1344,6 +1418,30 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Future<void> _updateStatus(String orderId, String status) async {
+    final norm = status.toLowerCase().trim();
+    if (norm == AppConstants.statusCancelled || norm == 'denied') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cancel Order?'),
+          content: const Text(
+              'Are you sure you want to cancel this order? This will restore the order items back into inventory stock.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('No, Keep Order'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Yes, Cancel Order', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
     try {
       await ref
           .read(orderManagementProvider.notifier)
@@ -1523,6 +1621,78 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
             ? 'Round Off applied (Grand Total: $currency${newGrandTotal.toStringAsFixed(2)})'
             : 'Round Off undone (Grand Total: $currency${newGrandTotal.toStringAsFixed(2)})',
       );
+    }
+  }
+
+  Future<void> _toggleItemAvailability(AppOrder order, OrderItem item) async {
+    final willBeUnavailable = item.isAvailable;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              willBeUnavailable ? Icons.block_rounded : Icons.check_circle_rounded,
+              color: willBeUnavailable ? Colors.orange : Colors.green,
+            ),
+            const SizedBox(width: 8),
+            Text(willBeUnavailable ? 'Mark Unavailable' : 'Mark Available'),
+          ],
+        ),
+        content: Text(
+          willBeUnavailable
+              ? 'Mark "${item.itemName}" as unavailable in this order?\n\n'
+                  '• Item cost will be deducted from order total.\n'
+                  '• Physical stock will be restored to inventory.\n'
+                  '• This will NOT be counted as spoilage or loss.'
+              : 'Mark "${item.itemName}" as available in this order?\n\n'
+                  '• Item cost will be added to order total.\n'
+                  '• Physical stock will be deducted from inventory.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: willBeUnavailable ? Colors.orange : Colors.green,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              willBeUnavailable ? 'Mark Unavailable' : 'Mark Available',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final res = await ref
+          .read(orderManagementProvider.notifier)
+          .toggleOrderItemAvailability(order.id, item.id);
+      ref.invalidate(orderDetailProvider(widget.orderId));
+      if (mounted) {
+        if (res['success'] == true) {
+          final isAvail = res['isAvailable'] == true;
+          SnackbarHelper.showSuccess(
+            context,
+            isAvail
+                ? '"${item.itemName}" is now Available'
+                : '"${item.itemName}" marked Unavailable (Stock Restored)',
+          );
+        } else {
+          SnackbarHelper.showError(
+              context, res['message'] ?? 'Failed to update item availability');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Error updating item: $e');
+      }
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/security/app_mode_service.dart';
+import '../../location/data/location_dao.dart';
 import '../domain/street.dart';
 
 class StreetDao {
@@ -12,7 +13,7 @@ class StreetDao {
       {String? searchQuery}) async {
     final db = await _db;
     String where =
-        's.parent_location_id = ? AND s.location_kind = \'road\' AND s.is_archived = 0';
+        's.parent_location_id = ? AND (s.is_archived IS NULL OR s.is_archived = 0)';
     List<dynamic> args = [areaId];
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
       where += ' AND s.name LIKE ?';
@@ -22,7 +23,7 @@ class StreetDao {
     final maps = await db.rawQuery('''
       SELECT s.*,
         s.parent_location_id AS area_id,
-        (SELECT COUNT(*) FROM customers c WHERE c.location_id = s.id) AS customer_count
+        (SELECT COUNT(*) FROM customers c WHERE (c.is_archived IS NULL OR c.is_archived = 0) AND c.id NOT IN (SELECT id FROM deleted_customers) AND (c.location_id = s.id OR c.street_id = s.id)) AS customer_count
       FROM locations s
       WHERE $where
       ORDER BY s.sequence_key ASC
@@ -160,51 +161,6 @@ class StreetDao {
   }
 
   Future<void> deleteStreet(String id) async {
-    final db = await _db;
-    await db.transaction((txn) async {
-      await txn.execute('PRAGMA foreign_keys = OFF');
-
-      // Clear street and location references for all customers in this street
-      await txn.update(
-        'customers',
-        {'street_id': '', 'location_id': ''},
-        where: 'street_id = ? OR location_id = ?',
-        whereArgs: [id, id],
-      );
-
-      // Delete worker assignments
-      try {
-        await txn.delete('worker_assignments',
-            where: 'entity_id = ?', whereArgs: [id]);
-      } catch (_) {}
-
-      // Delete geo boundaries
-      try {
-        final boundaries = await txn.query(
-          'geo_boundaries',
-          columns: ['id'],
-          where: 'location_id = ?',
-          whereArgs: [id],
-        );
-        final boundaryIds = boundaries.map((b) => b['id'] as String).toList();
-        if (boundaryIds.isNotEmpty) {
-          final bPlaceholders = List.filled(boundaryIds.length, '?').join(',');
-          await txn.delete('geo_boundary_points',
-              where: "boundary_id IN ($bPlaceholders)",
-              whereArgs: boundaryIds);
-          await txn.delete('geo_boundaries',
-              where: "id IN ($bPlaceholders)", whereArgs: boundaryIds);
-        }
-      } catch (_) {}
-
-      await txn.delete('locations', where: 'id = ?', whereArgs: [id]);
-
-      // Keep legacy table updated
-      try {
-        await txn.delete('streets', where: 'id = ?', whereArgs: [id]);
-      } catch (_) {}
-
-      await txn.execute('PRAGMA foreign_keys = ON');
-    });
+    await LocationDao().deleteLocation(id);
   }
 }

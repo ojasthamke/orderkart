@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/area_dao.dart';
 import '../data/area_repository_impl.dart';
@@ -5,6 +6,7 @@ import '../domain/area.dart';
 import '../domain/area_repository.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../customer/presentation/customer_provider.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 
 // Repository provider
 final areaRepositoryProvider = Provider<AreaRepository>((ref) {
@@ -53,18 +55,21 @@ class AreaNotifier extends StateNotifier<AsyncValue<List<Area>>> {
     await _repo.addArea(area);
     await loadAreas();
     _invalidateAll();
+    unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
   }
 
   Future<void> updateArea(Area area) async {
     await _repo.updateArea(area);
     await loadAreas();
     _invalidateAll();
+    unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
   }
 
   Future<void> deleteArea(String id) async {
     await _repo.deleteArea(id);
     await loadAreas();
     _invalidateAll();
+    unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
   }
 }
 

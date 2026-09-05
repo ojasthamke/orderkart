@@ -43,10 +43,107 @@ class _ModeSelectionScreenState extends ConsumerState<ModeSelectionScreen> {
   Future<void> _proceed() async {
     AppHaptics.buttonClick();
     if (_selectedMode == AppMode.owner) {
-      _showOwnerSetupDialog();
+      final pinSet = await AppModeService.isOwnerPinSet();
+      if (pinSet) {
+        _showOwnerLoginDialog();
+      } else {
+        _showOwnerSetupDialog();
+      }
     } else {
       _importOwnerProvisioningZip();
     }
+  }
+
+  void _showOwnerLoginDialog() {
+    _pinCon.clear();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_rounded, color: AppColors.primary, size: 26),
+            SizedBox(width: 10),
+            Text('Owner Login',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter your 6-digit Owner Security PIN to access Master Owner Mode:',
+                style: TextStyle(fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _pinCon,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 6,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 4,
+                    fontSize: 18),
+                decoration: const InputDecoration(
+                  hintText: 'Enter 6-Digit PIN',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock_outline_rounded),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final pin = _pinCon.text.trim();
+              if (pin.length != 6) {
+                SnackbarHelper.showError(context, 'Please enter a 6-digit PIN');
+                return;
+              }
+              final ok = await AppModeService.verifyOwnerPin(pin);
+              if (ok) {
+                Navigator.pop(ctx);
+                AppModeService.loginOwnerSuccess();
+                await AppModeService.setAppMode(AppMode.owner);
+                await AppModeService.setAppInitialized(true);
+                if (mounted) {
+                  ref.invalidate(appModeProvider);
+                  Navigator.of(context).pushReplacementNamed(
+                    AppRoutes.welcome,
+                    arguments: WelcomeSplashScreenArgs(
+                      name: 'Owner',
+                      nextRoute: AppRoutes.dashboard,
+                    ),
+                  );
+                }
+              } else {
+                AppHaptics.error();
+                if (context.mounted) {
+                  final remaining = await AppModeService.getRemainingLockoutTime();
+                  if (remaining > 0) {
+                    SnackbarHelper.showError(
+                        context, 'Locked out. Please wait $remaining seconds.');
+                  } else {
+                    SnackbarHelper.showError(
+                        context, 'Incorrect Owner PIN. Please try again.');
+                  }
+                }
+              }
+            },
+            child: const Text('Unlock Owner'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showOwnerSetupDialog() {

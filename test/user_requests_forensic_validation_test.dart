@@ -41,6 +41,43 @@ void main() {
       await db.delete('locations');
       await db.delete('streets');
       await db.delete('areas');
+
+      final nowStr = DateTime.now().toIso8601String();
+      await db.insert('locations', {
+        'id': 'area-1',
+        'name': 'Main Area',
+        'location_kind': 'area',
+        'sequence_key': '001',
+        'depth': 0,
+        'materialized_path': '/area-1/',
+        'is_archived': 0,
+        'created_at': nowStr,
+        'updated_at': nowStr,
+      });
+      await db.insert('locations', {
+        'id': 'street-1',
+        'parent_location_id': 'area-1',
+        'name': 'Main Street',
+        'location_kind': 'road',
+        'sequence_key': '001000',
+        'depth': 1,
+        'materialized_path': '/area-1/street-1/',
+        'is_archived': 0,
+        'created_at': nowStr,
+        'updated_at': nowStr,
+      });
+      await db.insert('areas', {
+        'id': 'area-1',
+        'name': 'Main Area',
+        'created_at': nowStr,
+        'updated_at': nowStr,
+      });
+      await db.insert('streets', {
+        'id': 'street-1',
+        'area_id': 'area-1',
+        'name': 'Main Street',
+        'created_at': nowStr,
+      });
     });
 
     test('1. Smart Weight & Quantity Formatter: 1 kg, 3 kg vs 250 g, 500 g, 670 g', () {

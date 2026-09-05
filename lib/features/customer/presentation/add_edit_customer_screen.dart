@@ -4,8 +4,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/database/database_helper.dart';
@@ -63,6 +65,18 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   bool _isGhostHouse = false;
   List<Customer> _existingHouseFamilies = [];
 
+  // Dedicated Delivery Area & Road state
+  String? _selectedAreaId;
+  String? _selectedAreaName;
+  String? _selectedRoadId;
+  String? _selectedRoadName;
+  String? _selectedSubRoadId;
+  String? _selectedSubRoadName;
+  List<Map<String, dynamic>> _availableAreas = [];
+  List<Map<String, dynamic>> _availableRoads = [];
+  List<Map<String, dynamic>> _availableSubRoads = [];
+  bool _loadingLocations = true;
+
   // Custom Fields state
   List<Map<String, dynamic>> _customFields = [];
   final Map<String, TextEditingController> _customFieldControllers = {};
@@ -72,6 +86,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     super.initState();
     _streetId = widget.streetId;
     _loadCustomFields();
+    _loadAreasAndRoads();
 
     if (widget.initialHouseNumber != null && widget.initialHouseNumber!.isNotEmpty) {
       _houseCon.text = widget.initialHouseNumber!;
@@ -90,6 +105,341 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     if (widget.customerId != null) {
       _isEdit = true;
       _loadCustomer();
+    }
+  }
+
+  Future<void> _loadAreasAndRoads() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+
+      // 1. Fetch root areas from locations table
+      List<Map<String, dynamic>> areas = await db.query(
+        'locations',
+        where: "(parent_location_id IS NULL OR depth = 0) AND (is_archived IS NULL OR is_archived = 0)",
+        orderBy: "sequence_key ASC, name ASC",
+      );
+
+      // Fallback to legacy areas table if locations table has no root areas
+      if (areas.isEmpty) {
+        final legacyAreas = await db.query('areas', orderBy: 'name ASC');
+        areas = legacyAreas.map((a) => {
+          'id': a['id'],
+          'name': a['name'],
+        }).toList();
+      }
+
+      // If still empty and Supabase is configured, pull from Supabase
+      if (areas.isEmpty) {
+        try {
+          final rAreas = await Supabase.instance.client
+              .from('areas')
+              .select('id, name')
+              .order('name');
+          areas = List<Map<String, dynamic>>.from(rAreas);
+        } catch (_) {}
+      }
+
+      String? targetAreaId;
+      String? targetAreaName;
+      String? targetRoadId;
+      String? targetRoadName;
+      String? targetSubRoadId;
+      String? targetSubRoadName;
+
+      // If _streetId is provided, resolve its ancestor tree
+      if (_streetId != null && _streetId!.isNotEmpty) {
+        final list = <Map<String, dynamic>>[];
+        String? cur = _streetId;
+        int maxD = 10;
+        while (cur != null && maxD-- > 0) {
+          final rows = await db.query('locations',
+              where: 'id = ?', whereArgs: [cur], limit: 1);
+          if (rows.isEmpty) break;
+          list.insert(0, rows.first);
+          cur = rows.first['parent_location_id'] as String?;
+        }
+
+        if (list.isNotEmpty) {
+          targetAreaId = list[0]['id'] as String;
+          targetAreaName = list[0]['name'] as String;
+          if (list.length > 1) {
+            targetRoadId = list[1]['id'] as String;
+            targetRoadName = list[1]['name'] as String;
+          }
+          if (list.length > 2) {
+            targetSubRoadId = list.last['id'] as String;
+            targetSubRoadName = list.last['name'] as String;
+          }
+        } else {
+          // Check legacy streets table
+          final streetRows = await db.query('streets',
+              where: 'id = ?', whereArgs: [_streetId], limit: 1);
+          if (streetRows.isNotEmpty) {
+            targetRoadId = streetRows.first['id'] as String;
+            targetRoadName = streetRows.first['name'] as String;
+            targetAreaId = streetRows.first['area_id'] as String?;
+            if (targetAreaId != null) {
+              final aRows = await db.query('areas',
+                  where: 'id = ?', whereArgs: [targetAreaId], limit: 1);
+              if (aRows.isNotEmpty) {
+                targetAreaName = aRows.first['name'] as String;
+              }
+            }
+          }
+        }
+      }
+
+      // If targetAreaId is still not resolved, default to first available area
+      if (targetAreaId == null && areas.isNotEmpty) {
+        targetAreaId = areas.first['id'] as String;
+        targetAreaName = areas.first['name'] as String;
+      }
+
+      // Now load roads for this targetAreaId
+      List<Map<String, dynamic>> roads = [];
+      if (targetAreaId != null) {
+        roads = await _queryRoadsForArea(db, targetAreaId);
+      }
+
+      // If targetRoadId is not resolved, default to first available road
+      if ((targetRoadId == null || !roads.any((r) => r['id'] == targetRoadId)) && roads.isNotEmpty) {
+        targetRoadId = roads.first['id'] as String;
+        targetRoadName = roads.first['name'] as String;
+      }
+
+      List<Map<String, dynamic>> subRoads = [];
+      if (targetRoadId != null) {
+        subRoads = await _querySubRoadsForRoad(db, targetRoadId);
+      }
+
+      if (mounted) {
+        setState(() {
+          _availableAreas = areas;
+          _selectedAreaId = targetAreaId;
+          _selectedAreaName = targetAreaName;
+          _availableRoads = roads;
+          _selectedRoadId = targetRoadId;
+          _selectedRoadName = targetRoadName;
+          _availableSubRoads = subRoads;
+          _selectedSubRoadId = targetSubRoadId ?? '';
+          _selectedSubRoadName = targetSubRoadName;
+          _streetId = (_selectedSubRoadId != null && _selectedSubRoadId!.isNotEmpty)
+              ? _selectedSubRoadId
+              : (_selectedRoadId != null && _selectedRoadId!.isNotEmpty)
+                  ? _selectedRoadId
+                  : _selectedAreaId;
+          _loadingLocations = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[AddEditCustomer] Error loading areas and roads: $e');
+      if (mounted) setState(() => _loadingLocations = false);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _queryRoadsForArea(Database db, String areaId) async {
+    List<Map<String, dynamic>> roads = await db.query(
+      'locations',
+      where: "parent_location_id = ? AND (is_archived IS NULL OR is_archived = 0)",
+      whereArgs: [areaId],
+      orderBy: "sequence_key ASC, name ASC",
+    );
+    if (roads.isEmpty) {
+      final legacy = await db.query(
+        'streets',
+        where: "area_id = ?",
+        whereArgs: [areaId],
+        orderBy: "name ASC",
+      );
+      roads = legacy.map((s) => {'id': s['id'], 'name': s['name']}).toList();
+    }
+    if (roads.isEmpty) {
+      try {
+        final rRoads = await Supabase.instance.client
+            .from('roads')
+            .select('id, name')
+            .eq('area_id', areaId)
+            .order('name');
+        roads = List<Map<String, dynamic>>.from(rRoads);
+      } catch (_) {}
+    }
+    return roads;
+  }
+
+  Future<List<Map<String, dynamic>>> _querySubRoadsForRoad(Database db, String roadId) async {
+    List<Map<String, dynamic>> subRoads = await db.query(
+      'locations',
+      where: "parent_location_id = ? AND (is_archived IS NULL OR is_archived = 0)",
+      whereArgs: [roadId],
+      orderBy: "sequence_key ASC, name ASC",
+    );
+    return subRoads;
+  }
+
+  Future<void> _onAreaChanged(String newAreaId) async {
+    final areaMap = _availableAreas.firstWhere(
+      (a) => a['id'] == newAreaId,
+      orElse: () => {'name': ''},
+    );
+    final areaName = areaMap['name'] as String? ?? '';
+    final db = await DatabaseHelper.instance.database;
+    final roads = await _queryRoadsForArea(db, newAreaId);
+    String? firstRoadId;
+    String? firstRoadName;
+    if (roads.isNotEmpty) {
+      firstRoadId = roads.first['id'] as String;
+      firstRoadName = roads.first['name'] as String;
+    }
+
+    setState(() {
+      _selectedAreaId = newAreaId;
+      _selectedAreaName = areaName;
+      _availableRoads = roads;
+      _selectedRoadId = firstRoadId;
+      _selectedRoadName = firstRoadName;
+      _availableSubRoads = [];
+      _selectedSubRoadId = '';
+      _selectedSubRoadName = null;
+      _streetId = firstRoadId ?? newAreaId;
+    });
+
+    if (firstRoadId != null) {
+      final subRoads = await _querySubRoadsForRoad(db, firstRoadId);
+      if (mounted) {
+        setState(() => _availableSubRoads = subRoads);
+      }
+    }
+    _autoUpdateAddress();
+  }
+
+  Future<void> _onRoadChanged(String newRoadId) async {
+    final roadMap = _availableRoads.firstWhere(
+      (r) => r['id'] == newRoadId,
+      orElse: () => {'name': ''},
+    );
+    final roadName = roadMap['name'] as String? ?? '';
+    final db = await DatabaseHelper.instance.database;
+    final subRoads = await _querySubRoadsForRoad(db, newRoadId);
+
+    setState(() {
+      _selectedRoadId = newRoadId;
+      _selectedRoadName = roadName;
+      _availableSubRoads = subRoads;
+      _selectedSubRoadId = '';
+      _selectedSubRoadName = null;
+      _streetId = newRoadId;
+    });
+    _autoUpdateAddress();
+  }
+
+  void _onSubRoadChanged(String newSubRoadId) {
+    String? subRoadName;
+    if (newSubRoadId.isNotEmpty) {
+      final srMap = _availableSubRoads.firstWhere(
+        (sr) => sr['id'] == newSubRoadId,
+        orElse: () => {'name': ''},
+      );
+      subRoadName = srMap['name'] as String?;
+    }
+    setState(() {
+      _selectedSubRoadId = newSubRoadId;
+      _selectedSubRoadName = subRoadName;
+      _streetId = newSubRoadId.isNotEmpty ? newSubRoadId : _selectedRoadId;
+    });
+    _autoUpdateAddress();
+  }
+
+  void _autoUpdateAddress() {
+    if (_addressCon.text.trim().isEmpty || _addressCon.text.contains(',')) {
+      final parts = <String>[];
+      if (_houseCon.text.trim().isNotEmpty) parts.add(_houseCon.text.trim());
+      if (_selectedSubRoadName != null && _selectedSubRoadName!.trim().isNotEmpty) {
+        parts.add(_selectedSubRoadName!.trim());
+      }
+      if (_selectedRoadName != null && _selectedRoadName!.trim().isNotEmpty) {
+        parts.add(_selectedRoadName!.trim());
+      }
+      if (_selectedAreaName != null && _selectedAreaName!.trim().isNotEmpty) {
+        parts.add(_selectedAreaName!.trim());
+      }
+      if (parts.isNotEmpty) {
+        _addressCon.text = parts.join(', ');
+      }
+    }
+  }
+
+  Future<void> _showAddNewRoadDialog() async {
+    if (_selectedAreaId == null) return;
+    final nameCon = TextEditingController();
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add New Road / Street'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Area: ${_selectedAreaName ?? ""}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameCon,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Road Name *',
+                hintText: 'e.g. Main Road, Galli 1',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Add Road'),
+          ),
+        ],
+      ),
+    );
+
+    if (res == true && nameCon.text.trim().isNotEmpty) {
+      final roadName = nameCon.text.trim();
+      final newRoadId = const Uuid().v4();
+      final now = DateTime.now().toIso8601String();
+      final db = await DatabaseHelper.instance.database;
+
+      await db.insert('locations', {
+        'id': newRoadId,
+        'parent_location_id': _selectedAreaId,
+        'name': roadName,
+        'location_kind': 'road',
+        'sequence_key': '001',
+        'depth': 1,
+        'created_at': now,
+        'updated_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+      try {
+        await db.insert('streets', {
+          'id': newRoadId,
+          'area_id': _selectedAreaId,
+          'name': roadName,
+          'created_at': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      } catch (_) {}
+
+      final roads = await _queryRoadsForArea(db, _selectedAreaId!);
+      setState(() {
+        _availableRoads = roads;
+        _selectedRoadId = newRoadId;
+        _selectedRoadName = roadName;
+        _streetId = newRoadId;
+      });
+      _autoUpdateAddress();
+      unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
     }
   }
 
@@ -180,6 +530,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         _customerCodeCon.text = _initialCustomerCode;
       });
       _checkHousehold(customer.houseNumber);
+      _loadAreasAndRoads();
     }
   }
 
@@ -508,6 +859,204 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                   ),
                 ),
               ],
+
+              // ── Delivery Area & Route Selector ─────────────────────────
+              Builder(
+                builder: (ctx) {
+                  final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : AppColors.primary.withOpacity(0.25),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.alt_route_rounded,
+                                  color: AppColors.primary, size: 20),
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Delivery Area & Route *',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                            if (_loadingLocations)
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Area Dropdown
+                        DropdownButtonFormField<String>(
+                          value: _selectedAreaId,
+                          decoration: const InputDecoration(
+                            labelText: 'Delivery Area *',
+                            prefixIcon: Icon(Icons.location_city_rounded),
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: _availableAreas.map((a) {
+                            return DropdownMenuItem<String>(
+                              value: a['id'] as String,
+                              child: Text(
+                                a['name'] as String,
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newAreaId) {
+                            if (newAreaId != null && newAreaId != _selectedAreaId) {
+                              _onAreaChanged(newAreaId);
+                            }
+                          },
+                          validator: (v) => (v == null || v.isEmpty) ? 'Please select a delivery area' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Road Dropdown + Quick Add Road button
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _availableRoads.isEmpty
+                                    ? (_selectedAreaId ?? '')
+                                    : (_selectedRoadId != null &&
+                                            _availableRoads.any((r) => r['id'] == _selectedRoadId)
+                                        ? _selectedRoadId
+                                        : (_availableRoads.isNotEmpty ? _availableRoads.first['id'] as String : null)),
+                                decoration: InputDecoration(
+                                  labelText: _availableRoads.isEmpty
+                                      ? 'Delivery Road (Direct Area)'
+                                      : 'Delivery Road / Street *',
+                                  prefixIcon: const Icon(Icons.signpost_rounded),
+                                  border: const OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                                items: _availableRoads.isEmpty
+                                    ? [
+                                        DropdownMenuItem<String>(
+                                          value: _selectedAreaId ?? '',
+                                          child: Text(
+                                            _selectedAreaName != null && _selectedAreaName!.isNotEmpty
+                                                ? 'Direct in $_selectedAreaName (No roads added)'
+                                                : '-- Direct Area / No Roads --',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ),
+                                      ]
+                                    : _availableRoads.map((r) {
+                                        return DropdownMenuItem<String>(
+                                          value: r['id'] as String,
+                                          child: Text(
+                                            r['name'] as String,
+                                            style: const TextStyle(fontWeight: FontWeight.w500),
+                                          ),
+                                        );
+                                      }).toList(),
+                                onChanged: (newRoadId) {
+                                  if (newRoadId != null &&
+                                      _availableRoads.isNotEmpty &&
+                                      newRoadId != _selectedRoadId) {
+                                    _onRoadChanged(newRoadId);
+                                  }
+                                },
+                                validator: (v) {
+                                  if (_availableRoads.isNotEmpty && (v == null || v.isEmpty)) {
+                                    return 'Please select a road';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton.filledTonal(
+                              onPressed: _selectedAreaId == null ? null : _showAddNewRoadDialog,
+                              icon: const Icon(Icons.add_road_rounded),
+                              tooltip: 'Add New Road',
+                            ),
+                          ],
+                        ),
+
+                        if (_availableSubRoads.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            value: _selectedSubRoadId,
+                            decoration: const InputDecoration(
+                              labelText: 'Sub-Road / Colony (optional)',
+                              prefixIcon: Icon(Icons.turn_slight_right_rounded),
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: '',
+                                child: Text('-- None --'),
+                              ),
+                              ..._availableSubRoads.map((sr) {
+                                return DropdownMenuItem<String>(
+                                  value: sr['id'] as String,
+                                  child: Text(sr['name'] as String),
+                                );
+                              }),
+                            ],
+                            onChanged: (newSubRoadId) {
+                              _onSubRoadChanged(newSubRoadId ?? '');
+                            },
+                          ),
+                        ],
+
+                        if (_selectedAreaName != null && _selectedRoadName != null) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(Icons.check_circle_outline_rounded,
+                                  size: 14, color: AppColors.primary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Route Assigned: $_selectedRoadName, $_selectedAreaName',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
 
               Row(
                 children: [
@@ -901,8 +1450,16 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_streetId == null || _streetId!.isEmpty) {
-      SnackbarHelper.showError(context, 'Street is required');
-      return;
+      if (_selectedSubRoadId != null && _selectedSubRoadId!.isNotEmpty) {
+        _streetId = _selectedSubRoadId;
+      } else if (_selectedRoadId != null && _selectedRoadId!.isNotEmpty) {
+        _streetId = _selectedRoadId;
+      } else if (_selectedAreaId != null && _selectedAreaId!.isNotEmpty) {
+        _streetId = _selectedAreaId;
+      } else {
+        SnackbarHelper.showError(context, 'Delivery Area is required');
+        return;
+      }
     }
     setState(() => _loading = true);
 
@@ -912,22 +1469,24 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       final String codeRaw = _customerCodeCon.text.trim().toUpperCase();
       final db = await DatabaseHelper.instance.database;
 
-      if (codeRaw.isNotEmpty) {
+      String finalCustomerCode = codeRaw;
+      if (finalCustomerCode.isNotEmpty) {
         final RegExp allowedChars = RegExp(r'^[A-Z0-9\-]+$');
-        if (!allowedChars.hasMatch(codeRaw)) {
+        if (!allowedChars.hasMatch(finalCustomerCode)) {
           throw Exception('Customer Code can only contain letters, numbers, and hyphens.');
         }
-        if (codeRaw.length < 3) {
+        if (finalCustomerCode.length < 3) {
           throw Exception('Customer Code must be at least 3 characters long.');
         }
-        if (codeRaw.length > 20) {
+        if (finalCustomerCode.length > 20) {
           throw Exception('Customer Code must be at most 20 characters long.');
         }
         final codeCheck = await db.query(
           'customers',
           columns: ['name'],
-          where: 'customer_code = ? AND id != ? AND (is_archived IS NULL OR is_archived = 0)',
-          whereArgs: [codeRaw, customerId],
+          where:
+              'customer_code = ? AND id != ? AND (is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers)',
+          whereArgs: [finalCustomerCode, customerId],
         );
         if (codeCheck.isNotEmpty) {
           throw Exception('Customer code already assigned. Please enter another code.');
@@ -940,12 +1499,41 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       final String finalPhone =
           _isGhostHouse ? '0000000000' : _phone1Con.text.trim();
 
+      // Auto-generate customer code in ABCDE125 format if blank on new customer creation
+      if (finalCustomerCode.isEmpty && !_isGhostHouse && finalName.isNotEmpty) {
+        final cleanLetters = finalName.replaceAll(RegExp(r'[^a-zA-Z]'), '').toUpperCase();
+        String prefix = cleanLetters;
+        if (prefix.length < 5) {
+          prefix = '${prefix}OKART'.substring(0, 5);
+        } else {
+          prefix = prefix.substring(0, 5);
+        }
+        final cleanDigits = finalPhone.replaceAll(RegExp(r'\D'), '');
+        String suffix = cleanDigits.length >= 3 ? cleanDigits.substring(cleanDigits.length - 3) : '101';
+        finalCustomerCode = '$prefix$suffix';
+
+        int attempts = 0;
+        while (attempts < 100) {
+          final dupCheck = await db.query(
+            'customers',
+            where:
+                'customer_code = ? AND id != ? AND (is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers)',
+            whereArgs: [finalCustomerCode, customerId],
+          );
+          if (dupCheck.isEmpty) break;
+          final numVal = 100 + attempts;
+          finalCustomerCode = '$prefix$numVal';
+          attempts++;
+        }
+      }
+
       // Skip duplicate-phone check for ghost houses (they all share the same placeholder phone)
       if (!_isGhostHouse) {
         final duplicateCheck = await db.query(
           'customers',
           columns: ['name'],
-          where: 'phone1 = ? AND id != ?',
+          where:
+              'phone1 = ? AND id != ? AND (is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers)',
           whereArgs: [finalPhone, customerId],
         );
         if (duplicateCheck.isNotEmpty) {
@@ -985,22 +1573,108 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               .getCustomerById(customerId)
           : null;
 
+      // Auto-compose delivery address if empty, using house number + road + area
+      String resolvedAddress = _addressCon.text.trim();
+      final String houseNo = _houseCon.text.trim();
+      
+      String supabaseAreaId = _selectedAreaId ?? '';
+      String supabaseRoadId = _selectedRoadId ?? '';
+      String supabaseSubRoadId = _selectedSubRoadId ?? '';
+      String locationAreaName = _selectedAreaName ?? '';
+      String locationRoadName = _selectedRoadName ?? '';
+      String locationSubRoadName = _selectedSubRoadName ?? '';
+
+      if (_streetId != null && _streetId!.isNotEmpty) {
+        try {
+          final locInfo = await ref.read(customerLocationProvider(_streetId!).future);
+          if (locationRoadName.isEmpty) locationRoadName = locInfo['roadName'] ?? locInfo['street'] ?? '';
+          if (locationAreaName.isEmpty) locationAreaName = locInfo['areaName'] ?? locInfo['area'] ?? '';
+          if (locationSubRoadName.isEmpty) locationSubRoadName = locInfo['subRoadName'] ?? '';
+        } catch (_) {}
+      }
+
+      // Resolve real dedicated IDs from Supabase if online, otherwise pass name for trigger resolution
+      if (locationAreaName.isNotEmpty) {
+        try {
+          final areaRes = await Supabase.instance.client
+              .from('areas')
+              .select('id')
+              .ilike('name', locationAreaName.trim())
+              .limit(1)
+              .maybeSingle();
+          if (areaRes != null && areaRes['id'] != null) {
+            supabaseAreaId = areaRes['id'].toString();
+          }
+        } catch (_) {}
+        if (supabaseAreaId.isEmpty) {
+          supabaseAreaId = locationAreaName.trim();
+        }
+      }
+
+      if (locationRoadName.isNotEmpty) {
+        try {
+          var roadQuery = Supabase.instance.client
+              .from('roads')
+              .select('id')
+              .ilike('name', locationRoadName.trim());
+          if (supabaseAreaId.isNotEmpty && !supabaseAreaId.contains(' ')) {
+            roadQuery = roadQuery.eq('area_id', supabaseAreaId);
+          }
+          final roadRes = await roadQuery.limit(1).maybeSingle();
+          if (roadRes != null && roadRes['id'] != null) {
+            supabaseRoadId = roadRes['id'].toString();
+          }
+        } catch (_) {}
+        if (supabaseRoadId.isEmpty) {
+          supabaseRoadId = locationRoadName.trim();
+        }
+      }
+
+      if (locationSubRoadName.isNotEmpty) {
+        try {
+          var subRoadQuery = Supabase.instance.client
+              .from('sub_roads')
+              .select('id')
+              .ilike('name', locationSubRoadName.trim());
+          if (supabaseRoadId.isNotEmpty && !supabaseRoadId.contains(' ')) {
+            subRoadQuery = subRoadQuery.eq('road_id', supabaseRoadId);
+          }
+          final srRes = await subRoadQuery.limit(1).maybeSingle();
+          if (srRes != null && srRes['id'] != null) {
+            supabaseSubRoadId = srRes['id'].toString();
+          }
+        } catch (_) {}
+        if (supabaseSubRoadId.isEmpty) {
+          supabaseSubRoadId = locationSubRoadName.trim();
+        }
+      }
+
+      if (resolvedAddress.isEmpty) {
+        final parts = <String>[];
+        if (houseNo.isNotEmpty) parts.add(houseNo);
+        if (locationSubRoadName.isNotEmpty) parts.add(locationSubRoadName);
+        if (locationRoadName.isNotEmpty) parts.add(locationRoadName);
+        if (locationAreaName.isNotEmpty) parts.add(locationAreaName);
+        resolvedAddress = parts.join(', ');
+      }
+
       final customer = existing != null
           ? existing.copyWith(
+              streetId: _streetId!,
               name: finalName,
               phone1: finalPhone,
               phone2: _phone2Con.text.trim(),
               whatsapp: _waCon.text.trim(),
               houseNumber: _houseCon.text.trim(),
               serialNo: int.tryParse(_serialNoCon.text.trim()) ?? 0,
-              address: _addressCon.text.trim(),
+              address: resolvedAddress,
               notes: _notesCon.text.trim(),
               mapsLocation: _mapsCon.text.trim(),
               photoPath: finalPhotoPath,
               dietaryPreference: _dietaryPreference,
               latitude: latitude,
               longitude: longitude,
-              customerCode: codeRaw,
+              customerCode: finalCustomerCode,
               updatedAt: now,
             )
           : Customer(
@@ -1012,7 +1686,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               whatsapp: _waCon.text.trim(),
               houseNumber: _houseCon.text.trim(),
               serialNo: int.tryParse(_serialNoCon.text.trim()) ?? 0,
-              address: _addressCon.text.trim(),
+              address: resolvedAddress,
               notes: _notesCon.text.trim(),
               mapsLocation: _mapsCon.text.trim(),
               photoPath: finalPhotoPath,
@@ -1022,7 +1696,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               customerSince: now,
               createdAt: now,
               updatedAt: now,
-              customerCode: codeRaw,
+              customerCode: finalCustomerCode,
             );
 
       final notifier = ref.read(customerListProvider(_streetId!).notifier);
@@ -1080,19 +1754,52 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         // Fire and forget in background so UI pops immediately
         Future.microtask(() async {
           try {
+            await CustomerOrderSyncService.instance.ensureSupabaseAuth();
             final client = Supabase.instance.client;
             final cleanId = _getValidUuid(customerId);
-            await client.rpc('sync_customer_with_code', params: {
-              'p_id': cleanId,
-              'p_name': finalName,
-              'p_phone': finalPhone,
-              'p_email': '',
-              'p_address': _addressCon.text.trim(),
-              'p_customer_code': codeRaw,
-            }).timeout(const Duration(seconds: 8));
+            try {
+              await client.rpc('sync_customer_with_code', params: {
+                'p_id': cleanId,
+                'p_name': finalName,
+                'p_phone': finalPhone,
+                'p_email': '',
+                'p_address': resolvedAddress,
+                'p_customer_code': finalCustomerCode,
+                'p_area_id': supabaseAreaId.isNotEmpty ? supabaseAreaId : null,
+                'p_road_id': supabaseRoadId.isNotEmpty ? supabaseRoadId : null,
+                'p_sub_road_id': supabaseSubRoadId.isNotEmpty ? supabaseSubRoadId : null,
+              }).timeout(const Duration(seconds: 8));
+            } catch (rpcErr) {
+              debugPrint('CustomerCode: RPC sync_customer_with_code failed: $rpcErr. Falling back to direct upsert.');
+              final row = <String, dynamic>{
+                'id': cleanId,
+                'name': finalName,
+                'phone': finalPhone,
+                'address': resolvedAddress,
+                if (finalCustomerCode.isNotEmpty) 'customer_code': finalCustomerCode,
+                if (supabaseAreaId.isNotEmpty) 'area_id': supabaseAreaId,
+                if (supabaseRoadId.isNotEmpty) 'road_id': supabaseRoadId,
+                if (supabaseSubRoadId.isNotEmpty) 'sub_road_id': supabaseSubRoadId,
+              };
+              await client.from('customers').upsert(row, onConflict: 'id');
+            }
+            // Mark customer as synced in settings with timestamp
+            final nowMillis = DateTime.now().millisecondsSinceEpoch.toString();
+            final dbLocal = await DatabaseHelper.instance.database;
+            await dbLocal.insert(
+              'settings',
+              {'key': 'customer_sync_time:$customerId', 'value': nowMillis},
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+            await dbLocal.insert(
+              'settings',
+              {'key': 'customer_sync_status:$customerId', 'value': '1'},
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
             debugPrint('CustomerCode: Background synced customer $finalName ($customerId) to Supabase.');
           } catch (e) {
-            debugPrint('CustomerCode: Supabase background sync failed (will be retried by sync service): $e');
+            debugPrint('CustomerCode: Supabase background sync failed (triggering sync service): $e');
+            unawaited(CustomerOrderSyncService.instance.syncAllExistingCustomers());
           }
         });
       } else {

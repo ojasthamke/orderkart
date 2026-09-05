@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../domain/inventory_repository.dart';
 import '../domain/item.dart';
 import '../domain/stock_history.dart';
+import '../../../core/database/database_helper.dart';
 import 'item_dao.dart';
 
 class InventoryRepositoryImpl implements InventoryRepository {
@@ -65,9 +66,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
     
     // Parse description for JSON extra fields
     final desc = p['description'] as String? ?? '';
-    double costPrice = 0.0;
-    double marketPrice = price; // Default to selling price
-    double stock = 0.0;
+    double costPrice = (p['cost_price'] as num?)?.toDouble() ?? 0.0;
+    double marketPrice = (p['mrp'] as num?)?.toDouble() ?? price;
+    double stock = (p['stock'] as num?)?.toDouble() ?? 0.0;
     double minStock = 0.0;
     String barcode = '';
     double weightPerPiece = 0.25;
@@ -82,9 +83,15 @@ class InventoryRepositoryImpl implements InventoryRepository {
     if (desc.trim().startsWith('{') && desc.trim().endsWith('}')) {
       try {
         final Map<String, dynamic> extra = json.decode(desc);
-        costPrice = (extra['cost_price'] as num?)?.toDouble() ?? 0.0;
-        marketPrice = ((extra['market_price'] ?? extra['mrp']) as num?)?.toDouble() ?? price;
-        stock = (extra['stock'] as num?)?.toDouble() ?? 0.0;
+        if (costPrice == 0.0 && extra['cost_price'] != null) {
+          costPrice = (extra['cost_price'] as num?)?.toDouble() ?? 0.0;
+        }
+        if (marketPrice == price && (extra['market_price'] != null || extra['mrp'] != null)) {
+          marketPrice = ((extra['market_price'] ?? extra['mrp']) as num?)?.toDouble() ?? price;
+        }
+        if (stock == 0.0 && extra['stock'] != null) {
+          stock = (extra['stock'] as num?)?.toDouble() ?? 0.0;
+        }
         minStock = (extra['min_stock'] as num?)?.toDouble() ?? 0.0;
         barcode = extra['barcode'] as String? ?? '';
         weightPerPiece = (extra['weight_per_piece'] as num?)?.toDouble() ?? 0.25;
@@ -113,6 +120,12 @@ class InventoryRepositoryImpl implements InventoryRepository {
             ? p['order_now_is_available'] as bool
             : (p['order_now_is_available'] as num) == 1);
 
+    final isAvailable = p['is_available'] == null
+        ? true
+        : (p['is_available'] is bool
+            ? p['is_available'] as bool
+            : (p['is_available'] as num) == 1);
+
     return Item(
       id: id,
       name: name,
@@ -139,6 +152,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
       orderNowSellingPrice: orderNowSellingPrice,
       orderNowMrp: orderNowMrp,
       orderNowCostPrice: orderNowCostPrice,
+      isAvailable: isAvailable,
       orderNowIsAvailable: orderNowIsAvailable,
     );
   }
@@ -159,16 +173,25 @@ class InventoryRepositoryImpl implements InventoryRepository {
       'dosage_info': item.dosageInfo,
       'best_before': item.bestBefore,
       'pack_date': item.packDate,
+      'order_now_stock': item.orderNowStock,
+      'order_now_price': item.orderNowSellingPrice,
+      'order_now_mrp': item.orderNowMrp,
+      'order_now_cost_price': item.orderNowCostPrice,
+      'order_now_is_available': item.orderNowIsAvailable,
     };
     
     return {
       'name': item.name,
       'category_id': categoryId,
       'price': item.sellingPrice,
+      'selling_price': item.sellingPrice,
+      'mrp': item.marketPrice,
+      'cost_price': item.costPrice,
+      'stock': item.stock,
       'unit': item.unit,
       'image_path': item.photoPath,
       'description': json.encode(extra),
-      'is_available': item.stock > 0,
+      'is_available': item.isAvailable,
       'is_enabled': true,
       'order_now_stock': item.orderNowStock,
       'order_now_price': item.orderNowSellingPrice,
@@ -195,9 +218,25 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   @override
   Future<String> addItem(Item item) async {
-    final localId = _uuid.v4();
+    final localId = item.id.isNotEmpty ? item.id : _uuid.v4();
     final itemWithId = item.copyWith(id: localId);
     await _dao.insertItem(itemWithId);
+
+    // Direct push to Supabase so new items are available to customers immediately
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      final categoryId = await _getOrCreateCategoryId(itemWithId.category);
+      final pMap = await _itemToProductMap(itemWithId, categoryId);
+      pMap['id'] = localId;
+      pMap['created_at'] = DateTime.now().toIso8601String();
+      pMap['updated_at'] = DateTime.now().toIso8601String();
+      await client.from('products').upsert(pMap);
+      debugPrint('[INVENTORY-SYNC] Directly synced new item ${itemWithId.name} ($localId) to Supabase.');
+    } catch (e) {
+      debugPrint('[INVENTORY-SYNC] Direct Supabase insert/upsert failed (will sync later): $e');
+    }
+
     return localId;
   }
 
@@ -261,6 +300,22 @@ class InventoryRepositoryImpl implements InventoryRepository {
   @override
   Future<void> deleteItem(String id) async {
     await _dao.deleteItem(id);
+    // Deactivate on Supabase so customers cannot order deleted products
+    try {
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      await client.from('products').update({
+        'is_enabled': false,
+        'is_available': false,
+        'stock': 0,
+        'order_now_is_available': false,
+        'order_now_stock': 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', id);
+      debugPrint('[INVENTORY-SYNC] Deactivated deleted product ($id) on Supabase.');
+    } catch (e) {
+      debugPrint('[INVENTORY-SYNC] Direct Supabase deactivation failed: $e');
+    }
   }
 
   @override
@@ -268,6 +323,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     final item = await _dao.getItemById(itemId);
     await _dao.adjustStock(itemId, change);
     if (item != null) {
+      final updatedItem = await _dao.getItemById(itemId);
       await _dao.insertStockHistory(StockHistory(
         id:           _uuid.v4(),
         itemId:       itemId,
@@ -277,6 +333,21 @@ class InventoryRepositoryImpl implements InventoryRepository {
         orderId:      orderId ?? '',
         createdAt:    DateTime.now(),
       ));
+
+      if (updatedItem != null) {
+        // Direct push updated stock to Supabase
+        try {
+          await _ensureSupabaseAuth();
+          final client = Supabase.instance.client;
+          await client.from('products').update({
+            'stock': updatedItem.stock,
+            'updated_at': DateTime.now().toIso8601String(),
+          }).eq('id', itemId);
+          debugPrint('[INVENTORY-SYNC] Directly synced adjusted stock for ${item.name} (${updatedItem.stock}) to Supabase.');
+        } catch (e) {
+          debugPrint('[INVENTORY-SYNC] Direct Supabase stock adjust sync failed: $e');
+        }
+      }
     }
   }
 
@@ -324,10 +395,26 @@ class InventoryRepositoryImpl implements InventoryRepository {
         final remoteId = matchingRemote['id'] as String;
         syncedLocalIds.add(remoteId);
 
-        // Update the local item to use the correct remote ID in case of name match
+        // Update the local item to use the correct remote ID in case of name match, preserving history
         if (localItem.id != remoteId) {
-          await _dao.deleteItem(localItem.id);
-          await _dao.insertItem(localItem.copyWith(id: remoteId));
+          final db = await DatabaseHelper.instance.database;
+          await db.transaction((txn) async {
+            await txn.update('items', {'id': remoteId}, where: 'id = ?', whereArgs: [localItem.id]);
+            await txn.update('order_items', {'item_id': remoteId}, where: 'item_id = ?', whereArgs: [localItem.id]);
+            await txn.update('stock_history', {'item_id': remoteId}, where: 'item_id = ?', whereArgs: [localItem.id]);
+            await txn.update('item_price_history', {'item_id': remoteId}, where: 'item_id = ?', whereArgs: [localItem.id]);
+          });
+        }
+
+        final bool isRemoteEnabled = matchingRemote['is_enabled'] != false &&
+            matchingRemote['is_enabled'] != 0 &&
+            matchingRemote['is_enabled']?.toString() != '0' &&
+            matchingRemote['is_enabled']?.toString().toLowerCase() != 'false';
+        if (!isRemoteEnabled) {
+          // Product was disabled/deleted remotely -> remove locally
+          await _dao.deleteItem(remoteId);
+          debugPrint('[SYNC-INVENTORY] Product ${localItem.name} was disabled remotely, removed from local SQLite.');
+          continue;
         }
 
         final remoteUpdatedStr = matchingRemote['updated_at']?.toString() ?? matchingRemote['created_at']?.toString() ?? '';
@@ -358,20 +445,23 @@ class InventoryRepositoryImpl implements InventoryRepository {
         // Does not exist on remote, insert it to Supabase
         final categoryId = await _getOrCreateCategoryId(localItem.category);
         final pMap = await _itemToProductMap(localItem, categoryId);
-        final insertedProd = await client.from('products').insert(pMap).select().single();
-        final insertedId = insertedProd['id'] as String;
-
-        // Update SQLite database with the new remote ID
-        await _dao.deleteItem(localItem.id);
-        await _dao.insertItem(localItem.copyWith(id: insertedId));
-        syncedLocalIds.add(insertedId);
+        pMap['id'] = localItem.id;
+        pMap['created_at'] = DateTime.now().toIso8601String();
+        pMap['updated_at'] = DateTime.now().toIso8601String();
+        await client.from('products').upsert(pMap);
+        syncedLocalIds.add(localItem.id);
         debugPrint('[SYNC-INVENTORY] Inserted new local item ${localItem.name} to remote.');
       }
     }
 
-    // 3. For any remote products that do not exist locally, download them
+    // 3. For any remote products that do not exist locally, download them (if enabled)
     for (final p in productsJson) {
       final remoteId = p['id'] as String;
+      final bool isEnabled = p['is_enabled'] != false &&
+          p['is_enabled'] != 0 &&
+          p['is_enabled']?.toString() != '0' &&
+          p['is_enabled']?.toString().toLowerCase() != 'false';
+      if (!isEnabled) continue; // Do not resurrect disabled products
       if (!syncedLocalIds.contains(remoteId)) {
         final item = _mapProductToItem(p);
         await _dao.insertItem(item);

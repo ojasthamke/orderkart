@@ -9,12 +9,14 @@ import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
+import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/vip_glow_avatar.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
 import 'widgets/instant_ledger_sheet.dart';
 import '../../area/presentation/area_provider.dart';
+import '../../order/presentation/order_provider.dart';
 import '../../../core/services/customer_order_sync_service.dart';
 
 class CustomerListScreen extends ConsumerStatefulWidget {
@@ -351,6 +353,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                                       _isSyncing = false;
                                     });
                                     ref.invalidate(customerListProvider(effectiveStreetId));
+                                    ref.invalidate(allCustomersProvider);
+                                    ref.invalidate(areaProvider);
+                                    ref.invalidate(orderManagementProvider);
                                   }
                                 });
                               }
@@ -387,12 +392,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                         Navigator.of(context).pushNamed(AppRoutes.search),
                   ),
                 ],
-          floatingActionButton: widget.streetId != null && !_isSelectionMode
+          floatingActionButton: !_isSelectionMode
               ? FloatingActionButton(
                   heroTag: 'add_customer',
                   onPressed: () => Navigator.of(context).pushNamed(
                     AppRoutes.addEditCustomer,
-                    arguments: {'streetId': widget.streetId},
+                    arguments: widget.streetId != null ? {'streetId': widget.streetId} : null,
                   ).then((_) =>
                       ref.refresh(customerListProvider(effectiveStreetId))),
                   child: const Icon(Icons.person_add_rounded),
@@ -414,15 +419,27 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                     FilterChip(
                       label: const Text('All'),
                       selected: _customerFilter == 'All',
-                      selectedColor: AppColors.primary.withOpacity(0.15),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.15),
                       checkmarkColor: AppColors.primary,
                       onSelected: (_) => setState(() => _customerFilter = 'All'),
                     ),
                     const SizedBox(width: 8),
                     FilterChip(
+                      label: Text('🌱 New Customers (${customers.where((c) => c.isBrandNewCustomer).length})'),
+                      selected: _customerFilter == 'NewCustomers',
+                      selectedColor: Colors.green.withValues(alpha: 0.2),
+                      checkmarkColor: Colors.green[800],
+                      labelStyle: TextStyle(
+                        color: _customerFilter == 'NewCustomers' ? Colors.green[900] : null,
+                        fontWeight: _customerFilter == 'NewCustomers' ? FontWeight.bold : null,
+                      ),
+                      onSelected: (_) => setState(() => _customerFilter = 'NewCustomers'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
                       label: const Text('Registered (Codes)'),
                       selected: _customerFilter == 'Registered',
-                      selectedColor: AppColors.primary.withOpacity(0.15),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.15),
                       checkmarkColor: AppColors.primary,
                       onSelected: (_) => setState(() => _customerFilter = 'Registered'),
                     ),
@@ -430,7 +447,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                     FilterChip(
                       label: const Text('Guests'),
                       selected: _customerFilter == 'Guests',
-                      selectedColor: Colors.amber.withOpacity(0.2),
+                      selectedColor: Colors.amber.withValues(alpha: 0.2),
                       checkmarkColor: Colors.amber[800],
                       labelStyle: TextStyle(
                         color: _customerFilter == 'Guests' ? Colors.amber[900] : null,
@@ -439,10 +456,22 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                       onSelected: (_) => setState(() => _customerFilter = 'Guests'),
                     ),
                     const SizedBox(width: 8),
+                    FilterChip(
+                      label: Text('⚠️ No Area (${customers.where((c) => c.streetId.isEmpty || c.streetId == "default_street").length})'),
+                      selected: _customerFilter == 'Unassigned',
+                      selectedColor: Colors.orange.withValues(alpha: 0.2),
+                      checkmarkColor: Colors.orange[800],
+                      labelStyle: TextStyle(
+                        color: _customerFilter == 'Unassigned' ? Colors.orange[900] : null,
+                        fontWeight: _customerFilter == 'Unassigned' ? FontWeight.bold : null,
+                      ),
+                      onSelected: (_) => setState(() => _customerFilter = 'Unassigned'),
+                    ),
+                    const SizedBox(width: 8),
                     ActionChip(
                       avatar: const Icon(Icons.person_pin_circle_rounded, size: 16, color: Colors.amber),
                       label: const Text('Guest Hub & Logins', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                      backgroundColor: Colors.amber.withOpacity(0.12),
+                      backgroundColor: Colors.amber.withValues(alpha: 0.12),
                       onPressed: () => Navigator.of(context).pushNamed(AppRoutes.guests),
                     ),
                   ],
@@ -451,11 +480,17 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
               Expanded(
                 child: () {
                   final displayCustomers = customers.where((c) {
+                    if (_customerFilter == 'NewCustomers') {
+                      return c.isBrandNewCustomer;
+                    }
                     if (_customerFilter == 'Registered') {
                       return !c.isGuest && c.customerCode.isNotEmpty;
                     }
                     if (_customerFilter == 'Guests') {
                       return c.isGuest || c.customerCode.isEmpty;
+                    }
+                    if (_customerFilter == 'Unassigned') {
+                      return c.streetId.isEmpty || c.streetId == 'default_street';
                     }
                     return true;
                   }).toList();
@@ -469,13 +504,11 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                           : 'Try changing search filter',
                       actionLabel: 'Add Customer',
                       onAction: () {
-                        if (widget.streetId != null) {
-                          Navigator.of(context).pushNamed(
-                            AppRoutes.addEditCustomer,
-                            arguments: {'streetId': widget.streetId},
-                          ).then((_) => ref.refresh(
-                              customerListProvider(effectiveStreetId)));
-                        }
+                        Navigator.of(context).pushNamed(
+                          AppRoutes.addEditCustomer,
+                          arguments: widget.streetId != null ? {'streetId': widget.streetId} : null,
+                        ).then((_) => ref.refresh(
+                            customerListProvider(effectiveStreetId)));
                       },
                     );
                   }
@@ -518,6 +551,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                         streetId: effectiveStreetId,
                         isSelectionMode: false,
                         isSelected: false,
+                        onMoveRequested: () => _showMoveDialog(context, [displayCustomers[i].id]),
                         onTap: () {
                           Navigator.of(context).pushNamed(
                             AppRoutes.customerProfile,
@@ -552,6 +586,7 @@ class _CustomerCard extends ConsumerWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final VoidCallback? onMoveRequested;
   final int index;
 
   const _CustomerCard({
@@ -562,6 +597,7 @@ class _CustomerCard extends ConsumerWidget {
     required this.isSelected,
     required this.onTap,
     required this.onLongPress,
+    this.onMoveRequested,
     required this.index,
   });
 
@@ -721,9 +757,15 @@ class _CustomerCard extends ConsumerWidget {
                               'Remove this blank house slot #${customer.serialNo}?',
                         );
                         if (!ok) return;
+                        final targetStreetId =
+                            streetId.isNotEmpty ? streetId : customer.streetId;
                         await ref
-                            .read(customerListProvider(streetId).notifier)
+                            .read(customerListProvider(targetStreetId).notifier)
                             .delete(customer.id);
+                        if (context.mounted) {
+                          SnackbarHelper.showSuccess(context,
+                              'Blank house slot #${customer.serialNo} deleted');
+                        }
                       }
                     },
                     itemBuilder: (_) => [
@@ -964,7 +1006,7 @@ class _CustomerCard extends ConsumerWidget {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.08),
+                                      color: AppColors.primary.withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -973,6 +1015,44 @@ class _CustomerCard extends ConsumerWidget {
                                         color: AppColors.primary,
                                         fontWeight: FontWeight.w800,
                                         fontSize: 9.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                if (customer.isBrandNewCustomer) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE8F5E9),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: const Color(0xFF81C784), width: 0.8),
+                                    ),
+                                    child: const Text(
+                                      '🌱 NEW',
+                                      style: TextStyle(
+                                        color: Color(0xFF2E7D32),
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 9.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                if (customer.isGoogleCustomer) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE8F0FE),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: const Color(0xFF4285F4), width: 0.8),
+                                    ),
+                                    child: const Text(
+                                      'GOOGLE',
+                                      style: TextStyle(
+                                        color: Color(0xFF1967D2),
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 9,
                                       ),
                                     ),
                                   ),
@@ -1044,6 +1124,34 @@ class _CustomerCard extends ConsumerWidget {
                                                     color: AppColors.primary,
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 10),
+                                          )
+                                        else if (customer.streetId.isEmpty || customer.streetId == 'default_street')
+                                          GestureDetector(
+                                            onTap: onMoveRequested,
+                                            child: Container(
+                                              margin: const EdgeInsets.only(top: 4),
+                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                              decoration: BoxDecoration(
+                                                color: Colors.orange.withOpacity(0.14),
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: Colors.orange.withOpacity(0.4)),
+                                              ),
+                                              child: const Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.add_location_alt_rounded, size: 11, color: Colors.orange),
+                                                  SizedBox(width: 4),
+                                                  Text(
+                                                    '⚠️ No Delivery Area • Tap to Assign',
+                                                    style: TextStyle(
+                                                      fontSize: 9.5,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.orange,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                       ],
                                     );
@@ -1114,6 +1222,8 @@ class _CustomerCard extends ConsumerWidget {
                   onSelected: (v) async {
                     if (v == 'select') {
                       onLongPress();
+                    } else if (v == 'assign_area') {
+                      onMoveRequested?.call();
                     } else if (v == 'order') {
                       Navigator.of(context).pushNamed(
                         AppRoutes.createOrder,
@@ -1154,9 +1264,15 @@ class _CustomerCard extends ConsumerWidget {
                             'Delete "${customer.name}"? All orders will also be deleted.',
                       );
                       if (!ok) return;
+                      final targetStreetId =
+                          streetId.isNotEmpty ? streetId : customer.streetId;
                       await ref
-                          .read(customerListProvider(streetId).notifier)
+                          .read(customerListProvider(targetStreetId).notifier)
                           .delete(customer.id);
+                      if (context.mounted) {
+                        SnackbarHelper.showSuccess(
+                            context, '"${customer.name}" deleted');
+                      }
                     }
                   },
                   itemBuilder: (_) => [
@@ -1165,6 +1281,13 @@ class _CustomerCard extends ConsumerWidget {
                         child: ListTile(
                           leading: Icon(Icons.check_box_outlined),
                           title: Text('Select to Move'),
+                          contentPadding: EdgeInsets.zero,
+                        )),
+                    const PopupMenuItem(
+                        value: 'assign_area',
+                        child: ListTile(
+                          leading: Icon(Icons.add_location_alt_rounded, color: Colors.orange),
+                          title: Text('Assign Delivery Area'),
                           contentPadding: EdgeInsets.zero,
                         )),
                     const PopupMenuItem(

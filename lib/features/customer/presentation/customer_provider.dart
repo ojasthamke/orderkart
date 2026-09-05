@@ -64,6 +64,11 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
   Future<void> add(Customer c) async {
     await _repo.addCustomer(c);
     await load(silent: true);
+    _invalidateAll();
+    _ref.invalidate(customerListProvider(''));
+    if (c.streetId.isNotEmpty) {
+      _ref.invalidate(customerListProvider(c.streetId));
+    }
     _ref.invalidate(customerDetailProvider(c.id));
     _ref.invalidate(searchProvider);
     _ref.invalidate(allCustomersProvider);
@@ -77,6 +82,11 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
   Future<void> update(Customer c) async {
     await _repo.updateCustomer(c);
     await load(silent: true);
+    _invalidateAll();
+    _ref.invalidate(customerListProvider(''));
+    if (c.streetId.isNotEmpty) {
+      _ref.invalidate(customerListProvider(c.streetId));
+    }
     _ref.invalidate(customerDetailProvider(c.id));
     _ref.invalidate(customerOrdersProvider(c.id));
     _ref.invalidate(searchProvider);
@@ -107,6 +117,10 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await _repo.deleteCustomer(id);
     await load();
     _invalidateAll();
+    _ref.invalidate(customerListProvider(''));
+    if (customer != null && customer.streetId.isNotEmpty) {
+      _ref.invalidate(customerListProvider(customer.streetId));
+    }
     _ref.invalidate(customerDetailProvider(id));
   }
 

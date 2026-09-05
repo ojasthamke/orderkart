@@ -212,6 +212,7 @@ class AnalyticsDao {
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN items i ON oi.item_id = i.id
       WHERE $effectiveDateSqlWithO >= DATE(?) AND $effectiveDateSqlWithO <= DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
+        AND (oi.is_available = 1 OR oi.is_available IS NULL) AND oi.total_price > 0
       GROUP BY $effectiveDateSqlWithO
     ''', [startStr, endStr]);
 
@@ -455,6 +456,7 @@ class AnalyticsDao {
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN items i ON oi.item_id = i.id
       WHERE DATE(o.created_at) >= DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
+        AND (oi.is_available = 1 OR oi.is_available IS NULL) AND oi.total_price > 0
       GROUP BY oi.item_name
       HAVING total_revenue > 0
       ORDER BY (total_revenue - total_cogs) DESC
@@ -583,6 +585,7 @@ class AnalyticsDao {
         JOIN orders o ON oi.order_id = o.id
         LEFT JOIN items i ON oi.item_id = i.id
         WHERE o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
+          AND (oi.is_available = 1 OR oi.is_available IS NULL) AND oi.total_price > 0
         GROUP BY o.customer_id
       ) cogs_sub ON c.id = cogs_sub.customer_id
       WHERE (c.is_archived IS NULL OR c.is_archived = 0)

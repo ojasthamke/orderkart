@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 import '../data/street_dao.dart';
 import '../data/street_repository_impl.dart';
 import '../domain/street.dart';
@@ -48,18 +50,21 @@ class StreetNotifier extends StateNotifier<AsyncValue<List<Street>>> {
     await _repo.addStreet(s);
     await load();
     _invalidateAll();
+    unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
   }
 
   Future<void> update(Street s) async {
     await _repo.updateStreet(s);
     await load();
     _invalidateAll();
+    unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
   }
 
   Future<void> delete(String id) async {
     await _repo.deleteStreet(id);
     await load();
     _invalidateAll();
+    unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
   }
 }
 

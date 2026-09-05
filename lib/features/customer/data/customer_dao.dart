@@ -1,11 +1,13 @@
 /// CustomerDao — SQLite operations for Customers
 library;
 
+import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import '../../../core/database/database_helper.dart';
 import '../../../core/security/app_mode_service.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 import '../domain/customer.dart';
 
 class CustomerDao {
@@ -37,10 +39,35 @@ class CustomerDao {
     });
   }
 
+  List<Customer> _deduplicateCustomers(List<Customer> list) {
+    final seenIds = <String>{};
+    final seenCodes = <String>{};
+    final seenPhones = <String>{};
+    final result = <Customer>[];
+
+    for (final c in list) {
+      if (seenIds.contains(c.id)) continue;
+      final code = c.customerCode.trim().toUpperCase();
+      if (code.isNotEmpty && seenCodes.contains(code)) continue;
+
+      final digits = c.phone1.replaceAll(RegExp(r'\D'), '');
+      final normPhone = digits.length >= 10 ? digits.substring(digits.length - 10) : digits;
+      if (normPhone.isNotEmpty && normPhone != '0000000000' && seenPhones.contains(normPhone)) {
+        continue;
+      }
+
+      seenIds.add(c.id);
+      if (code.isNotEmpty) seenCodes.add(code);
+      if (normPhone.isNotEmpty && normPhone != '0000000000') seenPhones.add(normPhone);
+      result.add(c);
+    }
+    return result;
+  }
+
   Future<List<Customer>> getCustomersByStreet(String streetId,
       {String? searchQuery}) async {
     final db = await _db;
-    String where = '(is_archived IS NULL OR is_archived = 0)';
+    String where = '(is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers)';
     List<dynamic> args = [];
     if (streetId.isNotEmpty) {
       where += ' AND (street_id = ? OR location_id = ?)';
@@ -69,7 +96,7 @@ class CustomerDao {
       if (bNo == 0) return -1; // a goes before b
       return aNo.compareTo(bNo);
     });
-    return customers;
+    return _deduplicateCustomers(customers);
   }
 
   Future<List<Customer>> getCustomersByArea(String areaId,
@@ -95,6 +122,7 @@ class CustomerDao {
       SELECT DISTINCT c.* FROM customers c
       LEFT JOIN locations st ON (c.location_id = st.id OR c.street_id = st.id)
       WHERE (c.is_archived IS NULL OR c.is_archived = 0)
+        AND c.id NOT IN (SELECT id FROM deleted_customers)
         AND (c.street_id = ? OR c.location_id = ? OR st.id = ? OR st.parent_location_id = ? OR st.materialized_path LIKE ? OR st.materialized_path LIKE ?)
         $searchFilter
     ''', args);
@@ -108,7 +136,7 @@ class CustomerDao {
       if (bNo == 0) return -1;
       return aNo.compareTo(bNo);
     });
-    return customers;
+    return _deduplicateCustomers(customers);
   }
 
   Future<List<Customer>> getCustomersInSameHouse(String houseNumber,
@@ -116,7 +144,7 @@ class CustomerDao {
     if (houseNumber.trim().isEmpty) return [];
     final db = await _db;
     String where =
-        '(is_archived IS NULL OR is_archived = 0) AND LOWER(TRIM(house_number)) = LOWER(TRIM(?))';
+        '(is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers) AND LOWER(TRIM(house_number)) = LOWER(TRIM(?))';
     List<dynamic> args = [houseNumber];
     if (streetId != null && streetId.isNotEmpty) {
       where += ' AND (street_id = ? OR location_id = ?)';
@@ -127,14 +155,14 @@ class CustomerDao {
       args.add(excludeCustomerId);
     }
     final maps = await db.query('customers', where: where, whereArgs: args);
-    return maps.map(Customer.fromMap).toList();
+    return _deduplicateCustomers(maps.map(Customer.fromMap).toList());
   }
 
   Future<List<Customer>> getAllCustomers() async {
     final db = await _db;
     final maps = await db.query(
       'customers',
-      where: 'is_archived IS NULL OR is_archived = 0',
+      where: '(is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers)',
       orderBy: 'serial_no ASC',
     );
     final customers = maps.map(Customer.fromMap).toList();
@@ -146,7 +174,7 @@ class CustomerDao {
       if (bNo == 0) return -1;
       return aNo.compareTo(bNo);
     });
-    return customers;
+    return _deduplicateCustomers(customers);
   }
 
   Future<Customer?> getCustomerById(String id) async {
@@ -200,6 +228,51 @@ class CustomerDao {
   Future<String> insertCustomer(Customer customer) async {
     final db = await _db;
     final id = customer.id.isEmpty ? _uuid.v4() : customer.id;
+
+    // Remove from deleted_customers if re-creating
+    try {
+      await db.delete('deleted_customers', where: 'id = ?', whereArgs: [id]);
+    } catch (_) {}
+
+    // Prevent duplicate customer insertion by customer_code or normalized phone
+    final trimmedCode = customer.customerCode.trim().toUpperCase();
+    final digits = customer.phone1.replaceAll(RegExp(r'\D'), '');
+    final normPhone =
+        digits.length >= 10 ? digits.substring(digits.length - 10) : digits;
+
+    String? existingId;
+    if (trimmedCode.isNotEmpty) {
+      final rows = await db.query(
+        'customers',
+        columns: ['id'],
+        where:
+            "UPPER(TRIM(customer_code)) = ? AND (is_archived IS NULL OR is_archived = 0)",
+        whereArgs: [trimmedCode],
+        limit: 1,
+      );
+      if (rows.isNotEmpty) {
+        existingId = rows.first['id'] as String;
+      }
+    }
+    if (existingId == null &&
+        normPhone.isNotEmpty &&
+        normPhone != '0000000000') {
+      final rows = await db.rawQuery('''
+        SELECT id FROM customers
+        WHERE (is_archived IS NULL OR is_archived = 0)
+          AND REPLACE(REPLACE(REPLACE(phone1, ' ', ''), '-', ''), '+91', '') LIKE ?
+        LIMIT 1
+      ''', ['%$normPhone']);
+      if (rows.isNotEmpty) {
+        existingId = rows.first['id'] as String;
+      }
+    }
+
+    if (existingId != null && existingId != id) {
+      await updateCustomer(customer.copyWith(id: existingId));
+      return existingId;
+    }
+
     final now = DateTime.now().toIso8601String();
 
     final mode = await AppModeService.getAppMode();
@@ -235,6 +308,10 @@ class CustomerDao {
     }
 
     final map = customer.toMap();
+    if (customer.streetId.isNotEmpty) {
+      await DatabaseHelper.instance
+          .ensureLegacyStreetAndAreaExists(db, customer.streetId);
+    }
     await db.insert(
         'customers',
         {
@@ -252,11 +329,28 @@ class CustomerDao {
     if (customer.serialNo > 0) {
       await _adjustSequences(db, customer.streetId, id, customer.serialNo);
     }
+
+    // Reset sync status so the sync service will push the new customer to Supabase
+    try {
+      await db.delete(
+        'settings',
+        where: "key = ? OR key = ?",
+        whereArgs: [
+          'customer_sync_status:$id',
+          'customer_sync_time:$id',
+        ],
+      );
+    } catch (_) {}
+
     return id;
   }
 
   Future<void> updateCustomer(Customer customer) async {
     final db = await _db;
+    if (customer.streetId.isNotEmpty) {
+      await DatabaseHelper.instance
+          .ensureLegacyStreetAndAreaExists(db, customer.streetId);
+    }
     await db.update(
       'customers',
       {
@@ -272,6 +366,18 @@ class CustomerDao {
       await _adjustSequences(
           db, customer.streetId, customer.id, customer.serialNo);
     }
+
+    // Reset sync status so the sync service will push the updated customer to Supabase
+    try {
+      await db.delete(
+        'settings',
+        where: "key = ? OR key = ?",
+        whereArgs: [
+          'customer_sync_status:${customer.id}',
+          'customer_sync_time:${customer.id}',
+        ],
+      );
+    } catch (_) {}
   }
 
   Future<void> _adjustSequences(
@@ -348,17 +454,21 @@ class CustomerDao {
             where: 'order_id = ?', whereArgs: [orderId]);
       }
 
-      // Soft-delete the customer locally by marking as archived
-      await txn.update(
-        'customers',
-        {
-          'is_archived': 1,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      // 2. Delete customer's orders
+      await txn.delete('orders', where: 'customer_id = ?', whereArgs: [id]);
+
+      // 3. Record in deleted_customers so future sync passes never resurrect them
+      await txn.insert('deleted_customers', {
+        'id': id,
+        'deleted_at': DateTime.now().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+      // 4. Delete the customer record completely
+      await txn.delete('customers', where: 'id = ?', whereArgs: [id]);
     });
+
+    // 5. Remotely delete from Supabase via SECURITY DEFINER RPC
+    unawaited(CustomerOrderSyncService.instance.deleteCustomerRemotely(id));
   }
 
   Future<void> updateBalance(

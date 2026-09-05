@@ -50,6 +50,9 @@ class Customer {
   final bool isGuest; // True if registered as Path B guest without code
   final String locality; // Customer locality / neighborhood
   final String customerCode; // Manually assigned OK2 login code
+  final String authProvider; // 'phone_password', 'google', etc.
+  final String googleId;
+  final bool isNewCustomer;
 
   const Customer({
     required this.id,
@@ -96,8 +99,11 @@ class Customer {
     this.deviceStatus = 'BOUND',
     this.visitCount = 14,
     this.isGuest = false,
-    this.locality = 'Baner, Pune',
+    this.locality = 'Bangar Nagar, Yavatmal',
     this.customerCode = '',
+    this.authProvider = 'phone_password',
+    this.googleId = '',
+    this.isNewCustomer = false,
   });
 
   Customer copyWith({
@@ -146,6 +152,9 @@ class Customer {
     bool? isGuest,
     String? locality,
     String? customerCode,
+    String? authProvider,
+    String? googleId,
+    bool? isNewCustomer,
   }) {
     return Customer(
       id: id ?? this.id,
@@ -193,6 +202,9 @@ class Customer {
       isGuest: isGuest ?? this.isGuest,
       locality: locality ?? this.locality,
       customerCode: customerCode ?? this.customerCode,
+      authProvider: authProvider ?? this.authProvider,
+      googleId: googleId ?? this.googleId,
+      isNewCustomer: isNewCustomer ?? this.isNewCustomer,
     );
   }
 
@@ -242,6 +254,9 @@ class Customer {
         'is_guest': isGuest ? 1 : 0,
         'locality': locality,
         'customer_code': customerCode,
+        'auth_provider': authProvider,
+        'google_id': googleId,
+        'is_new_customer': isNewCustomer ? 1 : 0,
       };
 
   factory Customer.fromMap(Map<String, dynamic> map) {
@@ -310,8 +325,11 @@ class Customer {
         deviceStatus: map['device_status'] as String? ?? 'BOUND',
         visitCount: (map['visit_count'] as num?)?.toInt() ?? 0,
         isGuest: map['is_guest'] == 1 || map['is_guest'] == true,
-        locality: map['locality'] as String? ?? 'Baner, Pune',
+        locality: map['locality'] as String? ?? 'Bangar Nagar, Yavatmal',
         customerCode: map['customer_code'] as String? ?? '',
+        authProvider: map['auth_provider'] as String? ?? 'phone_password',
+        googleId: map['google_id'] as String? ?? '',
+        isNewCustomer: map['is_new_customer'] == 1 || map['is_new_customer'] == true,
       );
   }
 
@@ -320,6 +338,9 @@ class Customer {
   bool get isGhostHouse =>
       name.trim().toLowerCase() == 'ghost house' ||
       name.trim().startsWith('[Ghost House]');
+
+  bool get isGoogleCustomer => authProvider == 'google' || googleId.isNotEmpty;
+  bool get isBrandNewCustomer => isNewCustomer || isGoogleCustomer;
 
   /// VIP Active Status calculation
   bool get isVipActive {

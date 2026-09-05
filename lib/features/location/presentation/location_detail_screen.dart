@@ -555,14 +555,19 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen>
       context,
       title: 'Delete ${location.locationKind.value}',
       message:
-          'Delete "${location.name}"? All nested child sub-locations and customers inside will also be deleted.',
+          'Delete "${location.name}"? Any customers in this location will be moved to Unassigned.',
     );
     if (!ok || !mounted) return;
-    await ref
-        .read(locationListProvider(widget.locationId).notifier)
-        .delete(location.id);
-    if (!mounted) return;
-    SnackbarHelper.showSuccess(context, '"${location.name}" deleted');
+    try {
+      await ref
+          .read(locationListProvider(widget.locationId).notifier)
+          .delete(location.id);
+      if (!mounted) return;
+      SnackbarHelper.showSuccess(context, '"${location.name}" deleted');
+    } catch (e) {
+      if (!mounted) return;
+      SnackbarHelper.showError(context, 'Failed to delete ${location.locationKind.value}: $e');
+    }
   }
 }
 

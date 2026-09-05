@@ -19,8 +19,8 @@ class AreaDao {
     if (sortBy == 'customer_count') orderClause = 'customer_count DESC';
 
     List<String> whereClauses = [
-      "l.location_kind = 'area'",
-      "l.is_archived = 0"
+      "(l.location_kind = 'area' OR l.parent_location_id IS NULL OR l.depth = 0)",
+      "(l.is_archived IS NULL OR l.is_archived = 0)"
     ];
     List<dynamic> args = [];
 
@@ -35,7 +35,7 @@ class AreaDao {
     final maps = await db.rawQuery('''
       SELECT
         l.*,
-        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND s.is_archived = 0) AS street_count,
+        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND (s.is_archived IS NULL OR s.is_archived = 0)) AS street_count,
         (SELECT COUNT(DISTINCT c.id) FROM customers c
           LEFT JOIN locations st ON (c.location_id = st.id OR c.street_id = st.id)
           WHERE (c.is_archived IS NULL OR c.is_archived = 0)
@@ -56,7 +56,16 @@ class AreaDao {
       ORDER BY $orderClause
     ''', args);
 
-    return maps.map(Area.fromMap).toList();
+    final rawList = maps.map(Area.fromMap).toList();
+    final seenNames = <String>{};
+    final uniqueAreas = <Area>[];
+    for (final a in rawList) {
+      final key = a.name.trim().toLowerCase();
+      if (key.isEmpty || seenNames.contains(key)) continue;
+      seenNames.add(key);
+      uniqueAreas.add(a);
+    }
+    return uniqueAreas;
   }
 
   Future<Area?> getAreaById(String id) async {
@@ -64,7 +73,7 @@ class AreaDao {
     final maps = await db.rawQuery('''
       SELECT
         l.*,
-        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND s.is_archived = 0) AS street_count,
+        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND (s.is_archived IS NULL OR s.is_archived = 0)) AS street_count,
         (SELECT COUNT(DISTINCT c.id) FROM customers c
           LEFT JOIN locations st ON (c.location_id = st.id OR c.street_id = st.id)
           WHERE (c.is_archived IS NULL OR c.is_archived = 0)
@@ -89,11 +98,30 @@ class AreaDao {
 
   Future<String> insertArea(Area area) async {
     final db = await _db;
+    final trimmedName = area.name.trim();
+
+    // Prevent duplicate areas with the same name
+    if (trimmedName.isNotEmpty) {
+      final existing = await db.query(
+        'locations',
+        where: "(location_kind = 'area' OR parent_location_id IS NULL OR depth = 0) AND LOWER(TRIM(name)) = LOWER(?) AND (is_archived IS NULL OR is_archived = 0)",
+        whereArgs: [trimmedName],
+        limit: 1,
+      );
+      if (existing.isNotEmpty) {
+        final existingId = existing.first['id'] as String;
+        await updateArea(area.copyWith(id: existingId));
+        return existingId;
+      }
+    }
+
     final id = area.id.isEmpty ? _uuid.v4() : area.id;
     final now = DateTime.now().toIso8601String();
 
     final mode = await AppModeService.getAppMode();
-    String createdBy = area.createdBy;
+    String createdBy = area.createdBy.isNotEmpty
+        ? area.createdBy
+        : (mode == AppMode.worker ? '' : 'owner');
     String assignedWorkerId = area.assignedWorkerId;
     String workerName = area.workerName;
 
@@ -180,6 +208,20 @@ class AreaDao {
             'worker_name': workerName,
             'created_at': now,
             'updated_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (_) {}
+
+    // Also keep streets table synchronized for fallback root area reference
+    try {
+      await db.insert(
+          'streets',
+          {
+            'id': id,
+            'area_id': id,
+            'name': area.name,
+            'description': area.description,
+            'created_at': now,
           },
           conflictAlgorithm: ConflictAlgorithm.replace);
     } catch (_) {}

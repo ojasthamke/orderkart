@@ -145,6 +145,11 @@ class UnitConverter {
     if (isWeightUnit(unit)) {
       return toBase(quantity, unit);
     }
+    if (isCountUnit(unit) && weightPerPiece > 0) {
+      final u = unit.trim().toLowerCase();
+      final pcs = (u.startsWith('dozen') || u == 'dz') ? quantity * 12.0 : quantity;
+      return pcs * weightPerPiece;
+    }
     return 0.0;
   }
 

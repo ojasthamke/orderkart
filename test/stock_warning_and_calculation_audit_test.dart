@@ -133,7 +133,7 @@ void main() {
       final billText = BillTextGenerator.generate(
         businessName: 'OrderKart Mart',
         customerName: 'Suresh Patil',
-        customerAddress: 'Baner, Pune',
+        customerAddress: 'Bangar Nagar, Yavatmal',
         orderNoLabel: 'OW12345',
         orderDate: DateTime(2026, 8, 24),
         items: cart.map((c) => {

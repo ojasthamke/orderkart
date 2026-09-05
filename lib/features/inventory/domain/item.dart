@@ -31,6 +31,7 @@ class Item {
   final double orderNowSellingPrice;
   final double orderNowMrp;
   final double orderNowCostPrice;
+  final bool isAvailable;
   final bool orderNowIsAvailable;
 
   bool get isLowStock => stock <= minStock && minStock > 0;
@@ -67,6 +68,7 @@ class Item {
     this.orderNowSellingPrice = 0,
     this.orderNowMrp = 0,
     this.orderNowCostPrice = 0,
+    this.isAvailable = true,
     this.orderNowIsAvailable = true,
   });
 
@@ -96,6 +98,7 @@ class Item {
     double? orderNowSellingPrice,
     double? orderNowMrp,
     double? orderNowCostPrice,
+    bool? isAvailable,
     bool? orderNowIsAvailable,
   }) {
     return Item(
@@ -124,6 +127,7 @@ class Item {
       orderNowSellingPrice: orderNowSellingPrice ?? this.orderNowSellingPrice,
       orderNowMrp: orderNowMrp ?? this.orderNowMrp,
       orderNowCostPrice: orderNowCostPrice ?? this.orderNowCostPrice,
+      isAvailable: isAvailable ?? this.isAvailable,
       orderNowIsAvailable: orderNowIsAvailable ?? this.orderNowIsAvailable,
     );
   }
@@ -154,18 +158,25 @@ class Item {
         'order_now_selling_price': orderNowSellingPrice,
         'order_now_mrp': orderNowMrp,
         'order_now_cost_price': orderNowCostPrice,
+        'is_available': isAvailable ? 1 : 0,
         'order_now_is_available': orderNowIsAvailable ? 1 : 0,
       };
+
+  static double _parseDouble(dynamic val, {double fallback = 0.0}) {
+    if (val == null) return fallback;
+    if (val is num) return val.toDouble();
+    return double.tryParse(val.toString().trim()) ?? fallback;
+  }
 
   factory Item.fromMap(Map<String, dynamic> map) => Item(
         id: map['id'] as String? ?? '',
         name: map['name'] as String? ?? '',
         category: map['category'] as String? ?? 'General',
-        costPrice: (map['cost_price'] as num?)?.toDouble() ?? 0,
-        sellingPrice: (map['selling_price'] as num?)?.toDouble() ?? 0,
-        marketPrice: (map['market_price'] as num?)?.toDouble() ?? 0,
-        stock: (map['stock'] as num?)?.toDouble() ?? 0,
-        minStock: (map['min_stock'] as num?)?.toDouble() ?? 0,
+        costPrice: _parseDouble(map['cost_price']),
+        sellingPrice: _parseDouble(map['selling_price']),
+        marketPrice: _parseDouble(map['market_price']),
+        stock: _parseDouble(map['stock']),
+        minStock: _parseDouble(map['min_stock']),
         unit: map['unit'] as String? ?? 'unit',
         barcode: map['barcode'] as String? ?? '',
         createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ??
@@ -174,22 +185,32 @@ class Item {
             DateTime.now(),
         expiryDate: map['expiry_date'] as String? ?? '',
         batchNumber: map['batch_number'] as String? ?? '',
-        prescriptionRequired: (map['prescription_required'] as int? ?? 0) == 1,
+        prescriptionRequired: map['prescription_required'] == true ||
+            map['prescription_required'] == 1 ||
+            map['prescription_required']?.toString().toLowerCase() == 'true' ||
+            map['prescription_required']?.toString() == '1',
         dosageInfo: map['dosage_info'] as String? ?? '',
         bestBefore: map['best_before'] as String? ?? '',
         packDate: map['pack_date'] as String? ?? '',
-        weightPerPiece: (map['weight_per_piece'] as num?)?.toDouble() ?? 0.25,
+        weightPerPiece: _parseDouble(map['weight_per_piece'], fallback: 0.25),
         photoPath: map['photo_path'] as String? ?? '',
-        sequenceNo: map['sequence_no'] as int? ?? 0,
-        orderNowStock: (map['order_now_stock'] as num?)?.toDouble() ?? 0,
-        orderNowSellingPrice: (map['order_now_selling_price'] as num?)?.toDouble() ?? 0,
-        orderNowMrp: (map['order_now_mrp'] as num?)?.toDouble() ?? 0,
-        orderNowCostPrice: (map['order_now_cost_price'] as num?)?.toDouble() ?? 0,
+        sequenceNo: (map['sequence_no'] as int?) ?? int.tryParse(map['sequence_no']?.toString() ?? '') ?? 0,
+        orderNowStock: _parseDouble(map['order_now_stock']),
+        orderNowSellingPrice: _parseDouble(map['order_now_selling_price']),
+        orderNowMrp: _parseDouble(map['order_now_mrp']),
+        orderNowCostPrice: _parseDouble(map['order_now_cost_price']),
+        isAvailable: map['is_available'] == null
+            ? true
+            : (map['is_available'] == true ||
+                map['is_available'] == 1 ||
+                map['is_available']?.toString().toLowerCase() == 'true' ||
+                map['is_available']?.toString() == '1'),
         orderNowIsAvailable: map['order_now_is_available'] == null
             ? true
-            : (map['order_now_is_available'] is bool
-                ? map['order_now_is_available'] as bool
-                : (map['order_now_is_available'] as num) == 1),
+            : (map['order_now_is_available'] == true ||
+                map['order_now_is_available'] == 1 ||
+                map['order_now_is_available']?.toString().toLowerCase() == 'true' ||
+                map['order_now_is_available']?.toString() == '1'),
       );
 
   @override

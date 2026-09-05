@@ -40,6 +40,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   final _orderNowSellCon = TextEditingController();
   final _orderNowMrpCon = TextEditingController();
   final _orderNowCostCon = TextEditingController();
+  bool _isAvailable = true;
   bool _orderNowIsAvailable = true;
 
   // New V6 fields
@@ -120,6 +121,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _orderNowSellCon.text = item.orderNowSellingPrice > 0 ? '${item.orderNowSellingPrice}' : '';
         _orderNowMrpCon.text = item.orderNowMrp > 0 ? '${item.orderNowMrp}' : '';
         _orderNowCostCon.text = item.orderNowCostPrice > 0 ? '${item.orderNowCostPrice}' : '';
+        _isAvailable = item.isAvailable;
         _orderNowIsAvailable = item.orderNowIsAvailable;
       });
 
@@ -563,7 +565,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   ),
                 ],
               ),
-
+              _buildAvailabilityCard(),
               _buildOrderNowFields(),
               _buildCategorySpecificFields(),
               const SizedBox(height: 32),
@@ -687,6 +689,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         orderNowSellingPrice: double.tryParse(_orderNowSellCon.text) ?? (double.tryParse(_sellCon.text) ?? 0),
         orderNowMrp: double.tryParse(_orderNowMrpCon.text) ?? (double.tryParse(_marketCon.text) ?? 0),
         orderNowCostPrice: double.tryParse(_orderNowCostCon.text) ?? (double.tryParse(_costCon.text) ?? 0),
+        isAvailable: _isAvailable,
         orderNowIsAvailable: _orderNowIsAvailable,
       );
 
@@ -708,6 +711,65 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Widget _buildAvailabilityCard() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _isAvailable ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isAvailable ? const Color(0xFF81C784) : const Color(0xFFE57373),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _isAvailable ? Icons.check_circle_rounded : Icons.block_rounded,
+                color: _isAvailable ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Standard Catalog Availability',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: _isAvailable ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                      ),
+                    ),
+                    Text(
+                      _isAvailable
+                          ? 'Available for customers to browse and pre-order'
+                          : 'Marked UNAVAILABLE (hidden from ordering even if stock exists)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _isAvailable ? const Color(0xFF388E3C) : const Color(0xFFD32F2F),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _isAvailable,
+                activeColor: const Color(0xFF2E7D32),
+                onChanged: (val) => setState(() => _isAvailable = val),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildOrderNowFields() {

@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/location_dao.dart';
 import '../data/location_repository_impl.dart';
 import '../domain/location.dart';
 import '../domain/location_repository.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 
 // Repository provider
 final locationRepositoryProvider = Provider<LocationRepository>((ref) {
@@ -65,6 +67,7 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
     await _repo.addLocation(toInsert);
     await loadLocations(silent: true);
     _invalidateAll();
+    unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
   }
 
   Future<void> updateLocation(Location location, {String? oldParentId}) async {
@@ -81,12 +84,14 @@ class LocationListNotifier extends StateNotifier<AsyncValue<List<Location>>> {
         _ref.invalidate(breadcrumbsProvider(location.parentLocationId!));
       }
     }
+    unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
   }
 
   Future<void> delete(String id) async {
     await _repo.deleteLocation(id);
     await loadLocations(silent: true);
     _invalidateAll();
+    unawaited(CustomerOrderSyncService.instance.syncAreasAndRoads());
   }
 
   void _invalidateAll() {

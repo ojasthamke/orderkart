@@ -349,11 +349,15 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                               }
                               setState(() {
                                 _selected = item;
+                                _customUnitPrice = item.sellingPrice;
                                 _qty = (0.25).clamp(
                                     availableStock < 0.01 ? availableStock : 0.01,
                                     availableStock);
                                 _qtyController.text =
                                     AppFormatters.quantity(_qty);
+                                final calcPrice = _customUnitPrice * _qty;
+                                _priceController.text = calcPrice
+                                    .toStringAsFixed(calcPrice == calcPrice.roundToDouble() ? 0 : 2);
                               });
                               _loadCustomPrice(item.id, item.sellingPrice);
                             },
@@ -689,8 +693,11 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                             _qty = q;
                                             _qtyController.text =
                                                 AppFormatters.quantity(q);
+                                            final priceUnit = _customUnitPrice > 0
+                                                ? _customUnitPrice
+                                                : (_selected?.sellingPrice ?? 0.0);
                                             final calcPrice =
-                                                _customUnitPrice * _qty;
+                                                priceUnit * _qty;
                                             _priceController.text = calcPrice
                                                 .toStringAsFixed(calcPrice ==
                                                         calcPrice.roundToDouble()
@@ -701,102 +708,105 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                 );
                               }).toList(),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _qtyController,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                            decimal: true),
-                                    decoration: InputDecoration(
-                                      labelText: 'Qty',
-                                      isDense: true,
-                                      errorText: _qty > availForSelected
-                                          ? 'Exceeds stock (${AppFormatters.quantity(availForSelected)})'
-                                          : null,
-                                    ),
-                                    onChanged: (v) {
-                                      final p = double.tryParse(v) ?? 0.0;
-                                      if (p > availForSelected) {
-                                        ScaffoldMessenger.of(context)
-                                            .clearSnackBars();
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Cannot exceed remaining stock (${AppFormatters.quantity(availForSelected)} ${_selected!.unit})'),
-                                            backgroundColor: AppColors.error,
-                                            duration: const Duration(seconds: 1),
-                                            behavior: SnackBarBehavior.floating,
-                                          ),
-                                        );
-                                      }
-                                      setState(() {
-                                        _qty = p;
-                                        final calcPrice = _customUnitPrice * _qty;
-                                        _priceController.text =
-                                            calcPrice.toStringAsFixed(calcPrice ==
-                                                    calcPrice.roundToDouble()
-                                                ? 0
-                                                : 2);
-                                      });
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _priceController,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                            decimal: true),
-                                    decoration: InputDecoration(
-                                      labelText: 'Price ($currency)',
-                                      isDense: true,
-                                    ),
-                                    onChanged: (v) {
-                                      final p = double.tryParse(v);
-                                      if (p != null && p >= 0 && _qty > 0) {
-                                        _customUnitPrice = p / _qty;
-                                      }
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton.icon(
-                                  onPressed: (_qty <= 0 ||
-                                          _qty > availForSelected ||
-                                          availForSelected < 0.001)
-                                      ? () {
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: _qtyController,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
+                                      decoration: InputDecoration(
+                                        labelText: 'Qty',
+                                        isDense: true,
+                                        errorText: _qty > availForSelected
+                                            ? 'Exceeds stock (${AppFormatters.quantity(availForSelected)})'
+                                            : null,
+                                      ),
+                                      onChanged: (v) {
+                                        final p = double.tryParse(v) ?? 0.0;
+                                        if (p > availForSelected) {
                                           ScaffoldMessenger.of(context)
                                               .clearSnackBars();
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
+                                          ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
-                                              content: Text(_qty <= 0
-                                                  ? 'Quantity must be greater than 0'
-                                                  : 'Quantity ($_qty) exceeds available stock (${AppFormatters.quantity(availForSelected)})'),
+                                              content: Text(
+                                                  'Cannot exceed remaining stock (${AppFormatters.quantity(availForSelected)} ${_selected!.unit})'),
                                               backgroundColor: AppColors.error,
-                                              duration: const Duration(seconds: 2),
+                                              duration: const Duration(seconds: 1),
                                               behavior: SnackBarBehavior.floating,
                                             ),
                                           );
                                         }
-                                      : () async {
-                                          AppHaptics.itemAdded();
+                                        setState(() {
+                                          _qty = p;
+                                          final priceUnit = _customUnitPrice > 0
+                                              ? _customUnitPrice
+                                              : (_selected?.sellingPrice ?? 0.0);
+                                          final calcPrice = priceUnit * _qty;
+                                          _priceController.text =
+                                              calcPrice.toStringAsFixed(calcPrice ==
+                                                      calcPrice.roundToDouble()
+                                                  ? 0
+                                                  : 2);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: _priceController,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
+                                      decoration: InputDecoration(
+                                        labelText: 'Price ($currency)',
+                                        isDense: true,
+                                      ),
+                                      onChanged: (v) {
+                                        final p = double.tryParse(v);
+                                        if (p != null && p >= 0 && _qty > 0) {
+                                          _customUnitPrice = p / _qty;
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton.icon(
+                                    onPressed: (_qty <= 0 ||
+                                            _qty > availForSelected ||
+                                            availForSelected < 0.001)
+                                        ? () {
+                                            ScaffoldMessenger.of(context)
+                                                .clearSnackBars();
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(_qty <= 0
+                                                    ? 'Quantity must be greater than 0'
+                                                    : 'Quantity ($_qty) exceeds available stock (${AppFormatters.quantity(availForSelected)})'),
+                                                backgroundColor: AppColors.error,
+                                                duration: const Duration(seconds: 2),
+                                                behavior: SnackBarBehavior.floating,
+                                              ),
+                                            );
+                                          }
+                                        : () async {
+                                            AppHaptics.itemAdded();
 
-                                          final double enteredPriceForQty =
-                                              double.tryParse(
-                                                      _priceController.text) ??
-                                                  (_customUnitPrice * _qty);
-                                          final double finalUnitPriceToUse =
-                                              _qty > 0
-                                                  ? (enteredPriceForQty / _qty)
-                                                  : enteredPriceForQty;
-
-                                          final selectedItem = _selected!;
-                                          final addedQty = _qty;
+                                            final selectedItem = _selected!;
+                                            final addedQty = _qty;
+                                            final double parsedEntered = double.tryParse(_priceController.text) ?? 0.0;
+                                            final double fallbackUnit = _customUnitPrice > 0 ? _customUnitPrice : selectedItem.sellingPrice;
+                                            final double enteredPriceForQty = parsedEntered > 0
+                                                ? parsedEntered
+                                                : (fallbackUnit * _qty);
+                                            final double finalUnitPriceToUse =
+                                                _qty > 0
+                                                    ? (enteredPriceForQty / _qty)
+                                                    : fallbackUnit;
 
                                           // Check if the user changed the price from the loaded custom price
                                           final customPrice = await DatabaseHelper
@@ -1226,10 +1236,14 @@ class _ItemSelectorWidgetState extends ConsumerState<ItemSelectorWidget>
                                   Navigator.pop(ctx);
                                   setState(() {
                                     _selected = matched;
+                                    _customUnitPrice = matched.sellingPrice;
                                     _qty = (0.25).clamp(avail < 0.01 ? avail : 0.01, avail);
                                     _qtyController.text = AppFormatters.quantity(_qty);
-                                    _loadCustomPrice(matched.id, matched.sellingPrice);
+                                    final calcPrice = _customUnitPrice * _qty;
+                                    _priceController.text = calcPrice
+                                        .toStringAsFixed(calcPrice == calcPrice.roundToDouble() ? 0 : 2);
                                   });
+                                  _loadCustomPrice(matched.id, matched.sellingPrice);
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text('Item "$code" not found in inventory')),

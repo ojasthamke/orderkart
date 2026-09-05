@@ -566,20 +566,45 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 if (customer != null)
                   ref.watch(locationPathNameProvider(customer.streetId)).when(
                         data: (fullPath) {
-                          if (fullPath.isEmpty) return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              fullPath,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 11,
+                          if (fullPath.isNotEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                fullPath,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }
+                          return Container(
+                            margin: const EdgeInsets.only(top: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.orange.withOpacity(0.4)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add_location_alt_rounded, size: 11, color: Colors.orange),
+                                SizedBox(width: 4),
+                                Text(
+                                  '⚠️ Delivery Area Not Set',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
                                   ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -627,6 +652,36 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     },
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
+                  ),
+                if (customer != null && customer.outstandingBalance != 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: customer.outstandingBalance < 0
+                            ? Colors.teal.withOpacity(0.15)
+                            : AppColors.error.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: customer.outstandingBalance < 0
+                              ? Colors.teal.withOpacity(0.4)
+                              : AppColors.error.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Text(
+                        customer.outstandingBalance < 0
+                            ? 'Advance Credit: $currency${customer.outstandingBalance.abs().toStringAsFixed(2)}'
+                            : 'Previous Due: $currency${customer.outstandingBalance.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: customer.outstandingBalance < 0
+                              ? Colors.teal.shade700
+                              : AppColors.error,
+                        ),
+                      ),
+                    ),
                   ),
                 if (isVip)
                   Padding(
@@ -830,22 +885,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                     () => _cart[e.key] = cartItem.copyWith(quantity: 0.25));
                 return;
               }
-              final conversion =
-                  dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
-              double maxStock = dbItem.stock;
-              if (dbItem.unit == 'kg') {
-                if (cartItem.unit == 'gram') {
-                  maxStock = dbItem.stock * 1000.0;
-                } else if (cartItem.unit == 'piece') {
-                  maxStock = dbItem.stock / conversion;
-                }
-              } else if (dbItem.unit == 'piece') {
-                if (cartItem.unit == 'dozen') {
-                  maxStock = dbItem.stock / 12.0;
-                } else if (cartItem.unit == 'kg') {
-                  maxStock = dbItem.stock * conversion;
-                }
-              }
+              final double maxStock = UnitConverter.convert(
+                quantity: dbItem.stock,
+                fromUnit: dbItem.unit,
+                toUnit: cartItem.unit,
+              );
 
               if (maxStock < 0.001) {
                 SnackbarHelper.showError(
@@ -870,55 +914,19 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             onUnitChanged: (newUnit) {
               if (newUnit == cartItem.unit) return;
 
-              final conversion =
-                  dbItem.weightPerPiece > 0 ? dbItem.weightPerPiece : 1.0;
-              double baseQty = cartItem.quantity;
-              double basePrice = cartItem.price;
+              final double newQty = UnitConverter.convert(
+                quantity: cartItem.quantity,
+                fromUnit: cartItem.unit,
+                toUnit: newUnit,
+              );
 
-              // 1. Convert current (cartItem.unit) to base unit (dbItem.unit)
-              if (dbItem.unit == 'kg') {
-                if (cartItem.unit == 'gram') {
-                  baseQty = cartItem.quantity / 1000.0;
-                  basePrice = cartItem.price * 1000.0;
-                } else if (cartItem.unit == 'piece') {
-                  baseQty = cartItem.quantity * conversion;
-                  basePrice = cartItem.price / conversion;
-                }
-              } else if (dbItem.unit == 'piece') {
-                if (cartItem.unit == 'dozen') {
-                  baseQty = cartItem.quantity * 12.0;
-                  basePrice = cartItem.price / 12.0;
-                } else if (cartItem.unit == 'kg') {
-                  baseQty = cartItem.quantity / conversion;
-                  basePrice = cartItem.price * conversion;
-                }
-              }
-
-              // 2. Convert base unit (dbItem.unit) to new unit (newUnit)
-              double newQty = baseQty;
-              double newPrice = basePrice;
-
-              if (dbItem.unit == 'kg') {
-                if (newUnit == 'gram') {
-                  newQty = baseQty * 1000.0;
-                  newPrice = basePrice / 1000.0;
-                } else if (newUnit == 'piece') {
-                  newQty = baseQty / conversion;
-                  newPrice = basePrice * conversion;
-                }
-              } else if (dbItem.unit == 'piece') {
-                if (newUnit == 'dozen') {
-                  newQty = baseQty / 12.0;
-                  newPrice = basePrice * 12.0;
-                } else if (newUnit == 'kg') {
-                  newQty = baseQty * conversion;
-                  newPrice = basePrice / conversion;
-                }
-              }
+              final double newPrice = (newQty > 0)
+                  ? double.parse(((cartItem.price * cartItem.quantity) / newQty).toStringAsFixed(4))
+                  : cartItem.price;
 
               setState(() {
                 _cart[e.key] = cartItem.copyWith(
-                  quantity: double.parse(newQty.toStringAsFixed(2)),
+                  quantity: double.parse(newQty.toStringAsFixed(3)),
                   unit: newUnit,
                   price: newPrice,
                 );
@@ -1184,6 +1192,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   // ── Payment section ──────────────────────────────────────────────────────────
   Widget _buildPaymentSection(String currency, AppSettings? settings) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final customer = ref.watch(customerDetailProvider(widget.customerId)).valueOrNull;
 
     final paymentMethods = [
       {
@@ -1328,6 +1337,47 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
             _quickPayBtn('Pay None', 0, currency),
           ],
         ),
+        if (customer != null && customer.outstandingBalance < 0) ...[
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () {
+              AppHaptics.selection();
+              final advance = customer.outstandingBalance.abs();
+              final settleAmt = math.min(_grandTotal, advance);
+              setState(() {
+                _paidAmount = settleAmt;
+                _paidCon.text = settleAmt > 0 ? settleAmt.toStringAsFixed(2) : '';
+                _paymentMethod = AppConstants.paymentCash;
+              });
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.teal.withOpacity(0.35)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.account_balance_wallet_rounded, size: 16, color: Colors.teal),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Settle from Advance Credit ($currency${customer.outstandingBalance.abs().toStringAsFixed(2)})',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.teal),
+                ],
+              ),
+            ),
+          ),
+        ],
         if (_paymentMethod == AppConstants.paymentOnline ||
             _paymentMethod == AppConstants.paymentUPI) ...[
           const SizedBox(height: 16),
@@ -1711,8 +1761,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       subtitle: Text(
                           '${item.quantity} ${item.unit} x $currency${item.price.toStringAsFixed(2)}'),
                       trailing: Text(
-                          '$currency${(item.price * item.quantity).toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                          '$currency${item.total.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            decoration: !item.isAvailable ? TextDecoration.lineThrough : null,
+                            color: !item.isAvailable ? Colors.grey : null,
+                          )),
                     );
                   },
                 ),
@@ -1995,9 +2049,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     setState(() => _saving = true);
 
     final now = DateTime.now();
-    final String orderId =
-        widget.orderId ?? await OrderDao.generateUniqueOrderNo();
-    debugPrint('[SaveOrder] orderId=$orderId, widget.orderId=${widget.orderId}');
+    final String generatedOrderNo = await OrderDao.generateUniqueOrderNo();
+    final String orderId = widget.orderId ?? const Uuid().v4();
+    final String orderNumberStr = (_existingOrder?.orderNumberStr.isNotEmpty == true)
+        ? _existingOrder!.orderNumberStr
+        : generatedOrderNo;
+    debugPrint('[SaveOrder] orderId=$orderId, orderNumberStr=$orderNumberStr, widget.orderId=${widget.orderId}');
 
     final roundingDiff = _smartRound ? _smartRounded - _unroundedGrandTotal : 0;
 
@@ -2067,7 +2124,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       commissionRate: _existingOrder?.commissionRate ?? 0.0,
       commissionType: _existingOrder?.commissionType ?? '',
       orderNumber: _existingOrder?.orderNumber,
-      orderNumberStr: _existingOrder?.orderNumberStr ?? '',
+      orderNumberStr: orderNumberStr,
       orderType: _existingOrder?.orderType ?? 'Normal',
       orderTakingDate: _existingOrder?.orderTakingDate,
       deliveryDate: _existingOrder?.deliveryDate,
@@ -2259,12 +2316,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               continue;
             }
 
-            double unitPrice = (fav['unit_price'] as num?)?.toDouble() ??
-                (fav['selling_price'] as num?)?.toDouble() ??
-                (dbItem?.sellingPrice ?? 0.0);
-            if (unitPrice <= 0 && dbItem != null && dbItem.sellingPrice > 0) {
-              unitPrice = dbItem.sellingPrice;
-            }
+            // Prefer current live inventory price over historic price from past orders
+            double unitPrice = (dbItem != null && dbItem.sellingPrice > 0)
+                ? dbItem.sellingPrice
+                : ((fav['unit_price'] as num?)?.toDouble() ??
+                    (fav['selling_price'] as num?)?.toDouble() ??
+                    0.0);
 
             double requestedQty = (fav['avg_qty'] as num?)?.toDouble() ?? 1.0;
             if (requestedQty <= 0) requestedQty = 1.0;
@@ -2351,10 +2408,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           continue;
         }
 
-        double unitPrice = it.unitPrice;
-        if (unitPrice <= 0 && dbItem != null && dbItem.sellingPrice > 0) {
-          unitPrice = dbItem.sellingPrice;
-        }
+        // Prefer current live inventory price over historic price from past orders
+        double unitPrice = (dbItem != null && dbItem.sellingPrice > 0)
+            ? dbItem.sellingPrice
+            : it.unitPrice;
 
         double requestedQty = it.quantity;
         if (requestedQty <= 0) requestedQty = 0.25;
@@ -2701,20 +2758,11 @@ class _CartItemTile extends StatelessWidget {
     
     double maxStock = dbItem?.stock ?? 999999.0;
     if (dbItem != null) {
-      final conversion = dbItem!.weightPerPiece > 0 ? dbItem!.weightPerPiece : 1.0;
-      if (dbItem!.unit == 'kg') {
-        if (cartItem.unit == 'gram') {
-          maxStock = dbItem!.stock * 1000.0;
-        } else if (cartItem.unit == 'piece') {
-          maxStock = dbItem!.stock / conversion;
-        }
-      } else if (dbItem!.unit == 'piece') {
-        if (cartItem.unit == 'dozen') {
-          maxStock = dbItem!.stock / 12.0;
-        } else if (cartItem.unit == 'kg') {
-          maxStock = dbItem!.stock * conversion;
-        }
-      }
+      maxStock = UnitConverter.convert(
+        quantity: dbItem!.stock,
+        fromUnit: dbItem!.unit,
+        toUnit: cartItem.unit,
+      );
     }
 
     final isOutOfStock = (dbItem != null && dbItem!.stock < 0.001);

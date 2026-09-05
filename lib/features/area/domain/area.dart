@@ -153,8 +153,12 @@ class Area {
       deviceName: map['device_name'] as String? ?? '',
       latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
-      createdAt: DateTime.parse(map['created_at'] as String),
-      updatedAt: DateTime.parse(map['updated_at'] as String),
+      createdAt: map['created_at'] != null
+          ? (DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now())
+          : DateTime.now(),
+      updatedAt: map['updated_at'] != null
+          ? (DateTime.tryParse(map['updated_at'].toString()) ?? DateTime.now())
+          : DateTime.now(),
       streetCount: map['street_count'] as int? ?? 0,
       customerCount: map['customer_count'] as int? ?? 0,
       orderCount: map['order_count'] as int? ?? 0,
@@ -163,7 +167,9 @@ class Area {
       cutoffTime: map['cutoff_time'] as String? ?? '23:59',
       deliveryCharge: (map['delivery_charge'] as num?)?.toDouble() ?? 0.0,
       minOrderAmount: (map['min_order_amount'] as num?)?.toDouble() ?? 0.0,
-      isActive: (map['is_active'] == null || map['is_active'] == 1 || map['is_active'] == true),
+      isActive: (map['is_active'] == null ||
+          map['is_active'] == 1 ||
+          map['is_active'] == true),
     );
   }
 

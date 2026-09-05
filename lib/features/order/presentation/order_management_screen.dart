@@ -177,7 +177,9 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
 
                           if (statusKey == 'preorder') {
                             filtered = filtered
-                                .where((o) => o.orderType == 'Pre-Order')
+                                .where((o) =>
+                                    o.orderType.toLowerCase() == 'pre-order' ||
+                                    o.orderType.toLowerCase() == 'preorder')
                                 .toList();
                             if (_filter.startsWith('date:')) {
                               final targetDate = _filter.substring(5);
@@ -191,24 +193,28 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
                               return aDate.compareTo(bDate);
                             });
                           } else if (statusKey == 'pending') {
-                            filtered = filtered
-                                .where((o) =>
-                                    o.deliveryStatus == 'pending' ||
-                                    o.deliveryStatus == 'confirmed' ||
-                                    o.deliveryStatus == 'preparing' ||
-                                    o.deliveryStatus == 'out for delivery' ||
-                                    o.deliveryStatus == 'approved')
-                                .toList();
+                            filtered = filtered.where((o) {
+                              final st = o.deliveryStatus.toLowerCase().trim();
+                              return st == 'pending' ||
+                                  st == 'confirmed' ||
+                                  st == 'preparing' ||
+                                  st == 'out for delivery' ||
+                                  st == 'approved';
+                            }).toList();
                           } else if (statusKey == 'quick_order') {
-                            filtered = filtered
-                                .where((o) =>
-                                    o.orderType == 'Quick Order' ||
-                                    o.orderType == 'Quick Delivery' ||
-                                    o.orderType == 'Order Now')
-                                .toList();
+                            filtered = filtered.where((o) {
+                              final ot = o.orderType.toLowerCase().trim();
+                              return ot == 'quick order' ||
+                                  ot == 'quick_order' ||
+                                  ot == 'quick-order' ||
+                                  ot == 'quick delivery' ||
+                                  ot == 'order now';
+                            }).toList();
                           } else if (statusKey != 'all') {
                             filtered = filtered
-                                .where((o) => o.deliveryStatus == statusKey)
+                                .where((o) =>
+                                    o.deliveryStatus.toLowerCase().trim() ==
+                                    statusKey.toLowerCase().trim())
                                 .toList();
                           }
 
@@ -635,6 +641,32 @@ class _OrderCard extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                    ),
+                    customerAsync.when(
+                      data: (c) {
+                        if (c != null && c.isBrandNewCustomer) {
+                          return Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFF4CAF50), width: 0.8),
+                            ),
+                            child: const Text(
+                              '🌱 NEW',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF2E7D32),
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
                     StatusDotBadge(status: order.deliveryStatus),
                     const SizedBox(width: 4),

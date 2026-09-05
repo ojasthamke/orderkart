@@ -29,12 +29,19 @@ class OrderManagementNotifier
   final String? _customerId;
 
   Timer? _pollTimer;
+  StreamSubscription? _syncSub;
 
   OrderManagementNotifier(this._ref, this._repo, {String? customerId})
       : _customerId = customerId,
         super(const AsyncValue.loading()) {
     load();
-    // Periodically sync and reload from database every 15 seconds to pull remote admin-confirmed orders automatically
+    // Instant reactive listener on real-time order events
+    _syncSub = CustomerOrderSyncService.instance.onOrderChanged.listen((_) {
+      if (mounted) {
+        load(silent: true);
+      }
+    });
+    // Fallback polling timer every 15 seconds
     _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted) {
         load(silent: true);
@@ -44,6 +51,7 @@ class OrderManagementNotifier
 
   @override
   void dispose() {
+    _syncSub?.cancel();
     _pollTimer?.cancel();
     super.dispose();
   }
@@ -52,11 +60,7 @@ class OrderManagementNotifier
     if (!silent && state.valueOrNull == null) {
       state = const AsyncValue.loading();
     }
-    try {
-      await CustomerOrderSyncService.instance.syncOrders();
-    } catch (e) {
-      debugPrint('Syncing Supabase orders failed: $e');
-    }
+    // 1. FAST OFFLINE FIRST: Query local SQLite database immediately for instant UI
     try {
       final orders = await _repo.getAllOrders(
         status: null,
@@ -69,6 +73,15 @@ class OrderManagementNotifier
         state = AsyncValue.error(e, st);
       }
     }
+
+    // 2. BACKGROUND NON-BLOCKING SYNC: Fetch cloud updates silently
+    unawaited(Future(() async {
+      try {
+        await CustomerOrderSyncService.instance.syncOrders();
+      } catch (e) {
+        debugPrint('Background non-blocking syncOrders error: $e');
+      }
+    }));
   }
 
   void _invalidateAll({String? orderId, String? customerId}) {
@@ -151,6 +164,15 @@ class OrderManagementNotifier
     _invalidateAll(orderId: orderId);
     return result;
   }
+
+  Future<Map<String, dynamic>> toggleOrderItemAvailability(
+      String orderId, String orderItemId) async {
+    final result =
+        await _repo.toggleOrderItemAvailability(orderId, orderItemId);
+    await load(silent: true);
+    _invalidateAll(orderId: orderId);
+    return result;
+  }
 }
 
 final orderManagementProvider =
@@ -228,6 +250,12 @@ class DashboardOrdersParams {
 
 final dashboardOrdersProvider =
     FutureProvider.family<List<AppOrder>, DashboardOrdersParams>((ref, params) {
+  // Listen to real-time order sync events so dashboard immediately reloads when customer orders
+  final sub = CustomerOrderSyncService.instance.onOrderChanged.listen((_) {
+    ref.invalidateSelf();
+  });
+  ref.onDispose(() => sub.cancel());
+
   final repo = ref.read(orderRepositoryProvider);
   return repo.getAllOrders(
     filter: params.filter,

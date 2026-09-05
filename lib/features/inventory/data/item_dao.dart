@@ -280,9 +280,17 @@ class ItemDao {
     final double prevStock = itemRes.isNotEmpty ? ((itemRes.first['stock'] as num?)?.toDouble() ?? 0.0) : 0.0;
 
     await db.rawUpdate(
-        'UPDATE items SET stock = stock + ?, updated_at = ? WHERE id = ?',
+        'UPDATE items SET stock = MAX(0.0, stock + ?), updated_at = ? WHERE id = ?',
         [change, DateTime.now().toIso8601String(), itemId]);
     await _checkAndTriggerLowStock(itemId, db, previousStock: prevStock);
+  }
+
+  Future<void> adjustOrderNowStock(String itemId, double change,
+      {DatabaseExecutor? executor}) async {
+    final db = await _getExecutor(executor);
+    await db.rawUpdate(
+        'UPDATE items SET order_now_stock = MAX(0.0, order_now_stock + ?), updated_at = ? WHERE id = ?',
+        [change, DateTime.now().toIso8601String(), itemId]);
   }
 
   // Stock History

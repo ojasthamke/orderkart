@@ -353,11 +353,16 @@ class _StreetScreenState extends ConsumerState<StreetScreen> {
           'Delete "${street.name}"? This will unassign all customers inside it.',
     );
     if (!ok || !mounted) return;
-    await ref
-        .read(streetProviderFamily(widget.areaId).notifier)
-        .delete(street.id);
-    if (!mounted) return;
-    SnackbarHelper.showSuccess(context, '"${street.name}" deleted');
+    try {
+      await ref
+          .read(streetProviderFamily(widget.areaId).notifier)
+          .delete(street.id);
+      if (!mounted) return;
+      SnackbarHelper.showSuccess(context, '"${street.name}" deleted');
+    } catch (e) {
+      if (!mounted) return;
+      SnackbarHelper.showError(context, 'Failed to delete street: $e');
+    }
   }
 }
 

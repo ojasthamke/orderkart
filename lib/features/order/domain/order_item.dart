@@ -60,19 +60,25 @@ class OrderItem {
         'is_available': isAvailable ? 1 : 0,
       };
 
-  factory OrderItem.fromMap(Map<String, dynamic> map) => OrderItem(
-        id: map['id'] as String? ?? '',
-        orderId: map['order_id'] as String? ?? '',
-        itemId: map['item_id'] as String? ?? '',
-        itemName: map['item_name'] as String? ?? '',
-        itemUnit: map['item_unit'] as String? ?? '',
-        quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
-        unitPrice: (map['unit_price'] as num?)?.toDouble() ?? 0.0,
-        totalPrice: (map['total_price'] as num?)?.toDouble() ?? 0.0,
-        isAvailable: map['is_available'] == null
-            ? true
-            : (map['is_available'] is bool
-                ? map['is_available'] as bool
-                : (map['is_available'] as num) == 1),
-      );
+  factory OrderItem.fromMap(Map<String, dynamic> map) {
+    final rawAvail = map['is_available'];
+    final bool isAvail = rawAvail == null
+        ? true
+        : (rawAvail is bool
+            ? rawAvail
+            : (rawAvail == 1 ||
+                rawAvail == '1' ||
+                rawAvail.toString().toLowerCase() == 'true'));
+    return OrderItem(
+      id: map['id'] as String? ?? '',
+      orderId: map['order_id'] as String? ?? '',
+      itemId: map['item_id'] as String? ?? '',
+      itemName: map['item_name'] as String? ?? '',
+      itemUnit: map['item_unit'] as String? ?? '',
+      quantity: (map['quantity'] as num?)?.toDouble() ?? 0.0,
+      unitPrice: (map['unit_price'] as num?)?.toDouble() ?? 0.0,
+      totalPrice: (map['total_price'] as num?)?.toDouble() ?? 0.0,
+      isAvailable: isAvail,
+    );
+  }
 }

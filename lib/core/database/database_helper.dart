@@ -3,11 +3,13 @@
 /// Designed for future cloud sync — all IDs are UUIDs (string), not auto-increment
 library;
 
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
 
@@ -81,7 +83,22 @@ class DatabaseHelper {
     await ensureCustomerDeviceColumns(db);
     await _ensureCustomerCodeColumn(db);
     await _ensureOrderNowColumns(db);
+    await _ensureGoogleAuthAndNewCustomerColumns(db);
     await _dropLegacyTriggers(db);
+  }
+
+  static Future<void> _ensureGoogleAuthAndNewCustomerColumns(Database db) async {
+    final cols = [
+      "ALTER TABLE customers ADD COLUMN auth_provider TEXT DEFAULT 'phone_password'",
+      "ALTER TABLE customers ADD COLUMN google_id TEXT",
+      "ALTER TABLE customers ADD COLUMN is_new_customer INTEGER DEFAULT 0",
+      "ALTER TABLE orders ADD COLUMN is_new_customer_order INTEGER DEFAULT 0",
+    ];
+    for (final sql in cols) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
   }
 
   static Future<void> _ensureOrderNowColumns(Database db) async {
@@ -187,10 +204,15 @@ class DatabaseHelper {
         await _ensureSyncStatusAndSchedulingColumns(db);
         await ensureCustomerDeviceColumns(db);
         await _ensureCustomerCodeColumn(db);
+        await _ensureGoogleAuthAndNewCustomerColumns(db);
         await _dropLegacyTriggers(db);
         try {
           await db.execute(
               'CREATE TABLE IF NOT EXISTS deleted_orders (id TEXT PRIMARY KEY, deleted_at TEXT)');
+        } catch (_) {}
+        try {
+          await db.execute(
+              'CREATE TABLE IF NOT EXISTS deleted_customers (id TEXT PRIMARY KEY, deleted_at TEXT)');
         } catch (_) {}
         try {
           await db.execute('ALTER TABLE items ADD COLUMN order_now_stock REAL DEFAULT 0');
@@ -205,9 +227,13 @@ class DatabaseHelper {
           await db.execute('ALTER TABLE items ADD COLUMN order_now_cost_price REAL DEFAULT 0');
         } catch (_) {}
         try {
+          await db.execute('ALTER TABLE items ADD COLUMN is_available INTEGER DEFAULT 1');
+        } catch (_) {}
+        try {
           await db.execute('ALTER TABLE items ADD COLUMN order_now_is_available INTEGER DEFAULT 1');
         } catch (_) {}
         await _auditAndSelfHealCustomerIds(db);
+        await _auditAndDeduplicateAreasAndCustomers(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
         _autoRecoverAndBackup(path);
@@ -438,6 +464,7 @@ class DatabaseHelper {
         order_now_selling_price REAL DEFAULT 0,
         order_now_mrp REAL DEFAULT 0,
         order_now_cost_price REAL DEFAULT 0,
+        is_available INTEGER DEFAULT 1,
         order_now_is_available INTEGER DEFAULT 1,
         created_at    TEXT NOT NULL,
         updated_at    TEXT NOT NULL
@@ -823,6 +850,27 @@ class DatabaseHelper {
         now,
       ]);
     }
+
+    // Push price update directly and exclusively to Supabase products table (Part 5 isolation)
+    unawaited(() async {
+      try {
+        final client = Supabase.instance.client;
+        if (client.auth.currentUser == null) {
+          await client.auth.signInWithPassword(
+            email: 'admin@aplibhaji.com',
+            password: 'adminpassword',
+          );
+        }
+        await client.from('products').update({
+          'price': newPrice,
+          'selling_price': newPrice,
+          'updated_at': now,
+        }).eq('id', itemId);
+        debugPrint('[PRICE-SYNC] Pushed updated selling price ($newPrice) for item $itemId to Supabase.');
+      } catch (e) {
+        debugPrint('[PRICE-SYNC] Failed to push selling price to Supabase: $e');
+      }
+    }());
   }
 
   Future<void> insertCallLog({
@@ -2822,6 +2870,14 @@ class DatabaseHelper {
         is_archived        INTEGER DEFAULT 0,
         created_at         TEXT NOT NULL,
         updated_at         TEXT NOT NULL,
+        delivery_schedule  TEXT DEFAULT '[]',
+        cutoff_time        TEXT DEFAULT '23:59',
+        delivery_charge    REAL DEFAULT 0.0,
+        min_order_amount   REAL DEFAULT 0.0,
+        is_active          INTEGER DEFAULT 1,
+        latitude           REAL DEFAULT 0.0,
+        longitude          REAL DEFAULT 0.0,
+        icon_name          TEXT DEFAULT '',
         FOREIGN KEY(parent_location_id) REFERENCES locations(id) ON DELETE CASCADE
       )
     ''');
@@ -2844,6 +2900,26 @@ class DatabaseHelper {
     try {
       await db.execute(
           "ALTER TABLE locations ADD COLUMN icon_name TEXT DEFAULT ''");
+    } catch (_) {}
+    try {
+      await db.execute(
+          "ALTER TABLE locations ADD COLUMN delivery_schedule TEXT DEFAULT '[]'");
+    } catch (_) {}
+    try {
+      await db.execute(
+          "ALTER TABLE locations ADD COLUMN cutoff_time TEXT DEFAULT '23:59'");
+    } catch (_) {}
+    try {
+      await db.execute(
+          "ALTER TABLE locations ADD COLUMN delivery_charge REAL DEFAULT 0.0");
+    } catch (_) {}
+    try {
+      await db.execute(
+          "ALTER TABLE locations ADD COLUMN min_order_amount REAL DEFAULT 0.0");
+    } catch (_) {}
+    try {
+      await db.execute(
+          "ALTER TABLE locations ADD COLUMN is_active INTEGER DEFAULT 1");
     } catch (_) {}
 
     try {
@@ -3285,20 +3361,34 @@ class DatabaseHelper {
               [newId]);
         }
 
-        // 2. Audit duplicate customer codes or missing codes
+        // 2. Audit missing customer codes and generate in format ABCDE125 (5 uppercase letters + 3 digits)
         final missingCodes = await txn.rawQuery(
             "SELECT rowid, id, name, phone1, customer_code FROM customers WHERE customer_code IS NULL OR TRIM(customer_code) = ''");
-        int seqCode = 1001;
+        int seqNum = 101;
         for (final c in missingCodes) {
           final rowid = c['rowid'];
+          final name = (c['name'] as String? ?? '').replaceAll(RegExp(r'[^a-zA-Z]'), '').toUpperCase();
           final phone = (c['phone1'] as String? ?? '').replaceAll(RegExp(r'\D'), '');
-          String generatedCode = '';
-          if (phone.length >= 4) {
-            generatedCode = 'OK${phone.substring(phone.length - 4)}';
+
+          // Generate 5-letter uppercase prefix (e.g. ABCDE, NAYAN, OKART)
+          String prefix = name;
+          if (prefix.length < 5) {
+            prefix = '${prefix}OKART'.substring(0, 5);
           } else {
-            generatedCode = 'OK$seqCode';
-            seqCode++;
+            prefix = prefix.substring(0, 5);
           }
+
+          // Generate 3-digit suffix (e.g. 125, 101)
+          String suffix = '';
+          if (phone.length >= 3) {
+            suffix = phone.substring(phone.length - 3);
+          } else {
+            suffix = seqNum.toString().padLeft(3, '0');
+            seqNum++;
+          }
+
+          String generatedCode = '$prefix$suffix';
+
           // Ensure uniqueness of generated code via a loop check
           int attempts = 0;
           while (attempts < 100) {
@@ -3307,7 +3397,8 @@ class DatabaseHelper {
                 [generatedCode, rowid]);
             final exists = (Sqflite.firstIntValue(dupCheck) ?? 0) > 0;
             if (!exists) break;
-            generatedCode = 'OK${1000 + (rowid as int) + seqCode + attempts}';
+            final numVal = 100 + ((seqNum + attempts) % 900);
+            generatedCode = '$prefix$numVal';
             attempts++;
           }
           await txn.rawUpdate(
@@ -3317,6 +3408,213 @@ class DatabaseHelper {
       });
     } catch (e) {
       debugPrint('[DatabaseHelper] Customer ID audit exception: $e');
+    } finally {
+      try {
+        await db.execute('PRAGMA foreign_keys = ON');
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _auditAndDeduplicateAreasAndCustomers(Database db) async {
+    try {
+      await db.execute(
+          'CREATE TABLE IF NOT EXISTS deleted_customers (id TEXT PRIMARY KEY, deleted_at TEXT)');
+      await db.execute('PRAGMA foreign_keys = OFF');
+
+      await db.transaction((txn) async {
+        // 1. Purge any customers that are in deleted_customers
+        final deletedRows =
+            await txn.query('deleted_customers', columns: ['id']);
+        for (final row in deletedRows) {
+          final delId = row['id'] as String;
+          await txn.delete('customers', where: 'id = ?', whereArgs: [delId]);
+          await txn.delete('orders', where: 'customer_id = ?', whereArgs: [delId]);
+        }
+
+        // Also purge any customer with is_archived = 1 from customers table and record into deleted_customers
+        final archivedCusts = await txn.query('customers',
+            columns: ['id'], where: 'is_archived = 1');
+        for (final row in archivedCusts) {
+          final archId = row['id'] as String;
+          await txn.insert('deleted_customers', {
+            'id': archId,
+            'deleted_at': DateTime.now().toIso8601String(),
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+          await txn.delete('customers', where: 'id = ?', whereArgs: [archId]);
+          await txn.delete('orders', where: 'customer_id = ?', whereArgs: [archId]);
+        }
+
+        // 2. Known Supabase canonical area UUIDs
+        final Map<String, String> canonicalAreaUuids = {
+          'bangar nagar': 'f9b2e534-c643-5f9a-94a4-a02a5747ee57',
+          'darda nagar': 'e2329132-f068-5be3-bcc9-7934f43606b6',
+          'jamankar nagar': '60530399-4de5-57ca-8cc8-db2b9268f489',
+        };
+
+        // 3. Deduplicate Areas in locations and areas tables
+        final areaRows = await txn.rawQuery(
+            "SELECT id, name FROM locations WHERE (parent_location_id IS NULL OR depth = 0 OR location_kind = 'area') ORDER BY id ASC");
+        final Map<String, List<String>> areaGroups = {};
+        for (final row in areaRows) {
+          final name = (row['name'] as String? ?? '').trim().toLowerCase();
+          if (name.isEmpty) continue;
+          final id = row['id'] as String;
+          areaGroups.putIfAbsent(name, () => []).add(id);
+        }
+
+        for (final entry in areaGroups.entries) {
+          final name = entry.key;
+          final ids = entry.value;
+          final targetCanonical = canonicalAreaUuids[name];
+
+          // If a canonical ID exists for this area name and is in ids, ensure it is first
+          if (targetCanonical != null && ids.contains(targetCanonical)) {
+            ids.remove(targetCanonical);
+            ids.insert(0, targetCanonical);
+          } else if (targetCanonical != null && ids.isNotEmpty) {
+            // Update the existing row to canonical ID
+            final oldId = ids.first;
+            await txn.rawUpdate(
+                "UPDATE locations SET id = ? WHERE id = ?", [targetCanonical, oldId]);
+            await txn.rawUpdate(
+                "UPDATE areas SET id = ? WHERE id = ?", [targetCanonical, oldId]);
+            await txn.rawUpdate(
+                "UPDATE locations SET parent_location_id = ? WHERE parent_location_id = ?",
+                [targetCanonical, oldId]);
+            await txn.rawUpdate(
+                "UPDATE streets SET area_id = ? WHERE area_id = ?",
+                [targetCanonical, oldId]);
+            await txn.rawUpdate(
+                "UPDATE customers SET street_id = ? WHERE street_id = ?",
+                [targetCanonical, oldId]);
+            await txn.rawUpdate(
+                "UPDATE customers SET location_id = ? WHERE location_id = ?",
+                [targetCanonical, oldId]);
+            ids[0] = targetCanonical;
+          }
+
+          if (ids.length <= 1) continue;
+
+          final canonicalId = ids.first;
+          // Any remaining ids are duplicates
+          for (int i = 1; i < ids.length; i++) {
+            final dupId = ids[i];
+            if (dupId == canonicalId) continue;
+            await txn.rawUpdate(
+                "UPDATE locations SET parent_location_id = ? WHERE parent_location_id = ?",
+                [canonicalId, dupId]);
+            await txn.rawUpdate(
+                "UPDATE locations SET materialized_path = REPLACE(materialized_path, ?, ?) WHERE materialized_path LIKE ?",
+                ['/$dupId/', '/$canonicalId/', '%/$dupId/%']);
+            await txn.rawUpdate(
+                "UPDATE streets SET area_id = ? WHERE area_id = ?",
+                [canonicalId, dupId]);
+            await txn.rawUpdate(
+                "UPDATE customers SET street_id = ? WHERE street_id = ?",
+                [canonicalId, dupId]);
+            await txn.rawUpdate(
+                "UPDATE customers SET location_id = ? WHERE location_id = ?",
+                [canonicalId, dupId]);
+            await txn.delete('locations', where: 'id = ?', whereArgs: [dupId]);
+            try {
+              await txn.delete('areas', where: 'id = ?', whereArgs: [dupId]);
+            } catch (_) {}
+          }
+        }
+
+        // 4. Deduplicate Roads under each area
+        final roadRows = await txn.rawQuery(
+            "SELECT id, parent_location_id, name FROM locations WHERE parent_location_id IS NOT NULL AND (depth = 1 OR location_kind = 'road')");
+        final Map<String, List<String>> roadGroups = {};
+        for (final row in roadRows) {
+          final parentId = (row['parent_location_id'] as String? ?? '').trim();
+          final name = (row['name'] as String? ?? '').trim().toLowerCase();
+          if (parentId.isEmpty || name.isEmpty) continue;
+          final key = '${parentId}__$name';
+          roadGroups.putIfAbsent(key, () => []).add(row['id'] as String);
+        }
+
+        for (final entry in roadGroups.entries) {
+          final ids = entry.value;
+          if (ids.length <= 1) continue;
+          final canonicalRoadId = ids.first;
+          for (int i = 1; i < ids.length; i++) {
+            final dupId = ids[i];
+            await txn.rawUpdate(
+                "UPDATE locations SET parent_location_id = ? WHERE parent_location_id = ?",
+                [canonicalRoadId, dupId]);
+            await txn.rawUpdate(
+                "UPDATE locations SET materialized_path = REPLACE(materialized_path, ?, ?) WHERE materialized_path LIKE ?",
+                ['/$dupId/', '/$canonicalRoadId/', '%/$dupId/%']);
+            await txn.rawUpdate(
+                "UPDATE customers SET street_id = ? WHERE street_id = ?",
+                [canonicalRoadId, dupId]);
+            await txn.rawUpdate(
+                "UPDATE customers SET location_id = ? WHERE location_id = ?",
+                [canonicalRoadId, dupId]);
+            await txn.delete('locations', where: 'id = ?', whereArgs: [dupId]);
+            try {
+              await txn.delete('streets', where: 'id = ?', whereArgs: [dupId]);
+            } catch (_) {}
+          }
+        }
+
+        // 5. Deduplicate Customers in SQLite
+        final custRows = await txn.rawQuery(
+            "SELECT id, name, phone1, customer_code, street_id, location_id, created_at FROM customers ORDER BY created_at DESC");
+        final Set<String> seenCodes = {};
+        final Set<String> seenPhones = {};
+        final Set<String> seenNameAndRoad = {};
+        final List<String> duplicateCustIds = [];
+
+        for (final c in custRows) {
+          final id = c['id'] as String;
+          final code =
+              (c['customer_code'] as String? ?? '').trim().toUpperCase();
+          final rawPhone =
+              (c['phone1'] as String? ?? '').replaceAll(RegExp(r'\D'), '');
+          final normalizedPhone = rawPhone.length >= 10
+              ? rawPhone.substring(rawPhone.length - 10)
+              : rawPhone;
+          final name = (c['name'] as String? ?? '').trim().toLowerCase();
+          final street = (c['street_id'] as String? ?? '').trim();
+
+          bool isDup = false;
+          if (code.isNotEmpty && seenCodes.contains(code)) {
+            isDup = true;
+          }
+          if (!isDup &&
+              normalizedPhone.isNotEmpty &&
+              normalizedPhone != '0000000000' &&
+              seenPhones.contains(normalizedPhone)) {
+            isDup = true;
+          }
+          if (!isDup &&
+              name.isNotEmpty &&
+              street.isNotEmpty &&
+              seenNameAndRoad.contains('$name@$street')) {
+            isDup = true;
+          }
+
+          if (isDup) {
+            duplicateCustIds.add(id);
+          } else {
+            if (code.isNotEmpty) seenCodes.add(code);
+            if (normalizedPhone.isNotEmpty && normalizedPhone != '0000000000') {
+              seenPhones.add(normalizedPhone);
+            }
+            if (name.isNotEmpty && street.isNotEmpty) {
+              seenNameAndRoad.add('$name@$street');
+            }
+          }
+        }
+
+        for (final dupId in duplicateCustIds) {
+          await txn.delete('customers', where: 'id = ?', whereArgs: [dupId]);
+        }
+      });
+    } catch (e) {
+      debugPrint('[DatabaseHelper] Area & Customer deduplication error: $e');
     } finally {
       try {
         await db.execute('PRAGMA foreign_keys = ON');

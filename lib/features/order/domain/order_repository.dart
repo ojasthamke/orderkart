@@ -21,5 +21,7 @@ abstract class OrderRepository {
   Future<void> updateOrderPayment(
       String orderId, double paidAmount, double remainingAmount);
   Future<Map<String, dynamic>> updateOrderRates(String orderId);
+  Future<Map<String, dynamic>> toggleOrderItemAvailability(
+      String orderId, String orderItemId);
   Future<Map<String, dynamic>> getAnalyticsSummary();
 }

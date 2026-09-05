@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -112,11 +111,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         IconButton(
           icon: const Icon(Icons.sync_rounded),
-          tooltip: 'Sync Database',
+          tooltip: 'Sync All Server Data',
           onPressed: () async {
-            SnackbarHelper.showInfo(context, 'Syncing database... Please wait.');
+            SnackbarHelper.showInfo(context, 'Syncing all orders, customers & details from server...');
             try {
-              await CustomerOrderSyncService.instance.syncOrders();
+              await CustomerOrderSyncService.instance.syncAll(forceSync: true);
               
               ref.invalidate(analyticsSummaryProvider);
               ref.invalidate(inventoryProvider);
@@ -130,11 +129,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ref.invalidate(allCustomersProvider);
 
               if (context.mounted) {
-                SnackbarHelper.showSuccess(context, 'Database sync completed successfully!');
+                SnackbarHelper.showSuccess(context, 'Full database & server sync completed successfully!');
               }
             } catch (e) {
               if (context.mounted) {
-                SnackbarHelper.showError(context, 'Database sync failed: $e');
+                SnackbarHelper.showError(context, 'Server sync failed: $e');
               }
             }
           },
@@ -1602,24 +1601,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
       child: ClipRRect(
         borderRadius: r,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              borderRadius: r,
-              gradient: isDark
-                  ? AppColors.glassGradientDark
-                  : AppColors.glassGradientLight,
-              border: Border.all(
-                color:
-                    borderColor ?? (isDark ? Colors.white30 : Colors.white70),
-                width: 1.5,
-              ),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            borderRadius: r,
+            gradient: isDark
+                ? AppColors.glassGradientDark
+                : AppColors.glassGradientLight,
+            border: Border.all(
+              color:
+                  borderColor ?? (isDark ? Colors.white30 : Colors.white70),
+              width: 1.5,
             ),
-            child: RepaintBoundary(
-              child: child,
-            ),
+          ),
+          child: RepaintBoundary(
+            child: child,
           ),
         ),
       ),

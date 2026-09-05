@@ -35,7 +35,8 @@ Thumbs.db
 *.ipr
 *.iws
 
-# iOS related
-/ios/Pods/
-/ios/.symlinks/
-/ios/Flutter/flutter_export_environment.sh
+# Android Signing & cache
+*.jks
+*.keystore
+.agents/
+android/app/.cxx/
