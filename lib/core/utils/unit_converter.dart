@@ -48,9 +48,20 @@ class UnitConverter {
       case 'pieces':
       case 'pc':
       case 'pcs':
+      case 'bunch':
+      case 'bunches':
       case 'packet':
       case 'packets':
       case 'pkt':
+      case 'bundle':
+      case 'bundles':
+      case 'bndl':
+      case 'box':
+      case 'boxes':
+      case 'bag':
+      case 'bags':
+      case 'pack':
+      case 'packs':
       default:
         return quantity;
     }
@@ -130,11 +141,20 @@ class UnitConverter {
         u == 'dozen' ||
         u == 'dozens' ||
         u == 'dz' ||
+        u == 'bunch' ||
+        u == 'bunches' ||
         u == 'packet' ||
         u == 'packets' ||
         u == 'pkt' ||
         u == 'box' ||
+        u == 'boxes' ||
         u == 'bundle' ||
+        u == 'bundles' ||
+        u == 'bndl' ||
+        u == 'bag' ||
+        u == 'bags' ||
+        u == 'pack' ||
+        u == 'packs' ||
         u == 'strip' ||
         u == 'bottle';
   }

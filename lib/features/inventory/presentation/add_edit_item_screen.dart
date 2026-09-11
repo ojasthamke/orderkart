@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
@@ -11,6 +12,7 @@ import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../../core/widgets/glass_container.dart';
+import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/security/app_mode_service.dart';
 import '../domain/item.dart';
 import 'inventory_provider.dart';
@@ -56,6 +58,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
 
 
   String _category = AppConstants.catVegetables;
+  List<String> _availableCategories = List.from(AppConstants.itemCategories);
   String _unit = AppConstants.unitKg;
   bool _loading = false;
   bool _isEdit = false;
@@ -63,6 +66,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   @override
   void initState() {
     super.initState();
+    _fetchDynamicCategories();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final mode = ref.read(appModeProvider).value;
       if (mode == AppMode.worker) {
@@ -77,6 +81,34 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
       _isEdit = true;
       _loadItem();
     }
+  }
+
+  Future<void> _fetchDynamicCategories() async {
+    try {
+      final res = await Supabase.instance.client
+          .from('categories')
+          .select('name, is_enabled')
+          .order('name');
+      final list = <String>[];
+      for (final r in res as List) {
+        final name = (r['name'] ?? '').toString().trim();
+        final isEnabled = r['is_enabled'] != false;
+        if (name.isNotEmpty && isEnabled && !list.contains(name)) {
+          list.add(name);
+        }
+      }
+      for (final cat in AppConstants.itemCategories) {
+        if (!list.contains(cat)) list.add(cat);
+      }
+      if (list.isNotEmpty && mounted) {
+        setState(() {
+          if (_category.isNotEmpty && !list.contains(_category)) {
+            list.insert(0, _category);
+          }
+          _availableCategories = list;
+        });
+      }
+    } catch (_) {}
   }
 
   String _initialName = '';
@@ -247,8 +279,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                           image: _photoPath.isNotEmpty
                               ? DecorationImage(
                                   image: _photoPath.startsWith('http')
-                                      ? NetworkImage(_photoPath)
-                                          as ImageProvider
+                                      ? AppCachedImage.provider(_photoPath)
                                       : FileImage(File(_photoPath)),
                                   fit: BoxFit.cover,
                                 )
@@ -310,7 +341,8 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                children: AppConstants.itemCategories.map((cat) {
+                runSpacing: 8,
+                children: _availableCategories.map((cat) {
                   return ChoiceChip(
                     label: Text(cat),
                     selected: _category == cat,

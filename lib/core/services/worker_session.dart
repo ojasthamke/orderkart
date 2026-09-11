@@ -94,10 +94,11 @@ class WorkerSession {
     }
   }
 
-  /// Clears the session.
+  /// Clears the session safely without elevating to Owner Mode.
   Future<void> clear() async {
-    _appMode = AppMode.owner;
-    await AppModeService.setAppMode(AppMode.owner);
+    _appMode = AppMode.worker;
+    await AppModeService.setAppMode(AppMode.worker);
+    AppModeService.logoutOwner();
     await setWorker(null);
   }
 }

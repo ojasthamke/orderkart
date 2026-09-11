@@ -71,7 +71,7 @@ class BillTextGenerator {
       final qtyStr = AppFormatters.quantity(qty, unit: unit);
       
       buf.writeln('${i + 1}. *$bilingualName*');
-      buf.writeln('   $qtyStr x $currency${price.toStringAsFixed(2)} = *$currency${total.toStringAsFixed(2)}*');
+      buf.writeln('   $qtyStr x $currency${price > 0 && price < 1.0 ? price.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '') : price.toStringAsFixed(2)} = *$currency${total.toStringAsFixed(2)}*');
     }
 
     buf.writeln(sep);
@@ -194,7 +194,8 @@ class BillTextGenerator {
         final total = (it['total_price'] as num?)?.toDouble() ?? (qty * price);
 
         buf.writeln(bilingualName);
-        final line = '  ${AppFormatters.quantity(qty)}$unit @$price = $currency${total.toStringAsFixed(2)}';
+        final qtyStr = AppFormatters.quantity(qty, unit: unit);
+        final line = '  $qtyStr @$price = $currency${total.toStringAsFixed(2)}';
         buf.writeln(line);
       }
     } else {
@@ -207,7 +208,8 @@ class BillTextGenerator {
         final unit = it['item_unit']?.toString() ?? it['unit']?.toString() ?? '';
         final price = (it['unit_price'] as num?)?.toDouble() ?? 0.0;
         final total = (it['total_price'] as num?)?.toDouble() ?? (qty * price);
-        final right = '${AppFormatters.quantity(qty)}$unit x $price = $currency${total.toStringAsFixed(2)}';
+        final qtyStr = AppFormatters.quantity(qty, unit: unit);
+        final right = '$qtyStr x $price = $currency${total.toStringAsFixed(2)}';
         buf.writeln(twoCol(bilingualName, right));
       }
     }

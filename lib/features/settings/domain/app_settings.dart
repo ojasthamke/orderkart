@@ -34,6 +34,7 @@ class AppSettings {
   final double gstRate;
   final String gstinNumber;
   final double cashDrawerOpeningFloat;
+  final String defaultDeliveryTime;
 
   const AppSettings({
     this.businessName = 'My Business',
@@ -68,6 +69,7 @@ class AppSettings {
     this.gstRate = 5.0,
     this.gstinNumber = '',
     this.cashDrawerOpeningFloat = 1000.0,
+    this.defaultDeliveryTime = '30-45 mins',
   });
 
   AppSettings copyWith({
@@ -102,6 +104,7 @@ class AppSettings {
     double? gstRate,
     String? gstinNumber,
     double? cashDrawerOpeningFloat,
+    String? defaultDeliveryTime,
   }) {
     return AppSettings(
       businessName: businessName ?? this.businessName,
@@ -138,6 +141,7 @@ class AppSettings {
       gstinNumber: gstinNumber ?? this.gstinNumber,
       cashDrawerOpeningFloat:
           cashDrawerOpeningFloat ?? this.cashDrawerOpeningFloat,
+      defaultDeliveryTime: defaultDeliveryTime ?? this.defaultDeliveryTime,
     );
   }
 }

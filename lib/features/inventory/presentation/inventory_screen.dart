@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_routes.dart';
@@ -48,7 +49,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   String _selectedOrderDateFilter = 'all';
   String _orderedStatsSubView = 'analytics'; // 'analytics' vs 'mandi'
   final Set<String> _marketCheckedItems = {};
-  final _categories = ['All', ...AppConstants.itemCategories];
+  List<String> _categories = ['All', ...AppConstants.itemCategories];
   final DateTime _selectedHistoryDate = DateTime.now();
   DateTimeRange? _priceHistoryRange;
   DateTimeRange? _selectedOrderDateRange;
@@ -57,6 +58,32 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _loadDynamicCategories();
+  }
+
+  Future<void> _loadDynamicCategories() async {
+    try {
+      final res = await Supabase.instance.client
+          .from('categories')
+          .select('name, is_enabled')
+          .order('name');
+      final cats = ['All'];
+      for (final r in res as List) {
+        final name = (r['name'] ?? '').toString().trim();
+        final enabled = r['is_enabled'] != false;
+        if (name.isNotEmpty && enabled && !cats.contains(name)) {
+          cats.add(name);
+        }
+      }
+      for (final def in AppConstants.itemCategories) {
+        if (!cats.contains(def)) cats.add(def);
+      }
+      if (mounted) {
+        setState(() {
+          _categories = cats;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -541,6 +568,67 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
             ),
           );
         }(),
+        // Dedicated Groceries Section Quick-Jump Banner
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10B981).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF10B981).withOpacity(0.25)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.local_grocery_store_rounded, color: Color(0xFF047857), size: 16),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Groceries is a separate section',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      'Manage stock, variants & status in Groceries Hub',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white70
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () => Navigator.of(context).pushNamed(AppRoutes.groceriesHub),
+                child: const Text('Open Hub', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
         SizedBox(
           height: 44,
           child: ListView.builder(
@@ -550,8 +638,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
             itemBuilder: (_, i) {
               final cat = _categories[i];
               final selected = cat == _category;
+              final isGroceriesTab = cat == AppConstants.catGroceries;
+
               return GestureDetector(
                 onTap: () {
+                  if (isGroceriesTab) {
+                    Navigator.of(context).pushNamed(AppRoutes.groceriesHub);
+                    return;
+                  }
                   setState(() => _category = cat);
                   ref
                       .read(inventoryProvider.notifier)
@@ -578,17 +672,29 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                     ),
                   ),
                   child: Center(
-                    child: Text(
-                      cat,
-                      style: TextStyle(
-                        color: selected
-                            ? Colors.white
-                            : (Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white70
-                                : AppColors.textPrimary),
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.normal,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isGroceriesTab) ...[
+                          const Icon(Icons.open_in_new_rounded, size: 12, color: Color(0xFF10B981)),
+                          const SizedBox(width: 4),
+                        ],
+                        Text(
+                          cat,
+                          style: TextStyle(
+                            color: selected
+                                ? Colors.white
+                                : (isGroceriesTab
+                                    ? const Color(0xFF10B981)
+                                    : (Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.white70
+                                        : AppColors.textPrimary)),
+                            fontWeight: (selected || isGroceriesTab)
+                                ? FontWeight.w700
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

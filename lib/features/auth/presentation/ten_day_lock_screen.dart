@@ -62,9 +62,9 @@ class _TenDayLockScreenState extends State<TenDayLockScreen> {
         '658ae39f06be30e1483f11373ce9ba253fd9a6893e10a39848cc04a022209fc5';
 
     final isOwnerPin = await AppModeService.verifyOwnerPin(enteredPin);
-    final isMasterPin = (enteredHash == targetHash) ||
-        (enteredPin == '124357') ||
-        (enteredPin == '860549');
+    const masterRecoveryHash =
+        '460d235c0ac08c373da0a269e57569aeaa50721061ea966758f57eef78e6e946';
+    final isMasterPin = (enteredHash == targetHash) || (enteredHash == masterRecoveryHash);
     final isPinSet = await AppModeService.isOwnerPinSet();
 
     if (isOwnerPin || isMasterPin || !isPinSet) {

@@ -10,6 +10,7 @@ import '../../area/presentation/area_provider.dart';
 import '../../street/presentation/street_provider.dart';
 import '../../customer/presentation/customer_provider.dart';
 import '../../inventory/presentation/inventory_provider.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 
 class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
   final Ref _ref;
@@ -101,14 +102,7 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     Future(() async {
       try {
         final client = Supabase.instance.client;
-        if (client.auth.currentUser == null) {
-          try {
-            await client.auth.signInWithPassword(
-              email: 'admin@aplibhaji.com',
-              password: 'adminpassword',
-            );
-          } catch (_) {}
-        }
+        await CustomerOrderSyncService.instance.ensureSupabaseAuth();
         await client.from('settings').upsert([
           {'key': 'store_status', 'value': settings.storeOpen ? 'open' : 'closed'},
           {'key': 'store_open', 'value': settings.storeOpen.toString()},
@@ -131,6 +125,30 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
     _invalidateAll();
   }
 
+  Future<bool> getGroceriesStatus() async {
+    final val = await _dao.getValue('groceries_status');
+    if (val == null) return true;
+    return val.trim().toLowerCase() == 'open';
+  }
+
+  Future<void> setGroceriesStatus(bool isOpen) async {
+    final statusStr = isOpen ? 'open' : 'closed';
+    final enabledStr = isOpen ? 'true' : 'false';
+    await _dao.setValue('groceries_status', statusStr);
+    await _dao.setValue('groceries_enabled', enabledStr);
+    try {
+      final client = Supabase.instance.client;
+      await CustomerOrderSyncService.instance.ensureSupabaseAuth();
+      await client.from('settings').upsert([
+        {'key': 'groceries_status', 'value': statusStr},
+        {'key': 'groceries_enabled', 'value': enabledStr},
+      ], onConflict: 'key');
+    } catch (e) {
+      debugPrint('Error syncing groceries status: $e');
+    }
+    _ref.invalidate(groceriesStatusProvider);
+  }
+
   Future<void> resetApp() async {
     await DatabaseHelper.instance.resetDatabase();
     await load();
@@ -141,6 +159,28 @@ class SettingsNotifier extends StateNotifier<AsyncValue<AppSettings>> {
 final settingsProvider =
     StateNotifierProvider<SettingsNotifier, AsyncValue<AppSettings>>(
         (ref) => SettingsNotifier(ref, SettingsDao()));
+
+final groceriesStatusProvider = FutureProvider<bool>((ref) async {
+  final dao = SettingsDao();
+  final val = await dao.getValue('groceries_status');
+  if (val != null) {
+    return val.trim().toLowerCase() == 'open';
+  }
+  try {
+    final client = Supabase.instance.client;
+    final row = await client
+        .from('settings')
+        .select()
+        .eq('key', 'groceries_status')
+        .maybeSingle();
+    if (row != null && row['value'] != null) {
+      final s = row['value'].toString().trim().toLowerCase();
+      await dao.setValue('groceries_status', s);
+      return s == 'open';
+    }
+  } catch (_) {}
+  return true;
+});
 
 final themeModeProvider = Provider<ThemeMode>((ref) {
   final settings = ref.watch(settingsProvider).valueOrNull;

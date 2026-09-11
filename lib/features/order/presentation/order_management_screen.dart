@@ -29,6 +29,7 @@ import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../../core/utils/external_launcher.dart';
 import 'widgets/running_month_date_strip.dart';
+import 'widgets/delivery_time_bottom_sheet.dart';
 
 class OrderManagementScreen extends ConsumerStatefulWidget {
   const OrderManagementScreen({super.key});
@@ -47,7 +48,6 @@ class _OrderManagementScreenState extends ConsumerState<OrderManagementScreen>
   final _tabs = [
     {'label': 'All', 'status': 'all'},
     {'label': 'Pending', 'status': 'pending'},
-    {'label': 'Quick Orders ⚡', 'status': 'quick_order'},
     {'label': 'Delivered', 'status': 'delivered'},
     {'label': 'Cancelled', 'status': 'cancelled'},
     {'label': 'Pre-Orders', 'status': 'preorder'},
@@ -578,6 +578,16 @@ class _OrderCard extends ConsumerWidget {
     final settingsVal = ref.watch(settingsProvider).valueOrNull;
     final currency = settingsVal?.currency ?? '₹';
     final customerAsync = ref.watch(customerDetailProvider(order.customerId));
+    final double? effectiveLat = (order.latitude != null && order.latitude != 0.0)
+        ? order.latitude
+        : (customerAsync.valueOrNull?.latitude != null && customerAsync.valueOrNull!.latitude != 0.0
+            ? customerAsync.valueOrNull!.latitude
+            : null);
+    final double? effectiveLng = (order.longitude != null && order.longitude != 0.0)
+        ? order.longitude
+        : (customerAsync.valueOrNull?.longitude != null && customerAsync.valueOrNull!.longitude != 0.0
+            ? customerAsync.valueOrNull!.longitude
+            : null);
 
     return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -644,26 +654,59 @@ class _OrderCard extends ConsumerWidget {
                     ),
                     customerAsync.when(
                       data: (c) {
-                        if (c != null && c.isBrandNewCustomer) {
-                          return Container(
-                            margin: const EdgeInsets.only(right: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE8F5E9),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: const Color(0xFF4CAF50), width: 0.8),
-                            ),
-                            child: const Text(
-                              '🌱 NEW',
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF2E7D32),
+                        if (c == null) return const SizedBox.shrink();
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (c.isGoogleCustomer)
+                              Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F0FE),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                      color: const Color(0xFF4285F4), width: 0.8),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.g_mobiledata_rounded,
+                                        size: 14, color: Color(0xFF1967D2)),
+                                    Text(
+                                      'GOOGLE',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF1967D2),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
+                            if (c.isBrandNewCustomer && !c.isGoogleCustomer)
+                              Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F5E9),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                      color: const Color(0xFF4CAF50), width: 0.8),
+                                ),
+                                child: const Text(
+                                  '🌱 NEW',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF2E7D32),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
                       },
                       loading: () => const SizedBox.shrink(),
                       error: (_, __) => const SizedBox.shrink(),
@@ -881,30 +924,30 @@ class _OrderCard extends ConsumerWidget {
                             fontSize: 11,
                           ),
                     ),
-                    if (order.orderType == 'Quick Order' ||
-                        order.orderType == 'Quick Delivery' ||
-                        order.orderType == 'Order Now') ...[
+                    if (order.estimatedDeliveryTime != null &&
+                        order.estimatedDeliveryTime!.trim().isNotEmpty &&
+                        order.estimatedDeliveryTime!.trim().toLowerCase() != 'null') ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF3E0),
+                          color: const Color(0xFFECFDF5),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFFF9800), width: 1),
+                          border: Border.all(color: const Color(0xFF10B981), width: 1),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.bolt_rounded,
-                                size: 12, color: Color(0xFFE65100)),
-                            SizedBox(width: 2),
+                            const Icon(Icons.timer_outlined,
+                                size: 12, color: Color(0xFF047857)),
+                            const SizedBox(width: 3),
                             Text(
-                              '⚡ 1-2 HRS QUICK ORDER',
-                              style: TextStyle(
+                              '🚚 ${order.estimatedDeliveryTime}',
+                              style: const TextStyle(
                                 fontSize: 10,
-                                color: Color(0xFFE65100),
-                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF047857),
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ],
@@ -990,7 +1033,77 @@ class _OrderCard extends ConsumerWidget {
                                                 fontWeight: FontWeight.bold),
                                       ),
                                     ),
-                                  if (cust.address.isNotEmpty)
+                                   if (cust.phone1.isNotEmpty)
+                                     Padding(
+                                       padding: const EdgeInsets.only(bottom: 3),
+                                       child: Row(
+                                         children: [
+                                           const Icon(Icons.phone_rounded, size: 12, color: AppColors.primary),
+                                           const SizedBox(width: 4),
+                                           Text(
+                                             cust.phone1,
+                                             style: Theme.of(context)
+                                                 .textTheme
+                                                 .bodySmall
+                                                 ?.copyWith(
+                                                     color: AppColors.textPrimary,
+                                                     fontWeight: FontWeight.bold,
+                                                     fontSize: 11),
+                                           ),
+                                           const SizedBox(width: 6),
+                                           InkWell(
+                                             onTap: () => ExternalLauncher.launchCall(context, cust.phone1),
+                                             child: const Padding(
+                                               padding: EdgeInsets.symmetric(horizontal: 4),
+                                               child: Icon(Icons.phone_outlined, size: 13, color: AppColors.primary),
+                                             ),
+                                           ),
+                                           InkWell(
+                                             onTap: () => ExternalLauncher.launchWhatsApp(context, cust.phone1),
+                                             child: const Padding(
+                                               padding: EdgeInsets.symmetric(horizontal: 4),
+                                               child: Icon(Icons.chat_outlined, size: 13, color: Color(0xFF047857)),
+                                             ),
+                                           ),
+                                         ],
+                                       ),
+                                     ),
+                                   if (cust.phone2.isNotEmpty)
+                                     Padding(
+                                       padding: const EdgeInsets.only(bottom: 3),
+                                       child: Row(
+                                         children: [
+                                           const Icon(Icons.history_rounded, size: 12, color: Color(0xFFB45309)),
+                                           const SizedBox(width: 4),
+                                           Text(
+                                             'Last: ${cust.phone2}',
+                                             style: Theme.of(context)
+                                                 .textTheme
+                                                 .bodySmall
+                                                 ?.copyWith(
+                                                     color: const Color(0xFFB45309),
+                                                     fontWeight: FontWeight.bold,
+                                                     fontSize: 11),
+                                           ),
+                                           const SizedBox(width: 6),
+                                           InkWell(
+                                             onTap: () => ExternalLauncher.launchCall(context, cust.phone2),
+                                             child: const Padding(
+                                               padding: EdgeInsets.symmetric(horizontal: 4),
+                                               child: Icon(Icons.phone_outlined, size: 13, color: Color(0xFFB45309)),
+                                             ),
+                                           ),
+                                           InkWell(
+                                             onTap: () => ExternalLauncher.launchWhatsApp(context, cust.phone2),
+                                             child: const Padding(
+                                               padding: EdgeInsets.symmetric(horizontal: 4),
+                                               child: Icon(Icons.chat_outlined, size: 13, color: Color(0xFF047857)),
+                                             ),
+                                           ),
+                                         ],
+                                       ),
+                                     ),
+                                   if (cust.address.isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 4),
                                       child: Text(
@@ -1025,6 +1138,79 @@ class _OrderCard extends ConsumerWidget {
                   loading: () => const SizedBox.shrink(),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
+
+                if (effectiveLat != null && effectiveLng != null) ...[
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: () {
+                      ExternalLauncher.launchNavigationCoordinates(
+                          context, effectiveLat, effectiveLng);
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: const Color(0xFF86EFAC), width: 0.9),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.navigation_rounded,
+                              size: 14, color: Color(0xFF16A34A)),
+                          const SizedBox(width: 5),
+                          Text(
+                            '📍 Open Google Map · ${effectiveLat.toStringAsFixed(4)}, ${effectiveLng.toStringAsFixed(4)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF15803D),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ] else if (customerAsync.valueOrNull?.isGoogleCustomer == true &&
+                    (customerAsync.valueOrNull?.address.isNotEmpty ?? false)) ...[
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: () {
+                      ExternalLauncher.openMap(
+                          context, customerAsync.valueOrNull!.address);
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: const Color(0xFF93C5FD), width: 0.9),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.map_rounded,
+                              size: 14, color: Color(0xFF2563EB)),
+                          SizedBox(width: 5),
+                          Text(
+                            '📍 Open Google Map (Address)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1D4ED8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
 
                 if (order.notes.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -1118,6 +1304,29 @@ class _OrderCard extends ConsumerWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
+                            // Accept Order Button (for pending orders)
+                            if (order.deliveryStatus.toLowerCase() == 'pending') ...[
+                              _ActionBtn(
+                                label: 'Accept Order ⚡',
+                                color: const Color(0xFF059669),
+                                onTap: () => _showAcceptModal(context, ref, order),
+                              ),
+                              const SizedBox(width: 6),
+                            ] else if (order.deliveryStatus.toLowerCase() !=
+                                    AppConstants.statusDelivered &&
+                                order.deliveryStatus.toLowerCase() !=
+                                    AppConstants.statusCancelled) ...[
+                              _ActionBtn(
+                                label: order.estimatedDeliveryTime != null &&
+                                        order.estimatedDeliveryTime!.trim().isNotEmpty &&
+                                        order.estimatedDeliveryTime!.trim().toLowerCase() != 'null'
+                                    ? '🕒 ${order.estimatedDeliveryTime}'
+                                    : 'Set Time',
+                                color: const Color(0xFF0D9488),
+                                onTap: () => _showChangeTimeModal(context, ref, order),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
                             // Delivery toggle
                             _ActionBtn(
                               label:
@@ -1229,6 +1438,56 @@ class _OrderCard extends ConsumerWidget {
               style: TextStyle(
                   fontSize: 13, color: color, fontWeight: FontWeight.w700)),
         ],
+      ),
+    );
+  }
+
+  void _showAcceptModal(BuildContext context, WidgetRef ref, AppOrder order) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DeliveryTimeBottomSheet(
+        order: order,
+        isAccepting: true,
+        onConfirm: (durationStr, targetTime) async {
+          await ref.read(orderManagementProvider.notifier).acceptOrder(
+            order.id,
+            deliveryTimeStr: durationStr,
+            estimatedDeliveryAt: targetTime,
+          );
+          if (context.mounted) {
+            SnackbarHelper.showSuccess(
+              context,
+              'Order accepted! Delivery set for $durationStr',
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  void _showChangeTimeModal(BuildContext context, WidgetRef ref, AppOrder order) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DeliveryTimeBottomSheet(
+        order: order,
+        isAccepting: false,
+        onConfirm: (durationStr, targetTime) async {
+          await ref.read(orderManagementProvider.notifier).updateEstimatedDeliveryTime(
+            order.id,
+            deliveryTimeStr: durationStr,
+            estimatedDeliveryAt: targetTime,
+          );
+          if (context.mounted) {
+            SnackbarHelper.showSuccess(
+              context,
+              'Delivery time updated to $durationStr',
+            );
+          }
+        },
       ),
     );
   }

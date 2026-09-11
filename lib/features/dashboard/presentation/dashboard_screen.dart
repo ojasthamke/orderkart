@@ -543,6 +543,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           onTap: () => Navigator.of(context)
                               .pushNamed(AppRoutes.guests),
                         ),
+                        _buildDashboardCard(
+                          context,
+                          title: 'Google Accounts',
+                          icon: Icons.account_circle_rounded,
+                          color: Colors.blueAccent,
+                          providerValue:
+                              ref.watch(onlineAccountsProvider).maybeWhen(
+                                    data: (list) => list.length.toString(),
+                                    orElse: () => '0',
+                                  ),
+                          onTap: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.onlineAccounts),
+                        ),
+
 
                         _buildDashboardCard(
                           context,

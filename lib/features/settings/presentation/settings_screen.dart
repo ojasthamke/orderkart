@@ -37,6 +37,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _gstRateCon = TextEditingController();
   final _gstinCon = TextEditingController();
   final _cashDrawerFloatCon = TextEditingController();
+  final _defaultDeliveryTimeCon = TextEditingController();
 
   bool _initialized = false;
   Timer? _debounceTimer;
@@ -56,6 +57,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _gstRateCon.dispose();
     _gstinCon.dispose();
     _cashDrawerFloatCon.dispose();
+    _defaultDeliveryTimeCon.dispose();
     super.dispose();
   }
 
@@ -73,6 +75,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _gstRateCon.text = s.gstRate.toString();
     _gstinCon.text = s.gstinNumber;
     _cashDrawerFloatCon.text = s.cashDrawerOpeningFloat.toString();
+    _defaultDeliveryTimeCon.text = s.defaultDeliveryTime;
     _initialized = true;
   }
 
@@ -96,6 +99,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               cashDrawerOpeningFloat:
                   double.tryParse(_cashDrawerFloatCon.text.trim()) ??
                       current.cashDrawerOpeningFloat,
+              defaultDeliveryTime: _defaultDeliveryTimeCon.text.trim().isNotEmpty
+                  ? _defaultDeliveryTimeCon.text.trim()
+                  : current.defaultDeliveryTime,
             ),
           );
     });
@@ -228,6 +234,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   },
                 ),
                 const Divider(height: 1),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final grocAsync = ref.watch(groceriesStatusProvider);
+                    final isGrocOpen = grocAsync.valueOrNull ?? true;
+                    return SwitchListTile(
+                      secondary: Icon(
+                        isGrocOpen ? Icons.shopping_bag_rounded : Icons.shopping_bag_outlined,
+                        color: isGrocOpen ? Colors.green : Colors.red,
+                      ),
+                      title: const Text('Groceries Section'),
+                      subtitle: Text(
+                        isGrocOpen ? 'Groceries are OPEN & visible to customers.' : 'Groceries section is CLOSED.',
+                        style: TextStyle(color: isGrocOpen ? Colors.green[700] : Colors.red[700]),
+                      ),
+                      value: isGrocOpen,
+                      onChanged: (v) {
+                        ref.read(settingsProvider.notifier).setGroceriesStatus(v);
+                      },
+                    );
+                  },
+                ),
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.schedule_rounded),
                   title: const Text('Schedule Date & Time'),
@@ -333,6 +361,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ? settings.currency
                             : '',
                       ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.timer_outlined, color: AppColors.primary),
+                  title: const Text('Default Delivery Promise (Homepage)'),
+                  subtitle: const Text('Shown on customer home banner before order is placed'),
+                  trailing: SizedBox(
+                    width: 130,
+                    child: TextField(
+                      controller: _defaultDeliveryTimeCon,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'e.g. 30-45 mins',
+                      ),
+                      onSubmitted: (_) => _autoSave(),
+                      onChanged: (_) => _autoSave(),
                     ),
                   ),
                 ),
@@ -924,11 +971,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         'End worker session and return to mode selection')),
                     trailing:
                         const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                    onTap: () {
-                      WorkerSession.instance.clear();
-                      SnackbarHelper.showInfo(context, 'Worker logged out.');
-                      Navigator.of(context).pushNamedAndRemoveUntil(
-                          AppRoutes.modeSelection, (r) => false);
+                    onTap: () async {
+                      await WorkerSession.instance.clear();
+                      if (context.mounted) {
+                        SnackbarHelper.showInfo(context, 'Worker logged out.');
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                            AppRoutes.modeSelection, (r) => false);
+                      }
                     },
                   ),
                 ]),

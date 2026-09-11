@@ -130,7 +130,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                                 };
                                 return DropdownButtonFormField<String>(
                                   decoration: const InputDecoration(
-                                      labelText: 'Select Street/Road'),
+                                      labelText: 'Select Sub-Road'),
                                   value: selectedStreetId,
                                   isExpanded: true,
                                   items: locations.map((s) {
@@ -398,8 +398,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                   onPressed: () => Navigator.of(context).pushNamed(
                     AppRoutes.addEditCustomer,
                     arguments: widget.streetId != null ? {'streetId': widget.streetId} : null,
-                  ).then((_) =>
-                      ref.refresh(customerListProvider(effectiveStreetId))),
+                  ).then((_) {
+                    ref.invalidate(customerListProvider);
+                    if (effectiveStreetId.isNotEmpty) {
+                      ref.invalidate(customerListProvider(effectiveStreetId));
+                      ref.read(customerListProvider(effectiveStreetId).notifier).load(silent: true);
+                    }
+                  }),
                   child: const Icon(Icons.person_add_rounded),
                 )
               : null,
@@ -422,6 +427,18 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                       selectedColor: AppColors.primary.withValues(alpha: 0.15),
                       checkmarkColor: AppColors.primary,
                       onSelected: (_) => setState(() => _customerFilter = 'All'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
+                      label: Text('Google Accounts (${customers.where((c) => c.isGoogleCustomer).length})'),
+                      selected: _customerFilter == 'Google',
+                      selectedColor: Colors.blue.withValues(alpha: 0.2),
+                      checkmarkColor: Colors.blue[800],
+                      labelStyle: TextStyle(
+                        color: _customerFilter == 'Google' ? Colors.blue[900] : null,
+                        fontWeight: _customerFilter == 'Google' ? FontWeight.bold : null,
+                      ),
+                      onSelected: (_) => setState(() => _customerFilter = 'Google'),
                     ),
                     const SizedBox(width: 8),
                     FilterChip(
@@ -469,6 +486,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                     ),
                     const SizedBox(width: 8),
                     ActionChip(
+                      avatar: const Icon(Icons.account_circle, size: 16, color: Colors.blue),
+                      label: const Text('Google Accounts Hub', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      backgroundColor: Colors.blue.withValues(alpha: 0.12),
+                      onPressed: () => Navigator.of(context).pushNamed(AppRoutes.onlineAccounts),
+                    ),
+                    const SizedBox(width: 8),
+                    ActionChip(
                       avatar: const Icon(Icons.person_pin_circle_rounded, size: 16, color: Colors.amber),
                       label: const Text('Guest Hub & Logins', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                       backgroundColor: Colors.amber.withValues(alpha: 0.12),
@@ -480,6 +504,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
               Expanded(
                 child: () {
                   final displayCustomers = customers.where((c) {
+                    if (_customerFilter == 'Google') {
+                      return c.isGoogleCustomer;
+                    }
                     if (_customerFilter == 'NewCustomers') {
                       return c.isBrandNewCustomer;
                     }
@@ -507,8 +534,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                         Navigator.of(context).pushNamed(
                           AppRoutes.addEditCustomer,
                           arguments: widget.streetId != null ? {'streetId': widget.streetId} : null,
-                        ).then((_) => ref.refresh(
-                            customerListProvider(effectiveStreetId)));
+                        ).then((_) {
+                          ref.invalidate(customerListProvider);
+                          if (effectiveStreetId.isNotEmpty) {
+                            ref.invalidate(customerListProvider(effectiveStreetId));
+                            ref.read(customerListProvider(effectiveStreetId).notifier).load(silent: true);
+                          }
+                        });
                       },
                     );
                   }
@@ -616,7 +648,9 @@ class _CustomerCard extends ConsumerWidget {
               Navigator.of(context).pushNamed(
                 AppRoutes.addEditCustomer,
                 arguments: {'streetId': streetId, 'customerId': customer.id},
-              ).then((_) => ref.refresh(customerListProvider(streetId)));
+              ).then((_) {
+                ref.invalidate(customerListProvider);
+              });
             };
 
       cardChild = ScaleOnTap(
@@ -747,8 +781,9 @@ class _CustomerCard extends ConsumerWidget {
                             'streetId': streetId,
                             'customerId': customer.id
                           },
-                        ).then(
-                            (_) => ref.refresh(customerListProvider(streetId)));
+                        ).then((_) {
+                          ref.invalidate(customerListProvider);
+                        });
                       } else if (v == 'delete') {
                         final ok = await ConfirmDeleteDialog.show(
                           context,
@@ -1232,8 +1267,9 @@ class _CustomerCard extends ConsumerWidget {
                           'customerName': customer.name,
                           'orderId': null,
                         },
-                      ).then(
-                          (_) => ref.refresh(customerListProvider(streetId)));
+                      ).then((_) {
+                        ref.invalidate(customerListProvider);
+                      });
                     } else if (v == 'add_family') {
                       Navigator.of(context).pushNamed(
                         AppRoutes.addEditCustomer,
@@ -1243,8 +1279,9 @@ class _CustomerCard extends ConsumerWidget {
                           'initialAddress': customer.address,
                           'initialMapsLocation': customer.mapsLocation,
                         },
-                      ).then(
-                          (_) => ref.refresh(customerListProvider(streetId)));
+                      ).then((_) {
+                        ref.invalidate(customerListProvider);
+                      });
                     } else if (v == 'edit') {
                       Navigator.of(context).pushNamed(
                         AppRoutes.addEditCustomer,
@@ -1252,8 +1289,13 @@ class _CustomerCard extends ConsumerWidget {
                           'streetId': streetId,
                           'customerId': customer.id,
                         },
-                      ).then(
-                          (_) => ref.refresh(customerListProvider(streetId)));
+                      ).then((_) {
+                        ref.invalidate(customerListProvider);
+                        if (streetId.isNotEmpty) {
+                          ref.invalidate(customerListProvider(streetId));
+                          ref.read(customerListProvider(streetId).notifier).load(silent: true);
+                        }
+                      });
                     } else if (v == 'ledger') {
                       InstantLedgerSheet.show(context, customer);
                     } else if (v == 'delete') {

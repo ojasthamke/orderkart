@@ -3,7 +3,7 @@ import '../constants/app_colors.dart';
 import '../constants/app_routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../security/app_mode_service.dart';
-
+import '../../features/settings/presentation/settings_provider.dart';
 import 'glass_design_system.dart';
 
 class AppDrawer extends ConsumerWidget {
@@ -147,15 +147,73 @@ class AppDrawer extends ConsumerWidget {
                       },
                     ),
 
-
-                    // 4. Inventory Catalog
+                    // 3c. Online Accounts (Google App)
                     _DrawerItem(
-                      icon: Icons.inventory_rounded,
-                      title: 'Inventory Catalog',
+                      icon: Icons.account_circle_rounded,
+                      title: 'Online Accounts (Google App)',
+                      iconColor: Colors.blueAccent,
+                      onTap: () {
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.onlineAccounts);
+                      },
+                    ),
+
+
+                    const Padding(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+                      child: Divider(height: 1),
+                    ),
+                    const _SectionHeader(title: 'STORE DEPARTMENTS'),
+
+                    // 4. Fresh Vegetables & Produce
+                    _DrawerItem(
+                      icon: Icons.eco_rounded,
+                      title: 'Vegetables & Produce',
+                      iconColor: const Color(0xFF10B981),
                       onTap: () {
                         final nav = Navigator.of(context);
                         nav.pop();
                         nav.pushNamed(AppRoutes.inventory);
+                      },
+                    ),
+
+                    // 5. Dedicated Groceries Section
+                    _DrawerItem(
+                      icon: Icons.local_grocery_store_rounded,
+                      title: 'Groceries Section',
+                      iconColor: const Color(0xFF059669),
+                      trailing: Consumer(
+                        builder: (context, ref, _) {
+                          final status = ref.watch(groceriesStatusProvider).valueOrNull ?? true;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: status
+                                  ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                  : const Color(0xFFEF4444).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: status ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              status ? '🟢 OPEN' : '🔴 CLOSED',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: status ? const Color(0xFF047857) : const Color(0xFFDC2626),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      onTap: () {
+                        final nav = Navigator.of(context);
+                        nav.pop();
+                        nav.pushNamed(AppRoutes.groceriesHub);
                       },
                     ),
 
@@ -238,17 +296,7 @@ class AppDrawer extends ConsumerWidget {
                       },
                     ),
 
-                    // 10. Groceries Hub
-                    _DrawerItem(
-                      icon: Icons.local_grocery_store_rounded,
-                      title: 'Groceries Hub',
-                      iconColor: Colors.green,
-                      onTap: () {
-                        final nav = Navigator.of(context);
-                        nav.pop();
-                        nav.pushNamed(AppRoutes.groceriesHub);
-                      },
-                    ),
+
 
                     // 11. Medicines Hub
                     _DrawerItem(
@@ -498,12 +546,14 @@ class _DrawerItem extends StatelessWidget {
   final String title;
   final VoidCallback onTap;
   final Color? iconColor;
+  final Widget? trailing;
 
   const _DrawerItem({
     required this.icon,
     required this.title,
     required this.onTap,
     this.iconColor,
+    this.trailing,
   });
 
   @override
@@ -531,6 +581,7 @@ class _DrawerItem extends StatelessWidget {
           color: textColor,
         ),
       ),
+      trailing: trailing,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),

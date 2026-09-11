@@ -8,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/glass_container.dart';
@@ -647,7 +648,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                               AppConstants.resolveFile(item.photoPath)
                                   .existsSync()))
                       ? (item.photoPath.startsWith('http')
-                          ? NetworkImage(item.photoPath) as ImageProvider
+                          ? AppCachedImage.provider(item.photoPath)
                           : FileImage(AppConstants.resolveFile(item.photoPath)))
                       : null,
                   child: (item.photoPath.isEmpty ||
@@ -948,8 +949,7 @@ class _CatalogShowroomScreenState extends ConsumerState<CatalogShowroomScreen> {
                                       ? DecorationImage(
                                           image:
                                               item.photoPath.startsWith('http')
-                                                  ? NetworkImage(item.photoPath)
-                                                      as ImageProvider
+                                                  ? AppCachedImage.provider(item.photoPath)
                                                   : FileImage(
                                                       AppConstants.resolveFile(
                                                           item.photoPath)),

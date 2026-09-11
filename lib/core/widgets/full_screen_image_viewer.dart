@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'app_cached_image.dart';
 
 class FullScreenImageViewer extends StatelessWidget {
   final String imagePath;
@@ -42,7 +43,9 @@ class FullScreenImageViewer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     ImageProvider imageProvider;
-    if (isAsset) {
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      imageProvider = AppCachedImage.provider(imagePath);
+    } else if (isAsset) {
       imageProvider = AssetImage(imagePath);
     } else {
       imageProvider = FileImage(File(imagePath));

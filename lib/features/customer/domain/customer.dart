@@ -52,6 +52,7 @@ class Customer {
   final String customerCode; // Manually assigned OK2 login code
   final String authProvider; // 'phone_password', 'google', etc.
   final String googleId;
+  final String email;
   final bool isNewCustomer;
 
   const Customer({
@@ -103,6 +104,7 @@ class Customer {
     this.customerCode = '',
     this.authProvider = 'phone_password',
     this.googleId = '',
+    this.email = '',
     this.isNewCustomer = false,
   });
 
@@ -154,6 +156,7 @@ class Customer {
     String? customerCode,
     String? authProvider,
     String? googleId,
+    String? email,
     bool? isNewCustomer,
   }) {
     return Customer(
@@ -204,6 +207,7 @@ class Customer {
       customerCode: customerCode ?? this.customerCode,
       authProvider: authProvider ?? this.authProvider,
       googleId: googleId ?? this.googleId,
+      email: email ?? this.email,
       isNewCustomer: isNewCustomer ?? this.isNewCustomer,
     );
   }
@@ -256,6 +260,7 @@ class Customer {
         'customer_code': customerCode,
         'auth_provider': authProvider,
         'google_id': googleId,
+        'email': email,
         'is_new_customer': isNewCustomer ? 1 : 0,
       };
 
@@ -329,6 +334,7 @@ class Customer {
         customerCode: map['customer_code'] as String? ?? '',
         authProvider: map['auth_provider'] as String? ?? 'phone_password',
         googleId: map['google_id'] as String? ?? '',
+        email: map['email'] as String? ?? '',
         isNewCustomer: map['is_new_customer'] == 1 || map['is_new_customer'] == true,
       );
   }
@@ -339,7 +345,12 @@ class Customer {
       name.trim().toLowerCase() == 'ghost house' ||
       name.trim().startsWith('[Ghost House]');
 
-  bool get isGoogleCustomer => authProvider == 'google' || googleId.isNotEmpty;
+  bool get isGoogleCustomer =>
+      authProvider == 'google' ||
+      googleId.trim().isNotEmpty ||
+      (email.trim().isNotEmpty &&
+          !email.endsWith('@aplibhaji.com') &&
+          (email.contains('@gmail.com') || email.contains('@googlemail.com')));
   bool get isBrandNewCustomer => isNewCustomer || isGoogleCustomer;
 
   /// VIP Active Status calculation

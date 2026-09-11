@@ -66,6 +66,7 @@ import 'features/inventory/presentation/quick_inventory_adjust_screen.dart';
 import 'features/area_intelligence_map/presentation/area_intelligence_map_screen.dart';
 import 'features/area_intelligence_map/presentation/map_pin_picker_screen.dart';
 import 'features/customer/presentation/guest_management_screen.dart';
+import 'features/customer/presentation/online_accounts_screen.dart';
 import 'package:latlong2/latlong.dart';
 
 
@@ -141,6 +142,9 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
       case AppRoutes.guests:
         return _slide(const GuestManagementScreen(), settings);
 
+      case AppRoutes.onlineAccounts:
+        return _slide(const OnlineAccountsScreen(), settings);
+
 
       case AppRoutes.customerProfile:
         final args = (settings.arguments as Map<String, dynamic>?) ?? {};
@@ -154,7 +158,8 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         final args = settings.arguments as Map<String, dynamic>?;
         return _slide(
             AddEditCustomerScreen(
-              streetId: args?['streetId'] as String?,
+              streetId: (args?['streetId'] ?? args?['locationId']) as String?,
+              locationId: (args?['locationId'] ?? args?['streetId']) as String?,
               customerId: args?['customerId'] as String?,
               initialHouseNumber: args?['initialHouseNumber'] as String?,
               initialAddress: args?['initialAddress'] as String?,

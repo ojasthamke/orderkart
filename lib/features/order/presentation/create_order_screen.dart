@@ -18,6 +18,7 @@ import '../../../core/utils/smart_rounding.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/widgets/app_cached_image.dart';
 import '../../inventory/domain/item.dart';
 import '../../inventory/presentation/inventory_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
@@ -37,6 +38,7 @@ import '../../../core/widgets/owner_pin_dialog.dart';
 import '../../../core/localization/app_localization.dart';
 import 'widgets/item_selector_widget.dart';
 import 'widgets/smart_round_banner.dart';
+import 'widgets/delivery_time_bottom_sheet.dart';
 
 class CartItem {
   final String itemId;
@@ -110,6 +112,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   bool _isDiscountManuallyEdited = false;
   bool _isDeliveryManuallyToggled = false;
   bool _showProfit = false;
+  String? _estimatedDeliveryTime;
+  String? _estimatedDeliveryAt;
+  String? _acceptedAt;
 
   List<OrderQuestion> _questions = [];
   Map<String, String> _selectedAnswers = {};
@@ -217,6 +222,9 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
           _isDiscountManuallyEdited = true;
           _isDeliveryManuallyToggled = true;
+          _estimatedDeliveryTime = order.estimatedDeliveryTime;
+          _estimatedDeliveryAt = order.estimatedDeliveryAt;
+          _acceptedAt = order.acceptedAt;
 
           if (_discount > 0) _discountCon.text = _discount.toStringAsFixed(2);
           if (_paidAmount > 0) _paidCon.text = _paidAmount.toStringAsFixed(2);
@@ -390,6 +398,14 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
                       // Delivery Charge
                       _buildDeliverySection(currency),
+
+                      // Delivery Timing (when editing order or when delivery time is configured)
+                      if (_existingOrder != null ||
+                          (_estimatedDeliveryTime != null &&
+                              _estimatedDeliveryTime!.isNotEmpty)) ...[
+                        const SizedBox(height: 14),
+                        _buildDeliveryTimingSection(),
+                      ],
 
                       const SizedBox(height: 16),
 
@@ -1054,6 +1070,126 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
+  // ── Delivery timing section (preserves & configures delivery estimation) ────
+  Widget _buildDeliveryTimingSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final timeStr = (_estimatedDeliveryTime != null &&
+            _estimatedDeliveryTime!.trim().isNotEmpty &&
+            _estimatedDeliveryTime!.trim().toLowerCase() != 'null')
+        ? _estimatedDeliveryTime!
+        : (_existingOrder?.estimatedDeliveryTime != null &&
+                _existingOrder!.estimatedDeliveryTime!.trim().isNotEmpty &&
+                _existingOrder!.estimatedDeliveryTime!.trim().toLowerCase() != 'null')
+            ? _existingOrder!.estimatedDeliveryTime!
+            : 'Not specified';
+    final targetAt = _estimatedDeliveryAt ?? _existingOrder?.estimatedDeliveryAt;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF1E293B).withOpacity(0.5)
+            : AppColors.gray50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.1) : AppColors.gray200,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primarySurface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.timer_outlined,
+                color: AppColors.primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'ESTIMATED DELIVERY',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.gray500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  timeStr,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                if (targetAt != null && targetAt.trim().isNotEmpty && targetAt.trim().toLowerCase() != 'null') ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    'Expected by ${AppFormatters.time(DateTime.tryParse(targetAt)?.toLocal() ?? DateTime.now())}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textHint,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: () {
+              final dummyOrder = _existingOrder ??
+                  AppOrder(
+                    id: widget.orderId ?? 'temp',
+                    customerId: widget.customerId,
+                    subtotal: _subtotal,
+                    grandTotal: _grandTotal,
+                    remainingAmount: _remaining,
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                    estimatedDeliveryTime: _estimatedDeliveryTime,
+                    estimatedDeliveryAt: _estimatedDeliveryAt,
+                  );
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) => DeliveryTimeBottomSheet(
+                  order: dummyOrder,
+                  isAccepting: false,
+                  onConfirm: (durationStr, targetTime) async {
+                    setState(() {
+                      _estimatedDeliveryTime = durationStr;
+                      _estimatedDeliveryAt = targetTime.toUtc().toIso8601String();
+                      _acceptedAt ??= DateTime.now().toUtc().toIso8601String();
+                    });
+                  },
+                ),
+              );
+            },
+            icon: const Icon(Icons.access_time_rounded, size: 15),
+            label: Text(timeStr == 'Not specified' ? 'Set' : 'Change',
+                style: const TextStyle(fontSize: 11.5)),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Summary card ─────────────────────────────────────────────────────────────
   Widget _buildSummaryCard(String currency) {
     double marketSavings = 0.0;
@@ -1400,13 +1536,12 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: settings.qrCustomImage.startsWith('http')
-                            ? Image.network(
-                                settings.qrCustomImage,
+                            ? AppCachedImage(
+                                imageUrl: settings.qrCustomImage,
                                 width: 160,
                                 height: 160,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) =>
-                                    const Text('Broken Custom QR Image'),
+                                errorWidget: const Text('Broken Custom QR Image'),
                               )
                             : Image.file(
                                 File(settings.qrCustomImage),
@@ -2128,6 +2263,39 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       orderType: _existingOrder?.orderType ?? 'Normal',
       orderTakingDate: _existingOrder?.orderTakingDate,
       deliveryDate: _existingOrder?.deliveryDate,
+      estimatedDeliveryTime: (_estimatedDeliveryTime != null &&
+              _estimatedDeliveryTime!.trim().isNotEmpty &&
+              _estimatedDeliveryTime!.trim().toLowerCase() != 'null')
+          ? _estimatedDeliveryTime!.trim()
+          : ((_existingOrder?.estimatedDeliveryTime != null &&
+                  _existingOrder!.estimatedDeliveryTime!.trim().isNotEmpty &&
+                  _existingOrder!.estimatedDeliveryTime!.trim().toLowerCase() != 'null')
+              ? _existingOrder!.estimatedDeliveryTime!.trim()
+              : null),
+      estimatedDeliveryAt: (_estimatedDeliveryAt != null &&
+              _estimatedDeliveryAt!.trim().isNotEmpty &&
+              _estimatedDeliveryAt!.trim().toLowerCase() != 'null')
+          ? _estimatedDeliveryAt!.trim()
+          : ((_existingOrder?.estimatedDeliveryAt != null &&
+                  _existingOrder!.estimatedDeliveryAt!.trim().isNotEmpty &&
+                  _existingOrder!.estimatedDeliveryAt!.trim().toLowerCase() != 'null')
+              ? _existingOrder!.estimatedDeliveryAt!.trim()
+              : null),
+      acceptedAt: (_acceptedAt != null &&
+              _acceptedAt!.trim().isNotEmpty &&
+              _acceptedAt!.trim().toLowerCase() != 'null')
+          ? _acceptedAt!.trim()
+          : ((_existingOrder?.acceptedAt != null &&
+                  _existingOrder!.acceptedAt!.trim().isNotEmpty &&
+                  _existingOrder!.acceptedAt!.trim().toLowerCase() != 'null')
+              ? _existingOrder!.acceptedAt!.trim()
+              : null),
+      customerName: _existingOrder?.customerName ??
+          (widget.customerName.trim().isNotEmpty
+              ? widget.customerName.trim()
+              : null),
+      customerAddress: _existingOrder?.customerAddress,
+      customerPhone: _existingOrder?.customerPhone,
     );
 
     try {

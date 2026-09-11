@@ -12,6 +12,7 @@ import '../../../core/widgets/custom_search_bar.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/loading_shimmer.dart';
 import '../../../core/widgets/confirm_delete_dialog.dart';
+import '../../../core/widgets/app_cached_image.dart';
 import '../domain/expense.dart';
 import 'expense_provider.dart';
 import '../../settings/presentation/settings_provider.dart';
@@ -191,8 +192,39 @@ class _ExpenseCard extends StatelessWidget {
                       builder: (context) => Dialog(
                         child: InteractiveViewer(
                           child: expense.receiptPhotoPath.startsWith('http')
-                              ? Image.network(expense.receiptPhotoPath)
-                              : Image.file(File(expense.receiptPhotoPath)),
+                              ? AppCachedImage(
+                                  imageUrl: expense.receiptPhotoPath,
+                                  fit: BoxFit.contain,
+                                  errorWidget: const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(24.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+                                          SizedBox(height: 8),
+                                          Text('Unable to load receipt photo', style: TextStyle(color: Colors.grey)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : Image.file(
+                                  File(expense.receiptPhotoPath),
+                                  errorBuilder: (_, __, ___) => const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(24.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+                                          SizedBox(height: 8),
+                                          Text('Unable to load receipt photo', style: TextStyle(color: Colors.grey)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                         ),
                       ),
                     );
@@ -209,10 +241,13 @@ class _ExpenseCard extends StatelessWidget {
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: expense.receiptPhotoPath.startsWith('http')
-                          ? Image.network(
-                              expense.receiptPhotoPath,
+                          ? AppCachedImage(
+                              imageUrl: expense.receiptPhotoPath,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              width: 44,
+                              height: 44,
+                              borderRadius: BorderRadius.circular(12),
+                              errorWidget: const Icon(
                                   Icons.receipt_long_rounded,
                                   color: AppColors.error),
                             )

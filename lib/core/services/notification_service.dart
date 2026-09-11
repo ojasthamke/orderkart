@@ -14,10 +14,110 @@ import '../../app.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
-  } catch (_) {}
+
+    final notification = message.notification;
+    final data = message.data;
+
+    // 1. If the message already contains an OS-rendered notification block,
+    // Google Play Services on Android automatically handles rendering it in the system tray.
+    // Calling localNotifications.show() here would generate a duplicate notification.
+    if (notification != null) {
+      return;
+    }
+
+    // 2. For data-only messages, extract title and body
+    final rawTitle = data['title']?.toString();
+    final rawBody = data['body']?.toString();
+
+    // 3. Strictly ignore empty / control / dismissal sync messages.
+    // Never synthesize a fake notification or show "OrderKart Alert" when notifications are cleared!
+    if ((rawTitle == null || rawTitle.trim().isEmpty) &&
+        (rawBody == null || rawBody.trim().isEmpty)) {
+      debugPrint('OrderKart background FCM: ignoring empty/control message without title or body');
+      return;
+    }
+
+    final String title = rawTitle?.trim() ?? '';
+    final String body = rawBody?.trim() ?? '';
+    final String payload = data['payload']?.toString() ?? '';
+    final String channelId = (data['channelId'] ?? data['channel_id'])?.toString() ?? '';
+
+    final localNotifications = FlutterLocalNotificationsPlugin();
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidInit);
+    await localNotifications.initialize(initSettings);
+
+    final bool isCustomerLogin = channelId == 'customer_login_channel' ||
+        payload.startsWith('customer_login_') ||
+        title.toLowerCase().contains('customer login') ||
+        body.toLowerCase().contains('logged in');
+
+    if (isCustomerLogin) {
+      final androidPlugin = localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        const silentChannel = AndroidNotificationChannel(
+          'customer_login_channel',
+          'Customer Login Alerts',
+          description: 'Silent notifications when customers log in',
+          importance: Importance.low,
+          playSound: false,
+          enableVibration: false,
+          showBadge: true,
+        );
+        await androidPlugin.createNotificationChannel(silentChannel);
+      }
+
+      const androidDetails = AndroidNotificationDetails(
+        'customer_login_channel',
+        'Customer Login Alerts',
+        channelDescription: 'Silent notifications when customers log in',
+        importance: Importance.low,
+        priority: Priority.low,
+        playSound: false,
+        enableVibration: false,
+        tag: 'customer_login',
+        onlyAlertOnce: true,
+      );
+      const platformDetails = NotificationDetails(android: androidDetails);
+      await localNotifications.show(
+        9999,
+        title,
+        body,
+        platformDetails,
+        payload: payload,
+      );
+    } else {
+      const androidDetails = AndroidNotificationDetails(
+        'orderkart_channel',
+        'OrderKart Alerts',
+        channelDescription: 'Notifications for OrderKart',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+      );
+      const platformDetails = NotificationDetails(android: androidDetails);
+      await localNotifications.show(
+        message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        platformDetails,
+        payload: payload,
+      );
+    }
+  } catch (e) {
+    debugPrint('OrderKart background FCM error: $e');
+  }
 }
 
 class NotificationService {
+  static const int customerLoginNotificationId = 9999;
+  static const String customerLoginNotificationTag = 'customer_login';
+  static const String customerLoginChannelId = 'customer_login_channel';
+  static const String customerLoginChannelName = 'Customer Login Alerts';
+  static const String customerLoginChannelDesc = 'Silent notifications when customers log in';
+
   static final NotificationService _instance = NotificationService._();
   static NotificationService get instance => _instance;
 
@@ -42,6 +142,22 @@ class NotificationService {
       initializationSettings,
       onDidReceiveNotificationResponse: _onSelectNotification,
     );
+
+    // Register silent notification channel for customer logins
+    final androidPlugin = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      const silentChannel = AndroidNotificationChannel(
+        customerLoginChannelId,
+        customerLoginChannelName,
+        description: customerLoginChannelDesc,
+        importance: Importance.low,
+        playSound: false,
+        enableVibration: false,
+        showBadge: true,
+      );
+      await androidPlugin.createNotificationChannel(silentChannel);
+    }
 
     // Schedule 5-hour periodic reminder
     await schedulePeriodicReminder();
@@ -97,15 +213,37 @@ class NotificationService {
         final notification = message.notification;
         final data = message.data;
 
-        final title = notification?.title ?? data['title'] ?? 'OrderKart Alert';
-        final body = notification?.body ?? data['body'] ?? '';
-        final payload = data['payload'] ?? '';
+        final rawTitle = notification?.title ?? data['title']?.toString();
+        final rawBody = notification?.body ?? data['body']?.toString();
+
+        // Strictly ignore empty / control / dismissal sync messages without real title or body
+        if ((rawTitle == null || rawTitle.trim().isEmpty) &&
+            (rawBody == null || rawBody.trim().isEmpty)) {
+          debugPrint('OrderKart foreground FCM: ignoring message without title or body');
+          return;
+        }
+
+        final String title = rawTitle?.trim() ?? '';
+        final String body = rawBody?.trim() ?? '';
+        final payload = data['payload']?.toString() ?? '';
+        final channelId = (data['channelId'] ?? data['channel_id'])?.toString() ?? '';
+
+        final bool isCustomerLogin = channelId == customerLoginChannelId ||
+            payload.startsWith('customer_login_') ||
+            title.toLowerCase().contains('customer login') ||
+            body.toLowerCase().contains('logged in');
 
         showNotification(
-          id: message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          id: isCustomerLogin
+              ? customerLoginNotificationId
+              : (message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch ~/ 1000),
           title: title,
           body: body,
           payload: payload,
+          channelId: isCustomerLogin ? customerLoginChannelId : null,
+          tag: isCustomerLogin ? customerLoginNotificationTag : null,
+          playSound: !isCustomerLogin,
+          enableVibration: !isCustomerLogin,
         );
       });
 
@@ -197,25 +335,60 @@ class NotificationService {
     String? payload,
     bool playSound = true,
     bool enableVibration = true,
+    String? channelId,
+    String? tag,
   }) async {
-    final AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'orderkart_channel',
-      'OrderKart Alerts',
-      channelDescription: 'Notifications for OrderKart',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: playSound,
-      enableVibration: enableVibration,
-      vibrationPattern: enableVibration
+    // Guard against showing blank or ghost notifications (e.g. on notification clear)
+    if (title.trim().isEmpty && body.trim().isEmpty) {
+      debugPrint('NotificationService.showNotification: suppressed empty notification');
+      return;
+    }
+
+    final bool isCustomerLogin = channelId == customerLoginChannelId ||
+        tag == customerLoginNotificationTag ||
+        (payload != null && payload.startsWith('customer_login_')) ||
+        title.toLowerCase().contains('customer login') ||
+        body.toLowerCase().contains('logged in');
+
+    final String effectiveChannelId =
+        isCustomerLogin ? customerLoginChannelId : (channelId ?? 'orderkart_channel');
+    final String effectiveChannelName =
+        isCustomerLogin ? customerLoginChannelName : 'OrderKart Alerts';
+    final String effectiveChannelDesc =
+        isCustomerLogin ? customerLoginChannelDesc : 'Notifications for OrderKart';
+    final int effectiveId = isCustomerLogin ? customerLoginNotificationId : id;
+    final String? effectiveTag = isCustomerLogin ? customerLoginNotificationTag : tag;
+    final bool effectivePlaySound = isCustomerLogin ? false : playSound;
+    final bool effectiveEnableVibration = isCustomerLogin ? false : enableVibration;
+    final Importance effectiveImportance =
+        isCustomerLogin ? Importance.low : Importance.max;
+    final Priority effectivePriority =
+        isCustomerLogin ? Priority.low : Priority.high;
+
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      effectiveChannelId,
+      effectiveChannelName,
+      channelDescription: effectiveChannelDesc,
+      importance: effectiveImportance,
+      priority: effectivePriority,
+      playSound: effectivePlaySound,
+      enableVibration: effectiveEnableVibration,
+      vibrationPattern: effectiveEnableVibration
           ? Int64List.fromList([0, 1000, 500, 1000])
           : null,
+      tag: effectiveTag,
+      onlyAlertOnce: isCustomerLogin,
     );
     final NotificationDetails platformDetails =
         NotificationDetails(android: androidDetails);
 
-    await flutterLocalNotificationsPlugin.show(id, title, body, platformDetails,
-        payload: payload);
+    await flutterLocalNotificationsPlugin.show(
+      effectiveId,
+      title,
+      body,
+      platformDetails,
+      payload: payload,
+    );
   }
 
   Future<void> scheduleNotification({

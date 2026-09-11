@@ -41,24 +41,11 @@ class CustomerDao {
 
   List<Customer> _deduplicateCustomers(List<Customer> list) {
     final seenIds = <String>{};
-    final seenCodes = <String>{};
-    final seenPhones = <String>{};
     final result = <Customer>[];
 
     for (final c in list) {
       if (seenIds.contains(c.id)) continue;
-      final code = c.customerCode.trim().toUpperCase();
-      if (code.isNotEmpty && seenCodes.contains(code)) continue;
-
-      final digits = c.phone1.replaceAll(RegExp(r'\D'), '');
-      final normPhone = digits.length >= 10 ? digits.substring(digits.length - 10) : digits;
-      if (normPhone.isNotEmpty && normPhone != '0000000000' && seenPhones.contains(normPhone)) {
-        continue;
-      }
-
       seenIds.add(c.id);
-      if (code.isNotEmpty) seenCodes.add(code);
-      if (normPhone.isNotEmpty && normPhone != '0000000000') seenPhones.add(normPhone);
       result.add(c);
     }
     return result;
@@ -67,23 +54,56 @@ class CustomerDao {
   Future<List<Customer>> getCustomersByStreet(String streetId,
       {String? searchQuery}) async {
     final db = await _db;
-    String where = '(is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers)';
-    List<dynamic> args = [];
-    if (streetId.isNotEmpty) {
-      where += ' AND (street_id = ? OR location_id = ?)';
-      args.addAll([streetId, streetId]);
-    }
-    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      where += ' AND (name LIKE ? OR phone1 LIKE ? OR house_number LIKE ?)';
-      final q = '%${searchQuery.trim()}%';
-      args.addAll([q, q, q]);
+    final cleanStreetId = streetId.trim();
+
+    List<Map<String, dynamic>> maps;
+
+    if (cleanStreetId.isEmpty) {
+      // Exclude unassigned Google-only accounts — they belong exclusively
+      // in the Google Accounts Hub (online_accounts_screen) to prevent
+      // duplication in the main customer list.
+      String where = '''
+          (is_archived IS NULL OR is_archived = 0)
+          AND id NOT IN (SELECT id FROM deleted_customers)
+          AND NOT (
+            (auth_provider = 'google'
+             OR (google_id IS NOT NULL AND TRIM(google_id) != '')
+             OR (email IS NOT NULL AND TRIM(email) != '' AND email NOT LIKE '%@aplibhaji.com' AND (email LIKE '%@gmail.com' OR email LIKE '%@googlemail.com'))
+            )
+            AND (street_id IS NULL OR street_id = '' OR street_id = 'unassigned' OR street_id = 'default_street')
+          )
+      ''';
+      List<dynamic> args = [];
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        where +=
+            ' AND (name LIKE ? OR phone1 LIKE ? OR house_number LIKE ? OR customer_code LIKE ?)';
+        final q = '%${searchQuery.trim()}%';
+        args.addAll([q, q, q, q]);
+      }
+      maps = await db.query(
+        'customers',
+        where: where,
+        whereArgs: args,
+      );
+    } else {
+      String searchFilter = '';
+      List<dynamic> args = [cleanStreetId, cleanStreetId];
+      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        searchFilter =
+            ' AND (c.name LIKE ? OR c.phone1 LIKE ? OR c.house_number LIKE ? OR c.customer_code LIKE ?)';
+        final q = '%${searchQuery.trim()}%';
+        args.addAll([q, q, q, q]);
+      }
+
+      maps = await db.rawQuery('''
+        SELECT DISTINCT c.* FROM customers c
+        WHERE (c.is_archived IS NULL OR c.is_archived = 0)
+          AND c.id NOT IN (SELECT id FROM deleted_customers)
+          AND (c.street_id = ? OR c.location_id = ?)
+          $searchFilter
+      ''', args);
     }
 
-    final maps = await db.query(
-      'customers',
-      where: where,
-      whereArgs: args,
-    );
     final customers = maps.map(Customer.fromMap).toList();
 
     // Sort: customers with serial_no > 0 appear first in ascending order.
@@ -101,60 +121,43 @@ class CustomerDao {
 
   Future<List<Customer>> getCustomersByArea(String areaId,
       {String? searchQuery}) async {
-    final db = await _db;
-    List<dynamic> args = [
-      areaId,
-      areaId,
-      areaId,
-      areaId,
-      '%/$areaId/%',
-      '/$areaId/%'
-    ];
-    String searchFilter = '';
-    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      searchFilter =
-          ' AND (c.name LIKE ? OR c.phone1 LIKE ? OR c.house_number LIKE ?)';
-      final q = '%${searchQuery.trim()}%';
-      args.addAll([q, q, q]);
-    }
-
-    final maps = await db.rawQuery('''
-      SELECT DISTINCT c.* FROM customers c
-      LEFT JOIN locations st ON (c.location_id = st.id OR c.street_id = st.id)
-      WHERE (c.is_archived IS NULL OR c.is_archived = 0)
-        AND c.id NOT IN (SELECT id FROM deleted_customers)
-        AND (c.street_id = ? OR c.location_id = ? OR st.id = ? OR st.parent_location_id = ? OR st.materialized_path LIKE ? OR st.materialized_path LIKE ?)
-        $searchFilter
-    ''', args);
-
-    final customers = maps.map(Customer.fromMap).toList();
-    customers.sort((a, b) {
-      final aNo = a.serialNo;
-      final bNo = b.serialNo;
-      if (aNo == 0 && bNo == 0) return a.createdAt.compareTo(b.createdAt);
-      if (aNo == 0) return 1;
-      if (bNo == 0) return -1;
-      return aNo.compareTo(bNo);
-    });
-    return _deduplicateCustomers(customers);
+    return getCustomersByStreet(areaId, searchQuery: searchQuery);
   }
 
   Future<List<Customer>> getCustomersInSameHouse(String houseNumber,
       {String? streetId, String? excludeCustomerId}) async {
     if (houseNumber.trim().isEmpty) return [];
     final db = await _db;
-    String where =
-        '(is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers) AND LOWER(TRIM(house_number)) = LOWER(TRIM(?))';
-    List<dynamic> args = [houseNumber];
-    if (streetId != null && streetId.isNotEmpty) {
-      where += ' AND (street_id = ? OR location_id = ?)';
-      args.addAll([streetId, streetId]);
+    final cleanHouse = houseNumber.trim();
+    List<Map<String, dynamic>> maps;
+
+    if (streetId != null && streetId.trim().isNotEmpty) {
+      final sId = streetId.trim();
+      List<dynamic> args = [cleanHouse, sId, sId];
+      String excludeClause = '';
+      if (excludeCustomerId != null && excludeCustomerId.isNotEmpty) {
+        excludeClause = ' AND c.id != ?';
+        args.add(excludeCustomerId);
+      }
+
+      maps = await db.rawQuery('''
+        SELECT DISTINCT c.* FROM customers c
+        WHERE (c.is_archived IS NULL OR c.is_archived = 0)
+          AND c.id NOT IN (SELECT id FROM deleted_customers)
+          AND LOWER(TRIM(c.house_number)) = LOWER(TRIM(?))
+          AND (c.street_id = ? OR c.location_id = ?)
+          $excludeClause
+      ''', args);
+    } else {
+      String where =
+          '(is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers) AND LOWER(TRIM(house_number)) = LOWER(TRIM(?))';
+      List<dynamic> args = [cleanHouse];
+      if (excludeCustomerId != null && excludeCustomerId.isNotEmpty) {
+        where += ' AND id != ?';
+        args.add(excludeCustomerId);
+      }
+      maps = await db.query('customers', where: where, whereArgs: args);
     }
-    if (excludeCustomerId != null && excludeCustomerId.isNotEmpty) {
-      where += ' AND id != ?';
-      args.add(excludeCustomerId);
-    }
-    final maps = await db.query('customers', where: where, whereArgs: args);
     return _deduplicateCustomers(maps.map(Customer.fromMap).toList());
   }
 
@@ -162,7 +165,17 @@ class CustomerDao {
     final db = await _db;
     final maps = await db.query(
       'customers',
-      where: '(is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers)',
+      where: '''
+        (is_archived IS NULL OR is_archived = 0)
+        AND id NOT IN (SELECT id FROM deleted_customers)
+        AND NOT (
+          (auth_provider = 'google'
+           OR (google_id IS NOT NULL AND TRIM(google_id) != '')
+           OR (email IS NOT NULL AND TRIM(email) != '' AND email NOT LIKE '%@aplibhaji.com' AND (email LIKE '%@gmail.com' OR email LIKE '%@googlemail.com'))
+          )
+          AND (street_id IS NULL OR street_id = '' OR street_id = 'unassigned' OR street_id = 'default_street')
+        )
+      ''',
       orderBy: 'serial_no ASC',
     );
     final customers = maps.map(Customer.fromMap).toList();
@@ -234,43 +247,35 @@ class CustomerDao {
       await db.delete('deleted_customers', where: 'id = ?', whereArgs: [id]);
     } catch (_) {}
 
-    // Prevent duplicate customer insertion by customer_code or normalized phone
-    final trimmedCode = customer.customerCode.trim().toUpperCase();
-    final digits = customer.phone1.replaceAll(RegExp(r'\D'), '');
-    final normPhone =
-        digits.length >= 10 ? digits.substring(digits.length - 10) : digits;
+    // Check if customer with this exact ID already exists
+    final existingCheck = await db.query(
+      'customers',
+      columns: ['id'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (existingCheck.isNotEmpty) {
+      await updateCustomer(customer.copyWith(id: id));
+      return id;
+    }
 
-    String? existingId;
+    // Check if non-empty customer code is already used by another customer
+    final trimmedCode = customer.customerCode.trim().toUpperCase();
     if (trimmedCode.isNotEmpty) {
-      final rows = await db.query(
+      final codeRows = await db.query(
         'customers',
         columns: ['id'],
         where:
-            "UPPER(TRIM(customer_code)) = ? AND (is_archived IS NULL OR is_archived = 0)",
-        whereArgs: [trimmedCode],
+            "UPPER(TRIM(customer_code)) = ? AND id != ? AND (is_archived IS NULL OR is_archived = 0)",
+        whereArgs: [trimmedCode, id],
         limit: 1,
       );
-      if (rows.isNotEmpty) {
-        existingId = rows.first['id'] as String;
+      if (codeRows.isNotEmpty) {
+        final existingCodeId = codeRows.first['id'] as String;
+        await updateCustomer(customer.copyWith(id: existingCodeId));
+        return existingCodeId;
       }
-    }
-    if (existingId == null &&
-        normPhone.isNotEmpty &&
-        normPhone != '0000000000') {
-      final rows = await db.rawQuery('''
-        SELECT id FROM customers
-        WHERE (is_archived IS NULL OR is_archived = 0)
-          AND REPLACE(REPLACE(REPLACE(phone1, ' ', ''), '-', ''), '+91', '') LIKE ?
-        LIMIT 1
-      ''', ['%$normPhone']);
-      if (rows.isNotEmpty) {
-        existingId = rows.first['id'] as String;
-      }
-    }
-
-    if (existingId != null && existingId != id) {
-      await updateCustomer(customer.copyWith(id: existingId));
-      return existingId;
     }
 
     final now = DateTime.now().toIso8601String();
@@ -552,6 +557,10 @@ class CustomerDao {
       List<String> customerIds, String newStreetId) async {
     final db = await _db;
     final now = DateTime.now().toIso8601String();
+    if (newStreetId.isNotEmpty) {
+      await DatabaseHelper.instance
+          .ensureLegacyStreetAndAreaExists(db, newStreetId);
+    }
     await db.transaction((txn) async {
       for (final id in customerIds) {
         await txn.update(
@@ -564,7 +573,29 @@ class CustomerDao {
           where: 'id = ?',
           whereArgs: [id],
         );
+        try {
+          await txn.delete(
+            'settings',
+            where: "key = ? OR key = ?",
+            whereArgs: [
+              'customer_sync_status:$id',
+              'customer_sync_time:$id',
+            ],
+          );
+        } catch (_) {}
       }
+    });
+
+    // Sync moved customers in background
+    Future.microtask(() async {
+      try {
+        for (final id in customerIds) {
+          final cust = await getCustomerById(id);
+          if (cust != null) {
+            await CustomerOrderSyncService.instance.syncSingleCustomer(cust);
+          }
+        }
+      } catch (_) {}
     });
   }
 
@@ -604,34 +635,13 @@ class CustomerDao {
 
   /// Fetch Registered customers (users with customer code and is_guest = 0)
   Future<List<Customer>> getRegisteredCustomers(String streetId, {String? searchQuery}) async {
-    final db = await _db;
-    String where = '(is_archived IS NULL OR is_archived = 0) AND (is_guest = 0 OR is_guest IS NULL) AND (customer_code IS NOT NULL AND customer_code != "")';
-    List<dynamic> args = [];
-    if (streetId.isNotEmpty) {
-      where += ' AND (street_id = ? OR location_id = ?)';
-      args.addAll([streetId, streetId]);
-    }
-    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      where += ' AND (name LIKE ? OR phone1 LIKE ? OR house_number LIKE ? OR customer_code LIKE ?)';
-      final q = '%${searchQuery.trim()}%';
-      args.addAll([q, q, q, q]);
-    }
-
-    final maps = await db.query(
-      'customers',
-      where: where,
-      whereArgs: args,
-    );
-    final customers = maps.map(Customer.fromMap).toList();
-    customers.sort((a, b) {
-      final aNo = a.serialNo;
-      final bNo = b.serialNo;
-      if (aNo == 0 && bNo == 0) return a.createdAt.compareTo(b.createdAt);
-      if (aNo == 0) return 1;
-      if (bNo == 0) return -1;
-      return aNo.compareTo(bNo);
-    });
-    return customers;
+    final all = await getCustomersByStreet(streetId, searchQuery: searchQuery);
+    return all
+        .where((c) =>
+            !c.isGuest &&
+            c.customerCode.trim().isNotEmpty &&
+            !c.isGhostHouse)
+        .toList();
   }
 
   /// Convert a Guest to a Registered Customer by assigning a customer code
@@ -676,6 +686,68 @@ class CustomerDao {
       orderBy: 'logged_in_at DESC',
       limit: limit,
     );
+  }
+
+  /// Fetch Online / Google Sign-In Accounts
+  Future<List<Customer>> getOnlineAccounts({String? searchQuery, String? filter}) async {
+    final db = await _db;
+    final List<dynamic> args = [];
+    String where = '''
+      (is_archived IS NULL OR is_archived = 0)
+      AND id NOT IN (SELECT id FROM deleted_customers)
+      AND (
+        auth_provider = 'google'
+        OR (google_id IS NOT NULL AND TRIM(google_id) != '')
+        OR (email IS NOT NULL AND TRIM(email) != '' AND email NOT LIKE '%@aplibhaji.com' AND (email LIKE '%@gmail.com' OR email LIKE '%@googlemail.com'))
+      )
+    ''';
+
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      final q = '%${searchQuery.trim()}%';
+      where += ' AND (name LIKE ? OR phone1 LIKE ? OR email LIKE ? OR customer_code LIKE ?)';
+      args.addAll([q, q, q, q]);
+    }
+
+    if (filter == 'unassigned') {
+      where += " AND (street_id IS NULL OR street_id = '' OR street_id = 'unassigned' OR street_id = 'default_street') AND (location_id IS NULL OR location_id = '' OR location_id = 'unassigned' OR location_id = 'default_area')";
+    } else if (filter == 'assigned') {
+      where += " AND ((street_id IS NOT NULL AND street_id != '' AND street_id != 'unassigned' AND street_id != 'default_street') OR (location_id IS NOT NULL AND location_id != '' AND location_id != 'unassigned' AND location_id != 'default_area'))";
+    } else if (filter == 'ordered') {
+      where += " AND total_orders > 0";
+    }
+
+    final maps = await db.rawQuery('''
+      SELECT * FROM customers
+      WHERE $where
+      ORDER BY created_at DESC
+    ''', args);
+
+    return _deduplicateCustomers(maps.map(Customer.fromMap).toList());
+  }
+
+  /// Assign an Online Customer to a physical delivery road/location
+  Future<void> assignCustomerToRoad(String customerId, String streetId, {String? locationId}) async {
+    final db = await _db;
+    final effectiveLocationId = (locationId != null && locationId.isNotEmpty) ? locationId : streetId;
+    await db.update(
+      'customers',
+      {
+        'street_id': streetId,
+        'location_id': effectiveLocationId,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [customerId],
+    );
+
+    try {
+      final updatedMaps = await db.query('customers', where: 'id = ?', whereArgs: [customerId]);
+      if (updatedMaps.isNotEmpty) {
+        unawaited(CustomerOrderSyncService.instance.syncSingleCustomer(
+          Customer.fromMap(updatedMaps.first),
+        ));
+      }
+    } catch (_) {}
   }
 }
 

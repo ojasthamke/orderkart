@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/snackbar_helper.dart';
@@ -84,26 +85,17 @@ class ExternalLauncher {
       uri = Uri.parse(cleanLoc);
     } else {
       final parts = cleanLoc.split(',');
-      if (parts.length != 2 ||
-          double.tryParse(parts[0].trim()) == null ||
-          double.tryParse(parts[1].trim()) == null) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Invalid Location'),
-            content: Text(
-                'The saved coordinates "$cleanLoc" are invalid. Please edit them in customer settings (use format: latitude,longitude).'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(_),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-        return;
+      final isCoordinates = parts.length == 2 &&
+          double.tryParse(parts[0].trim()) != null &&
+          double.tryParse(parts[1].trim()) != null;
+
+      if (isCoordinates) {
+        uri = Uri.parse('google.navigation:q=${cleanLoc.trim()}');
+      } else {
+        // Fallback to address search on Google Maps
+        uri = Uri.parse(
+            'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(cleanLoc)}');
       }
-      uri = Uri.parse('google.navigation:q=${cleanLoc.trim()}');
     }
 
     try {
@@ -128,6 +120,56 @@ class ExternalLauncher {
       if (context.mounted) {
         SnackbarHelper.showError(context, 'Failed to open Google Maps: $e');
       }
+    }
+  }
+
+  static Future<void> launchNavigationCoordinates(
+      BuildContext context, double latitude, double longitude) async {
+    await openMap(context, '$latitude,$longitude');
+  }
+
+  static const MethodChannel _playStoreChannel =
+      MethodChannel('com.orderkart.app/playstore');
+
+  /// Opens the Google Play Store directly without showing other apps or browsers.
+  static Future<bool> openPlayStore({
+    String packageName = 'com.example.orderkart',
+    String? customUrl,
+  }) async {
+    final targetPackage = (customUrl != null && customUrl.contains('id='))
+        ? (Uri.tryParse(customUrl)?.queryParameters['id'] ?? packageName)
+        : packageName;
+
+    // 1. Direct native Intent targeting com.android.vending
+    try {
+      final bool? direct = await _playStoreChannel.invokeMethod<bool>(
+        'openPlayStoreDirectly',
+        {'packageName': targetPackage},
+      );
+      if (direct == true) return true;
+    } catch (_) {}
+
+    // 2. Non-browser market scheme
+    try {
+      final marketUri = Uri.parse('market://details?id=$targetPackage');
+      if (await canLaunchUrl(marketUri)) {
+        return await launchUrl(
+          marketUri,
+          mode: LaunchMode.externalNonBrowserApplication,
+        );
+      }
+    } catch (_) {}
+
+    // 3. Fallback web URL
+    try {
+      final webUrl = customUrl ??
+          'https://play.google.com/store/apps/details?id=$targetPackage';
+      return await launchUrl(
+        Uri.parse(webUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      return false;
     }
   }
 }

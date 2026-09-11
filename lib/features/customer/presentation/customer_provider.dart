@@ -44,6 +44,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
   }
 
   void _invalidateAll() {
+    _ref.invalidate(customerListProvider);
     _ref.invalidate(customerDetailProvider);
     _ref.invalidate(streetProviderFamily);
     _ref.invalidate(areaProvider);
@@ -65,10 +66,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await _repo.addCustomer(c);
     await load(silent: true);
     _invalidateAll();
-    _ref.invalidate(customerListProvider(''));
-    if (c.streetId.isNotEmpty) {
-      _ref.invalidate(customerListProvider(c.streetId));
-    }
+    _ref.invalidate(customerListProvider);
     _ref.invalidate(customerDetailProvider(c.id));
     _ref.invalidate(searchProvider);
     _ref.invalidate(allCustomersProvider);
@@ -83,10 +81,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await _repo.updateCustomer(c);
     await load(silent: true);
     _invalidateAll();
-    _ref.invalidate(customerListProvider(''));
-    if (c.streetId.isNotEmpty) {
-      _ref.invalidate(customerListProvider(c.streetId));
-    }
+    _ref.invalidate(customerListProvider);
     _ref.invalidate(customerDetailProvider(c.id));
     _ref.invalidate(customerOrdersProvider(c.id));
     _ref.invalidate(searchProvider);
@@ -117,10 +112,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await _repo.deleteCustomer(id);
     await load();
     _invalidateAll();
-    _ref.invalidate(customerListProvider(''));
-    if (customer != null && customer.streetId.isNotEmpty) {
-      _ref.invalidate(customerListProvider(customer.streetId));
-    }
+    _ref.invalidate(customerListProvider);
     _ref.invalidate(customerDetailProvider(id));
   }
 
@@ -135,12 +127,14 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     final ids = list.map((c) => c.id).toList();
     await _repo.reorderCustomers(streetId, ids);
     _invalidateAll();
+    _ref.invalidate(customerListProvider);
   }
 
   Future<void> recalcBalance(String customerId) async {
     await _repo.updateBalance(customerId, 0);
     await load();
     _invalidateAll();
+    _ref.invalidate(customerListProvider);
   }
 
   Future<void> moveCustomers(
@@ -148,7 +142,7 @@ class CustomerListNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
     await _repo.moveCustomers(customerIds, newStreetId);
     await load();
     _invalidateAll();
-    _ref.invalidate(customerListProvider(newStreetId));
+    _ref.invalidate(customerListProvider);
   }
 }
 
@@ -422,4 +416,67 @@ final customerLoginLogsProvider =
   final repo = ref.watch(customerRepositoryProvider);
   return CustomerLoginLogsNotifier(repo);
 });
+
+// ── ONLINE & GOOGLE ACCOUNTS PROVIDER ─────────────────────────────────────────
+class OnlineAccountsNotifier extends StateNotifier<AsyncValue<List<Customer>>> {
+  final Ref _ref;
+  final CustomerRepository _repo;
+  String _searchQuery = '';
+  String _filter = 'all'; // 'all', 'unassigned', 'assigned', 'ordered'
+
+  OnlineAccountsNotifier(this._ref, this._repo) : super(const AsyncValue.loading()) {
+    load();
+  }
+
+  String get currentFilter => _filter;
+  String get currentSearch => _searchQuery;
+
+  Future<void> load({bool silent = false}) async {
+    if (!silent && state.valueOrNull == null) {
+      state = const AsyncValue.loading();
+    }
+    try {
+      try {
+        await CustomerOrderSyncService.instance.pullRemoteCustomersAndGuests();
+      } catch (_) {}
+
+      final list = await _repo.getOnlineAccounts(
+        searchQuery: _searchQuery,
+        filter: _filter,
+      );
+      state = AsyncValue.data(list);
+    } catch (e, st) {
+      if (state.valueOrNull == null) {
+        state = AsyncValue.error(e, st);
+      }
+    }
+  }
+
+  void search(String query) {
+    _searchQuery = query;
+    load();
+  }
+
+  void setFilter(String filter) {
+    _filter = filter;
+    load();
+  }
+
+  Future<void> assignToRoad(String customerId, String streetId, {String? locationId}) async {
+    await _repo.assignCustomerToRoad(customerId, streetId, locationId: locationId);
+    await load(silent: true);
+    _ref.invalidate(customerListProvider(streetId));
+    if (locationId != null) {
+      _ref.invalidate(customerListProvider(locationId));
+    }
+    _ref.invalidate(allCustomersProvider);
+  }
+}
+
+final onlineAccountsProvider =
+    StateNotifierProvider<OnlineAccountsNotifier, AsyncValue<List<Customer>>>((ref) {
+  final repo = ref.watch(customerRepositoryProvider);
+  return OnlineAccountsNotifier(ref, repo);
+});
+
 

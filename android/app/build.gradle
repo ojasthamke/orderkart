@@ -16,6 +16,17 @@ if (localPropertiesFile.exists()) {
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode') ?: '1'
 def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '1.0'
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (!keystorePropertiesFile.exists()) {
+    keystorePropertiesFile = file('../key.properties')
+}
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withReader('UTF-8') { reader ->
+        keystoreProperties.load(reader)
+    }
+}
+
 android {
     namespace "com.example.orderkart"
     compileSdk 36
@@ -45,16 +56,18 @@ android {
 
     signingConfigs {
         release {
-            keyAlias 'orderkart_key'
-            keyPassword 'orderkartpassword123'
-            storeFile file('release.keystore')
-            storePassword 'orderkartpassword123'
+            if (keystoreProperties.getProperty('storeFile') != null && keystoreProperties.getProperty('keyAlias') != null) {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            signingConfig = (signingConfigs.release.storeFile != null && keystoreProperties['keyAlias'] != null) ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
             shrinkResources false
         }

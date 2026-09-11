@@ -38,5 +38,16 @@ Thumbs.db
 # Android Signing & cache
 *.jks
 *.keystore
+/android/key.properties
+/android/app/key.properties
+key.properties
 .agents/
 android/app/.cxx/
+
+# Secrets & Environment configs
+.env
+.env.*
+*.service-account.json
+service-account*.json
+firebase-adminsdk*.json
+

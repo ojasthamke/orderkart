@@ -21,6 +21,7 @@ import '../../../core/widgets/confirm_delete_dialog.dart';
 import '../../../core/widgets/snackbar_helper.dart';
 import '../../order/domain/payment.dart';
 import '../../order/presentation/order_provider.dart';
+import '../../area/presentation/area_provider.dart';
 import '../domain/customer.dart';
 import 'customer_provider.dart';
 import 'widgets/instant_ledger_sheet.dart';
@@ -31,6 +32,7 @@ import '../../../core/utils/contact_exporter.dart';
 import '../../order/data/order_questions_dao.dart';
 import 'vip_dashboard_screen.dart';
 import '../data/customer_dao.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 
 class CustomerProfileScreen extends ConsumerWidget {
   final String customerId;
@@ -503,13 +505,47 @@ class CustomerProfileScreen extends ConsumerWidget {
                           fontWeight: FontWeight.bold),
                     ),
                     if (customer.phone2.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        'Phone 2: ${customer.phone2}',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: AppColors.textSecondary),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.5)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.history_rounded, size: 12, color: Color(0xFFB45309)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Last Phone: ${customer.phone2}',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: const Color(0xFFB45309),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: () => ExternalLauncher.launchCall(context, customer.phone2),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: Icon(Icons.phone_outlined, size: 15, color: Color(0xFFB45309)),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => ExternalLauncher.launchWhatsApp(context, customer.phone2),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: Icon(Icons.chat_outlined, size: 15, color: Color(0xFF047857)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                     if (customer.whatsapp.isNotEmpty) ...[
@@ -1243,6 +1279,23 @@ class CustomerProfileScreen extends ConsumerWidget {
                       ? customer.whatsapp
                       : customer.phone1),
             ),
+          // Last Phone Actions
+          if (customer.phone2.isNotEmpty) ...[
+            _actionBtn(
+              context: context,
+              icon: Icons.phone_forwarded_rounded,
+              label: 'Call Last',
+              color: const Color(0xFFD97706),
+              onTap: () => ExternalLauncher.launchCall(context, customer.phone2),
+            ),
+            _actionBtn(
+              context: context,
+              icon: Icons.chat_outlined,
+              label: 'WA Last',
+              color: const Color(0xFF059669),
+              onTap: () => ExternalLauncher.launchWhatsApp(context, customer.phone2),
+            ),
+          ],
           // Google Maps
           if (customer.mapsLocation.isNotEmpty)
             _actionBtn(
@@ -1658,6 +1711,9 @@ class CustomerProfileScreen extends ConsumerWidget {
     await ref
         .read(customerListProvider(customer.streetId).notifier)
         .delete(customer.id);
+    ref.invalidate(customerListProvider);
+    ref.invalidate(allCustomersProvider);
+    ref.invalidate(areaProvider);
     if (context.mounted) {
       SnackbarHelper.showSuccess(context, '"${customer.name}" deleted');
       Navigator.of(context).pop();
@@ -2797,12 +2853,7 @@ Future<void> _resetCustomerPassword(BuildContext context, WidgetRef ref, dynamic
     final client = Supabase.instance.client;
     
     // Authenticate as admin before making the update to ensure full access
-    if (client.auth.currentUser == null) {
-      await client.auth.signInWithPassword(
-        email: 'admin@aplibhaji.com',
-        password: 'adminpassword',
-      );
-    }
+    await CustomerOrderSyncService.instance.ensureSupabaseAuth();
     
     // Update Supabase customers table: initial_login_completed = false, temp_setup_pin_hash = null, auth_user_id = null, password = null
     await client.from('customers').update({

@@ -14,15 +14,18 @@ import '../../../core/database/database_helper.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snackbar_helper.dart';
+import '../../../core/widgets/app_cached_image.dart';
 import '../domain/customer.dart';
 import '../data/customer_dao.dart';
 import '../../../core/constants/app_routes.dart';
 import 'customer_provider.dart';
+import '../../area/presentation/area_provider.dart';
 import '../../../core/utils/image_utils.dart';
 import 'package:latlong2/latlong.dart';
 
 class AddEditCustomerScreen extends ConsumerStatefulWidget {
   final String? streetId;
+  final String? locationId;
   final String? customerId;
   final String? initialHouseNumber;
   final String? initialAddress;
@@ -32,6 +35,7 @@ class AddEditCustomerScreen extends ConsumerStatefulWidget {
   const AddEditCustomerScreen({
     super.key,
     this.streetId,
+    this.locationId,
     this.customerId,
     this.initialHouseNumber,
     this.initialAddress,
@@ -84,9 +88,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
   @override
   void initState() {
     super.initState();
-    _streetId = widget.streetId;
+    _streetId = widget.locationId ?? widget.streetId;
     _loadCustomFields();
-    _loadAreasAndRoads();
 
     if (widget.initialHouseNumber != null && widget.initialHouseNumber!.isNotEmpty) {
       _houseCon.text = widget.initialHouseNumber!;
@@ -105,6 +108,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     if (widget.customerId != null) {
       _isEdit = true;
       _loadCustomer();
+    } else {
+      _loadAreasAndRoads();
     }
   }
 
@@ -201,15 +206,19 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
         roads = await _queryRoadsForArea(db, targetAreaId);
       }
 
-      // If targetRoadId is not resolved, default to first available road
-      if ((targetRoadId == null || !roads.any((r) => r['id'] == targetRoadId)) && roads.isNotEmpty) {
-        targetRoadId = roads.first['id'] as String;
-        targetRoadName = roads.first['name'] as String;
+      // If targetRoadId is not in roads, reset it to null
+      if (targetRoadId != null && !roads.any((r) => r['id'] == targetRoadId)) {
+        targetRoadId = null;
+        targetRoadName = null;
       }
 
       List<Map<String, dynamic>> subRoads = [];
-      if (targetRoadId != null) {
+      if (targetRoadId != null && targetRoadId.isNotEmpty) {
         subRoads = await _querySubRoadsForRoad(db, targetRoadId);
+      }
+      if (targetSubRoadId != null && !subRoads.any((sr) => sr['id'] == targetSubRoadId)) {
+        targetSubRoadId = null;
+        targetSubRoadName = null;
       }
 
       if (mounted) {
@@ -284,35 +293,36 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     final areaName = areaMap['name'] as String? ?? '';
     final db = await DatabaseHelper.instance.database;
     final roads = await _queryRoadsForArea(db, newAreaId);
-    String? firstRoadId;
-    String? firstRoadName;
-    if (roads.isNotEmpty) {
-      firstRoadId = roads.first['id'] as String;
-      firstRoadName = roads.first['name'] as String;
-    }
 
     setState(() {
       _selectedAreaId = newAreaId;
       _selectedAreaName = areaName;
       _availableRoads = roads;
-      _selectedRoadId = firstRoadId;
-      _selectedRoadName = firstRoadName;
+      _selectedRoadId = null;
+      _selectedRoadName = null;
       _availableSubRoads = [];
       _selectedSubRoadId = '';
       _selectedSubRoadName = null;
-      _streetId = firstRoadId ?? newAreaId;
+      _streetId = newAreaId;
     });
 
-    if (firstRoadId != null) {
-      final subRoads = await _querySubRoadsForRoad(db, firstRoadId);
-      if (mounted) {
-        setState(() => _availableSubRoads = subRoads);
-      }
-    }
     _autoUpdateAddress();
   }
 
-  Future<void> _onRoadChanged(String newRoadId) async {
+  Future<void> _onRoadChanged(String? newRoadId) async {
+    if (newRoadId == null || newRoadId.isEmpty) {
+      setState(() {
+        _selectedRoadId = null;
+        _selectedRoadName = null;
+        _availableSubRoads = [];
+        _selectedSubRoadId = '';
+        _selectedSubRoadName = null;
+        _streetId = _selectedAreaId;
+      });
+      _autoUpdateAddress();
+      return;
+    }
+
     final roadMap = _availableRoads.firstWhere(
       (r) => r['id'] == newRoadId,
       orElse: () => {'name': ''},
@@ -344,7 +354,11 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
     setState(() {
       _selectedSubRoadId = newSubRoadId;
       _selectedSubRoadName = subRoadName;
-      _streetId = newSubRoadId.isNotEmpty ? newSubRoadId : _selectedRoadId;
+      _streetId = (newSubRoadId.isNotEmpty)
+          ? newSubRoadId
+          : (_selectedRoadId != null && _selectedRoadId!.isNotEmpty)
+              ? _selectedRoadId
+              : _selectedAreaId;
     });
     _autoUpdateAddress();
   }
@@ -531,6 +545,8 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
       });
       _checkHousehold(customer.houseNumber);
       _loadAreasAndRoads();
+    } else if (mounted) {
+      _loadAreasAndRoads();
     }
   }
 
@@ -643,7 +659,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                     image: _photoPath.isNotEmpty
                         ? DecorationImage(
                             image: _photoPath.startsWith('http')
-                                ? NetworkImage(_photoPath) as ImageProvider
+                                ? AppCachedImage.provider(_photoPath)
                                 : FileImage(File(_photoPath)),
                             fit: BoxFit.cover,
                           )
@@ -911,7 +927,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
                         // Area Dropdown
                         DropdownButtonFormField<String>(
-                          value: _selectedAreaId,
+                          value: (_selectedAreaId != null &&
+                                  _availableAreas.any((a) => a['id'] == _selectedAreaId))
+                              ? _selectedAreaId
+                              : (_availableAreas.isNotEmpty ? _availableAreas.first['id'] as String : null),
                           decoration: const InputDecoration(
                             labelText: 'Delivery Area *',
                             prefixIcon: Icon(Icons.location_city_rounded),
@@ -942,56 +961,41 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: _availableRoads.isEmpty
-                                    ? (_selectedAreaId ?? '')
-                                    : (_selectedRoadId != null &&
-                                            _availableRoads.any((r) => r['id'] == _selectedRoadId)
-                                        ? _selectedRoadId
-                                        : (_availableRoads.isNotEmpty ? _availableRoads.first['id'] as String : null)),
-                                decoration: InputDecoration(
-                                  labelText: _availableRoads.isEmpty
-                                      ? 'Delivery Road (Direct Area)'
-                                      : 'Delivery Road / Street *',
-                                  prefixIcon: const Icon(Icons.signpost_rounded),
-                                  border: const OutlineInputBorder(),
+                                value: (_selectedRoadId != null &&
+                                        _availableRoads.any((r) => r['id'] == _selectedRoadId))
+                                    ? _selectedRoadId
+                                    : '',
+                                decoration: const InputDecoration(
+                                  labelText: 'Delivery Road / Street (optional)',
+                                  prefixIcon: Icon(Icons.signpost_rounded),
+                                  border: OutlineInputBorder(),
                                   isDense: true,
                                 ),
-                                items: _availableRoads.isEmpty
-                                    ? [
-                                        DropdownMenuItem<String>(
-                                          value: _selectedAreaId ?? '',
-                                          child: Text(
-                                            _selectedAreaName != null && _selectedAreaName!.isNotEmpty
-                                                ? 'Direct in $_selectedAreaName (No roads added)'
-                                                : '-- Direct Area / No Roads --',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                              fontStyle: FontStyle.italic,
-                                            ),
-                                          ),
-                                        ),
-                                      ]
-                                    : _availableRoads.map((r) {
-                                        return DropdownMenuItem<String>(
-                                          value: r['id'] as String,
-                                          child: Text(
-                                            r['name'] as String,
-                                            style: const TextStyle(fontWeight: FontWeight.w500),
-                                          ),
-                                        );
-                                      }).toList(),
+                                items: [
+                                  DropdownMenuItem<String>(
+                                    value: '',
+                                    child: Text(
+                                      _selectedAreaName != null && _selectedAreaName!.isNotEmpty
+                                          ? 'Direct in $_selectedAreaName (No road)'
+                                          : '-- Direct Area (No road) --',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                  ..._availableRoads.map((r) {
+                                    return DropdownMenuItem<String>(
+                                      value: r['id'] as String,
+                                      child: Text(
+                                        r['name'] as String,
+                                        style: const TextStyle(fontWeight: FontWeight.w500),
+                                      ),
+                                    );
+                                  }),
+                                ],
                                 onChanged: (newRoadId) {
-                                  if (newRoadId != null &&
-                                      _availableRoads.isNotEmpty &&
-                                      newRoadId != _selectedRoadId) {
-                                    _onRoadChanged(newRoadId);
-                                  }
-                                },
-                                validator: (v) {
-                                  if (_availableRoads.isNotEmpty && (v == null || v.isEmpty)) {
-                                    return 'Please select a road';
-                                  }
-                                  return null;
+                                  _onRoadChanged(newRoadId);
                                 },
                               ),
                             ),
@@ -1007,7 +1011,10 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                         if (_availableSubRoads.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           DropdownButtonFormField<String>(
-                            value: _selectedSubRoadId,
+                            value: (_selectedSubRoadId != null &&
+                                    _availableSubRoads.any((sr) => sr['id'] == _selectedSubRoadId))
+                                ? _selectedSubRoadId
+                                : '',
                             decoration: const InputDecoration(
                               labelText: 'Sub-Road / Colony (optional)',
                               prefixIcon: Icon(Icons.turn_slight_right_rounded),
@@ -1032,7 +1039,7 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                           ),
                         ],
 
-                        if (_selectedAreaName != null && _selectedRoadName != null) ...[
+                        if (_selectedAreaName != null && _selectedAreaName!.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Row(
                             children: [
@@ -1041,7 +1048,9 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  'Route Assigned: $_selectedRoadName, $_selectedAreaName',
+                                  _selectedRoadName != null && _selectedRoadName!.isNotEmpty
+                                      ? 'Route Assigned: $_selectedRoadName, $_selectedAreaName'
+                                      : 'Direct Area Assigned: $_selectedAreaName',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.primary,
@@ -1449,18 +1458,19 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_streetId == null || _streetId!.isEmpty) {
-      if (_selectedSubRoadId != null && _selectedSubRoadId!.isNotEmpty) {
-        _streetId = _selectedSubRoadId;
-      } else if (_selectedRoadId != null && _selectedRoadId!.isNotEmpty) {
-        _streetId = _selectedRoadId;
-      } else if (_selectedAreaId != null && _selectedAreaId!.isNotEmpty) {
-        _streetId = _selectedAreaId;
-      } else {
-        SnackbarHelper.showError(context, 'Delivery Area is required');
-        return;
-      }
+    final chosenStreetId = (_selectedSubRoadId != null && _selectedSubRoadId!.isNotEmpty)
+        ? _selectedSubRoadId
+        : (_selectedRoadId != null && _selectedRoadId!.isNotEmpty)
+            ? _selectedRoadId
+            : (_selectedAreaId != null && _selectedAreaId!.isNotEmpty)
+                ? _selectedAreaId
+                : _streetId;
+
+    if (chosenStreetId == null || chosenStreetId.isEmpty) {
+      SnackbarHelper.showError(context, 'Delivery Area is required');
+      return;
     }
+    _streetId = chosenStreetId;
     setState(() => _loading = true);
 
     try {
@@ -1529,16 +1539,32 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
 
       // Skip duplicate-phone check for ghost houses (they all share the same placeholder phone)
       if (!_isGhostHouse) {
-        final duplicateCheck = await db.query(
-          'customers',
-          columns: ['name'],
-          where:
-              'phone1 = ? AND id != ? AND (is_archived IS NULL OR is_archived = 0) AND id NOT IN (SELECT id FROM deleted_customers)',
-          whereArgs: [finalPhone, customerId],
-        );
-        if (duplicateCheck.isNotEmpty) {
-          throw Exception(
-              'A customer named "${duplicateCheck.first['name']}" already has this phone number ($finalPhone).');
+        final cleanPhone = finalPhone.replaceAll(RegExp(r'\D'), '');
+        final normPhone = cleanPhone.length >= 10
+            ? cleanPhone.substring(cleanPhone.length - 10)
+            : cleanPhone;
+
+        if (normPhone.isNotEmpty) {
+          final duplicateCheck = await db.rawQuery(
+            '''
+            SELECT name, phone1 FROM customers
+            WHERE id != ?
+              AND (is_archived IS NULL OR is_archived = 0)
+              AND id NOT IN (SELECT id FROM deleted_customers)
+              AND (
+                phone1 = ?
+                OR REPLACE(REPLACE(REPLACE(REPLACE(phone1, ' ', ''), '-', ''), '+91', ''), '+', '') LIKE '%' || ?
+              )
+            LIMIT 1
+            ''',
+            [customerId, finalPhone, normPhone],
+          );
+          if (duplicateCheck.isNotEmpty) {
+            final existingName = duplicateCheck.first['name'] ?? '';
+            final existingPhone = duplicateCheck.first['phone1'] ?? finalPhone;
+            throw Exception(
+                'A customer named "$existingName" already has this phone number ($existingPhone).');
+          }
         }
       }
 
@@ -1740,6 +1766,24 @@ class _AddEditCustomerScreenState extends ConsumerState<AddEditCustomerScreen> {
               where: 'entity_id = ? AND field_id = ?',
               whereArgs: [customerId, fieldId]);
         }
+      }
+
+      // Invalidate all customer and area providers so lists immediately refresh across screens
+      ref.invalidate(customerListProvider);
+      ref.invalidate(allCustomersProvider);
+      ref.invalidate(areaProvider);
+
+      if (_streetId != null && _streetId!.isNotEmpty) {
+        ref.invalidate(customerListProvider(_streetId!));
+      }
+      if (widget.streetId != null && widget.streetId!.isNotEmpty && widget.streetId != _streetId) {
+        ref.invalidate(customerListProvider(widget.streetId!));
+      }
+      if (widget.locationId != null && widget.locationId!.isNotEmpty && widget.locationId != _streetId && widget.locationId != widget.streetId) {
+        ref.invalidate(customerListProvider(widget.locationId!));
+      }
+      if (existing != null && existing.streetId.isNotEmpty && existing.streetId != _streetId) {
+        ref.invalidate(customerListProvider(existing.streetId));
       }
 
       // Sync customer to Supabase in the background so local save is instant (<20ms)

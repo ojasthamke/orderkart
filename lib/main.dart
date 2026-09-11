@@ -14,6 +14,8 @@ import 'core/constants/app_constants.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 
+import 'package:flutter/foundation.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/background_service.dart';
 import 'core/services/customer_order_sync_service.dart';
@@ -21,6 +23,47 @@ import 'core/utils/image_utils.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Allow dynamic runtime font fetching while suppressing unhandled font/image errors
+  GoogleFonts.config.allowRuntimeFetching = true;
+
+  // Framework-level error boundary
+  FlutterError.onError = (FlutterErrorDetails details) {
+    final str = details.exception.toString().toLowerCase();
+    final bool isBenign = details.silent ||
+        details.exception is NetworkImageLoadException ||
+        str.contains('failed to load font') ||
+        str.contains('fonts.gstatic.com') ||
+        str.contains('google_fonts') ||
+        str.contains('networkimage') ||
+        str.contains('http request failed') ||
+        str.contains('statuscode: 404');
+
+    if (isBenign) {
+      debugPrint('OrderKart: Suppressed benign resource error: ${details.exception}');
+      return;
+    }
+    FlutterError.presentError(details);
+  };
+
+  // Async Zone & Platform error boundary
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    final str = error.toString().toLowerCase();
+    final bool isBenign = error is NetworkImageLoadException ||
+        str.contains('failed to load font') ||
+        str.contains('fonts.gstatic.com') ||
+        str.contains('google_fonts') ||
+        str.contains('networkimage') ||
+        str.contains('http request failed') ||
+        str.contains('statuscode: 404');
+
+    if (isBenign) {
+      debugPrint('OrderKart: Handled benign async resource error: $error');
+      return true; // Mark as handled to prevent engine termination
+    }
+    debugPrint('OrderKart Unhandled Zone Error: $error\n$stack');
+    return true;
+  };
 
   // Try initializing Supabase
   try {

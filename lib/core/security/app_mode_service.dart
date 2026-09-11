@@ -110,8 +110,7 @@ class AppModeService {
   static Future<bool> validateActivationCode(String input) async {
     final hash = sha256.convert(utf8.encode(input.trim())).toString();
     return hash ==
-            '460d235c0ac08c373da0a269e57569aeaa50721061ea966758f57eef78e6e946' ||
-        input.trim() == '860549';
+        '460d235c0ac08c373da0a269e57569aeaa50721061ea966758f57eef78e6e946';
   }
 
   /// Save new Owner 6-digit PIN

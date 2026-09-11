@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/services.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 import '../../../core/utils/external_launcher.dart';
 import '../../../core/utils/unit_converter.dart';
 import '../../../core/constants/app_colors.dart';
@@ -31,7 +33,9 @@ import '../../location/presentation/location_provider.dart';
 import '../../customer/data/customer_dao.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/utils/smart_rounding.dart';
+import '../../../core/utils/catalog_classifier.dart';
 import 'widgets/smart_round_banner.dart';
+import 'widgets/delivery_time_bottom_sheet.dart';
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -43,6 +47,7 @@ class OrderDetailScreen extends ConsumerStatefulWidget {
 
 class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   bool _isDeleting = false;
+  bool _isUpdatingRates = false;
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +107,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   ).then(
                       (_) => ref.refresh(orderDetailProvider(widget.orderId)));
                 } else if (v == 'update_rates') {
-                  _updateRates(order);
+                  if (!_isUpdatingRates) {
+                    _updateRates(order);
+                  }
                 } else if (v == 'whatsapp_review') {
                   _showWhatsAppReviewDialog(order);
                 } else if (v == 'customer_profile') {
@@ -188,6 +195,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 _buildHeaderCard(order, currency),
                 const SizedBox(height: 16),
 
+                // Delivery Time / Store Acceptance Card
+                _buildDeliveryTimeCard(order),
+                const SizedBox(height: 16),
+
                 // Customer info
                 _buildCustomerCard(order),
                 const SizedBox(height: 16),
@@ -271,30 +282,31 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (order.orderType == 'Quick Order' ||
-                        order.orderType == 'Quick Delivery' ||
-                        order.orderType == 'Order Now') ...[
+                    if (order.estimatedDeliveryTime != null &&
+                        order.estimatedDeliveryTime!.trim().isNotEmpty &&
+                        order.estimatedDeliveryTime!.trim().toLowerCase() != 'null') ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF3E0),
+                          color: const Color(0xFFE8F5E9),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFFF9800), width: 1),
+                          border: Border.all(
+                              color: const Color(0xFF4CAF50), width: 1),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.bolt_rounded,
-                                size: 12, color: Color(0xFFE65100)),
-                            SizedBox(width: 2),
+                            const Icon(Icons.access_time_filled_rounded,
+                                size: 12, color: Color(0xFF2E7D32)),
+                            const SizedBox(width: 2),
                             Text(
-                              '⚡ 1-2 HRS QUICK ORDER',
-                              style: TextStyle(
-                                fontSize: 10,
+                              order.estimatedDeliveryTime!,
+                              style: const TextStyle(
+                                fontSize: 10.5,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFFE65100),
+                                color: Color(0xFF2E7D32),
                               ),
                             ),
                           ],
@@ -322,7 +334,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                if (order.orderType == 'Pre-Order' && order.orderTakingDate != null && order.orderTakingDate!.isNotEmpty) ...[
+                if (order.orderType == 'Pre-Order' &&
+                    order.orderTakingDate != null &&
+                    order.orderTakingDate!.isNotEmpty) ...[
                   Row(
                     children: [
                       const Icon(Icons.calendar_today_rounded,
@@ -371,33 +385,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(
-                      (order.orderType == 'Quick Order' ||
-                              order.orderType == 'Quick Delivery' ||
-                              order.orderType == 'Order Now')
-                          ? Icons.bolt_rounded
-                          : Icons.local_shipping_outlined,
+                    const Icon(
+                      Icons.local_shipping_outlined,
                       size: 14,
-                      color: (order.orderType == 'Quick Order' ||
-                              order.orderType == 'Quick Delivery' ||
-                              order.orderType == 'Order Now')
-                          ? const Color(0xFFE65100)
-                          : AppColors.primary,
+                      color: AppColors.primary,
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      (order.orderType == 'Quick Order' ||
-                              order.orderType == 'Quick Delivery' ||
-                              order.orderType == 'Order Now')
-                          ? 'Delivery: Within 1-2 Hours (Today)'
-                          : 'Delivery Date: $deliveryDateFormatted',
-                      style: TextStyle(
+                      'Delivery Date: $deliveryDateFormatted',
+                      style: const TextStyle(
                         fontSize: 12.5,
-                        color: (order.orderType == 'Quick Order' ||
-                                order.orderType == 'Quick Delivery' ||
-                                order.orderType == 'Order Now')
-                            ? const Color(0xFFE65100)
-                            : AppColors.primary,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -409,6 +407,224 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           const SizedBox(width: 8),
           StatusDotBadge(status: order.deliveryStatus),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryTimeCard(AppOrder order) {
+    final normStatus = order.deliveryStatus.toLowerCase().trim();
+    final isPending = normStatus == AppConstants.statusPending || normStatus == 'placed';
+    final isCancelled = normStatus == AppConstants.statusCancelled;
+    final isDelivered = normStatus == AppConstants.statusDelivered;
+
+    if (isCancelled || isDelivered) {
+      return const SizedBox.shrink();
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (isPending) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2E2412) : const Color(0xFFFFF8E1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFFFB300),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.orange.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.hourglass_top_rounded,
+                    color: Color(0xFFE65100), size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Awaiting Store Acceptance',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: Color(0xFFE65100),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Accept this order and set an estimated delivery duration for the customer.',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Color(0xFF795548),
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _openAcceptOrderBottomSheet(order),
+                icon: const Icon(Icons.check_circle_rounded, size: 18),
+                label: const Text(
+                  'Accept Order & Set Delivery Time',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Order is confirmed / preparing / out for delivery
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderColor(context)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primarySurface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.timer_outlined,
+                color: AppColors.primary, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'ESTIMATED DELIVERY',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.gray500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  (order.estimatedDeliveryTime != null &&
+                          order.estimatedDeliveryTime!.trim().isNotEmpty &&
+                          order.estimatedDeliveryTime!.trim().toLowerCase() != 'null')
+                      ? order.estimatedDeliveryTime!
+                      : 'Not specified',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (order.estimatedDeliveryAt != null &&
+                    order.estimatedDeliveryAt!.trim().isNotEmpty &&
+                    order.estimatedDeliveryAt!.trim().toLowerCase() != 'null') ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    'Expected by ${AppFormatters.time(DateTime.tryParse(order.estimatedDeliveryAt!)?.toLocal() ?? DateTime.now())}',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textHint,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _openChangeDeliveryTimeBottomSheet(order),
+            icon: const Icon(Icons.access_time_rounded, size: 16),
+            label: const Text('Change', style: TextStyle(fontSize: 12)),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openAcceptOrderBottomSheet(AppOrder order) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DeliveryTimeBottomSheet(
+        order: order,
+        isAccepting: true,
+        onConfirm: (durationStr, targetTime) async {
+          await ref.read(orderManagementProvider.notifier).acceptOrder(
+                order.id,
+                deliveryTimeStr: durationStr,
+                estimatedDeliveryAt: targetTime,
+              );
+          ref.invalidate(orderDetailProvider(widget.orderId));
+          if (mounted) {
+            SnackbarHelper.showSuccess(
+              context,
+              'Order accepted! Delivery set to $durationStr',
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  void _openChangeDeliveryTimeBottomSheet(AppOrder order) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DeliveryTimeBottomSheet(
+        order: order,
+        isAccepting: false,
+        onConfirm: (durationStr, targetTime) async {
+          await ref
+              .read(orderManagementProvider.notifier)
+              .updateEstimatedDeliveryTime(
+                order.id,
+                deliveryTimeStr: durationStr,
+                estimatedDeliveryAt: targetTime,
+              );
+          ref.invalidate(orderDetailProvider(widget.orderId));
+          if (mounted) {
+            SnackbarHelper.showSuccess(
+              context,
+              'Delivery time updated to $durationStr',
+            );
+          }
+        },
       ),
     );
   }
@@ -498,20 +714,27 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                             if (c.isGoogleCustomer)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 5, vertical: 2),
+                                    horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFE8F0FE),
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
                                       color: const Color(0xFF4285F4), width: 0.8),
                                 ),
-                                child: const Text(
-                                  'GOOGLE',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF1967D2),
-                                  ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.g_mobiledata_rounded,
+                                        size: 15, color: Color(0xFF1967D2)),
+                                    Text(
+                                      'GOOGLE ACCOUNT',
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF1967D2),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                           ],
@@ -521,66 +744,248 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     ),
                   ],
                 ),
-                if (order.customerPhone != null) ...[
+                if (order.customerPhone != null && order.customerPhone!.trim().isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    order.customerPhone!,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 13),
+                  Row(
+                    children: [
+                      const Icon(Icons.phone_rounded, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        order.customerPhone!,
+                        style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () => ExternalLauncher.launchCall(context, order.customerPhone!),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Icon(Icons.phone_outlined, size: 16, color: AppColors.primary),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => ExternalLauncher.launchWhatsApp(context, order.customerPhone!),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Icon(Icons.chat_outlined, size: 16, color: Color(0xFF047857)),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
                 customerAsync.when(
                   data: (cust) {
-                    if (cust == null) return const SizedBox.shrink();
-                    return ref
-                        .watch(locationPathNameProvider(cust.streetId))
-                        .when(
-                          data: (fullPath) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    final double? effectiveLat = (order.latitude != null && order.latitude != 0.0)
+                        ? order.latitude
+                        : (cust?.latitude != null && cust!.latitude != 0.0 ? cust.latitude : null);
+                    final double? effectiveLng = (order.longitude != null && order.longitude != 0.0)
+                        ? order.longitude
+                        : (cust?.longitude != null && cust!.longitude != 0.0 ? cust.longitude : null);
+
+                    final displayAddress = (cust?.address != null && cust!.address.isNotEmpty)
+                        ? cust.address
+                        : (order.customerAddress ?? '');
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (cust?.phone2 != null && cust!.phone2.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.5)),
+                            ),
+                            child: Row(
                               children: [
-                                if (cust.serialNo > 0 ||
-                                    cust.houseNumber.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    [
-                                      if (cust.serialNo > 0)
-                                        'Serial: #${cust.serialNo}',
-                                      if (cust.houseNumber.isNotEmpty)
-                                        'House: ${cust.houseNumber}',
-                                    ].join('  •  '),
+                                const Icon(Icons.history_rounded, size: 14, color: Color(0xFFB45309)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Last Phone: ${cust.phone2}',
                                     style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFB45309),
+                                    ),
                                   ),
-                                ],
-                                if (cust.address.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Address: ${cust.address}',
-                                    style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 13),
-                                    softWrap: true,
+                                ),
+                                InkWell(
+                                  onTap: () => ExternalLauncher.launchCall(context, cust.phone2),
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    child: Icon(Icons.phone_outlined, size: 16, color: Color(0xFFB45309)),
                                   ),
-                                ],
-                                if (fullPath.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Location: $fullPath',
-                                    style: const TextStyle(
-                                        color: AppColors.primary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800),
+                                ),
+                                const SizedBox(width: 4),
+                                InkWell(
+                                  onTap: () => ExternalLauncher.launchWhatsApp(context, cust.phone2),
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    child: Icon(Icons.chat_outlined, size: 16, color: Color(0xFF047857)),
                                   ),
-                                ],
+                                ),
                               ],
-                            );
-                          },
-                          loading: () => const SizedBox.shrink(),
-                          error: (_, __) => const SizedBox.shrink(),
-                        );
+                            ),
+                          ),
+                        ],
+                        if (cust != null)
+                          ref.watch(locationPathNameProvider(cust.streetId)).when(
+                            data: (fullPath) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (cust.serialNo > 0 ||
+                                      cust.houseNumber.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      [
+                                        if (cust.serialNo > 0)
+                                          'Serial: #${cust.serialNo}',
+                                        if (cust.houseNumber.isNotEmpty)
+                                          'House: ${cust.houseNumber}',
+                                      ].join('  •  '),
+                                      style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                  if (displayAddress.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Address: $displayAddress',
+                                      style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 13),
+                                      softWrap: true,
+                                    ),
+                                  ],
+                                  if (fullPath.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Location: $fullPath',
+                                      style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          )
+                        else if (displayAddress.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Address: $displayAddress',
+                            style: const TextStyle(
+                                color: AppColors.textSecondary, fontSize: 13),
+                            softWrap: true,
+                          ),
+                        ],
+                        if (effectiveLat != null && effectiveLng != null) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: const Color(0xFF86EFAC), width: 1),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.pin_drop_rounded,
+                                    size: 16, color: Color(0xFF15803D)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'GPS: ${effectiveLat.toStringAsFixed(5)}, ${effectiveLng.toStringAsFixed(5)}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF166534),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                await ExternalLauncher.launchNavigationCoordinates(
+                                    context, effectiveLat, effectiveLng);
+                              },
+                              icon: const Icon(Icons.navigation_rounded,
+                                  size: 18, color: Colors.white),
+                              label: const Text(
+                                'Navigate (Google Maps)',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13.5,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF16A34A),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ] else if (displayAddress.isNotEmpty && (cust?.isGoogleCustomer ?? false)) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                await ExternalLauncher.openMap(
+                                    context, displayAddress);
+                              },
+                              icon: const Icon(Icons.navigation_rounded,
+                                  size: 18, color: Colors.white),
+                              label: const Text(
+                                'Navigate Address (Google Maps)',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13.5,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF16A34A),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
                   },
                   loading: () => const SizedBox.shrink(),
                   error: (_, __) => const SizedBox.shrink(),
@@ -593,10 +998,145 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     );
   }
 
+  Widget _buildOrderItemSubSection({
+    required AppOrder order,
+    required String title,
+    required IconData icon,
+    required Color color,
+    required List<OrderItem> items,
+    required double subtotal,
+    required String currency,
+  }) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: color,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black26 : Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${items.length} ${items.length == 1 ? "item" : "items"}',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$currency${subtotal.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: items.length,
+          itemBuilder: (ctx, i) {
+            final it = items[i];
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          it.itemName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                        Text(
+                          '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} × $currency${it.unitPrice > 0 && it.unitPrice < 1.0 ? it.unitPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '') : it.unitPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '$currency${it.totalPrice.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.block_rounded,
+                        size: 18, color: Colors.orange),
+                    tooltip: 'Mark Unavailable',
+                    padding: const EdgeInsets.only(left: 8),
+                    constraints: const BoxConstraints(),
+                    onPressed: () => _toggleItemAvailability(order, it),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildItemsSection(AppOrder order, String currency) {
     final items = order.items;
     final availableItems = items.where((it) => it.isAvailable).toList();
     final unavailableItems = items.where((it) => !it.isAvailable).toList();
+
+    final inventoryItems = ref.watch(inventoryProvider).valueOrNull ?? [];
+    final Map<String, Item> itemMap = {for (final item in inventoryItems) item.id: item};
+
+    final produceItems = <OrderItem>[];
+    final groceryItems = <OrderItem>[];
+    double produceSubtotal = 0.0;
+    double grocerySubtotal = 0.0;
+
+    for (final it in availableItems) {
+      final matchedItem = itemMap[it.itemId];
+      final isGrocery = CatalogClassifier.isGroceryOrderItem(it, matchedItem);
+      if (isGrocery) {
+        groceryItems.add(it);
+        grocerySubtotal += it.totalPrice;
+      } else {
+        produceItems.add(it);
+        produceSubtotal += it.totalPrice;
+      }
+    }
 
     return Container(
       width: double.infinity,
@@ -620,7 +1160,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     color: AppColors.gray500),
               ),
               InkWell(
-                onTap: () => _updateRates(order),
+                onTap: _isUpdatingRates ? null : () => _updateRates(order),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding:
@@ -631,15 +1171,25 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     border:
                         Border.all(color: AppColors.primary.withOpacity(0.25)),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.refresh_rounded,
-                          size: 14, color: AppColors.primary),
-                      SizedBox(width: 4),
+                      if (_isUpdatingRates)
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          ),
+                        )
+                      else
+                        const Icon(Icons.refresh_rounded,
+                            size: 14, color: AppColors.primary),
+                      const SizedBox(width: 4),
                       Text(
-                        'Update Rates',
-                        style: TextStyle(
+                        _isUpdatingRates ? 'Updating...' : 'Update Rates',
+                        style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
@@ -655,51 +1205,30 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           if (availableItems.isEmpty && unavailableItems.isEmpty)
             const Text('No items in this order')
           else ...[
-            if (availableItems.isNotEmpty)
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: availableItems.length,
-                itemBuilder: (ctx, i) {
-                  final it = availableItems[i];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                it.itemName,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600, fontSize: 14),
-                              ),
-                              Text(
-                                '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} × $currency${it.unitPrice.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                    color: AppColors.textSecondary, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          '$currency${it.totalPrice.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 14),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.block_rounded,
-                              size: 18, color: Colors.orange),
-                          tooltip: 'Mark Unavailable',
-                          padding: const EdgeInsets.only(left: 8),
-                          constraints: const BoxConstraints(),
-                          onPressed: () => _toggleItemAvailability(order, it),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+            if (produceItems.isNotEmpty)
+              _buildOrderItemSubSection(
+                order: order,
+                title: 'VEGETABLES & FRESH PRODUCE',
+                icon: Icons.eco_rounded,
+                color: const Color(0xFF2E7D32),
+                items: produceItems,
+                subtotal: produceSubtotal,
+                currency: currency,
+              ),
+            if (produceItems.isNotEmpty && groceryItems.isNotEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Divider(height: 1),
+              ),
+            if (groceryItems.isNotEmpty)
+              _buildOrderItemSubSection(
+                order: order,
+                title: 'GROCERIES & PACKAGED GOODS',
+                icon: Icons.local_grocery_store_rounded,
+                color: const Color(0xFF1565C0),
+                items: groceryItems,
+                subtotal: grocerySubtotal,
+                currency: currency,
               ),
             if (unavailableItems.isNotEmpty) ...[
               const Padding(
@@ -743,7 +1272,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                                     color: Colors.orange),
                               ),
                               Text(
-                                '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} × $currency${it.unitPrice.toStringAsFixed(2)}',
+                                '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} × $currency${it.unitPrice > 0 && it.unitPrice < 1.0 ? it.unitPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '') : it.unitPrice.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                     color: Colors.orange, fontSize: 12),
                               ),
@@ -1588,6 +2117,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         'smart_rounded_amount': newSmartRounded,
         'grand_total': newGrandTotal,
         'remaining_amount': newRemaining,
+        'sync_status': 'pending_update',
         'updated_at': DateTime.now().toIso8601String(),
       },
       where: 'id = ?',
@@ -1596,6 +2126,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
     try {
       await CustomerDao().recalcCustomerTotals(order.customerId, executor: db);
+    } catch (_) {}
+
+    try {
+      CustomerOrderSyncService.instance.notifyOrderChanged();
+      unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
     } catch (_) {}
 
     // Auto-save setting if unselected/changed
@@ -1697,6 +2232,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   }
 
   Future<void> _updateRates(AppOrder order) async {
+    if (_isUpdatingRates) return;
+
     final settings = ref.read(settingsProvider).valueOrNull;
     final currency = settings?.currency ?? '₹';
 
@@ -1729,7 +2266,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       ),
     );
 
-    if (confirm != true) return;
+    if (confirm != true || !mounted || _isUpdatingRates) return;
+
+    setState(() {
+      _isUpdatingRates = true;
+    });
 
     try {
       final res = await ref
@@ -1757,6 +2298,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     } catch (e) {
       if (mounted) {
         SnackbarHelper.showError(context, 'Failed to update rates: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingRates = false;
+        });
       }
     }
   }

@@ -69,6 +69,7 @@ class SettingsDao {
       cashDrawerOpeningFloat:
           double.tryParse(m[AppConstants.keyCashDrawerOpeningFloat] ?? '1000') ??
               1000.0,
+      defaultDeliveryTime: m['default_delivery_time'] ?? '30-45 mins',
     );
   }
 }

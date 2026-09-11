@@ -16,5 +16,8 @@ abstract class CustomerRepository {
   Future<void> moveCustomers(List<String> customerIds, String newStreetId);
   Future<void> convertToRegisteredCustomer(String customerId, String newCustomerCode, {String? streetId});
   Future<List<Map<String, dynamic>>> getLoginLogs({int limit = 100, String? loginMethodFilter});
+  Future<List<Customer>> getOnlineAccounts({String? searchQuery, String? filter});
+  Future<void> assignCustomerToRoad(String customerId, String streetId, {String? locationId});
 }
+
 

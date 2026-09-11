@@ -17,6 +17,17 @@ abstract class OrderRepository {
   Future<void> updateOrder(AppOrder order);
   Future<void> deleteOrder(String id);
   Future<void> updateDeliveryStatus(String orderId, String status);
+  Future<void> acceptOrder(
+    String orderId, {
+    required String deliveryTimeStr,
+    required DateTime estimatedDeliveryAt,
+    String status = 'confirmed',
+  });
+  Future<void> updateEstimatedDeliveryTime(
+    String orderId, {
+    required String deliveryTimeStr,
+    required DateTime estimatedDeliveryAt,
+  });
   Future<void> addPayment(Payment payment);
   Future<void> updateOrderPayment(
       String orderId, double paidAmount, double remainingAmount);

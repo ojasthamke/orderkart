@@ -23,6 +23,11 @@ class AppOrder {
   final String? orderTakingDate;
   final String? deliveryDate;
 
+  // Delivery acceptance & estimation fields
+  final String? estimatedDeliveryTime; // e.g. "30 mins", "1 hour", "45 mins"
+  final String? estimatedDeliveryAt; // ISO timestamp
+  final String? acceptedAt; // ISO timestamp
+
   // Joined / computed fields
   final String? customerName;
   final String? customerAddress;
@@ -37,6 +42,8 @@ class AppOrder {
   final double commissionRate;
   final String commissionType;
   final String orderNumberStr;
+  final double? latitude;
+  final double? longitude;
 
   String get orderNoLabel {
     if (orderNumberStr.isNotEmpty) return orderNumberStr;
@@ -70,9 +77,14 @@ class AppOrder {
     this.orderType = 'Normal',
     this.orderTakingDate,
     this.deliveryDate,
+    this.estimatedDeliveryTime,
+    this.estimatedDeliveryAt,
+    this.acceptedAt,
     this.customerName,
     this.customerAddress,
     this.customerPhone,
+    this.latitude,
+    this.longitude,
     this.assignedWorkerId = '',
     this.createdBy = 'owner',
     this.workerName = '',
@@ -103,9 +115,14 @@ class AppOrder {
     String? orderType,
     String? orderTakingDate,
     String? deliveryDate,
+    String? estimatedDeliveryTime,
+    String? estimatedDeliveryAt,
+    String? acceptedAt,
     String? customerName,
     String? customerAddress,
     String? customerPhone,
+    double? latitude,
+    double? longitude,
     String? assignedWorkerId,
     String? createdBy,
     String? workerName,
@@ -135,9 +152,15 @@ class AppOrder {
       orderType: orderType ?? this.orderType,
       orderTakingDate: orderTakingDate ?? this.orderTakingDate,
       deliveryDate: deliveryDate ?? this.deliveryDate,
+      estimatedDeliveryTime:
+          estimatedDeliveryTime ?? this.estimatedDeliveryTime,
+      estimatedDeliveryAt: estimatedDeliveryAt ?? this.estimatedDeliveryAt,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
       customerName: customerName ?? this.customerName,
       customerAddress: customerAddress ?? this.customerAddress,
       customerPhone: customerPhone ?? this.customerPhone,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       assignedWorkerId: assignedWorkerId ?? this.assignedWorkerId,
       createdBy: createdBy ?? this.createdBy,
       workerName: workerName ?? this.workerName,
@@ -174,6 +197,11 @@ class AppOrder {
         'order_type': orderType,
         'order_taking_date': orderTakingDate,
         'delivery_date': deliveryDate,
+        'estimated_delivery_time': estimatedDeliveryTime,
+        'estimated_delivery_at': estimatedDeliveryAt,
+        'accepted_at': acceptedAt,
+        'latitude': latitude,
+        'longitude': longitude,
       };
 
   factory AppOrder.fromMap(Map<String, dynamic> map) {
@@ -211,9 +239,26 @@ class AppOrder {
         orderType: map['order_type'] as String? ?? 'Normal',
         orderTakingDate: map['order_taking_date'] as String?,
         deliveryDate: map['delivery_date'] as String?,
+        estimatedDeliveryTime: (map['estimated_delivery_time'] == null ||
+                map['estimated_delivery_time'].toString().trim().isEmpty ||
+                map['estimated_delivery_time'].toString().trim().toLowerCase() == 'null')
+            ? null
+            : map['estimated_delivery_time'].toString().trim(),
+        estimatedDeliveryAt: (map['estimated_delivery_at'] == null ||
+                map['estimated_delivery_at'].toString().trim().isEmpty ||
+                map['estimated_delivery_at'].toString().trim().toLowerCase() == 'null')
+            ? null
+            : map['estimated_delivery_at'].toString().trim(),
+        acceptedAt: (map['accepted_at'] == null ||
+                map['accepted_at'].toString().trim().isEmpty ||
+                map['accepted_at'].toString().trim().toLowerCase() == 'null')
+            ? null
+            : map['accepted_at'].toString().trim(),
         customerName: map['customer_name'] as String?,
         customerAddress: map['customer_address'] as String?,
         customerPhone: map['customer_phone'] as String?,
+        latitude: (map['latitude'] as num?)?.toDouble(),
+        longitude: (map['longitude'] as num?)?.toDouble(),
         assignedWorkerId:
             (map['assigned_worker_id'] ?? map['worker_id']) as String? ?? '',
         createdBy: map['created_by'] as String? ?? 'owner',

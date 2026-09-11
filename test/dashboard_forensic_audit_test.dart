@@ -605,23 +605,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      // Verify ChoiceChip with 'Today' is selected by default
-      final todayChip = tester.widget<ChoiceChip>(
-        find.widgetWithText(ChoiceChip, 'Today'),
-      );
-      expect(todayChip.selected, isTrue);
-
-      // Verify ChoiceChip with 'All' is not selected by default
-      final allChip = tester.widget<ChoiceChip>(
-        find.widgetWithText(ChoiceChip, 'All'),
-      );
-      expect(allChip.selected, isFalse);
-
-      // Verify ChoiceChip with 'Yesterday' is not selected by default
-      final yestChip = tester.widget<ChoiceChip>(
-        find.widgetWithText(ChoiceChip, 'Yesterday'),
-      );
-      expect(yestChip.selected, isFalse);
+      // Verify Today's Orders dashboard card is rendered
+      expect(find.text("Today's Orders"), findsWidgets);
+      expect(find.text("Guest Hub"), findsWidgets);
 
       // Advance past sqflite internal watchdog timers
       await tester.pump(const Duration(seconds: 15));

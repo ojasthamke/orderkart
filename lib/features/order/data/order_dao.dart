@@ -133,7 +133,9 @@ class OrderDao {
         o.order_number AS order_number_str,
         c.name    AS customer_name,
         c.address AS customer_address,
-        c.phone1  AS customer_phone
+        c.phone1  AS customer_phone,
+        COALESCE(o.latitude, c.latitude) AS latitude,
+        COALESCE(o.longitude, c.longitude) AS longitude
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
       $where
@@ -165,7 +167,7 @@ class OrderDao {
         FROM order_items oi
         INNER JOIN orders o ON oi.order_id = o.id
         LEFT JOIN items i ON oi.item_id = i.id
-        WHERE o.customer_id = ? AND (o.delivery_status IS NULL OR (o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'))
+        WHERE o.customer_id = ? AND (o.delivery_status IS NULL OR (LOWER(o.delivery_status) NOT IN ('cancelled', 'canceled', 'denied', 'rejected')))
         GROUP BY oi.item_id, oi.item_name, oi.item_unit
         ORDER BY order_count DESC
         LIMIT ?
@@ -180,7 +182,10 @@ class OrderDao {
       {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
     final maps = await db.rawQuery('''
-      SELECT o.*, o.rowid AS order_number, o.order_number AS order_number_str, c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone
+      SELECT o.*, o.rowid AS order_number, o.order_number AS order_number_str,
+             c.name AS customer_name, c.address AS customer_address, c.phone1 AS customer_phone,
+             COALESCE(o.latitude, c.latitude) AS latitude,
+             COALESCE(o.longitude, c.longitude) AS longitude
       FROM orders o LEFT JOIN customers c ON o.customer_id = c.id
       WHERE o.id = ?
     ''', [id]);
@@ -267,24 +272,64 @@ class OrderDao {
         : 'OFF-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}-${(DateTime.now().millisecondsSinceEpoch % 1000).toString().padLeft(3, '0')}';
 
     final existing = await db.query('orders',
-        columns: ['id'], where: 'id = ?', whereArgs: [id]);
+        where: 'id = ?', whereArgs: [id]);
     if (existing.isNotEmpty) {
-      await db.update(
-          'orders',
-          {
-            ...map,
-            'order_number': finalOrderNumber,
-            'assigned_worker_id': assignedWorkerId,
-            'created_by': createdBy,
-            'worker_name': workerName,
-            'device_name': deviceName,
-            'commission_rate': commRate > 0 ? commRate : 5.0,
-            'commission_type': commType.isNotEmpty ? commType : 'pct_order',
-            'updated_at': now,
-            'sync_status': 'pending_update',
-          },
-          where: 'id = ?',
-          whereArgs: [id]);
+      final old = existing.first;
+      final updateData = <String, dynamic>{
+        ...map,
+        'order_number': finalOrderNumber,
+        'assigned_worker_id': assignedWorkerId,
+        'created_by': createdBy,
+        'worker_name': workerName,
+        'device_name': deviceName,
+        'commission_rate': commRate > 0 ? commRate : 5.0,
+        'commission_type': commType.isNotEmpty ? commType : 'pct_order',
+        'updated_at': now,
+        'sync_status': 'pending_update',
+      };
+
+      // Preserve estimated delivery timing & acceptance if incoming update did not supply them
+      final newTime = updateData['estimated_delivery_time']?.toString().trim();
+      final oldTime = old['estimated_delivery_time']?.toString().trim();
+      if ((newTime == null || newTime.isEmpty || newTime.toLowerCase() == 'null') &&
+          (oldTime != null && oldTime.isNotEmpty && oldTime.toLowerCase() != 'null')) {
+        updateData['estimated_delivery_time'] = old['estimated_delivery_time'];
+      }
+
+      final newAt = updateData['estimated_delivery_at']?.toString().trim();
+      final oldAt = old['estimated_delivery_at']?.toString().trim();
+      if ((newAt == null || newAt.isEmpty || newAt.toLowerCase() == 'null') &&
+          (oldAt != null && oldAt.isNotEmpty && oldAt.toLowerCase() != 'null')) {
+        updateData['estimated_delivery_at'] = old['estimated_delivery_at'];
+      }
+
+      final newAccepted = updateData['accepted_at']?.toString().trim();
+      final oldAccepted = old['accepted_at']?.toString().trim();
+      if ((newAccepted == null || newAccepted.isEmpty || newAccepted.toLowerCase() == 'null') &&
+          (oldAccepted != null && oldAccepted.isNotEmpty && oldAccepted.toLowerCase() != 'null')) {
+        updateData['accepted_at'] = old['accepted_at'];
+      }
+
+      // Preserve customer metadata if omitted
+      final newCustName = updateData['customer_name']?.toString().trim();
+      final oldCustName = old['customer_name']?.toString().trim();
+      if ((newCustName == null || newCustName.isEmpty) && (oldCustName != null && oldCustName.isNotEmpty)) {
+        updateData['customer_name'] = old['customer_name'];
+      }
+
+      final newCustAddr = updateData['customer_address']?.toString().trim();
+      final oldCustAddr = old['customer_address']?.toString().trim();
+      if ((newCustAddr == null || newCustAddr.isEmpty) && (oldCustAddr != null && oldCustAddr.isNotEmpty)) {
+        updateData['customer_address'] = old['customer_address'];
+      }
+
+      final newCustPhone = updateData['customer_phone']?.toString().trim();
+      final oldCustPhone = old['customer_phone']?.toString().trim();
+      if ((newCustPhone == null || newCustPhone.isEmpty) && (oldCustPhone != null && oldCustPhone.isNotEmpty)) {
+        updateData['customer_phone'] = old['customer_phone'];
+      }
+
+      await db.update('orders', updateData, where: 'id = ?', whereArgs: [id]);
     } else {
       await db.insert('orders', {
         ...map,
@@ -325,16 +370,126 @@ class OrderDao {
 
   Future<void> updateOrder(AppOrder order, {DatabaseExecutor? executor}) async {
     final db = await _getExecutor(executor);
+    final existing = await db.query('orders', where: 'id = ?', whereArgs: [order.id]);
+    final updateData = <String, dynamic>{
+      ...order.toMap(),
+      'updated_at': DateTime.now().toIso8601String(),
+      'sync_status': 'pending_update',
+    };
+    if (existing.isNotEmpty) {
+      final old = existing.first;
+      final newTime = updateData['estimated_delivery_time']?.toString().trim();
+      final oldTime = old['estimated_delivery_time']?.toString().trim();
+      if ((newTime == null || newTime.isEmpty || newTime.toLowerCase() == 'null') &&
+          (oldTime != null && oldTime.isNotEmpty && oldTime.toLowerCase() != 'null')) {
+        updateData['estimated_delivery_time'] = old['estimated_delivery_time'];
+      }
+
+      final newAt = updateData['estimated_delivery_at']?.toString().trim();
+      final oldAt = old['estimated_delivery_at']?.toString().trim();
+      if ((newAt == null || newAt.isEmpty || newAt.toLowerCase() == 'null') &&
+          (oldAt != null && oldAt.isNotEmpty && oldAt.toLowerCase() != 'null')) {
+        updateData['estimated_delivery_at'] = old['estimated_delivery_at'];
+      }
+
+      final newAccepted = updateData['accepted_at']?.toString().trim();
+      final oldAccepted = old['accepted_at']?.toString().trim();
+      if ((newAccepted == null || newAccepted.isEmpty || newAccepted.toLowerCase() == 'null') &&
+          (oldAccepted != null && oldAccepted.isNotEmpty && oldAccepted.toLowerCase() != 'null')) {
+        updateData['accepted_at'] = old['accepted_at'];
+      }
+
+      final newCustName = updateData['customer_name']?.toString().trim();
+      final oldCustName = old['customer_name']?.toString().trim();
+      if ((newCustName == null || newCustName.isEmpty) && (oldCustName != null && oldCustName.isNotEmpty)) {
+        updateData['customer_name'] = old['customer_name'];
+      }
+
+      final newCustAddr = updateData['customer_address']?.toString().trim();
+      final oldCustAddr = old['customer_address']?.toString().trim();
+      if ((newCustAddr == null || newCustAddr.isEmpty) && (oldCustAddr != null && oldCustAddr.isNotEmpty)) {
+        updateData['customer_address'] = old['customer_address'];
+      }
+
+      final newCustPhone = updateData['customer_phone']?.toString().trim();
+      final oldCustPhone = old['customer_phone']?.toString().trim();
+      if ((newCustPhone == null || newCustPhone.isEmpty) && (oldCustPhone != null && oldCustPhone.isNotEmpty)) {
+        updateData['customer_phone'] = old['customer_phone'];
+      }
+    }
     await db.update(
       'orders',
-      {
-        ...order.toMap(),
-        'updated_at': DateTime.now().toIso8601String(),
-        'sync_status': 'pending_update',
-      },
+      updateData,
       where: 'id = ?',
       whereArgs: [order.id],
     );
+  }
+
+  /// Calculate normalized item unit rate based on inventory selling price,
+  /// db unit, order item unit, and weightPerPiece.
+  static double calculateItemRate({
+    required double basePrice,
+    required String dbUnit,
+    required String orderUnit,
+    double weightPerPiece = 0.25,
+  }) {
+    if (basePrice <= 0) return 0.0;
+    final dbNorm = dbUnit.trim().toLowerCase();
+    final orderNorm = orderUnit.trim().toLowerCase();
+
+    if (dbNorm.isEmpty || orderNorm.isEmpty || dbNorm == orderNorm) {
+      return basePrice;
+    }
+
+    // 1. Weight to Weight (kg, gram, grams, g, gm, gms, quintal, ton)
+    if (UnitConverter.isWeightUnit(dbNorm) && UnitConverter.isWeightUnit(orderNorm)) {
+      final double basePerKg = basePrice / UnitConverter.toBase(1.0, dbNorm);
+      return basePerKg * UnitConverter.toBase(1.0, orderNorm);
+    }
+
+    // 2. Count to Count (piece, dozen, bunch, packet, bundle, box, etc.)
+    final bool isDbDozen = dbNorm.startsWith('dozen') || dbNorm == 'dz';
+    final bool isOrderDozen = orderNorm.startsWith('dozen') || orderNorm == 'dz';
+    final bool isDbSingleCount = UnitConverter.isCountUnit(dbNorm) && !isDbDozen;
+    final bool isOrderSingleCount = UnitConverter.isCountUnit(orderNorm) && !isOrderDozen;
+
+    if (isDbDozen && isOrderSingleCount) {
+      return basePrice / 12.0;
+    }
+    if (isDbSingleCount && isOrderDozen) {
+      return basePrice * 12.0;
+    }
+    if (isDbSingleCount && isOrderSingleCount) {
+      return basePrice;
+    }
+
+    // 3. Cross: Weight in inventory, Count in order (e.g. Cauliflower/Cabbage sold by kg, ordered by piece)
+    final double effectiveWpp = weightPerPiece > 10.0
+        ? weightPerPiece / 1000.0
+        : (weightPerPiece > 0 ? weightPerPiece : 0.25);
+
+    if (UnitConverter.isWeightUnit(dbNorm) && (isOrderSingleCount || isOrderDozen)) {
+      final double basePerKg = basePrice / UnitConverter.toBase(1.0, dbNorm);
+      final double ratePerPiece = basePerKg * effectiveWpp;
+      return isOrderDozen ? (ratePerPiece * 12.0) : ratePerPiece;
+    }
+
+    // 4. Cross: Count in inventory, Weight in order (e.g. Watermelon sold by piece, ordered by kg)
+    if ((isDbSingleCount || isDbDozen) && UnitConverter.isWeightUnit(orderNorm)) {
+      final double pricePerPiece = isDbDozen ? (basePrice / 12.0) : basePrice;
+      final double pricePerKg = pricePerPiece / effectiveWpp;
+      return pricePerKg * UnitConverter.toBase(1.0, orderNorm);
+    }
+
+    // 5. Volume to Volume (liter, ml)
+    final bool isDbVolume = dbNorm == 'liter' || dbNorm == 'litre' || dbNorm == 'l' || dbNorm == 'ltr' || dbNorm == 'ml';
+    final bool isOrderVolume = orderNorm == 'liter' || orderNorm == 'litre' || orderNorm == 'l' || orderNorm == 'ltr' || orderNorm == 'ml';
+    if (isDbVolume && isOrderVolume) {
+      final double basePerLiter = basePrice / UnitConverter.toBase(1.0, dbNorm);
+      return basePerLiter * UnitConverter.toBase(1.0, orderNorm);
+    }
+
+    return basePrice;
   }
 
   /// Update rates for all items in an order to their current selling price
@@ -356,15 +511,36 @@ class OrderDao {
 
     final itemMaps = await db
         .query('order_items', where: 'order_id = ?', whereArgs: [orderId]);
-    final orderItems = itemMaps.map(OrderItem.fromMap).toList();
+    final rawOrderItems = itemMaps.map(OrderItem.fromMap).toList();
 
-    if (orderItems.isEmpty) {
+    if (rawOrderItems.isEmpty) {
       return {
         'success': false,
         'message': 'No items in this order',
         'updatedCount': 0
       };
     }
+
+    // Deduplicate any repeated line items in SQLite order_items
+    final Map<String, OrderItem> consolidatedItems = {};
+    final List<String> duplicateItemIdsToDelete = [];
+
+    for (final item in rawOrderItems) {
+      final key = '${item.itemId.trim().toLowerCase()}_${item.itemName.trim().toLowerCase()}_${item.itemUnit.trim().toLowerCase()}';
+      if (consolidatedItems.containsKey(key)) {
+        duplicateItemIdsToDelete.add(item.id);
+      } else {
+        consolidatedItems[key] = item;
+      }
+    }
+
+    if (duplicateItemIdsToDelete.isNotEmpty) {
+      for (final dupId in duplicateItemIdsToDelete) {
+        await db.delete('order_items', where: 'id = ?', whereArgs: [dupId]);
+      }
+    }
+
+    final orderItems = consolidatedItems.values.toList();
 
     final custRes = await db.query('customers',
         where: 'id = ?', whereArgs: [order.customerId], limit: 1);
@@ -389,16 +565,22 @@ class OrderDao {
     int updatedCount = 0;
 
     for (final item in orderItems) {
-      if (item.itemId.isEmpty) {
+      if (item.itemId.isEmpty && item.itemName.trim().isEmpty) {
         newSubtotal += item.totalPrice;
         continue;
       }
 
       final bool isOrderQuick = order.orderType.toLowerCase() == 'order now' || order.orderType.toLowerCase() == 'quick';
-      final dbItems = await db.query('items',
+      var dbItems = await db.query('items',
           columns: ['selling_price', 'order_now_selling_price', 'unit', 'weight_per_piece'],
           where: 'id = ?',
           whereArgs: [item.itemId]);
+      if (dbItems.isEmpty && item.itemName.trim().isNotEmpty) {
+        dbItems = await db.query('items',
+            columns: ['selling_price', 'order_now_selling_price', 'unit', 'weight_per_piece'],
+            where: 'LOWER(TRIM(name)) = ?',
+            whereArgs: [item.itemName.trim().toLowerCase()]);
+      }
       if (dbItems.isEmpty) {
         newSubtotal += item.totalPrice;
         continue;
@@ -410,8 +592,7 @@ class OrderDao {
       double basePrice = (isOrderQuick && rawQuick > 0) ? rawQuick : rawSelling;
       final String dbUnit = dbRow['unit']?.toString() ?? item.itemUnit;
       final double weightPerPiece =
-          (dbRow['weight_per_piece'] as num?)?.toDouble() ?? 1.0;
-      final conversion = weightPerPiece > 0 ? weightPerPiece : 1.0;
+          (dbRow['weight_per_piece'] as num?)?.toDouble() ?? 0.25;
       bool hasCustomPrice = false;
 
       try {
@@ -431,28 +612,15 @@ class OrderDao {
         basePrice = basePrice * (1.0 + (vipMarkupPct / 100.0));
       }
 
-      // Convert rate to item.itemUnit if different from dbUnit
-      double itemRate = basePrice;
-      if (dbUnit.toLowerCase() == 'kg' &&
-          (item.itemUnit.toLowerCase() == 'gram' ||
-              item.itemUnit.toLowerCase() == 'g' ||
-              item.itemUnit.toLowerCase() == 'gm')) {
-        itemRate = basePrice / 1000.0;
-      } else if (dbUnit.toLowerCase() == 'kg' &&
-          (item.itemUnit.toLowerCase() == 'piece' ||
-              item.itemUnit.toLowerCase() == 'pcs')) {
-        itemRate = basePrice * conversion;
-      } else if (dbUnit.toLowerCase() == 'piece' &&
-          (item.itemUnit.toLowerCase() == 'dozen' ||
-              item.itemUnit.toLowerCase() == 'dz')) {
-        itemRate = basePrice * 12.0;
-      } else if (dbUnit.toLowerCase() == 'piece' &&
-          item.itemUnit.toLowerCase() == 'kg') {
-        itemRate = basePrice / conversion;
-      }
+      final double itemRate = calculateItemRate(
+        basePrice: basePrice,
+        dbUnit: dbUnit,
+        orderUnit: item.itemUnit,
+        weightPerPiece: weightPerPiece,
+      );
 
-      // If the item is marked unavailable or has 0 total price, preserve its unavailable status
-      if (!item.isAvailable || item.totalPrice <= 0.001) {
+      // If the item is marked unavailable, preserve its unavailable status
+      if (!item.isAvailable) {
         await db.update(
           'order_items',
           {
@@ -472,6 +640,7 @@ class OrderDao {
       await db.update(
         'order_items',
         {
+          'quantity': item.quantity,
           'unit_price': itemRate,
           'total_price': newTotalPrice,
           'is_available': 1,
@@ -484,8 +653,11 @@ class OrderDao {
       updatedCount++;
     }
 
-    final unroundedGrandTotal =
-        math.max(0.0, newSubtotal - order.discount + order.deliveryCharge);
+    newSubtotal = (newSubtotal * 100).round() / 100.0;
+    final unroundedGrandTotal = math.max(
+        0.0,
+        ((newSubtotal - order.discount + order.deliveryCharge) * 100).round() /
+            100.0);
 
     final settingsMap = await db.query('settings',
         where: "key = ?", whereArgs: [AppConstants.keySmartRounding]);
@@ -498,10 +670,11 @@ class OrderDao {
 
     if (isSmartRoundingEnabled || order.smartRoundedAmount != 0) {
       newGrandTotal = SmartRounding.round(unroundedGrandTotal);
-      roundingDiff = newGrandTotal - unroundedGrandTotal;
+      roundingDiff = SmartRounding.difference(unroundedGrandTotal, newGrandTotal);
     }
 
-    final newRemaining = newGrandTotal - order.paidAmount;
+    final newRemaining = math.max(
+        0.0, ((newGrandTotal - order.paidAmount) * 100).round() / 100.0);
 
     await db.update(
       'orders',
@@ -752,8 +925,10 @@ class OrderDao {
 
     // Stock adjustment is now handled in OrderRepositoryImpl to ensure proper unit conversion
 
-    final wasInactive = oldStatus == 'cancelled' || oldStatus == 'denied';
-    final isInactive = status == 'cancelled' || status == 'denied';
+    final normOld = oldStatus?.toLowerCase().trim() ?? '';
+    final normNew = status.toLowerCase().trim();
+    final wasInactive = normOld == 'cancelled' || normOld == 'canceled' || normOld == 'denied' || normOld == 'rejected';
+    final isInactive = normNew == 'cancelled' || normNew == 'canceled' || normNew == 'denied' || normNew == 'rejected';
     if (wasInactive != isInactive) {
       if (customerId != null && customerId.isNotEmpty) {
         try {
@@ -761,6 +936,49 @@ class OrderDao {
         } catch (_) {}
       }
     }
+  }
+
+  Future<void> acceptOrder(
+    String orderId, {
+    required String deliveryTimeStr,
+    required DateTime estimatedDeliveryAt,
+    String status = 'confirmed',
+    DatabaseExecutor? executor,
+  }) async {
+    final db = await _getExecutor(executor);
+    await db.update(
+      'orders',
+      {
+        'delivery_status': status,
+        'estimated_delivery_time': deliveryTimeStr,
+        'estimated_delivery_at': estimatedDeliveryAt.toUtc().toIso8601String(),
+        'accepted_at': DateTime.now().toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'sync_status': 'pending_update',
+      },
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  Future<void> updateEstimatedDeliveryTime(
+    String orderId, {
+    required String deliveryTimeStr,
+    required DateTime estimatedDeliveryAt,
+    DatabaseExecutor? executor,
+  }) async {
+    final db = await _getExecutor(executor);
+    await db.update(
+      'orders',
+      {
+        'estimated_delivery_time': deliveryTimeStr,
+        'estimated_delivery_at': estimatedDeliveryAt.toUtc().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'sync_status': 'pending_update',
+      },
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
   }
 
   Future<void> insertPayment(Payment payment,
@@ -852,41 +1070,43 @@ class OrderDao {
 
     const effectiveDateSql = "(CASE WHEN order_type = 'Pre-Order' AND order_taking_date IS NOT NULL AND order_taking_date != '' THEN DATE(order_taking_date) WHEN order_type = 'Pre-Order' AND delivery_date IS NOT NULL AND delivery_date != '' THEN DATE(delivery_date) ELSE DATE(created_at) END)";
     const effectiveDateSqlWithO = "(CASE WHEN o.order_type = 'Pre-Order' AND o.order_taking_date IS NOT NULL AND o.order_taking_date != '' THEN DATE(o.order_taking_date) WHEN o.order_type = 'Pre-Order' AND o.delivery_date IS NOT NULL AND o.delivery_date != '' THEN DATE(o.delivery_date) ELSE DATE(o.created_at) END)";
+    const notCancelledSql = "(delivery_status IS NULL OR LOWER(delivery_status) NOT IN ('cancelled', 'canceled', 'denied', 'rejected'))";
+    const notCancelledSqlWithO = "(o.delivery_status IS NULL OR LOWER(o.delivery_status) NOT IN ('cancelled', 'canceled', 'denied', 'rejected'))";
 
     final todaySales = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND $notCancelledSql",
         isWorker ? [today, workerId, workerId] : [today]);
 
     final todayOrders = await db.rawQuery(
         isWorker
-            ? "SELECT COUNT(*) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COUNT(*) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COUNT(*) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM orders WHERE $effectiveDateSql = DATE(?) AND $notCancelledSql",
         isWorker ? [today, workerId, workerId] : [today]);
 
     final monthlySales = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', $effectiveDateSql) = ? AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', $effectiveDateSql) = ? AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', $effectiveDateSql) = ? AND $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE strftime('%Y-%m', $effectiveDateSql) = ? AND $notCancelledSql",
         isWorker ? [month, workerId, workerId] : [month]);
 
     final pendingPayments = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(remaining_amount),0) AS v FROM orders WHERE remaining_amount > 0 AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(remaining_amount),0) AS v FROM orders WHERE remaining_amount > 0 AND delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(remaining_amount),0) AS v FROM orders WHERE remaining_amount > 0 AND $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(remaining_amount),0) AS v FROM orders WHERE remaining_amount > 0 AND $notCancelledSql",
         isWorker ? [workerId, workerId] : null);
 
     final cashReceived = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method = 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method = 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method = 'cash' AND $notCancelledSqlWithO AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method = 'cash' AND $notCancelledSqlWithO",
         isWorker ? [workerId, workerId] : null);
 
     final onlineReceived = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method != 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method != 'cash' AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method != 'cash' AND $notCancelledSqlWithO AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(p.amount),0) AS v FROM payments p JOIN orders o ON p.order_id = o.id WHERE p.method != 'cash' AND $notCancelledSqlWithO",
         isWorker ? [workerId, workerId] : null);
 
     final totalExpenses = await db.rawQuery(
@@ -903,8 +1123,8 @@ class OrderDao {
 
     final orderCount = await db.rawQuery(
         isWorker
-            ? "SELECT COUNT(*) AS v FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COUNT(*) AS v FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COUNT(*) AS v FROM orders WHERE $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM orders WHERE $notCancelledSql",
         isWorker ? [workerId, workerId] : null);
 
     final itemCount = await db
@@ -936,8 +1156,8 @@ class OrderDao {
 
     final todayCogsRes = await db.rawQuery(
         isWorker
-            ? "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE $effectiveDateSqlWithO = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
-            : "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE $effectiveDateSqlWithO = DATE(?) AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'",
+            ? "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE $effectiveDateSqlWithO = DATE(?) AND $notCancelledSqlWithO AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE $effectiveDateSqlWithO = DATE(?) AND $notCancelledSqlWithO",
         isWorker ? [today, workerId, workerId] : [today]);
 
     final monthlyExpensesRes = await db.rawQuery(
@@ -948,8 +1168,8 @@ class OrderDao {
 
     final monthlyCogsRes = await db.rawQuery(
         isWorker
-            ? "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', $effectiveDateSqlWithO) = ? AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)"
-            : "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', $effectiveDateSqlWithO) = ? AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'",
+            ? "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', $effectiveDateSqlWithO) = ? AND $notCancelledSqlWithO AND (o.created_by = ? OR o.assigned_worker_id = ?)"
+            : "SELECT $cogsScaleSql AS v FROM order_items oi JOIN orders o ON oi.order_id = o.id LEFT JOIN items i ON oi.item_id = i.id WHERE strftime('%Y-%m', $effectiveDateSqlWithO) = ? AND $notCancelledSqlWithO",
         isWorker ? [month, workerId, workerId] : [month]);
 
     final double tSales = (todaySales.first['v'] as num?)?.toDouble() ?? 0.0;
@@ -969,7 +1189,7 @@ class OrderDao {
             ? '''
               SELECT item_name, SUM(total_price) AS revenue, SUM(quantity) AS qty
               FROM order_items
-              WHERE order_id IN (SELECT id FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?))
+              WHERE order_id IN (SELECT id FROM orders WHERE $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?))
               GROUP BY item_name
               ORDER BY revenue DESC
               LIMIT 5
@@ -977,7 +1197,7 @@ class OrderDao {
             : '''
               SELECT item_name, SUM(total_price) AS revenue, SUM(quantity) AS qty
               FROM order_items
-              WHERE order_id IN (SELECT id FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied')
+              WHERE order_id IN (SELECT id FROM orders WHERE $notCancelledSql)
               GROUP BY item_name
               ORDER BY revenue DESC
               LIMIT 5
@@ -991,32 +1211,32 @@ class OrderDao {
     // Status counts
     final deliveredOrders = await db.rawQuery(
         isWorker
-            ? "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'delivered' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'delivered'",
+            ? "SELECT COUNT(*) AS v FROM orders WHERE LOWER(delivery_status) = 'delivered' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM orders WHERE LOWER(delivery_status) = 'delivered'",
         isWorker ? [workerId, workerId] : null);
     final pendingOrders = await db.rawQuery(
         isWorker
-            ? "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'pending' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'pending'",
+            ? "SELECT COUNT(*) AS v FROM orders WHERE LOWER(delivery_status) = 'pending' AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM orders WHERE LOWER(delivery_status) = 'pending'",
         isWorker ? [workerId, workerId] : null);
     final cancelledOrders = await db.rawQuery(
         isWorker
-            ? "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'cancelled' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COUNT(*) AS v FROM orders WHERE delivery_status = 'cancelled'",
+            ? "SELECT COUNT(*) AS v FROM orders WHERE LOWER(delivery_status) IN ('cancelled', 'canceled', 'denied', 'rejected') AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COUNT(*) AS v FROM orders WHERE LOWER(delivery_status) IN ('cancelled', 'canceled', 'denied', 'rejected')",
         isWorker ? [workerId, workerId] : null);
 
     // All-time sales
     final allTimeSales = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(grand_total),0) AS v FROM orders WHERE $notCancelledSql",
         isWorker ? [workerId, workerId] : null);
 
     // Delivery fees collected
     final allTimeDelivery = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)"
-            : "SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders WHERE $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?)"
+            : "SELECT COALESCE(SUM(delivery_charge),0) AS v FROM orders WHERE $notCancelledSql",
         isWorker ? [workerId, workerId] : null);
 
     return {
@@ -1050,16 +1270,18 @@ class OrderDao {
     final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
 
+    const notCancelledSql = "(delivery_status IS NULL OR LOWER(delivery_status) NOT IN ('cancelled', 'canceled', 'denied', 'rejected'))";
+
     // 1. Gross Revenue
     final revenueRes = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'"
-            : "SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND $notCancelledSql"
+            : "SELECT COALESCE(SUM(grand_total), 0) AS v FROM orders WHERE $notCancelledSql",
         isWorker ? [workerId, workerId] : null);
     final totalRevenue = (revenueRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     // 2. Cost of Goods Sold (COGS) — with unit conversion
-    const cogsSql = '''
+    const cogsScaleSql = '''
       COALESCE(SUM(
         CASE
           WHEN oi.item_id != '' AND (LOWER(COALESCE(oi.item_unit, '')) = 'gram' OR LOWER(COALESCE(oi.item_unit, '')) = 'gm') AND LOWER(COALESCE(i.unit, '')) = 'kg'
@@ -1073,17 +1295,17 @@ class OrderDao {
     final cogsRes = await db.rawQuery(
         isWorker
             ? '''
-              SELECT $cogsSql AS v
+              SELECT $cogsScaleSql AS v
               FROM order_items oi
               LEFT JOIN items i ON oi.item_id = i.id
-              WHERE oi.order_id IN (SELECT id FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled' AND delivery_status != 'denied')
+              WHERE oi.order_id IN (SELECT id FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND $notCancelledSql)
                 AND (oi.is_available = 1 OR oi.is_available IS NULL) AND oi.total_price > 0
               '''
             : '''
-              SELECT $cogsSql AS v
+              SELECT $cogsScaleSql AS v
               FROM order_items oi
               LEFT JOIN items i ON oi.item_id = i.id
-              WHERE oi.order_id IN (SELECT id FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied')
+              WHERE oi.order_id IN (SELECT id FROM orders WHERE $notCancelledSql)
                 AND (oi.is_available = 1 OR oi.is_available IS NULL) AND oi.total_price > 0
               ''',
         isWorker ? [workerId, workerId] : null);
@@ -1100,16 +1322,16 @@ class OrderDao {
     // 4. Discounts Given
     final discountRes = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(discount), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'"
-            : "SELECT COALESCE(SUM(discount), 0) AS v FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(discount), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND $notCancelledSql"
+            : "SELECT COALESCE(SUM(discount), 0) AS v FROM orders WHERE $notCancelledSql",
         isWorker ? [workerId, workerId] : null);
     final totalDiscounts = (discountRes.first['v'] as num?)?.toDouble() ?? 0.0;
 
     // 5. Delivery Income
     final deliveryRes = await db.rawQuery(
         isWorker
-            ? "SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND delivery_status != 'cancelled' AND delivery_status != 'denied'"
-            : "SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE delivery_status != 'cancelled' AND delivery_status != 'denied'",
+            ? "SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE (created_by = ? OR assigned_worker_id = ?) AND $notCancelledSql"
+            : "SELECT COALESCE(SUM(delivery_charge), 0) AS v FROM orders WHERE $notCancelledSql",
         isWorker ? [workerId, workerId] : null);
     final totalDeliveryIncome =
         (deliveryRes.first['v'] as num?)?.toDouble() ?? 0.0;
@@ -1138,20 +1360,21 @@ class OrderDao {
     final db = await _db;
     final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
+    const notCancelledSql = "(delivery_status IS NULL OR LOWER(delivery_status) NOT IN ('cancelled', 'canceled', 'denied', 'rejected'))";
 
     final maps = await db.rawQuery(
         isWorker
             ? '''
               SELECT DATE(created_at) AS day, COALESCE(SUM(grand_total), 0) AS total
               FROM orders
-              WHERE created_at >= datetime('now', '-7 days') AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)
+              WHERE created_at >= datetime('now', '-7 days') AND $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?)
               GROUP BY DATE(created_at)
               ORDER BY day ASC
               '''
             : '''
               SELECT DATE(created_at) AS day, COALESCE(SUM(grand_total), 0) AS total
               FROM orders
-              WHERE created_at >= datetime('now', '-7 days') AND delivery_status != 'cancelled' AND delivery_status != 'denied'
+              WHERE created_at >= datetime('now', '-7 days') AND $notCancelledSql
               GROUP BY DATE(created_at)
               ORDER BY day ASC
               ''',
@@ -1164,20 +1387,21 @@ class OrderDao {
     final db = await _db;
     final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
+    const notCancelledSql = "(delivery_status IS NULL OR LOWER(delivery_status) NOT IN ('cancelled', 'canceled', 'denied', 'rejected'))";
 
     final maps = await db.rawQuery(
         isWorker
             ? '''
               SELECT strftime('%Y-%m', created_at) AS month, COALESCE(SUM(grand_total), 0) AS total
               FROM orders
-              WHERE created_at >= datetime('now', '-6 months') AND delivery_status != 'cancelled' AND delivery_status != 'denied' AND (created_by = ? OR assigned_worker_id = ?)
+              WHERE created_at >= datetime('now', '-6 months') AND $notCancelledSql AND (created_by = ? OR assigned_worker_id = ?)
               GROUP BY strftime('%Y-%m', created_at)
               ORDER BY month ASC
               '''
             : '''
               SELECT strftime('%Y-%m', created_at) AS month, COALESCE(SUM(grand_total), 0) AS total
               FROM orders
-              WHERE created_at >= datetime('now', '-6 months') AND delivery_status != 'cancelled' AND delivery_status != 'denied'
+              WHERE created_at >= datetime('now', '-6 months') AND $notCancelledSql
               GROUP BY strftime('%Y-%m', created_at)
               ORDER BY month ASC
               ''',
@@ -1189,6 +1413,7 @@ class OrderDao {
     final db = await _db;
     final workerId = await _getWorkerId();
     final bool isWorker = workerId != null && workerId.isNotEmpty;
+    const notCancelledSqlWithO = "(o.delivery_status IS NULL OR LOWER(o.delivery_status) NOT IN ('cancelled', 'canceled', 'denied', 'rejected'))";
 
     final maps = await db.rawQuery(
         isWorker
@@ -1204,7 +1429,7 @@ class OrderDao {
                 COALESCE(SUM(o.remaining_amount), 0) AS pending_amount,
                 MAX(o.created_at) AS last_order_date
               FROM customers c
-              LEFT JOIN orders o ON c.id = o.customer_id AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied' AND (o.created_by = ? OR o.assigned_worker_id = ?)
+              LEFT JOIN orders o ON c.id = o.customer_id AND $notCancelledSqlWithO AND (o.created_by = ? OR o.assigned_worker_id = ?)
               WHERE c.is_archived = 0 AND (c.assigned_worker_id = ? OR c.created_by = ? OR c.id IN (SELECT entity_id FROM worker_assignments WHERE worker_id = ? AND entity_type = 'customer'))
               GROUP BY c.id
               '''
@@ -1220,7 +1445,7 @@ class OrderDao {
                 COALESCE(SUM(o.remaining_amount), 0) AS pending_amount,
                 MAX(o.created_at) AS last_order_date
               FROM customers c
-              LEFT JOIN orders o ON c.id = o.customer_id AND o.delivery_status != 'cancelled' AND o.delivery_status != 'denied'
+              LEFT JOIN orders o ON c.id = o.customer_id AND $notCancelledSqlWithO
               WHERE c.is_archived = 0
               GROUP BY c.id
               ''',

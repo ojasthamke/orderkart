@@ -75,9 +75,12 @@ class OrderRepositoryImpl implements OrderRepository {
     final String orderId = await db.transaction((txn) async {
       final existing = await _orderDao.getOrderById(order.id, executor: txn);
 
+      final existingStatus = existing?.deliveryStatus.toLowerCase().trim() ?? '';
       final bool wasNotCancelledOrDenied = existing != null &&
-          existing.deliveryStatus != 'cancelled' &&
-          existing.deliveryStatus != 'denied';
+          existingStatus != 'cancelled' &&
+          existingStatus != 'canceled' &&
+          existingStatus != 'denied' &&
+          existingStatus != 'rejected';
 
       final String oldOrderType = existing?.orderType ?? order.orderType;
       final bool wasQuick = oldOrderType.toLowerCase() == 'order now' || oldOrderType.toLowerCase() == 'quick';
@@ -122,8 +125,12 @@ class OrderRepositoryImpl implements OrderRepository {
       final orderId = await _orderDao.insertOrder(order,
           executor: txn, appMode: appMode);
 
+      final newStatus = order.deliveryStatus.toLowerCase().trim();
       final bool shouldDeductStock =
-          order.deliveryStatus != 'cancelled' && order.deliveryStatus != 'denied';
+          newStatus != 'cancelled' &&
+          newStatus != 'canceled' &&
+          newStatus != 'denied' &&
+          newStatus != 'rejected';
       final bool isNewQuick = order.orderType.toLowerCase() == 'order now' || order.orderType.toLowerCase() == 'quick';
 
       for (final item in items) {
@@ -186,12 +193,7 @@ class OrderRepositoryImpl implements OrderRepository {
     if (itemIds.isEmpty) return;
     try {
       final client = Supabase.instance.client;
-      if (client.auth.currentUser == null) {
-        await client.auth.signInWithPassword(
-          email: 'admin@aplibhaji.com',
-          password: 'adminpassword',
-        );
-      }
+      await CustomerOrderSyncService.instance.ensureSupabaseAuth();
       for (final itemId in itemIds) {
         final dbItem = await _itemDao.getItemById(itemId);
         if (dbItem != null) {
@@ -214,7 +216,13 @@ class OrderRepositoryImpl implements OrderRepository {
     final Set<String> affectedItemIds = {};
     await db.transaction((txn) async {
       final order = await _orderDao.getOrderById(id, executor: txn);
-      if (order != null && order.deliveryStatus != 'cancelled') {
+      final ordStatus = order?.deliveryStatus.toLowerCase().trim() ?? '';
+      final bool wasActive = order != null &&
+          ordStatus != 'cancelled' &&
+          ordStatus != 'canceled' &&
+          ordStatus != 'denied' &&
+          ordStatus != 'rejected';
+      if (wasActive) {
         final oldItems = await _orderDao.getOrderItems(id, executor: txn);
         for (final oldItem in oldItems) {
           if (oldItem.itemId.isNotEmpty) {
@@ -280,12 +288,7 @@ class OrderRepositoryImpl implements OrderRepository {
       final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
       final String remoteId = uuidRegex.hasMatch(id) ? id : _uuid.v5(Uuid.NAMESPACE_DNS, 'aplibhaji.customer.$id');
       final client = Supabase.instance.client;
-      if (client.auth.currentUser == null) {
-        await client.auth.signInWithPassword(
-          email: 'admin@aplibhaji.com',
-          password: 'adminpassword',
-        );
-      }
+      await CustomerOrderSyncService.instance.ensureSupabaseAuth();
       await client.from('order_items').delete().eq('order_id', remoteId);
       await client.from('orders').delete().eq('id', remoteId);
     } catch (e) {
@@ -301,8 +304,10 @@ class OrderRepositoryImpl implements OrderRepository {
       final order = await _orderDao.getOrderById(orderId, executor: txn);
       if (order == null) return;
 
-      final isCancelling = (status == 'cancelled' || status == 'denied');
-      final wasCancelled = (order.deliveryStatus == 'cancelled' || order.deliveryStatus == 'denied');
+      final normStatus = status.toLowerCase().trim();
+      final normOldStatus = order.deliveryStatus.toLowerCase().trim();
+      final isCancelling = (normStatus == 'cancelled' || normStatus == 'canceled' || normStatus == 'denied' || normStatus == 'rejected');
+      final wasCancelled = (normOldStatus == 'cancelled' || normOldStatus == 'canceled' || normOldStatus == 'denied' || normOldStatus == 'rejected');
       final bool isQuick = order.orderType.toLowerCase() == 'order now' || order.orderType.toLowerCase() == 'quick';
 
       if (isCancelling && !wasCancelled) {
@@ -401,6 +406,43 @@ class OrderRepositoryImpl implements OrderRepository {
     unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
   }
 
+  @override
+  Future<void> acceptOrder(
+    String orderId, {
+    required String deliveryTimeStr,
+    required DateTime estimatedDeliveryAt,
+    String status = 'confirmed',
+  }) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.transaction((txn) async {
+      await _orderDao.acceptOrder(
+        orderId,
+        deliveryTimeStr: deliveryTimeStr,
+        estimatedDeliveryAt: estimatedDeliveryAt,
+        status: status,
+        executor: txn,
+      );
+    });
+    unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
+  }
+
+  @override
+  Future<void> updateEstimatedDeliveryTime(
+    String orderId, {
+    required String deliveryTimeStr,
+    required DateTime estimatedDeliveryAt,
+  }) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.transaction((txn) async {
+      await _orderDao.updateEstimatedDeliveryTime(
+        orderId,
+        deliveryTimeStr: deliveryTimeStr,
+        estimatedDeliveryAt: estimatedDeliveryAt,
+        executor: txn,
+      );
+    });
+    unawaited(CustomerOrderSyncService.instance.pushModifiedOrders());
+  }
 
   @override
   Future<void> addPayment(Payment payment) async {

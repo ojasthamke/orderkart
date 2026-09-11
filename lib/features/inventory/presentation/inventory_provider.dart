@@ -5,10 +5,12 @@ import '../data/item_dao.dart';
 import '../data/inventory_repository_impl.dart';
 import '../domain/inventory_repository.dart';
 import '../domain/item.dart';
+import '../domain/item_variant.dart';
 import '../domain/stock_history.dart';
 import '../../order/presentation/order_provider.dart';
 import '../../search/presentation/search_provider.dart';
 import '../../settings/data/settings_dao.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 
 final inventoryRepositoryProvider =
     Provider<InventoryRepository>((ref) => InventoryRepositoryImpl(ItemDao()));
@@ -275,14 +277,7 @@ class OrderNowStatusNotifier extends StateNotifier<AsyncValue<String>> {
 
     try {
       final client = Supabase.instance.client;
-      if (client.auth.currentUser == null) {
-        try {
-          await client.auth.signInWithPassword(
-            email: 'admin@aplibhaji.com',
-            password: 'adminpassword',
-          );
-        } catch (_) {}
-      }
+      await CustomerOrderSyncService.instance.ensureSupabaseAuth();
       await client.from('settings').upsert({
         'key': 'order_now_status',
         'value': status,
@@ -293,3 +288,21 @@ class OrderNowStatusNotifier extends StateNotifier<AsyncValue<String>> {
   }
 }
 
+// ── VARIANT PROVIDERS ─────────────────────────────────────────────────────────
+
+/// Variants for a single parent item
+final itemVariantsProvider =
+    FutureProvider.family<List<ItemVariant>, String>((ref, parentItemId) async {
+  final dao = ItemDao();
+  return dao.getVariantsForItem(parentItemId);
+});
+
+/// Batch-load all variants for a list of parent IDs (used by Groceries Hub)
+final groceryVariantsMapProvider =
+    FutureProvider<Map<String, List<ItemVariant>>>((ref) async {
+  final itemsAsync = ref.watch(inventoryProvider);
+  final items = itemsAsync.valueOrNull ?? [];
+  if (items.isEmpty) return {};
+  final dao = ItemDao();
+  return dao.getVariantsByParentIds(items.map((i) => i.id).toList());
+});

@@ -127,16 +127,60 @@ class OrderManagementNotifier
     load();
   }
 
+  void _triggerInstantSync() {
+    unawaited(Future(() async {
+      try {
+        await CustomerOrderSyncService.instance.pushModifiedOrders();
+      } catch (e) {
+        debugPrint('[SYNC] Instant push error: $e');
+      }
+    }));
+  }
+
   Future<void> updateDeliveryStatus(String orderId, String status) async {
     await _repo.updateDeliveryStatus(orderId, status);
     await load(silent: true);
     _invalidateAll(orderId: orderId);
+    _triggerInstantSync();
+  }
+
+  Future<void> acceptOrder(
+    String orderId, {
+    required String deliveryTimeStr,
+    required DateTime estimatedDeliveryAt,
+    String status = 'confirmed',
+  }) async {
+    await _repo.acceptOrder(
+      orderId,
+      deliveryTimeStr: deliveryTimeStr,
+      estimatedDeliveryAt: estimatedDeliveryAt,
+      status: status,
+    );
+    await load(silent: true);
+    _invalidateAll(orderId: orderId);
+    _triggerInstantSync();
+  }
+
+  Future<void> updateEstimatedDeliveryTime(
+    String orderId, {
+    required String deliveryTimeStr,
+    required DateTime estimatedDeliveryAt,
+  }) async {
+    await _repo.updateEstimatedDeliveryTime(
+      orderId,
+      deliveryTimeStr: deliveryTimeStr,
+      estimatedDeliveryAt: estimatedDeliveryAt,
+    );
+    await load(silent: true);
+    _invalidateAll(orderId: orderId);
+    _triggerInstantSync();
   }
 
   Future<void> addPayment(Payment payment) async {
     await _repo.addPayment(payment);
     await load(silent: true);
     _invalidateAll(orderId: payment.orderId, customerId: payment.customerId);
+    _triggerInstantSync();
   }
 
   Future<void> deleteOrder(String id) async {
@@ -150,18 +194,21 @@ class OrderManagementNotifier
     await _repo.createOrder(order, items);
     await load(silent: true);
     _invalidateAll(orderId: order.id, customerId: order.customerId);
+    _triggerInstantSync();
   }
 
   Future<void> updateOrder(AppOrder order) async {
     await _repo.updateOrder(order);
     await load(silent: true);
     _invalidateAll(orderId: order.id, customerId: order.customerId);
+    _triggerInstantSync();
   }
 
   Future<Map<String, dynamic>> updateOrderRates(String orderId) async {
     final result = await _repo.updateOrderRates(orderId);
     await load(silent: true);
     _invalidateAll(orderId: orderId);
+    _triggerInstantSync();
     return result;
   }
 
@@ -171,6 +218,7 @@ class OrderManagementNotifier
         await _repo.toggleOrderItemAvailability(orderId, orderItemId);
     await load(silent: true);
     _invalidateAll(orderId: orderId);
+    _triggerInstantSync();
     return result;
   }
 }
@@ -181,7 +229,7 @@ final orderManagementProvider =
             OrderManagementNotifier(ref, ref.read(orderRepositoryProvider)));
 
 // Per-customer orders
-final customerOrdersProvider = StateNotifierProvider.family<
+final customerOrdersProvider = StateNotifierProvider.autoDispose.family<
     OrderManagementNotifier, AsyncValue<List<AppOrder>>, String>(
   (ref, customerId) => OrderManagementNotifier(
     ref,

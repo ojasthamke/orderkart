@@ -8,16 +8,21 @@ class SmartRounding {
   /// Returns the smart-rounded value for a given amount.
   /// Returns the original amount if already a clean number.
   static double round(double amount) {
-    if (amount <= 0) return amount;
-    return (amount / 5.0).ceil() * 5.0;
+    if (amount <= 0) return 0.0;
+    // Normalize to 2 decimal places to remove floating-point precision noise (e.g. 50.00000000000001)
+    final normalized = (amount * 100).round() / 100.0;
+    return (normalized / 5.0).ceil() * 5.0;
   }
 
   /// Returns true if rounding would change the amount
   static bool needsRounding(double amount) => round(amount) != amount;
 
   /// Savings (or extra) from rounding
-  static double difference(double original, double rounded) =>
-      rounded - original;
+  static double difference(double original, double rounded) {
+    final origNorm = (original * 100).round() / 100.0;
+    final roundNorm = (rounded * 100).round() / 100.0;
+    return ((roundNorm - origNorm) * 100).round() / 100.0;
+  }
 
   static String _format(double val, String currency) {
     return '$currency${val.toStringAsFixed(val == val.roundToDouble() ? 0 : 2)}';

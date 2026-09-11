@@ -1,7 +1,9 @@
 import 'package:sqflite/sqflite.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/security/app_mode_service.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 import '../domain/area.dart';
 
 class AreaDao {
@@ -20,7 +22,8 @@ class AreaDao {
 
     List<String> whereClauses = [
       "(l.location_kind = 'area' OR l.parent_location_id IS NULL OR l.depth = 0)",
-      "(l.is_archived IS NULL OR l.is_archived = 0)"
+      "(l.is_archived IS NULL OR l.is_archived = 0)",
+      "l.id NOT IN (SELECT id FROM deleted_locations)"
     ];
     List<dynamic> args = [];
 
@@ -35,10 +38,11 @@ class AreaDao {
     final maps = await db.rawQuery('''
       SELECT
         l.*,
-        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND (s.is_archived IS NULL OR s.is_archived = 0)) AS street_count,
+        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND (s.is_archived IS NULL OR s.is_archived = 0) AND s.id NOT IN (SELECT id FROM deleted_locations)) AS street_count,
         (SELECT COUNT(DISTINCT c.id) FROM customers c
           LEFT JOIN locations st ON (c.location_id = st.id OR c.street_id = st.id)
           WHERE (c.is_archived IS NULL OR c.is_archived = 0)
+            AND c.id NOT IN (SELECT id FROM deleted_customers)
             AND (c.location_id = l.id OR c.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')
         ) AS customer_count,
         (SELECT COUNT(DISTINCT o.id) FROM orders o
@@ -73,10 +77,11 @@ class AreaDao {
     final maps = await db.rawQuery('''
       SELECT
         l.*,
-        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND (s.is_archived IS NULL OR s.is_archived = 0)) AS street_count,
+        (SELECT COUNT(*) FROM locations s WHERE (s.parent_location_id = l.id OR s.materialized_path LIKE '%/' || l.id || '/%') AND s.id != l.id AND (s.is_archived IS NULL OR s.is_archived = 0) AND s.id NOT IN (SELECT id FROM deleted_locations)) AS street_count,
         (SELECT COUNT(DISTINCT c.id) FROM customers c
           LEFT JOIN locations st ON (c.location_id = st.id OR c.street_id = st.id)
           WHERE (c.is_archived IS NULL OR c.is_archived = 0)
+            AND c.id NOT IN (SELECT id FROM deleted_customers)
             AND (c.location_id = l.id OR c.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')
         ) AS customer_count,
         (SELECT COUNT(DISTINCT o.id) FROM orders o
@@ -116,6 +121,12 @@ class AreaDao {
     }
 
     final id = area.id.isEmpty ? _uuid.v4() : area.id;
+
+    // Clear from deleted_locations if being re-created
+    try {
+      await db.delete('deleted_locations', where: 'id = ?', whereArgs: [id]);
+    } catch (_) {}
+
     final now = DateTime.now().toIso8601String();
 
     final mode = await AppModeService.getAppMode();
@@ -262,10 +273,27 @@ class AreaDao {
         whereArgs: [area.id],
       );
     } catch (_) {}
+
+    // Keep legacy streets fallback updated
+    try {
+      await db.update(
+        'streets',
+        {
+          'name': area.name,
+          'description': area.description,
+          'photo_path': area.photoPath,
+          'maps_location': area.mapsLocation,
+        },
+        where: 'id = ?',
+        whereArgs: [area.id],
+      );
+    } catch (_) {}
   }
 
   Future<void> deleteArea(String id) async {
     final db = await _db;
+    List<String> allIds = [];
+
     await db.transaction((txn) async {
       await txn.execute('PRAGMA foreign_keys = OFF');
 
@@ -284,7 +312,19 @@ class AreaDao {
       final legacyStreetIds =
           legacyStreets.map((s) => s['id'] as String).toList();
 
-      final allIds = {id, ...streetIds, ...legacyStreetIds}.toList();
+      allIds = {id, ...streetIds, ...legacyStreetIds}.toList();
+
+      // Record in deleted_locations so background sync never resurrects them
+      for (final delId in allIds) {
+        await txn.insert(
+          'deleted_locations',
+          {
+            'id': delId,
+            'deleted_at': DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
 
       if (allIds.isNotEmpty) {
         final placeholders = List.filled(allIds.length, '?').join(',');
@@ -351,5 +391,22 @@ class AreaDao {
 
       await txn.execute('PRAGMA foreign_keys = ON');
     });
+
+    // Also remotely purge from Supabase so remote tables reflect deletion immediately
+    try {
+      await CustomerOrderSyncService.instance.ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      for (final delId in allIds) {
+        try {
+          await client.from('sub_roads').delete().eq('id', delId);
+        } catch (_) {}
+        try {
+          await client.from('roads').delete().eq('id', delId);
+        } catch (_) {}
+      }
+      try {
+        await client.from('areas').delete().eq('id', id);
+      } catch (_) {}
+    } catch (_) {}
   }
 }

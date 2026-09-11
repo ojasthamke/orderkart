@@ -59,5 +59,13 @@ class CustomerRepositoryImpl implements CustomerRepository {
   @override
   Future<List<Map<String, dynamic>>> getLoginLogs({int limit = 100, String? loginMethodFilter}) =>
       _dao.getLoginLogs(limit: limit, loginMethodFilter: loginMethodFilter);
+
+  @override
+  Future<List<Customer>> getOnlineAccounts({String? searchQuery, String? filter}) =>
+      _dao.getOnlineAccounts(searchQuery: searchQuery, filter: filter);
+
+  @override
+  Future<void> assignCustomerToRoad(String customerId, String streetId, {String? locationId}) =>
+      _dao.assignCustomerToRoad(customerId, streetId, locationId: locationId);
 }
 

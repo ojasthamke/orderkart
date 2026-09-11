@@ -22,6 +22,7 @@ import '../../../core/utils/formatters.dart';
 import '../../customer/domain/customer.dart';
 import '../../settings/presentation/settings_provider.dart';
 import '../../customer/presentation/customer_provider.dart';
+import '../../area/presentation/area_provider.dart';
 import '../../customer/presentation/widgets/instant_ledger_sheet.dart';
 import '../domain/location.dart';
 import '../domain/location_kind.dart';
@@ -197,9 +198,16 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen>
                               onAction: () {
                                 Navigator.of(context).pushNamed(
                                   AppRoutes.addEditCustomer,
-                                  arguments: {'streetId': widget.locationId},
-                                ).then((_) => ref.refresh(
-                                    customerListProvider(widget.locationId)));
+                                  arguments: {
+                                    'streetId': widget.locationId,
+                                    'locationId': widget.locationId,
+                                  },
+                                ).then((_) {
+                                  ref.invalidate(customerListProvider(widget.locationId));
+                                  ref.read(customerListProvider(widget.locationId).notifier).load(silent: true);
+                                  ref.invalidate(locationListProvider(widget.locationId));
+                                  ref.invalidate(areaProvider);
+                                });
                               },
                             );
                           }
@@ -228,9 +236,12 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen>
                                     Navigator.of(context).pushNamed(
                                       AppRoutes.customerProfile,
                                       arguments: {'customerId': cust.id},
-                                    ).then((_) => ref.refresh(
-                                        customerListProvider(
-                                            widget.locationId)));
+                                    ).then((_) {
+                                      ref.invalidate(customerListProvider(widget.locationId));
+                                      ref.read(customerListProvider(widget.locationId).notifier).load(silent: true);
+                                      ref.invalidate(locationListProvider(widget.locationId));
+                                      ref.invalidate(areaProvider);
+                                    });
                                   },
                                 ),
                               );
@@ -284,12 +295,16 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen>
                                     arguments: {
                                       'areaId': loc.id,
                                       'areaName': loc.name,
+                                      'streetId': loc.id,
+                                      'streetName': loc.name,
                                     },
                                   ).then((_) {
                                     ref.invalidate(locationListProvider(
                                         widget.locationId));
                                     ref.invalidate(
                                         breadcrumbsProvider(widget.locationId));
+                                    ref.invalidate(
+                                        customerListProvider(widget.locationId));
                                   });
                                 },
                                 onEdit: () =>
@@ -317,9 +332,16 @@ class _LocationDetailScreenState extends ConsumerState<LocationDetailScreen>
             onPressed: () {
               Navigator.of(context).pushNamed(
                 AppRoutes.addEditCustomer,
-                arguments: {'streetId': widget.locationId},
-              ).then(
-                  (_) => ref.refresh(customerListProvider(widget.locationId)));
+                arguments: {
+                  'streetId': widget.locationId,
+                  'locationId': widget.locationId,
+                },
+              ).then((_) {
+                ref.invalidate(customerListProvider(widget.locationId));
+                ref.read(customerListProvider(widget.locationId).notifier).load(silent: true);
+                ref.invalidate(locationListProvider(widget.locationId));
+                ref.invalidate(areaProvider);
+              });
             },
             tooltip: 'Add Customer',
             child: const Icon(Icons.person_add_rounded),
@@ -890,8 +912,7 @@ class _CustomerTile extends ConsumerWidget {
                             context,
                             customer,
                           ).then((_) {
-                            ref.invalidate(
-                                customerListProvider(customer.streetId));
+                            ref.invalidate(customerListProvider);
                           });
                         },
                       ),

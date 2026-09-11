@@ -6,6 +6,7 @@ import '../../../core/database/database_helper.dart';
 import '../../../core/utils/unit_converter.dart';
 import '../../../core/utils/marathi_item_helper.dart';
 import '../domain/item.dart';
+import '../domain/item_variant.dart';
 import '../domain/stock_history.dart';
 import '../../../core/services/notification_service.dart';
 
@@ -689,5 +690,128 @@ class ItemDao {
     ''', args);
 
     return rows;
+  }
+
+  // ── VARIANT (SUB-PRODUCT) CRUD ────────────────────────────────────────────
+
+  Future<List<ItemVariant>> getVariantsForItem(String parentItemId) async {
+    final db = await _db;
+    final maps = await db.query(
+      'item_variants',
+      where: 'parent_item_id = ?',
+      whereArgs: [parentItemId],
+      orderBy: 'sequence_no ASC, created_at ASC',
+    );
+    return maps.map(ItemVariant.fromMap).toList();
+  }
+
+  Future<Map<String, List<ItemVariant>>> getVariantsByParentIds(
+      List<String> parentIds) async {
+    if (parentIds.isEmpty) return {};
+    final db = await _db;
+    final placeholders = List.filled(parentIds.length, '?').join(',');
+    final maps = await db.rawQuery(
+      'SELECT * FROM item_variants WHERE parent_item_id IN ($placeholders) ORDER BY sequence_no ASC, created_at ASC',
+      parentIds,
+    );
+    final result = <String, List<ItemVariant>>{};
+    for (final map in maps) {
+      final v = ItemVariant.fromMap(map);
+      result.putIfAbsent(v.parentItemId, () => []).add(v);
+    }
+    return result;
+  }
+
+  Future<void> _ensureVariantColumns(Database db) async {
+    try {
+      await db.execute("ALTER TABLE item_variants ADD COLUMN photo_path TEXT DEFAULT ''");
+    } catch (_) {}
+    try {
+      await db.execute("ALTER TABLE item_variants ADD COLUMN image_path TEXT DEFAULT ''");
+    } catch (_) {}
+  }
+
+  Future<String> insertVariant(ItemVariant variant) async {
+    final db = await _db;
+    await _ensureVariantColumns(db);
+    final id = variant.id.isEmpty ? _uuid.v4() : variant.id;
+    final now = DateTime.now().toIso8601String();
+    final map = variant
+        .copyWith(
+          id: id,
+          createdAt: DateTime.tryParse(now),
+          updatedAt: DateTime.tryParse(now),
+        )
+        .toMap();
+    try {
+      await db.insert('item_variants', map,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    } catch (e) {
+      await _ensureVariantColumns(db);
+      try {
+        await db.insert('item_variants', map,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      } catch (_) {
+        final safeMap = Map<String, dynamic>.from(map)..remove('image_path');
+        await db.insert('item_variants', safeMap,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    }
+    return id;
+  }
+
+  Future<void> updateVariant(ItemVariant variant) async {
+    final db = await _db;
+    await _ensureVariantColumns(db);
+    final map = variant
+        .copyWith(updatedAt: DateTime.now())
+        .toMap();
+    try {
+      await db.update(
+        'item_variants',
+        map,
+        where: 'id = ?',
+        whereArgs: [variant.id],
+      );
+    } catch (e) {
+      await _ensureVariantColumns(db);
+      try {
+        await db.update(
+          'item_variants',
+          map,
+          where: 'id = ?',
+          whereArgs: [variant.id],
+        );
+      } catch (_) {
+        final safeMap = Map<String, dynamic>.from(map)..remove('image_path');
+        await db.update(
+          'item_variants',
+          safeMap,
+          where: 'id = ?',
+          whereArgs: [variant.id],
+        );
+      }
+    }
+  }
+
+  Future<void> deleteVariant(String variantId) async {
+    final db = await _db;
+    await db.delete('item_variants', where: 'id = ?', whereArgs: [variantId]);
+  }
+
+  Future<void> deleteVariantsForItem(String parentItemId) async {
+    final db = await _db;
+    await db.delete('item_variants',
+        where: 'parent_item_id = ?', whereArgs: [parentItemId]);
+  }
+
+  Future<void> adjustVariantStock(String variantId, double change) async {
+    final db = await _db;
+    await db.rawUpdate('''
+      UPDATE item_variants
+      SET stock = MAX(0, stock + ?),
+          updated_at = ?
+      WHERE id = ?
+    ''', [change, DateTime.now().toIso8601String(), variantId]);
   }
 }

@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 import '../../../core/utils/sequence_key_helper.dart';
 import '../domain/location.dart';
 
@@ -24,6 +25,7 @@ class LocationDao {
         (SELECT COUNT(DISTINCT cust.id) FROM customers cust 
          LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id) 
          WHERE (cust.is_archived IS NULL OR cust.is_archived = 0) 
+            AND cust.id NOT IN (SELECT id FROM deleted_customers)
             AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS customer_count,
         (SELECT COUNT(DISTINCT o.id) FROM orders o 
          JOIN customers cust ON o.customer_id = cust.id 
@@ -53,6 +55,9 @@ class LocationDao {
     if (!showArchived) {
       sql += ' AND (l.is_archived IS NULL OR l.is_archived = 0)';
     }
+
+    // Exclude tombstoned locations
+    sql += ' AND l.id NOT IN (SELECT id FROM deleted_locations)';
 
     // Search query filter
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
@@ -93,6 +98,7 @@ class LocationDao {
         (SELECT COUNT(DISTINCT cust.id) FROM customers cust 
          LEFT JOIN locations st ON (cust.location_id = st.id OR cust.street_id = st.id) 
          WHERE (cust.is_archived IS NULL OR cust.is_archived = 0) 
+           AND cust.id NOT IN (SELECT id FROM deleted_customers)
            AND (cust.location_id = l.id OR cust.street_id = l.id OR st.id = l.id OR st.parent_location_id = l.id OR st.materialized_path LIKE '%/' || l.id || '/%' OR st.materialized_path LIKE '/' || l.id || '/%')) AS customer_count,
         (SELECT COUNT(DISTINCT o.id) FROM orders o 
          JOIN customers cust ON o.customer_id = cust.id 
@@ -127,6 +133,11 @@ class LocationDao {
         materializedPath = '${parent.materializedPath}${location.id}/';
       }
     }
+
+    // Remove from deleted_locations if being re-created
+    try {
+      await db.delete('deleted_locations', where: 'id = ?', whereArgs: [location.id]);
+    } catch (_) {}
 
     final toInsert = location.copyWith(
       depth: depth,
@@ -375,6 +386,18 @@ class LocationDao {
       if (!descIds.contains(id)) descIds.add(id);
       allDescIds = descIds;
 
+      // Record in deleted_locations so sync never resurrects them
+      for (final delId in descIds) {
+        await txn.insert(
+          'deleted_locations',
+          {
+            'id': delId,
+            'deleted_at': DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+
       if (descIds.isNotEmpty) {
         final placeholders = List.filled(descIds.length, '?').join(',');
 
@@ -413,6 +436,7 @@ class LocationDao {
 
     // Also push deletion to Supabase roads, sub_roads, and areas if configured
     try {
+      await CustomerOrderSyncService.instance.ensureSupabaseAuth();
       final client = Supabase.instance.client;
       final locsToPurge = targetLocs.isNotEmpty
           ? targetLocs

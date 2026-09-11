@@ -3,7 +3,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:orderkart/core/database/database_helper.dart';
 import 'package:orderkart/features/analytics/data/analytics_dao.dart';
 import 'package:orderkart/features/order/data/order_dao.dart';
-
+import 'package:orderkart/core/security/app_mode_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -28,6 +28,9 @@ void main() {
       await db.delete('locations');
       await db.delete('streets');
       await db.delete('areas');
+      await db.delete('settings');
+      await AppModeService.setAppMode(AppMode.owner);
+      AppModeService.loginOwnerSuccess();
 
       final now = DateTime.now();
       final todayStr =

@@ -5,8 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../domain/inventory_repository.dart';
 import '../domain/item.dart';
+import '../domain/item_variant.dart';
 import '../domain/stock_history.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../core/services/customer_order_sync_service.dart';
 import 'item_dao.dart';
 
 class InventoryRepositoryImpl implements InventoryRepository {
@@ -16,18 +18,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
   InventoryRepositoryImpl(this._dao);
 
   Future<void> _ensureSupabaseAuth() async {
-    final client = Supabase.instance.client;
-    if (client.auth.currentUser == null) {
-      try {
-        await client.auth.signInWithPassword(
-          email: 'admin@aplibhaji.com',
-          password: 'adminpassword',
-        );
-        debugPrint('Successfully authenticated Supabase client for OrderKart.');
-      } catch (e) {
-        debugPrint('Supabase auto-authentication failed: $e');
-      }
-    }
+    await CustomerOrderSyncService.instance.ensureSupabaseAuth();
   }
 
   Future<String?> _getOrCreateCategoryId(String categoryName) async {
@@ -158,6 +149,26 @@ class InventoryRepositoryImpl implements InventoryRepository {
   }
 
   Future<Map<String, dynamic>> _itemToProductMap(Item item, String? categoryId) async {
+    // Embed variants if configured for this item
+    final variants = await _dao.getVariantsForItem(item.id);
+    final variantsList = variants.map((v) => {
+      'id': v.id,
+      'name': v.variantLabel,
+      'variant_label': v.variantLabel,
+      'price': v.sellingPrice,
+      'selling_price': v.sellingPrice,
+      'mrp': v.marketPrice,
+      'market_price': v.marketPrice,
+      'cost_price': v.costPrice,
+      'stock': v.stock,
+      'unit': v.unit,
+      'barcode': v.barcode,
+      'photo_path': v.photoPath,
+      'image_path': v.photoPath,
+      'is_available': v.isAvailable,
+      'sequence_no': v.sequenceNo,
+    }).toList();
+
     final extra = {
       'cost_price': item.costPrice,
       'market_price': item.marketPrice,
@@ -178,6 +189,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
       'order_now_mrp': item.orderNowMrp,
       'order_now_cost_price': item.orderNowCostPrice,
       'order_now_is_available': item.orderNowIsAvailable,
+      if (variantsList.isNotEmpty) 'variants': variantsList,
     };
     
     return {
@@ -199,6 +211,43 @@ class InventoryRepositoryImpl implements InventoryRepository {
       'order_now_cost_price': item.orderNowCostPrice,
       'order_now_is_available': item.orderNowIsAvailable,
     };
+  }
+
+  @override
+  Future<void> syncItemVariantsToSupabase(String itemId) async {
+    try {
+      final item = await _dao.getItemById(itemId);
+      if (item == null) return;
+      await _ensureSupabaseAuth();
+      final client = Supabase.instance.client;
+      final categoryId = await _getOrCreateCategoryId(item.category);
+      final pMap = await _itemToProductMap(item, categoryId);
+      pMap['updated_at'] = DateTime.now().toIso8601String();
+      final updated = await client.from('products').update(pMap).eq('id', itemId).select('id');
+      if (updated.isEmpty) {
+        await client.from('products').update(pMap).ilike('name', item.name.trim());
+      }
+      debugPrint('[INVENTORY-SYNC] Directly synced updated variants for item ${item.name} ($itemId) to Supabase.');
+    } catch (e) {
+      debugPrint('[INVENTORY-SYNC] Failed syncing variants to Supabase: $e');
+    }
+  }
+
+  @override
+  Future<void> syncAllVariantsToSupabase() async {
+    try {
+      await _ensureSupabaseAuth();
+      final items = await _dao.getAllItems();
+      for (final item in items) {
+        final variants = await _dao.getVariantsForItem(item.id);
+        if (variants.isNotEmpty) {
+          await syncItemVariantsToSupabase(item.id);
+        }
+      }
+      debugPrint('[INVENTORY-SYNC] Successfully synced all local variants to Supabase.');
+    } catch (e) {
+      debugPrint('[INVENTORY-SYNC] Failed syncing all variants: $e');
+    }
   }
 
   @override
@@ -439,6 +488,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
           // Remote is newer -> update local SQLite
           final updatedItem = _mapProductToItem(matchingRemote);
           await _dao.updateItem(updatedItem);
+          await _syncRemoteVariantsToLocal(remoteId, matchingRemote['description']?.toString() ?? '');
           debugPrint('[SYNC-INVENTORY] Remote item ${localItem.name} is newer, pulled to SQLite.');
         }
       } else {
@@ -465,6 +515,48 @@ class InventoryRepositoryImpl implements InventoryRepository {
       if (!syncedLocalIds.contains(remoteId)) {
         final item = _mapProductToItem(p);
         await _dao.insertItem(item);
+        await _syncRemoteVariantsToLocal(remoteId, p['description']?.toString() ?? '');
+      }
+    }
+  }
+
+  Future<void> _syncRemoteVariantsToLocal(String parentItemId, String description) async {
+    if (description.trim().startsWith('{') && description.trim().endsWith('}')) {
+      try {
+        final Map<String, dynamic> extra = json.decode(description);
+        final rawVariants = extra['variants'];
+        if (rawVariants is List && rawVariants.isNotEmpty) {
+          final existing = await _dao.getVariantsForItem(parentItemId);
+          final existingLabels = existing.map((v) => v.variantLabel.toLowerCase().trim()).toSet();
+          
+          for (int i = 0; i < rawVariants.length; i++) {
+            final v = rawVariants[i];
+            if (v is! Map) continue;
+            final label = (v['name'] ?? v['variant_label'] ?? v['unit'] ?? '').toString().trim();
+            if (label.isEmpty) continue;
+            
+            if (!existingLabels.contains(label.toLowerCase())) {
+              await _dao.insertVariant(ItemVariant(
+                id: v['id']?.toString() ?? '',
+                parentItemId: parentItemId,
+                variantLabel: label,
+                sellingPrice: (v['price'] as num?)?.toDouble() ?? (v['selling_price'] as num?)?.toDouble() ?? 0.0,
+                costPrice: (v['cost_price'] as num?)?.toDouble() ?? 0.0,
+                marketPrice: (v['mrp'] as num?)?.toDouble() ?? (v['market_price'] as num?)?.toDouble() ?? 0.0,
+                stock: (v['stock'] as num?)?.toDouble() ?? 0.0,
+                unit: v['unit']?.toString() ?? 'unit',
+                barcode: v['barcode']?.toString() ?? '',
+                photoPath: (v['photo_path'] ?? v['image_path'] ?? '').toString(),
+                isAvailable: v['is_available'] != false,
+                sequenceNo: (v['sequence_no'] as int?) ?? i,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ));
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[SYNC-VARIANTS] Error syncing remote variants to local: $e');
       }
     }
   }

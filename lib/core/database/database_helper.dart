@@ -12,6 +12,7 @@ import 'package:path/path.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
+import '../services/customer_order_sync_service.dart';
 
 class DatabaseHelper {
   DatabaseHelper._();
@@ -45,6 +46,11 @@ class DatabaseHelper {
   static String? dbNameOverride;
 
   Database? _db;
+
+  /// Injects a database instance for unit testing
+  void setDatabaseForTesting(Database? db) {
+    _db = db;
+  }
 
   /// Returns the open database, initialising it if needed
   Future<Database> get database async {
@@ -84,13 +90,43 @@ class DatabaseHelper {
     await _ensureCustomerCodeColumn(db);
     await _ensureOrderNowColumns(db);
     await _ensureGoogleAuthAndNewCustomerColumns(db);
+    await _ensureDeliveryTimeColumns(db);
+    await _ensureLocationCoordinatesColumns(db);
     await _dropLegacyTriggers(db);
+  }
+
+  static Future<void> _ensureLocationCoordinatesColumns(Database db) async {
+    final cols = [
+      "ALTER TABLE customers ADD COLUMN latitude REAL",
+      "ALTER TABLE customers ADD COLUMN longitude REAL",
+      "ALTER TABLE orders ADD COLUMN latitude REAL",
+      "ALTER TABLE orders ADD COLUMN longitude REAL",
+    ];
+    for (final sql in cols) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
+  }
+
+  static Future<void> _ensureDeliveryTimeColumns(Database db) async {
+    final cols = [
+      "ALTER TABLE orders ADD COLUMN estimated_delivery_time TEXT",
+      "ALTER TABLE orders ADD COLUMN estimated_delivery_at TEXT",
+      "ALTER TABLE orders ADD COLUMN accepted_at TEXT",
+    ];
+    for (final sql in cols) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
   }
 
   static Future<void> _ensureGoogleAuthAndNewCustomerColumns(Database db) async {
     final cols = [
       "ALTER TABLE customers ADD COLUMN auth_provider TEXT DEFAULT 'phone_password'",
       "ALTER TABLE customers ADD COLUMN google_id TEXT",
+      "ALTER TABLE customers ADD COLUMN email TEXT DEFAULT ''",
       "ALTER TABLE customers ADD COLUMN is_new_customer INTEGER DEFAULT 0",
       "ALTER TABLE orders ADD COLUMN is_new_customer_order INTEGER DEFAULT 0",
     ];
@@ -205,6 +241,8 @@ class DatabaseHelper {
         await ensureCustomerDeviceColumns(db);
         await _ensureCustomerCodeColumn(db);
         await _ensureGoogleAuthAndNewCustomerColumns(db);
+        await _ensureDeliveryTimeColumns(db);
+        await _ensureLocationCoordinatesColumns(db);
         await _dropLegacyTriggers(db);
         try {
           await db.execute(
@@ -213,6 +251,16 @@ class DatabaseHelper {
         try {
           await db.execute(
               'CREATE TABLE IF NOT EXISTS deleted_customers (id TEXT PRIMARY KEY, deleted_at TEXT)');
+        } catch (_) {}
+        try {
+          await db.execute(
+              'CREATE TABLE IF NOT EXISTS deleted_locations (id TEXT PRIMARY KEY, deleted_at TEXT)');
+        } catch (_) {}
+        try {
+          await db.execute("ALTER TABLE item_variants ADD COLUMN photo_path TEXT DEFAULT ''");
+        } catch (_) {}
+        try {
+          await db.execute("ALTER TABLE item_variants ADD COLUMN image_path TEXT DEFAULT ''");
         } catch (_) {}
         try {
           await db.execute('ALTER TABLE items ADD COLUMN order_now_stock REAL DEFAULT 0');
@@ -234,6 +282,8 @@ class DatabaseHelper {
         } catch (_) {}
         await _auditAndSelfHealCustomerIds(db);
         await _auditAndDeduplicateAreasAndCustomers(db);
+        await ensureGoogleAccountAreaExists(db);
+        await ensureAllRoadsHaveSubRoads(db);
         await _runStartupHealthCheck(db);
         await _runAutoCleanup(db);
         _autoRecoverAndBackup(path);
@@ -282,6 +332,25 @@ class DatabaseHelper {
     }
     if (oldVersion < 10) {
       await _migrateToLocations(db);
+    }
+    if (oldVersion < 12) {
+      await _createItemVariantsTable(db);
+    }
+    if (oldVersion < 13) {
+      try {
+        await db.execute(
+            "ALTER TABLE item_variants ADD COLUMN photo_path TEXT DEFAULT ''");
+      } catch (_) {}
+    }
+    if (oldVersion < 14) {
+      try {
+        await db.execute(
+            "ALTER TABLE item_variants ADD COLUMN photo_path TEXT DEFAULT ''");
+      } catch (_) {}
+      try {
+        await db.execute(
+            "ALTER TABLE item_variants ADD COLUMN image_path TEXT DEFAULT ''");
+      } catch (_) {}
     }
   }
 
@@ -596,6 +665,43 @@ class DatabaseHelper {
         'CREATE INDEX IF NOT EXISTS idx_locations_path ON locations(materialized_path)');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_customers_location ON customers(location_id)');
+
+    // Item Variants (sub-products)
+    await _createItemVariantsTable(db);
+  }
+
+  /// Creates the item_variants table for sub-products/versions
+  Future<void> _createItemVariantsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS item_variants (
+        id             TEXT PRIMARY KEY,
+        parent_item_id TEXT NOT NULL,
+        variant_label  TEXT NOT NULL,
+        selling_price  REAL DEFAULT 0,
+        cost_price     REAL DEFAULT 0,
+        market_price   REAL DEFAULT 0,
+        stock          REAL DEFAULT 0,
+        unit           TEXT DEFAULT 'unit',
+        barcode        TEXT DEFAULT '',
+        photo_path     TEXT DEFAULT '',
+        image_path     TEXT DEFAULT '',
+        is_available   INTEGER DEFAULT 1,
+        sequence_no    INTEGER DEFAULT 0,
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL,
+        FOREIGN KEY(parent_item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_variants_parent ON item_variants(parent_item_id)');
+    try {
+      await db.execute(
+          "ALTER TABLE item_variants ADD COLUMN photo_path TEXT DEFAULT ''");
+    } catch (_) {}
+    try {
+      await db.execute(
+          "ALTER TABLE item_variants ADD COLUMN image_path TEXT DEFAULT ''");
+    } catch (_) {}
   }
 
   /// Seeds default settings on fresh install
@@ -854,13 +960,8 @@ class DatabaseHelper {
     // Push price update directly and exclusively to Supabase products table (Part 5 isolation)
     unawaited(() async {
       try {
+        await CustomerOrderSyncService.instance.ensureSupabaseAuth();
         final client = Supabase.instance.client;
-        if (client.auth.currentUser == null) {
-          await client.auth.signInWithPassword(
-            email: 'admin@aplibhaji.com',
-            password: 'adminpassword',
-          );
-        }
         await client.from('products').update({
           'price': newPrice,
           'selling_price': newPrice,
@@ -944,6 +1045,21 @@ class DatabaseHelper {
       await db.execute(
           "ALTER TABLE streets ADD COLUMN maps_location TEXT DEFAULT ''");
     } catch (_) {}
+    final extraCols = [
+      "ALTER TABLE areas ADD COLUMN created_by TEXT DEFAULT 'owner'",
+      "ALTER TABLE areas ADD COLUMN assigned_worker_id TEXT DEFAULT ''",
+      "ALTER TABLE areas ADD COLUMN worker_name TEXT DEFAULT ''",
+      "ALTER TABLE areas ADD COLUMN device_name TEXT DEFAULT ''",
+      "ALTER TABLE streets ADD COLUMN created_by TEXT DEFAULT 'owner'",
+      "ALTER TABLE streets ADD COLUMN assigned_worker_id TEXT DEFAULT ''",
+      "ALTER TABLE streets ADD COLUMN worker_name TEXT DEFAULT ''",
+      "ALTER TABLE streets ADD COLUMN device_name TEXT DEFAULT ''",
+    ];
+    for (final sql in extraCols) {
+      try {
+        await db.execute(sql);
+      } catch (_) {}
+    }
   }
 
   /// Helper to update a row in database merge targeting standard or composite keys
@@ -1045,8 +1161,31 @@ class DatabaseHelper {
 
     try {
       final streetCheck = await db.query('streets',
-          columns: ['id'], where: 'id = ?', whereArgs: [locationId]);
-      if (streetCheck.isNotEmpty) return;
+          columns: ['id', 'area_id'], where: 'id = ?', whereArgs: [locationId]);
+      if (streetCheck.isNotEmpty) {
+        final aId = streetCheck.first['area_id'] as String?;
+        if (aId != null && aId.isNotEmpty) {
+          final aCheck = await db.query('areas',
+              columns: ['id'], where: 'id = ?', whereArgs: [aId]);
+          if (aCheck.isEmpty) {
+            final nowStr = DateTime.now().toIso8601String();
+            final areaCols = await _getTableColumns(db, 'areas');
+            await db.insert(
+                'areas',
+                _filterColumns({
+                  'id': aId,
+                  'name': 'Legacy Area',
+                  'created_at': nowStr,
+                  'updated_at': nowStr,
+                }, areaCols),
+                conflictAlgorithm: ConflictAlgorithm.ignore);
+          }
+        }
+        return;
+      }
+
+      final areaCols = await _getTableColumns(db, 'areas');
+      final streetCols = await _getTableColumns(db, 'streets');
 
       final locRows = await db.query('locations',
           where: 'id = ?', whereArgs: [locationId], limit: 1);
@@ -1054,25 +1193,25 @@ class DatabaseHelper {
         final nowStr = DateTime.now().toIso8601String();
         await db.insert(
             'areas',
-            {
+            _filterColumns({
               'id': locationId,
               'name': 'Legacy Location',
               'description': 'Auto-created fallback area',
               'color': 0xFF1565C0,
               'created_at': nowStr,
               'updated_at': nowStr,
-            },
+            }, areaCols),
             conflictAlgorithm: ConflictAlgorithm.ignore);
 
         await db.insert(
             'streets',
-            {
+            _filterColumns({
               'id': locationId,
               'area_id': locationId,
               'name': 'Legacy Location',
               'description': 'Auto-created fallback street',
               'created_at': nowStr,
-            },
+            }, streetCols),
             conflictAlgorithm: ConflictAlgorithm.ignore);
         return;
       }
@@ -1097,7 +1236,7 @@ class DatabaseHelper {
       if (parentId == null) {
         await db.insert(
             'areas',
-            {
+            _filterColumns({
               'id': locationId,
               'name': name,
               'description': desc,
@@ -1110,12 +1249,12 @@ class DatabaseHelper {
               'device_name': deviceName,
               'created_at': createdAt,
               'updated_at': updatedAt,
-            },
+            }, areaCols),
             conflictAlgorithm: ConflictAlgorithm.ignore);
 
         await db.insert(
             'streets',
-            {
+            _filterColumns({
               'id': locationId,
               'area_id': locationId,
               'name': name,
@@ -1127,7 +1266,7 @@ class DatabaseHelper {
               'worker_name': workerName,
               'device_name': deviceName,
               'created_at': createdAt,
-            },
+            }, streetCols),
             conflictAlgorithm: ConflictAlgorithm.ignore);
       } else {
         String rootAreaId = parentId;
@@ -1157,7 +1296,7 @@ class DatabaseHelper {
             final rl = rootLocRows.first;
             await db.insert(
                 'areas',
-                {
+                _filterColumns({
                   'id': rootAreaId,
                   'name': rl['name'] as String? ?? 'Root Area',
                   'description': rl['description'] as String? ?? '',
@@ -1172,26 +1311,26 @@ class DatabaseHelper {
                   'device_name': rl['device_name'] as String? ?? '',
                   'created_at': rl['created_at'] as String? ?? createdAt,
                   'updated_at': rl['updated_at'] as String? ?? updatedAt,
-                },
+                }, areaCols),
                 conflictAlgorithm: ConflictAlgorithm.ignore);
           } else {
             await db.insert(
                 'areas',
-                {
+                _filterColumns({
                   'id': rootAreaId,
                   'name': 'Fallback Area',
                   'description': 'Auto-created fallback area',
                   'color': 0xFF1565C0,
                   'created_at': createdAt,
                   'updated_at': updatedAt,
-                },
+                }, areaCols),
                 conflictAlgorithm: ConflictAlgorithm.ignore);
           }
         }
 
         await db.insert(
             'streets',
-            {
+            _filterColumns({
               'id': locationId,
               'area_id': rootAreaId,
               'name': name,
@@ -1203,7 +1342,7 @@ class DatabaseHelper {
               'worker_name': workerName,
               'device_name': deviceName,
               'created_at': createdAt,
-            },
+            }, streetCols),
             conflictAlgorithm: ConflictAlgorithm.ignore);
       }
     } catch (_) {}
@@ -3419,6 +3558,8 @@ class DatabaseHelper {
     try {
       await db.execute(
           'CREATE TABLE IF NOT EXISTS deleted_customers (id TEXT PRIMARY KEY, deleted_at TEXT)');
+      await db.execute(
+          'CREATE TABLE IF NOT EXISTS deleted_locations (id TEXT PRIMARY KEY, deleted_at TEXT)');
       await db.execute('PRAGMA foreign_keys = OFF');
 
       await db.transaction((txn) async {
@@ -3449,6 +3590,8 @@ class DatabaseHelper {
           'bangar nagar': 'f9b2e534-c643-5f9a-94a4-a02a5747ee57',
           'darda nagar': 'e2329132-f068-5be3-bcc9-7934f43606b6',
           'jamankar nagar': '60530399-4de5-57ca-8cc8-db2b9268f489',
+          'google account': '17aac4e9-9298-4774-927f-39e8d9369f9d',
+          'google accounts': '17aac4e9-9298-4774-927f-39e8d9369f9d',
         };
 
         // 3. Deduplicate Areas in locations and areas tables
@@ -3559,13 +3702,11 @@ class DatabaseHelper {
           }
         }
 
-        // 5. Deduplicate Customers in SQLite
+        // 5. Deduplicate Customers in SQLite safely
         final custRows = await txn.rawQuery(
             "SELECT id, name, phone1, customer_code, street_id, location_id, created_at FROM customers ORDER BY created_at DESC");
-        final Set<String> seenCodes = {};
-        final Set<String> seenPhones = {};
-        final Set<String> seenNameAndRoad = {};
-        final List<String> duplicateCustIds = [];
+        final Map<String, String> seenCodeToCanonicalId = {};
+        final List<Map<String, String>> duplicatePairs = [];
 
         for (final c in custRows) {
           final id = c['id'] as String;
@@ -3577,39 +3718,42 @@ class DatabaseHelper {
               ? rawPhone.substring(rawPhone.length - 10)
               : rawPhone;
           final name = (c['name'] as String? ?? '').trim().toLowerCase();
-          final street = (c['street_id'] as String? ?? '').trim();
 
-          bool isDup = false;
-          if (code.isNotEmpty && seenCodes.contains(code)) {
-            isDup = true;
-          }
-          if (!isDup &&
-              normalizedPhone.isNotEmpty &&
-              normalizedPhone != '0000000000' &&
-              seenPhones.contains(normalizedPhone)) {
-            isDup = true;
-          }
-          if (!isDup &&
-              name.isNotEmpty &&
-              street.isNotEmpty &&
-              seenNameAndRoad.contains('$name@$street')) {
-            isDup = true;
-          }
+          // Never deduplicate or delete ghost houses or guests!
+          final bool isGhost = name.isEmpty ||
+              name.contains('ghost') ||
+              name.contains('[ghost') ||
+              normalizedPhone == '0000000000' ||
+              normalizedPhone.isEmpty;
+          if (isGhost) continue;
 
-          if (isDup) {
-            duplicateCustIds.add(id);
-          } else {
-            if (code.isNotEmpty) seenCodes.add(code);
-            if (normalizedPhone.isNotEmpty && normalizedPhone != '0000000000') {
-              seenPhones.add(normalizedPhone);
-            }
-            if (name.isNotEmpty && street.isNotEmpty) {
-              seenNameAndRoad.add('$name@$street');
+          // Only merge if the record has an explicit identical customer code (non-empty) AND matching 10-digit phone
+          if (code.isNotEmpty && normalizedPhone.length == 10) {
+            final key = '$code@$normalizedPhone';
+            if (seenCodeToCanonicalId.containsKey(key)) {
+              final canonicalId = seenCodeToCanonicalId[key]!;
+              if (canonicalId != id) {
+                duplicatePairs.add({'dupId': id, 'canonicalId': canonicalId});
+              }
+            } else {
+              seenCodeToCanonicalId[key] = id;
             }
           }
         }
 
-        for (final dupId in duplicateCustIds) {
+        for (final pair in duplicatePairs) {
+          final dupId = pair['dupId']!;
+          final canonicalId = pair['canonicalId']!;
+          // Reassign any orders, payments, and visits before deleting duplicate row
+          await txn.rawUpdate(
+              "UPDATE orders SET customer_id = ? WHERE customer_id = ?",
+              [canonicalId, dupId]);
+          await txn.rawUpdate(
+              "UPDATE payments SET customer_id = ? WHERE customer_id = ?",
+              [canonicalId, dupId]);
+          await txn.rawUpdate(
+              "UPDATE visits SET customer_id = ? WHERE customer_id = ?",
+              [canonicalId, dupId]);
           await txn.delete('customers', where: 'id = ?', whereArgs: [dupId]);
         }
       });
@@ -3619,6 +3763,359 @@ class DatabaseHelper {
       try {
         await db.execute('PRAGMA foreign_keys = ON');
       } catch (_) {}
+    }
+  }
+
+  /// Ensures that the dedicated Google Account area and Google Accounts road exist in SQLite tables.
+  static Future<void> ensureGoogleAccountAreaExists(DatabaseExecutor db) async {
+    try {
+      const areaId = '17aac4e9-9298-4774-927f-39e8d9369f9d';
+      const areaName = 'Google Account';
+      const roadId = 'd753890a-52a4-51a0-bb10-54ee14186df9';
+      const roadName = 'Google Accounts';
+      final nowIso = DateTime.now().toIso8601String();
+
+      // 1. Check & ensure area in locations table
+      final areaCheck = await db.query('locations', where: 'id = ?', whereArgs: [areaId]);
+      if (areaCheck.isEmpty) {
+        await db.insert('locations', {
+          'id': areaId,
+          'name': areaName,
+          'location_kind': 'area',
+          'sequence_key': '001',
+          'depth': 0,
+          'materialized_path': '/$areaId/',
+          'is_archived': 0,
+          'created_at': nowIso,
+          'updated_at': nowIso,
+          'delivery_schedule': '["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]',
+          'cutoff_time': '23:59',
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+
+      // 2. Check & ensure area in legacy areas table
+      try {
+        final legacyAreaCheck = await db.query('areas', where: 'id = ?', whereArgs: [areaId]);
+        if (legacyAreaCheck.isEmpty) {
+          await db.insert('areas', {
+            'id': areaId,
+            'name': areaName,
+            'delivery_schedule': '["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]',
+            'cutoff_time': '23:59',
+            'created_at': nowIso,
+            'updated_at': nowIso,
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+      } catch (_) {}
+
+      // 3. Check & ensure road in locations table
+      final roadCheck = await db.query('locations', where: 'id = ?', whereArgs: [roadId]);
+      if (roadCheck.isEmpty) {
+        await db.insert('locations', {
+          'id': roadId,
+          'parent_location_id': areaId,
+          'name': roadName,
+          'location_kind': 'road',
+          'sequence_key': '001.001',
+          'depth': 1,
+          'materialized_path': '/$areaId/$roadId/',
+          'is_archived': 0,
+          'created_at': nowIso,
+          'updated_at': nowIso,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+
+      // 4. Check & ensure road in legacy streets table
+      try {
+        final streetCheck = await db.query('streets', where: 'id = ?', whereArgs: [roadId]);
+        if (streetCheck.isEmpty) {
+          await db.insert('streets', {
+            'id': roadId,
+            'area_id': areaId,
+            'name': roadName,
+            'created_at': nowIso,
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('[DatabaseHelper] ensureGoogleAccountAreaExists notice: $e');
+    }
+  }
+
+  /// Ensures that all roads have dedicated sub-roads in SQLite and migrates any
+  /// customers registered directly on a parent road onto their designated sub-road.
+  static Future<void> ensureAllRoadsHaveSubRoads(DatabaseExecutor db) async {
+    try {
+      final nowIso = DateTime.now().toIso8601String();
+
+      // 1. Canonical sub-roads matching Supabase backend
+      final List<Map<String, String>> canonicalSubRoads = [
+        {
+          'id': 'a1a1a1a1-95a8-58dd-a1bb-5f2ec9873628',
+          'roadId': '95a8bb6f-6f36-58dd-a1bb-5f2ec9873628',
+          'name': 'Area A Main Road',
+        },
+        {
+          'id': '7e1ec04d-b6f2-5a53-a2c9-1b10cfa99ed7',
+          'roadId': '89284862-7d09-5fa8-b70f-cca6e353b5fc',
+          'name': 'Area B Main Road',
+        },
+        {
+          'id': '4a0f4d6a-14d0-5c96-8ace-e6949ae83533',
+          'roadId': '89284862-7d09-5fa8-b70f-cca6e353b5fc',
+          'name': 'L1',
+        },
+        {
+          'id': 'b1b1b1b1-fba2-599c-b9f7-78c3953b3a46',
+          'roadId': 'fba28599-5190-599c-b9f7-78c3953b3a46',
+          'name': 'Main Road',
+        },
+        {
+          'id': '88888888-224a-522f-9e3c-c709d84f5426',
+          'roadId': '224a271d-87bd-522f-9e3c-c709d84f5426',
+          'name': 'Road 8',
+        },
+        {
+          'id': '55555555-771c-5a6c-bd4e-e090b3f189f0',
+          'roadId': '771c598b-23e7-5a6c-bd4e-e090b3f189f0',
+          'name': 'Main Road',
+        },
+        {
+          'id': 'd42608be-c7af-52d4-8d4a-1e27bd11a2fe',
+          'roadId': '771c598b-23e7-5a6c-bd4e-e090b3f189f0',
+          'name': 'R1',
+        },
+        {
+          'id': '42cbb5a9-07ab-5208-8486-48f960bd88e4',
+          'roadId': '771c598b-23e7-5a6c-bd4e-e090b3f189f0',
+          'name': 'R2',
+        },
+        {
+          'id': 'a9b3c65f-3b5f-58fb-836d-76340a5a260a',
+          'roadId': '771c598b-23e7-5a6c-bd4e-e090b3f189f0',
+          'name': 'R3',
+        },
+        {
+          'id': 'e021bb90-963c-580a-bd30-bde73e04a24a',
+          'roadId': '771c598b-23e7-5a6c-bd4e-e090b3f189f0',
+          'name': 'R4',
+        },
+        {
+          'id': '77777777-328d-5e23-8e53-ef6a14d1bda0',
+          'roadId': '328dd402-97f0-5e23-8e53-ef6a14d1bda0',
+          'name': 'Main Road',
+        },
+        {
+          'id': '916ede1c-8d98-5282-be2d-f5947b9fd86a',
+          'roadId': '328dd402-97f0-5e23-8e53-ef6a14d1bda0',
+          'name': 'L1',
+        },
+        {
+          'id': 'c1855c89-c9d5-5031-9bd3-f17e81ea9e18',
+          'roadId': '328dd402-97f0-5e23-8e53-ef6a14d1bda0',
+          'name': 'R1',
+        },
+        {
+          'id': '478ebcc3-e43e-55b4-b706-42fcc6b2a08d',
+          'roadId': '328dd402-97f0-5e23-8e53-ef6a14d1bda0',
+          'name': 'R2',
+        },
+        {
+          'id': 'c9c9c9c9-52c9-59f9-adc1-7dd3d5c57a39',
+          'roadId': '52c9bf59-adc5-59f9-adc1-7dd3d5c57a39',
+          'name': 'Main Road',
+        },
+        {
+          'id': 'e9b08360-31a7-510a-9727-edfcd619bc15',
+          'roadId': 'a38bec5d-43ad-53a3-8c1f-9c3e51a91a5c',
+          'name': 'Customers',
+        },
+        {
+          'id': 'f71e3083-98ca-5183-aa57-9a168ac19df3',
+          'roadId': 'a38bec5d-43ad-53a3-8c1f-9c3e51a91a5c',
+          'name': 'R1',
+        },
+        {
+          'id': 'ba5e7b16-2ecd-5925-800c-893d36dfb254',
+          'roadId': 'a38bec5d-43ad-53a3-8c1f-9c3e51a91a5c',
+          'name': 'R2',
+        },
+        {
+          'id': '58f1d8c9-0de8-5dec-b4ed-a8333a27d8e5',
+          'roadId': 'a38bec5d-43ad-53a3-8c1f-9c3e51a91a5c',
+          'name': 'R3',
+        },
+        {
+          'id': 'e853890a-52a4-51a0-bb10-54ee14186df9',
+          'roadId': 'd753890a-52a4-51a0-bb10-54ee14186df9',
+          'name': 'Google Accounts',
+        },
+        {
+          'id': '10101010-7b10-5f34-aad2-835278ca840d',
+          'roadId': '7b10aa82-e4e3-5f34-aad2-835278ca840d',
+          'name': 'Main Road',
+        },
+      ];
+
+      // Track the default sub-road id for each road id
+      final Map<String, String> defaultSubRoadByRoadId = {};
+
+      // 2. Insert canonical sub-roads into locations table
+      for (final sr in canonicalSubRoads) {
+        final srId = sr['id']!;
+        final roadId = sr['roadId']!;
+        final name = sr['name']!;
+
+        defaultSubRoadByRoadId.putIfAbsent(roadId, () => srId);
+
+        // Fetch parent road to resolve materialized path
+        final parentRoad = await db.query('locations', where: 'id = ?', whereArgs: [roadId], limit: 1);
+        if (parentRoad.isEmpty) continue;
+
+        final parentPath = (parentRoad.first['materialized_path'] as String? ?? '/$roadId/');
+        final subRoadPath = parentPath.endsWith('/')
+            ? '$parentPath$srId/'
+            : '$parentPath/$srId/';
+
+        final existing = await db.query('locations', where: 'id = ?', whereArgs: [srId], limit: 1);
+        if (existing.isEmpty) {
+          await db.insert('locations', {
+            'id': srId,
+            'parent_location_id': roadId,
+            'name': name,
+            'location_kind': 'sub_road',
+            'sequence_key': '001.001.001',
+            'depth': 2,
+            'materialized_path': subRoadPath,
+            'is_archived': 0,
+            'created_at': nowIso,
+            'updated_at': nowIso,
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        final effectiveAreaId = (parentRoad.first['parent_location_id'] as String? ?? '').trim();
+        if (effectiveAreaId.isNotEmpty) {
+          final areaExists = await db.query('areas', where: 'id = ?', whereArgs: [effectiveAreaId], limit: 1);
+          if (areaExists.isEmpty) {
+            await db.insert('areas', {
+              'id': effectiveAreaId,
+              'name': 'Area',
+              'created_at': nowIso,
+              'updated_at': nowIso,
+            }, conflictAlgorithm: ConflictAlgorithm.ignore);
+          }
+        }
+
+        try {
+          await db.insert('streets', {
+            'id': srId,
+            'area_id': effectiveAreaId.isNotEmpty ? effectiveAreaId : roadId,
+            'name': name,
+            'created_at': nowIso,
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+        } catch (_) {}
+      }
+
+      // 3. For any other road in locations (depth == 1 or location_kind == 'road'), ensure it has at least one sub-road
+      final allRoads = await db.query(
+        'locations',
+        where: "(depth = 1 OR location_kind = 'road') AND (is_archived IS NULL OR is_archived = 0)",
+      );
+
+      for (final r in allRoads) {
+        final roadId = r['id'] as String;
+        final parentPath = (r['materialized_path'] as String? ?? '/$roadId/');
+        final effectiveAreaId = (r['parent_location_id'] as String? ?? '').trim();
+
+        // Check if this road already has a child sub-road in locations
+        final existingChildren = await db.query(
+          'locations',
+          where: 'parent_location_id = ?',
+          whereArgs: [roadId],
+          limit: 1,
+        );
+
+        if (existingChildren.isNotEmpty) {
+          defaultSubRoadByRoadId.putIfAbsent(roadId, () => existingChildren.first['id'] as String);
+        } else {
+          // Generate a deterministic default sub-road
+          final genSubRoadId = const Uuid().v5(Uuid.NAMESPACE_DNS, 'aplibhaji.subroad.default.$roadId');
+          const subRoadName = 'Main Road';
+          final subRoadPath = parentPath.endsWith('/') ? '$parentPath$genSubRoadId/' : '$parentPath/$genSubRoadId/';
+
+          await db.insert('locations', {
+            'id': genSubRoadId,
+            'parent_location_id': roadId,
+            'name': subRoadName,
+            'location_kind': 'sub_road',
+            'sequence_key': '001.001.001',
+            'depth': 2,
+            'materialized_path': subRoadPath,
+            'is_archived': 0,
+            'created_at': nowIso,
+            'updated_at': nowIso,
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+          if (effectiveAreaId.isNotEmpty) {
+            final areaExists = await db.query('areas', where: 'id = ?', whereArgs: [effectiveAreaId], limit: 1);
+            if (areaExists.isEmpty) {
+              await db.insert('areas', {
+                'id': effectiveAreaId,
+                'name': 'Area',
+                'created_at': nowIso,
+                'updated_at': nowIso,
+              }, conflictAlgorithm: ConflictAlgorithm.ignore);
+            }
+          }
+
+          try {
+            await db.insert('streets', {
+              'id': genSubRoadId,
+              'area_id': effectiveAreaId.isNotEmpty ? effectiveAreaId : roadId,
+              'name': subRoadName,
+              'created_at': nowIso,
+            }, conflictAlgorithm: ConflictAlgorithm.ignore);
+          } catch (_) {}
+
+          defaultSubRoadByRoadId.putIfAbsent(roadId, () => genSubRoadId);
+        }
+      }
+
+      // 4. MIGRATE EXISTING CUSTOMERS FROM ROADS TO SUB-ROADS
+      // For any customer whose street_id is a road (depth 1 or present in defaultSubRoadByRoadId):
+      for (final entry in defaultSubRoadByRoadId.entries) {
+        final roadId = entry.key;
+        final targetSubRoadId = entry.value;
+
+        // Update customers whose street_id == roadId
+        await db.rawUpdate('''
+          UPDATE customers 
+          SET street_id = ?, location_id = ? 
+          WHERE street_id = ? AND street_id != ?
+        ''', [targetSubRoadId, targetSubRoadId, roadId, targetSubRoadId]);
+
+        // Also if location_id was set to roadId while street_id was unset or equal to roadId
+        await db.rawUpdate('''
+          UPDATE customers 
+          SET location_id = ? 
+          WHERE location_id = ? AND location_id != ?
+        ''', [targetSubRoadId, roadId, targetSubRoadId]);
+      }
+
+      // 5. Explicitly guarantee Google Account customers are in the Google Accounts sub-road
+      const googleSubRoadId = 'e853890a-52a4-51a0-bb10-54ee14186df9';
+      const googleRoadId = 'd753890a-52a4-51a0-bb10-54ee14186df9';
+      const googleAreaId = '17aac4e9-9298-4774-927f-39e8d9369f9d';
+
+      await db.rawUpdate('''
+        UPDATE customers
+        SET street_id = ?, location_id = ?
+        WHERE (auth_provider = 'google' OR google_id IS NOT NULL AND google_id != '')
+          AND (street_id = ? OR street_id = ? OR street_id = 'default_street' OR street_id = 'unassigned')
+      ''', [googleSubRoadId, googleRoadId, googleAreaId, googleRoadId]);
+
+      debugPrint('[DatabaseHelper] ensureAllRoadsHaveSubRoads completed: All roads equipped with sub-roads & customers migrated.');
+    } catch (e) {
+      debugPrint('[DatabaseHelper] ensureAllRoadsHaveSubRoads notice: $e');
     }
   }
 }

@@ -1,7 +1,7 @@
 name: orderkart
 description: "FreshFlow - Offline Order Management for delivery businesses. Manages areas, streets, customers, orders, inventory, expenses and analytics."
 publish_to: 'none'
-version: 1.0.1
+version: 1.0.1+6
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -48,6 +48,8 @@ dependencies:
 
   # Image
   image_picker: ^1.1.2
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
   speech_to_text: ^7.0.0
 
   # Permissions

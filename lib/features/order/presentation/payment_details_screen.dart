@@ -8,6 +8,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/haptics.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/customer_avatar.dart';
+import '../../../../core/widgets/app_cached_image.dart';
 import 'package:orderkart/features/customer/presentation/customer_provider.dart';
 import 'package:orderkart/features/settings/presentation/settings_provider.dart';
 import '../../../../core/constants/app_routes.dart';
@@ -433,13 +434,12 @@ class _PaymentDetailsScreenState extends ConsumerState<PaymentDetailsScreen> {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(16),
                                     child: settings.qrCustomImage.startsWith('http')
-                                        ? Image.network(
-                                            settings.qrCustomImage,
+                                        ? AppCachedImage(
+                                            imageUrl: settings.qrCustomImage,
                                             width: 180,
                                             height: 180,
                                             fit: BoxFit.contain,
-                                            errorBuilder: (_, __, ___) =>
-                                                const Text('Broken Custom QR Image'),
+                                            errorWidget: const Text('Broken Custom QR Image'),
                                           )
                                         : Image.file(
                                             File(settings.qrCustomImage),

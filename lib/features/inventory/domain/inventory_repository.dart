@@ -16,4 +16,6 @@ abstract class InventoryRepository {
   Future<void> updateItemSequences(List<String> itemIds);
   Future<List<StockHistory>> getSpillageHistory();
   Future<void> syncWithServer();
+  Future<void> syncItemVariantsToSupabase(String itemId);
+  Future<void> syncAllVariantsToSupabase();
 }

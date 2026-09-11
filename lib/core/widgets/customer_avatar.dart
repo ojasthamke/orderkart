@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_constants.dart';
 import 'full_screen_image_viewer.dart';
+import 'app_cached_image.dart';
 
 class CustomerAvatar extends StatelessWidget {
   final String? photoPath;
@@ -35,12 +36,14 @@ class CustomerAvatar extends StatelessWidget {
 
     if (!hasPhoto) return fallback;
 
+    final isUrl = photoPath!.startsWith('http://') || photoPath!.startsWith('https://');
+
     return GestureDetector(
       onTap: () {
         FullScreenImageViewer.show(
           context,
-          AppConstants.resolveFile(photoPath!).path,
-          isAsset: kIsWeb,
+          isUrl ? photoPath! : AppConstants.resolveFile(photoPath!).path,
+          isAsset: kIsWeb || isUrl,
         );
       },
       child: ClipRRect(
@@ -48,11 +51,14 @@ class CustomerAvatar extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: kIsWeb
-              ? Image.network(
-                  photoPath!,
+          child: (kIsWeb || isUrl)
+              ? AppCachedImage(
+                  imageUrl: photoPath!,
+                  width: size,
+                  height: size,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => fallback,
+                  borderRadius: BorderRadius.circular(radius),
+                  errorWidget: fallback,
                 )
               : Image.file(
                   AppConstants.resolveFile(photoPath!),

@@ -68,5 +68,6 @@ class AppRoutes {
   static const String areaIntelligenceMap = '/area-intelligence-map';
   static const String mapPinPicker = '/map-pin-picker';
   static const String guests = '/guests';
+  static const String onlineAccounts = '/online-accounts';
 }
 

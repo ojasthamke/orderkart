@@ -19,6 +19,8 @@ class CustomerOrderSyncService {
   bool _isSyncing = false;
   bool _isSyncingOrders = false;
   bool _pendingSyncOrdersRequested = false;
+  bool _isPushingModifiedOrders = false;
+  bool _pendingPushModifiedOrdersRequested = false;
   RealtimeChannel? _realtimeOrdersChannel;
   final StreamController<void> _orderChangesController = StreamController<void>.broadcast();
   Stream<void> get onOrderChanged => _orderChangesController.stream;
@@ -33,7 +35,8 @@ class CustomerOrderSyncService {
 
   Future<void> _ensureSupabaseAuth() async {
     final client = Supabase.instance.client;
-    if (client.auth.currentUser == null) {
+    final session = client.auth.currentSession;
+    if (client.auth.currentUser == null || session == null || session.isExpired) {
       try {
         await client.auth.signInWithPassword(
           email: 'admin@aplibhaji.com',
@@ -421,27 +424,131 @@ class CustomerOrderSyncService {
     };
   }
 
-  Future<String> _ensureValidStreetId(DatabaseExecutor db, String? streetIdCandidate, {String? areaOrStreetName}) async {
+  Future<String> _ensureValidStreetId(
+    DatabaseExecutor db,
+    String? streetIdCandidate, {
+    String? areaOrStreetName,
+    String? roadId,
+    String? subRoadId,
+    String? roadName,
+    String? subRoadName,
+    String? areaId,
+    String? areaName,
+    String? address,
+  }) async {
+    // 1. Direct subRoadId / roadId check
+    final subId = (subRoadId ?? '').trim();
+    if (subId.isNotEmpty) {
+      final locCheck = await db.query('locations', columns: ['id'], where: 'id = ?', whereArgs: [subId]);
+      if (locCheck.isNotEmpty) return subId;
+      final sCheck = await db.query('streets', columns: ['id'], where: 'id = ?', whereArgs: [subId]);
+      if (sCheck.isNotEmpty) return subId;
+    }
+
+    final rId = (roadId ?? '').trim();
+    if (rId.isNotEmpty) {
+      final locCheck = await db.query('locations', columns: ['id'], where: 'id = ?', whereArgs: [rId]);
+      if (locCheck.isNotEmpty) return rId;
+      final sCheck = await db.query('streets', columns: ['id'], where: 'id = ?', whereArgs: [rId]);
+      if (sCheck.isNotEmpty) return rId;
+    }
+
+    // 2. Candidate check: if candidate is a valid location, street, or area
     final candidate = (streetIdCandidate ?? '').trim();
     if (candidate.isNotEmpty) {
-      final sCheck = await db.query('streets', columns: ['id'], where: 'id = ?', whereArgs: [candidate]);
-      if (sCheck.isNotEmpty) return candidate;
-      final locCheck = await db.query('locations', columns: ['id'], where: 'id = ?', whereArgs: [candidate]);
-      if (locCheck.isNotEmpty) return candidate;
+      final locCheck = await db.query('locations',
+          columns: ['id'],
+          where: 'id = ?',
+          whereArgs: [candidate]);
+      if (locCheck.isNotEmpty) {
+        return candidate;
+      }
+      final sCheck = await db.query('streets',
+          columns: ['id'],
+          where: 'id = ?',
+          whereArgs: [candidate]);
+      if (sCheck.isNotEmpty) {
+        return candidate;
+      }
+      final aCheck = await db.query('areas',
+          columns: ['id'],
+          where: 'id = ?',
+          whereArgs: [candidate]);
+      if (aCheck.isNotEmpty) {
+        return candidate;
+      }
     }
 
-    // Try name matching if candidate was not a UUID (e.g. customer entered "Bangar Nagar" or "Shivaji Nagar")
-    final name = (areaOrStreetName ?? '').trim();
-    if (name.isNotEmpty) {
-      final locMatch = await db.rawQuery('SELECT id FROM locations WHERE LOWER(name) = LOWER(?) LIMIT 1', [name]);
+    // 3. Direct areaId check: if areaId is a valid location, area, or street
+    final aId = (areaId ?? '').trim();
+    if (aId.isNotEmpty) {
+      final locCheck = await db.query('locations', columns: ['id'], where: 'id = ?', whereArgs: [aId]);
+      if (locCheck.isNotEmpty) return aId;
+      final aCheck = await db.query('areas', columns: ['id'], where: 'id = ?', whereArgs: [aId]);
+      if (aCheck.isNotEmpty) return aId;
+      final sCheck = await db.query('streets', columns: ['id'], where: 'id = ?', whereArgs: [aId]);
+      if (sCheck.isNotEmpty) return aId;
+    }
+
+    // 4. Name check for road or sub-road
+    final srName = (subRoadName ?? '').trim();
+    if (srName.isNotEmpty) {
+      final locMatch = await db.rawQuery(
+        'SELECT id FROM locations WHERE LOWER(TRIM(name)) = LOWER(?) AND (location_kind != ? OR parent_location_id IS NOT NULL) LIMIT 1',
+        [srName, 'area'],
+      );
       if (locMatch.isNotEmpty) return locMatch.first['id'] as String;
-      final streetMatch = await db.rawQuery('SELECT id FROM streets WHERE LOWER(name) = LOWER(?) LIMIT 1', [name]);
-      if (streetMatch.isNotEmpty) return streetMatch.first['id'] as String;
-      final areaMatch = await db.rawQuery('SELECT id FROM areas WHERE LOWER(name) = LOWER(?) LIMIT 1', [name]);
-      if (areaMatch.isNotEmpty) return areaMatch.first['id'] as String;
     }
 
-    // Ensure default_area and default_street exist for foreign key safety
+    final rName = (roadName ?? '').trim();
+    if (rName.isNotEmpty) {
+      final locMatch = await db.rawQuery(
+        'SELECT id FROM locations WHERE LOWER(TRIM(name)) = LOWER(?) AND (location_kind != ? OR parent_location_id IS NOT NULL) LIMIT 1',
+        [rName, 'area'],
+      );
+      if (locMatch.isNotEmpty) return locMatch.first['id'] as String;
+      final streetMatch = await db.rawQuery(
+        'SELECT id FROM streets WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1',
+        [rName],
+      );
+      if (streetMatch.isNotEmpty) return streetMatch.first['id'] as String;
+    }
+
+    // 5. Area Name / Locality Name matching
+    final name = (areaOrStreetName ?? areaName ?? '').trim();
+    if (name.isNotEmpty) {
+      // Look for road matching name
+      final locRoadMatch = await db.rawQuery(
+        'SELECT id FROM locations WHERE LOWER(TRIM(name)) = LOWER(?) AND (location_kind != ? OR parent_location_id IS NOT NULL) LIMIT 1',
+        [name, 'area'],
+      );
+      if (locRoadMatch.isNotEmpty) return locRoadMatch.first['id'] as String;
+
+      final streetMatch = await db.rawQuery(
+        'SELECT id FROM streets WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1',
+        [name],
+      );
+      if (streetMatch.isNotEmpty) return streetMatch.first['id'] as String;
+
+      // If matched an area, return that area directly without remapping to child roads
+      final areaLocMatch = await db.rawQuery(
+        'SELECT id FROM locations WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1',
+        [name],
+      );
+      if (areaLocMatch.isNotEmpty) {
+        return areaLocMatch.first['id'] as String;
+      }
+
+      final legacyAreaMatch = await db.rawQuery(
+        'SELECT id FROM areas WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1',
+        [name],
+      );
+      if (legacyAreaMatch.isNotEmpty) {
+        return legacyAreaMatch.first['id'] as String;
+      }
+    }
+
+    // 6. Ensure default_area and default_street exist for foreign key safety
     final defaultAreaCheck = await db.query('areas', where: 'id = ?', whereArgs: ['default_area']);
     if (defaultAreaCheck.isEmpty) {
       await db.insert('areas', {
@@ -471,6 +578,7 @@ class CustomerOrderSyncService {
       await _ensureSupabaseAuth();
       final client = Supabase.instance.client;
       final db = await DatabaseHelper.instance.database;
+      await DatabaseHelper.ensureGoogleAccountAreaExists(db);
 
       final List<dynamic> remoteCusts = await client.from('customers').select('*');
       for (final rc in remoteCusts) {
@@ -491,9 +599,15 @@ class CustomerOrderSyncService {
         final name = (rc['name']?.toString() ?? '').trim();
         final address = (rc['address']?.toString() ?? '').trim();
         final codeRaw = (rc['customer_code']?.toString() ?? '').trim();
+        final remoteSubRoadId = (rc['sub_road_id']?.toString() ?? '').trim();
+        final remoteRoadId = (rc['road_id']?.toString() ?? '').trim();
+        final remoteAreaId = (rc['area_id']?.toString() ?? '').trim();
+        final remoteSubRoadName = (rc['sub_road_name']?.toString() ?? '').trim();
+        final remoteRoadName = (rc['road_name']?.toString() ?? '').trim();
+        final remoteAreaName = (rc['area_name']?.toString() ?? '').trim();
         final remoteStreetId = (rc['street_id']?.toString() ?? rc['location_id']?.toString() ?? rc['delivery_area_id']?.toString() ?? '').trim();
         final remoteHouseNo = (rc['house_number']?.toString() ?? rc['house_no']?.toString() ?? '').trim();
-        final remoteLocality = (rc['locality']?.toString() ?? rc['area_name']?.toString() ?? rc['delivery_area']?.toString() ?? '').trim();
+        final remoteLocality = (rc['locality']?.toString() ?? (remoteAreaName.isNotEmpty ? remoteAreaName : (rc['delivery_area']?.toString() ?? ''))).trim();
         final bool isGuest = (rc['is_guest'] == true || rc['is_guest'] == 1 || codeRaw.isEmpty);
 
         // Deduplicated check: query by ID, by code, by phone, or by name + house
@@ -533,18 +647,55 @@ class CustomerOrderSyncService {
           }
         }
 
-        if (existing.isEmpty && name.isNotEmpty && remoteHouseNo.isNotEmpty) {
-          existing = await db.rawQuery(
-            'SELECT * FROM customers WHERE LOWER(TRIM(name)) = ? AND house_number = ? LIMIT 1',
-            [name.toLowerCase(), remoteHouseNo],
-          );
-        }
-
         final validStreetId = await _ensureValidStreetId(
           db,
-          remoteStreetId,
-          areaOrStreetName: remoteLocality.isNotEmpty ? remoteLocality : (rc['delivery_area']?.toString() ?? ''),
+          remoteSubRoadId.isNotEmpty
+              ? remoteSubRoadId
+              : (remoteRoadId.isNotEmpty
+                  ? remoteRoadId
+                  : (remoteStreetId.isNotEmpty ? remoteStreetId : remoteAreaId)),
+          roadId: remoteRoadId,
+          subRoadId: remoteSubRoadId,
+          roadName: remoteRoadName,
+          subRoadName: remoteSubRoadName,
+          areaId: remoteAreaId,
+          areaName: remoteAreaName,
+          address: address,
+          areaOrStreetName: remoteRoadName.isNotEmpty
+              ? remoteRoadName
+              : (remoteLocality.isNotEmpty ? remoteLocality : (rc['delivery_area']?.toString() ?? '')),
         );
+
+        final bool isGoogleAuth = (rc['auth_provider']?.toString() == 'google') ||
+            (rc['google_id'] != null && rc['google_id'].toString().isNotEmpty);
+        const googleAreaId = '17aac4e9-9298-4774-927f-39e8d9369f9d';
+        const googleRoadId = 'd753890a-52a4-51a0-bb10-54ee14186df9';
+        const googleSubRoadId = 'e853890a-52a4-51a0-bb10-54ee14186df9';
+
+        String effectiveStreetId = validStreetId;
+        String effectiveLocationId = validStreetId;
+
+        if (isGoogleAuth) {
+          if (remoteSubRoadId == googleSubRoadId ||
+              remoteAreaId == googleAreaId ||
+              remoteRoadId == googleRoadId ||
+              validStreetId == 'default_street' ||
+              validStreetId == 'unassigned' ||
+              validStreetId == googleRoadId ||
+              (remoteSubRoadId.isEmpty && remoteRoadId.isEmpty && remoteStreetId.isEmpty)) {
+            effectiveStreetId = googleSubRoadId;
+            effectiveLocationId = googleRoadId;
+          }
+        }
+
+        if (existing.isEmpty && name.isNotEmpty && remoteHouseNo.isNotEmpty && validStreetId.isNotEmpty && validStreetId != 'default_street') {
+          if (normPhone.isEmpty || normPhone == '0000000000') {
+            existing = await db.rawQuery(
+              'SELECT * FROM customers WHERE LOWER(TRIM(name)) = ? AND house_number = ? AND (street_id = ? OR location_id = ?) LIMIT 1',
+              [name.toLowerCase(), remoteHouseNo, validStreetId, validStreetId],
+            );
+          }
+        }
 
         if (existing.isEmpty) {
           // Insert new remote customer / guest into SQLite
@@ -554,7 +705,7 @@ class CustomerOrderSyncService {
               'id': rawId,
               'name': name.isNotEmpty ? name : (isGuest ? 'Guest Customer' : 'Customer'),
               'phone1': phone,
-              'phone2': '',
+              'phone2': (rc['previous_phone']?.toString() ?? '').trim(),
               'whatsapp': phone,
               'house_number': remoteHouseNo,
               'address': address,
@@ -580,9 +731,12 @@ class CustomerOrderSyncService {
               'customer_code': codeRaw,
               'auth_provider': rc['auth_provider'] ?? 'phone_password',
               'google_id': rc['google_id']?.toString() ?? '',
+              'email': (rc['email']?.toString() ?? '').trim(),
               'is_new_customer': (rc['is_new_customer'] == true || rc['is_new_customer'] == 1) ? 1 : 0,
-              'street_id': validStreetId,
-              'location_id': validStreetId,
+              'street_id': effectiveStreetId,
+              'location_id': effectiveLocationId,
+              if (rc['latitude'] != null) 'latitude': (rc['latitude'] as num?)?.toDouble() ?? 0.0,
+              if (rc['longitude'] != null) 'longitude': (rc['longitude'] as num?)?.toDouble() ?? 0.0,
             },
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
@@ -598,24 +752,54 @@ class CustomerOrderSyncService {
 
           final targetId = (existingId != rawId) ? rawId : existingId;
           final existingLocalCode = (existing.first['customer_code'] as String? ?? '').trim();
-          final existingLocalStreet = (existing.first['street_id'] as String? ?? '').trim();
+          final existingStreetId = (existing.first['street_id'] as String? ?? '').trim();
+          final localPhone1 = (existing.first['phone1'] as String? ?? '').trim();
+          final localPhone2 = (existing.first['phone2'] as String? ?? '').trim();
+          final remotePrevPhone = (rc['previous_phone']?.toString() ?? '').trim();
+
+          String updatedPhone1 = localPhone1;
+          String updatedPhone2 = localPhone2;
+
+          if (phone.isNotEmpty && phone != localPhone1) {
+            updatedPhone1 = phone;
+            updatedPhone2 = localPhone1.isNotEmpty
+                ? localPhone1
+                : (remotePrevPhone.isNotEmpty ? remotePrevPhone : localPhone2);
+          } else if (updatedPhone2.isEmpty && remotePrevPhone.isNotEmpty) {
+            updatedPhone2 = remotePrevPhone;
+          }
+
+          final shouldUpdateStreet = (!isGoogleAuth && validStreetId.isNotEmpty &&
+              (existingStreetId.isEmpty ||
+                  (existingStreetId != effectiveStreetId && validStreetId != 'default_street' &&
+                      (remoteRoadId.isNotEmpty ||
+                          remoteSubRoadId.isNotEmpty ||
+                          remoteAreaId.isNotEmpty ||
+                          remoteStreetId.isNotEmpty)))) ||
+              (isGoogleAuth && (existingStreetId.isEmpty || existingStreetId == 'unassigned' || existingStreetId == 'default_street' || existingStreetId == googleRoadId));
 
           await db.update(
             'customers',
             {
               'is_guest': isGuest ? 1 : 0,
               if (existingLocalCode.isEmpty && codeRaw.isNotEmpty) 'customer_code': codeRaw,
-              if ((existingLocalStreet.isEmpty || existingLocalStreet == 'default_street') && remoteStreetId.isNotEmpty) ...{
-                'street_id': validStreetId,
-                'location_id': validStreetId,
+              if (shouldUpdateStreet) ...{
+                'street_id': effectiveStreetId,
+                'location_id': effectiveLocationId,
               },
+              if (updatedPhone1.isNotEmpty) 'phone1': updatedPhone1,
+              if (updatedPhone2.isNotEmpty) 'phone2': updatedPhone2,
+              if (updatedPhone1.isNotEmpty) 'whatsapp': updatedPhone1,
               if (rc['auth_provider'] != null) 'auth_provider': rc['auth_provider'],
               if (rc['google_id'] != null) 'google_id': rc['google_id'],
+              if (rc['email'] != null) 'email': rc['email'].toString().trim(),
               if (rc['is_new_customer'] != null) 'is_new_customer': (rc['is_new_customer'] == true || rc['is_new_customer'] == 1) ? 1 : 0,
               if (name.isNotEmpty) 'name': name,
               if (address.isNotEmpty) 'address': address,
               if (remoteHouseNo.isNotEmpty) 'house_number': remoteHouseNo,
               if (remoteLocality.isNotEmpty) 'locality': remoteLocality,
+              if (rc['latitude'] != null) 'latitude': (rc['latitude'] as num?)?.toDouble(),
+              if (rc['longitude'] != null) 'longitude': (rc['longitude'] as num?)?.toDouble(),
               'updated_at': DateTime.now().toIso8601String(),
             },
             where: 'id = ?',
@@ -915,6 +1099,15 @@ class CustomerOrderSyncService {
       final client = Supabase.instance.client;
       final db = await DatabaseHelper.instance.database;
 
+      final Set<String> deletedLocationIds = {};
+      try {
+        final delRows = await db.query('deleted_locations', columns: ['id']);
+        for (final r in delRows) {
+          final delId = (r['id'] as String? ?? '').trim();
+          if (delId.isNotEmpty) deletedLocationIds.add(delId);
+        }
+      } catch (_) {}
+
       // 0. Pre-fetch existing remote areas, roads, and sub-roads to preserve existing Supabase IDs
       // and prevent unique constraint violations on (name) and (area_id, name).
       final Map<String, Map<String, dynamic>> remoteAreasByName = {};
@@ -969,6 +1162,13 @@ class CustomerOrderSyncService {
           final areaName = (ea['name'] as String? ?? '').trim();
           if (areaName.isEmpty) continue;
 
+          if (deletedLocationIds.contains(areaId)) {
+            try {
+              await client.from('areas').delete().eq('id', areaId);
+            } catch (_) {}
+            continue;
+          }
+
           // Match by ID OR by name
           final existingLoc = await db.query(
             'locations',
@@ -985,8 +1185,6 @@ class CustomerOrderSyncService {
               await db.rawUpdate("UPDATE locations SET parent_location_id = ? WHERE parent_location_id = ?", [areaId, oldId]);
               await db.rawUpdate("UPDATE locations SET materialized_path = REPLACE(materialized_path, ?, ?) WHERE materialized_path LIKE ?", ['/$oldId/', '/$areaId/', '%/$oldId/%']);
               await db.rawUpdate("UPDATE streets SET area_id = ? WHERE area_id = ?", [areaId, oldId]);
-              await db.rawUpdate("UPDATE customers SET street_id = ? WHERE street_id = ?", [areaId, oldId]);
-              await db.rawUpdate("UPDATE customers SET location_id = ? WHERE location_id = ?", [areaId, oldId]);
             } else {
               await db.update('locations', {'name': areaName, 'updated_at': nowIso}, where: 'id = ?', whereArgs: [areaId]);
               try {
@@ -1029,6 +1227,13 @@ class CustomerOrderSyncService {
           final roadName = (er['name'] as String? ?? '').trim();
           final areaId = (er['area_id'] as String? ?? '').trim();
           if (roadName.isEmpty || areaId.isEmpty) continue;
+
+          if (deletedLocationIds.contains(roadId) || deletedLocationIds.contains(areaId)) {
+            try {
+              await client.from('roads').delete().eq('id', roadId);
+            } catch (_) {}
+            continue;
+          }
 
           final existingLoc = await db.query(
             'locations',
@@ -1075,8 +1280,61 @@ class CustomerOrderSyncService {
             } catch (_) {}
           }
         }
+
+        for (final esr in existingSubRoads) {
+          final subRoadId = esr['id'] as String;
+          final subRoadName = (esr['name'] as String? ?? '').trim();
+          final roadId = (esr['road_id'] as String? ?? '').trim();
+          if (subRoadId.isEmpty || subRoadName.isEmpty || roadId.isEmpty) continue;
+
+          if (deletedLocationIds.contains(subRoadId) || deletedLocationIds.contains(roadId)) {
+            try {
+              await client.from('sub_roads').delete().eq('id', subRoadId);
+            } catch (_) {}
+            continue;
+          }
+
+          final parentRoadLoc = await db.query('locations', where: 'id = ?', whereArgs: [roadId], limit: 1);
+          final parentPath = parentRoadLoc.isNotEmpty
+              ? (parentRoadLoc.first['materialized_path'] as String? ?? '/$roadId/')
+              : '/$roadId/';
+          final subRoadPath = parentPath.endsWith('/')
+              ? '$parentPath$subRoadId/'
+              : '$parentPath/$subRoadId/';
+
+          final existingLoc = await db.query('locations', where: 'id = ?', whereArgs: [subRoadId], limit: 1);
+          if (existingLoc.isNotEmpty) {
+            await db.update('locations', {
+              'name': subRoadName,
+              'parent_location_id': roadId,
+              'materialized_path': subRoadPath,
+              'updated_at': nowIso,
+            }, where: 'id = ?', whereArgs: [subRoadId]);
+          } else {
+            await db.insert('locations', {
+              'id': subRoadId,
+              'parent_location_id': roadId,
+              'name': subRoadName,
+              'location_kind': 'sub_road',
+              'sequence_key': '001.001.001',
+              'depth': 2,
+              'materialized_path': subRoadPath,
+              'is_archived': 0,
+              'created_at': nowIso,
+              'updated_at': nowIso,
+            }, conflictAlgorithm: ConflictAlgorithm.replace);
+            try {
+              await db.insert('streets', {
+                'id': subRoadId,
+                'area_id': roadId,
+                'name': subRoadName,
+                'created_at': nowIso,
+              }, conflictAlgorithm: ConflictAlgorithm.replace);
+            } catch (_) {}
+          }
+        }
       } catch (e) {
-        debugPrint('[SYNC] Error caching remote areas/roads to local SQLite: $e');
+        debugPrint('[SYNC] Error caching remote areas/roads/sub_roads to local SQLite: $e');
       }
 
       // Try to query the new hierarchical locations table
@@ -1124,6 +1382,7 @@ class CustomerOrderSyncService {
         // 1. Upload Areas (depth == 0)
         for (final loc in rootLocations) {
           final localId = loc['id'] as String;
+          if (deletedLocationIds.contains(localId)) continue;
           final name = (loc['name'] as String? ?? '').trim();
           if (name.isEmpty) continue;
 
@@ -1146,19 +1405,28 @@ class CustomerOrderSyncService {
           final isActive = (loc['is_active'] == null || loc['is_active'] == 1 || loc['is_active'] == true || loc['is_active'].toString() == 'true');
 
           try {
-            await client.from('areas').upsert({
-              'id': supabaseId,
-              'area_code': areaCode,
-              'name': name,
-              'delivery_schedule': sched,
-              'cutoff_time': cutoffTime,
-              'is_active_override': isActive,
-            }, onConflict: 'name');
-            remoteAreasByName[name.toLowerCase()] = {
-              'id': supabaseId,
-              'name': name,
-              'area_code': areaCode,
-            };
+            if (existingRemote != null) {
+              await client.from('areas').update({
+                'name': name,
+                'delivery_schedule': sched,
+                'cutoff_time': cutoffTime,
+                'is_active_override': isActive,
+              }).eq('id', existingRemote['id']);
+            } else {
+              await client.from('areas').upsert({
+                'id': supabaseId,
+                'area_code': areaCode,
+                'name': name,
+                'delivery_schedule': sched,
+                'cutoff_time': cutoffTime,
+                'is_active_override': isActive,
+              }, onConflict: 'id');
+              remoteAreasByName[name.toLowerCase()] = {
+                'id': supabaseId,
+                'name': name,
+                'area_code': areaCode,
+              };
+            }
             areasUploaded++;
           } catch (e) {
             areasFailed++;
@@ -1170,6 +1438,7 @@ class CustomerOrderSyncService {
         for (final loc in depth1Locations) {
           final localId = loc['id'] as String;
           final localAreaId = loc['parent_location_id'] as String;
+          if (deletedLocationIds.contains(localId) || deletedLocationIds.contains(localAreaId)) continue;
           final name = (loc['name'] as String? ?? '').trim();
           if (name.isEmpty || localAreaId.isEmpty) continue;
 
@@ -1217,6 +1486,7 @@ class CustomerOrderSyncService {
 
           final areaLocalId = ancestors[0]['id'] as String;
           final roadLocalId = ancestors[1]['id'] as String;
+          if (deletedLocationIds.contains(localId) || deletedLocationIds.contains(roadLocalId) || deletedLocationIds.contains(areaLocalId)) continue;
           final areaName = (ancestors[0]['name'] as String? ?? '').trim().toLowerCase();
           final roadName = (ancestors[1]['name'] as String? ?? '').trim().toLowerCase();
 
@@ -1458,6 +1728,22 @@ class CustomerOrderSyncService {
         }
       }
 
+      final Map<String, List<Map<String, dynamic>>> variantsByParentId = {};
+      try {
+        final List<Map<String, dynamic>> allVariants = await db.query(
+          'item_variants',
+          orderBy: 'sequence_no ASC, created_at ASC',
+        );
+        for (final v in allVariants) {
+          final parentId = v['parent_item_id']?.toString() ?? '';
+          if (parentId.isNotEmpty) {
+            variantsByParentId.putIfAbsent(parentId, () => []).add(v);
+          }
+        }
+      } catch (e) {
+        debugPrint('[SYNC] Notice: item_variants table query: $e');
+      }
+
       for (final item in items) {
         final localId = item['id'] as String;
         final name = (item['name'] as String? ?? '').trim();
@@ -1492,7 +1778,26 @@ class CustomerOrderSyncService {
         final int sequenceNo = (item['sequence_no'] as num?)?.toInt() ?? 0;
         final String notes = (item['description'] as String? ?? '').trim();
 
-        final extra = {
+        final localVariants = variantsByParentId[localId] ?? [];
+        final List<Map<String, dynamic>> variantsList = localVariants.map((v) => {
+          'id': v['id']?.toString() ?? '',
+          'name': (v['variant_label'] ?? v['name'] ?? '').toString(),
+          'variant_label': (v['variant_label'] ?? v['name'] ?? '').toString(),
+          'price': (v['selling_price'] as num?)?.toDouble() ?? 0.0,
+          'selling_price': (v['selling_price'] as num?)?.toDouble() ?? 0.0,
+          'mrp': (v['market_price'] as num?)?.toDouble() ?? 0.0,
+          'market_price': (v['market_price'] as num?)?.toDouble() ?? 0.0,
+          'cost_price': (v['cost_price'] as num?)?.toDouble() ?? 0.0,
+          'stock': (v['stock'] as num?)?.toDouble() ?? 0.0,
+          'unit': (v['unit'] ?? 'pack').toString(),
+          'barcode': (v['barcode'] ?? '').toString(),
+          'photo_path': (v['photo_path'] ?? v['image_path'] ?? '').toString(),
+          'image_path': (v['photo_path'] ?? v['image_path'] ?? '').toString(),
+          'is_available': (v['is_available'] == 1 || v['is_available'] == true || v['is_available']?.toString() == '1'),
+          'sequence_no': (v['sequence_no'] as num?)?.toInt() ?? 0,
+        }).toList();
+
+        final extra = <String, dynamic>{
           'text': notes,
           'cost_price': costPrice,
           'market_price': marketPrice,
@@ -1510,6 +1815,42 @@ class CustomerOrderSyncService {
           'photo_path': photoPath,
           'sequence_no': sequenceNo,
         };
+
+        if (variantsList.isNotEmpty) {
+          extra['variants'] = variantsList;
+        } else if (matchingRemote != null) {
+          final rDesc = matchingRemote['description'] as String? ?? '';
+          if (rDesc.trim().startsWith('{') && rDesc.trim().endsWith('}')) {
+            try {
+              final rDecoded = json.decode(rDesc);
+              if (rDecoded is Map && rDecoded['variants'] is List && (rDecoded['variants'] as List).isNotEmpty) {
+                final rVars = rDecoded['variants'] as List;
+                for (final rv in rVars) {
+                  if (rv is Map) {
+                    final vId = rv['id']?.toString() ?? const Uuid().v4();
+                    await db.insert('item_variants', {
+                      'id': vId,
+                      'parent_item_id': localId,
+                      'variant_label': (rv['variant_label'] ?? rv['name'] ?? '').toString(),
+                      'selling_price': (rv['selling_price'] ?? rv['price'] as num?)?.toDouble() ?? 0.0,
+                      'cost_price': (rv['cost_price'] as num?)?.toDouble() ?? 0.0,
+                      'market_price': (rv['market_price'] ?? rv['mrp'] as num?)?.toDouble() ?? 0.0,
+                      'stock': (rv['stock'] as num?)?.toDouble() ?? 0.0,
+                      'unit': (rv['unit'] ?? 'pack').toString(),
+                      'barcode': (rv['barcode'] ?? '').toString(),
+                      'photo_path': (rv['photo_path'] ?? rv['image_path'] ?? '').toString(),
+                      'is_available': (rv['is_available'] == false || rv['is_available'] == 0 || rv['is_available']?.toString() == '0' || rv['is_available']?.toString().toLowerCase() == 'false') ? 0 : 1,
+                      'sequence_no': (rv['sequence_no'] as num?)?.toInt() ?? 0,
+                      'created_at': DateTime.now().toIso8601String(),
+                      'updated_at': DateTime.now().toIso8601String(),
+                    }, conflictAlgorithm: ConflictAlgorithm.replace);
+                  }
+                }
+                extra['variants'] = rVars;
+              }
+            } catch (_) {}
+          }
+        }
 
         final double orderNowStock = (item['order_now_stock'] as num?)?.toDouble() ?? 0.0;
         final double orderNowPrice = (item['order_now_selling_price'] as num?)?.toDouble() ?? (item['order_now_price'] as num?)?.toDouble() ?? 0.0;
@@ -1685,7 +2026,120 @@ class CustomerOrderSyncService {
         }
       }
 
-      debugPrint('[SYNC] Categories: $categoriesSynced, Products: $productsUploaded uploaded, $productsFailed failed');
+      // 4. Ingest remote products added from 37 Admin that do NOT exist locally in SQLite
+      final Set<String> localIds = items.map((i) => (i['id'] ?? '').toString().toLowerCase()).toSet();
+      final Set<String> localNames = items.map((i) => (i['name'] ?? '').toString().toLowerCase().trim()).toSet();
+
+      int remoteProductsIngested = 0;
+      for (final rp in productsJson) {
+        if (rp is! Map) continue;
+        final rpId = (rp['id'] ?? '').toString().toLowerCase();
+        final rpName = (rp['name'] ?? '').toString().trim();
+        final rpNameLower = rpName.toLowerCase();
+        
+        if (rpName.isEmpty) continue;
+        if (localIds.contains(rpId) || localNames.contains(rpNameLower)) continue;
+
+        try {
+          String catName = 'Groceries';
+          final dynamic catData = rp['categories'];
+          if (catData is Map) {
+            catName = catData['name']?.toString() ?? 'Groceries';
+          } else if (rp['category_name'] != null) {
+            catName = rp['category_name'].toString();
+          }
+
+          final rawDesc = (rp['description'] ?? '').toString();
+          double costPrice = (rp['cost_price'] as num?)?.toDouble() ?? 0.0;
+          double marketPrice = (rp['mrp'] as num?)?.toDouble() ?? (rp['market_price'] as num?)?.toDouble() ?? 0.0;
+          double minStock = (rp['min_stock'] as num?)?.toDouble() ?? 0.0;
+          double weightPerPiece = (rp['weight_per_piece'] as num?)?.toDouble() ?? 0.25;
+          int seqNo = (rp['sequence_no'] as num?)?.toInt() ?? 0;
+          String photoPath = (rp['image_path'] as String? ?? rp['photo_path'] as String? ?? '').trim();
+          String barcode = '';
+
+          List<dynamic> remoteVariants = [];
+          if (rawDesc.trim().startsWith('{') && rawDesc.trim().endsWith('}')) {
+            try {
+              final decoded = json.decode(rawDesc);
+              if (decoded is Map) {
+                costPrice = (decoded['cost_price'] as num?)?.toDouble() ?? costPrice;
+                marketPrice = (decoded['market_price'] as num?)?.toDouble() ?? (decoded['mrp'] as num?)?.toDouble() ?? marketPrice;
+                minStock = (decoded['min_stock'] as num?)?.toDouble() ?? minStock;
+                barcode = (decoded['barcode'] as String? ?? '').trim();
+                photoPath = photoPath.isNotEmpty ? photoPath : (decoded['photo_path'] as String? ?? '').trim();
+                seqNo = (decoded['sequence_no'] as num?)?.toInt() ?? seqNo;
+                if (decoded['variants'] is List) {
+                  remoteVariants = decoded['variants'] as List;
+                }
+              }
+            } catch (_) {}
+          }
+
+          final String localNewId = rp['id']?.toString() ?? const Uuid().v4();
+          await db.insert(
+            'items',
+            {
+              'id': localNewId,
+              'name': rpName,
+              'category': catName,
+              'cost_price': costPrice,
+              'selling_price': (rp['selling_price'] as num?)?.toDouble() ?? (rp['price'] as num?)?.toDouble() ?? 0.0,
+              'stock': (rp['stock'] as num?)?.toDouble() ?? 0.0,
+              'min_stock': minStock,
+              'unit': (rp['unit'] as String? ?? 'kg').trim(),
+              'barcode': barcode,
+              'weight_per_piece': weightPerPiece,
+              'photo_path': photoPath,
+              'sequence_no': seqNo,
+              'order_now_stock': (rp['order_now_stock'] as num?)?.toDouble() ?? 0.0,
+              'order_now_selling_price': (rp['order_now_selling_price'] as num?)?.toDouble() ?? (rp['order_now_price'] as num?)?.toDouble() ?? 0.0,
+              'order_now_mrp': (rp['order_now_mrp'] as num?)?.toDouble() ?? 0.0,
+              'order_now_cost_price': (rp['order_now_cost_price'] as num?)?.toDouble() ?? 0.0,
+              'is_available': (rp['is_available'] == false || rp['is_available'] == 0 || rp['is_available']?.toString() == '0' || rp['is_available']?.toString().toLowerCase() == 'false') ? 0 : 1,
+              'order_now_is_available': (rp['order_now_is_available'] == true || rp['order_now_is_available'] == 1 || rp['order_now_is_available']?.toString() == '1' || rp['order_now_is_available']?.toString().toLowerCase() == 'true') ? 1 : 0,
+              'created_at': rp['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+              'updated_at': rp['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+
+          // Ingest variants if present
+          for (final rv in remoteVariants) {
+            if (rv is Map) {
+              final vId = rv['id']?.toString() ?? const Uuid().v4();
+              await db.insert('item_variants', {
+                'id': vId,
+                'parent_item_id': localNewId,
+                'variant_label': (rv['variant_label'] ?? rv['name'] ?? '').toString(),
+                'selling_price': (rv['selling_price'] ?? rv['price'] as num?)?.toDouble() ?? 0.0,
+                'cost_price': (rv['cost_price'] as num?)?.toDouble() ?? 0.0,
+                'market_price': (rv['market_price'] ?? rv['mrp'] as num?)?.toDouble() ?? 0.0,
+                'stock': (rv['stock'] as num?)?.toDouble() ?? 0.0,
+                'unit': (rv['unit'] ?? 'pack').toString(),
+                'barcode': (rv['barcode'] ?? '').toString(),
+                'photo_path': (rv['photo_path'] ?? rv['image_path'] ?? '').toString(),
+                'image_path': (rv['photo_path'] ?? rv['image_path'] ?? '').toString(),
+                'is_available': (rv['is_available'] == false || rv['is_available'] == 0 || rv['is_available']?.toString() == '0' || rv['is_available']?.toString().toLowerCase() == 'false') ? 0 : 1,
+                'sequence_no': (rv['sequence_no'] as num?)?.toInt() ?? 0,
+                'created_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
+              }, conflictAlgorithm: ConflictAlgorithm.replace);
+            }
+          }
+
+          remoteProductsIngested++;
+          localIds.add(localNewId.toLowerCase());
+          localNames.add(rpNameLower);
+        } catch (e) {
+          debugPrint('[SYNC] Failed to ingest remote product "$rpName": $e');
+        }
+      }
+      if (remoteProductsIngested > 0) {
+        debugPrint('[SYNC] Ingested $remoteProductsIngested new products from 37 Admin into OrderKart SQLite');
+      }
+
+      debugPrint('[SYNC] Categories: $categoriesSynced, Products: $productsUploaded uploaded, $productsFailed failed, $remoteProductsIngested ingested');
     } catch (e) {
       debugPrint('SyncService: Error during syncInventory: $e');
     }
@@ -1798,12 +2252,21 @@ class CustomerOrderSyncService {
               .eq('order_id', orderId);
 
           double itemsSubtotal = 0.0;
+          final Set<String> seenCalculatedKeys = {};
           for (var item in items) {
+            final String remoteItemId = item['product_id'] ?? '';
+            final String itemName = (item['product_name'] as String? ?? 'Item').trim();
+            final String itemUnit = (item['unit'] as String? ?? 'kg').trim();
+            final itemKey = '${remoteItemId.toLowerCase()}_${itemName.toLowerCase()}_${itemUnit.toLowerCase()}';
+            if (seenCalculatedKeys.contains(itemKey)) continue;
+            seenCalculatedKeys.add(itemKey);
+
             final double qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
             final double unitPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
             final double subtotal = (item['total_price'] as num?)?.toDouble() ?? (qty * unitPrice);
             itemsSubtotal += subtotal;
           }
+          itemsSubtotal = (itemsSubtotal * 100).round() / 100.0;
 
           // 2. NOW execute instantaneous SQLite transaction (<1ms)
           final Set<String> restoredItemIds = {};
@@ -1899,8 +2362,10 @@ class CustomerOrderSyncService {
                   'phone1': customerPhone,
                   'phone2': '',
                   'whatsapp': customerPhone,
-                  'house_number': ord['houseNumber'] ?? '',
+                  'house_number': ord['house_number'] ?? ord['delivery_address'] ?? '',
                   'address': ord['delivery_address'] ?? '',
+                  if (ord['latitude'] != null) 'latitude': (ord['latitude'] as num?)?.toDouble() ?? 0.0,
+                  if (ord['longitude'] != null) 'longitude': (ord['longitude'] as num?)?.toDouble() ?? 0.0,
                   'outstanding_balance': 0.0,
                   'total_orders': 0,
                   'total_paid': 0.0,
@@ -1921,9 +2386,12 @@ class CustomerOrderSyncService {
             final String serverStatus = ord['status'] ?? 'Confirmed';
             final double grandTotal = (ord['total_amount'] as num?)?.toDouble() ?? 0.0;
 
-            final double calculatedDeliveryCharge = (grandTotal > itemsSubtotal + 0.05 && itemsSubtotal > 0)
-                ? (grandTotal - itemsSubtotal)
-                : 0.0;
+            final remoteDeliveryFee = (ord['delivery_charge'] as num?)?.toDouble();
+            final remotePosRounding = (ord['pos_rounding'] as num?)?.toDouble() ?? 0.0;
+            final double calculatedDeliveryCharge = remoteDeliveryFee ??
+                ((grandTotal - remotePosRounding > itemsSubtotal + 0.05 && itemsSubtotal > 0)
+                    ? (grandTotal - remotePosRounding - itemsSubtotal)
+                    : 0.0);
             final double actualSubtotal = itemsSubtotal > 0 ? itemsSubtotal : grandTotal;
 
             if (orderCheck.isEmpty) {
@@ -1948,14 +2416,40 @@ class CustomerOrderSyncService {
                 'order_type': ord['order_type'] ?? 'Normal',
                 'order_taking_date': ord['order_taking_date'],
                 'delivery_date': ord['delivery_date']?.toString(),
+                'estimated_delivery_time': (ord['estimated_delivery_time'] == null ||
+                        ord['estimated_delivery_time'].toString().trim().isEmpty ||
+                        ord['estimated_delivery_time'].toString().trim().toLowerCase() == 'null')
+                    ? null
+                    : ord['estimated_delivery_time']?.toString().trim(),
+                'estimated_delivery_at': (ord['estimated_delivery_at'] == null ||
+                        ord['estimated_delivery_at'].toString().trim().isEmpty ||
+                        ord['estimated_delivery_at'].toString().trim().toLowerCase() == 'null')
+                    ? null
+                    : ord['estimated_delivery_at']?.toString().trim(),
+                'accepted_at': (ord['accepted_at'] == null ||
+                        ord['accepted_at'].toString().trim().isEmpty ||
+                        ord['accepted_at'].toString().trim().toLowerCase() == 'null')
+                    ? null
+                    : ord['accepted_at']?.toString().trim(),
+                'is_new_customer_order': (ord['is_new_customer_order'] == true || ord['is_new_customer_order'] == 1) ? 1 : 0,
                 'sync_status': 'synced',
                 'order_number': ord['order_number'],
+                if (ord['latitude'] != null) 'latitude': (ord['latitude'] as num?)?.toDouble(),
+                if (ord['longitude'] != null) 'longitude': (ord['longitude'] as num?)?.toDouble(),
               });
 
+              final Set<String> insertedItemKeys = {};
               for (var item in items) {
                 final String remoteItemId = item['product_id'] ?? '';
                 final String localItemId = uuidToLocalId[remoteItemId] ?? remoteItemId;
-                final String itemName = item['product_name'] ?? 'Item';
+                final String itemName = (item['product_name'] as String? ?? 'Item').trim();
+                final String itemUnit = (item['unit'] as String? ?? 'kg').trim();
+                final itemKey = '${remoteItemId.toLowerCase()}_${itemName.toLowerCase()}_${itemUnit.toLowerCase()}';
+                if (insertedItemKeys.contains(itemKey)) {
+                  continue;
+                }
+                insertedItemKeys.add(itemKey);
+
                 final double qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
                 final double unitPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
                 final double subtotal = (item['total_price'] as num?)?.toDouble() ?? (qty * unitPrice);
@@ -1969,7 +2463,7 @@ class CustomerOrderSyncService {
                   'order_id': orderId,
                   'item_id': localItemId,
                   'item_name': itemName,
-                  'item_unit': item['unit'] ?? 'kg',
+                  'item_unit': itemUnit,
                   'quantity': qty,
                   'unit_price': unitPrice,
                   'total_price': isItemAvailable ? subtotal : 0.0,
@@ -2112,10 +2606,18 @@ class CustomerOrderSyncService {
               // Update order items from Supabase
               if (items.isNotEmpty) {
                 await txn.delete('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+                final Set<String> insertedItemKeys = {};
                 for (var item in items) {
                   final String remoteItemId = item['product_id'] ?? '';
                   final String localItemId = uuidToLocalId[remoteItemId] ?? remoteItemId;
-                  final String itemName = item['product_name'] ?? 'Item';
+                  final String itemName = (item['product_name'] as String? ?? 'Item').trim();
+                  final String itemUnit = (item['unit'] as String? ?? 'kg').trim();
+                  final itemKey = '${remoteItemId.toLowerCase()}_${itemName.toLowerCase()}_${itemUnit.toLowerCase()}';
+                  if (insertedItemKeys.contains(itemKey)) {
+                    continue;
+                  }
+                  insertedItemKeys.add(itemKey);
+
                   final double qty = (item['quantity'] as num?)?.toDouble() ?? 1.0;
                   final double unitPrice = (item['price'] as num?)?.toDouble() ?? 0.0;
                   final double subtotal = (item['total_price'] as num?)?.toDouble() ?? (qty * unitPrice);
@@ -2129,7 +2631,7 @@ class CustomerOrderSyncService {
                     'order_id': orderId,
                     'item_id': localItemId,
                     'item_name': itemName,
-                    'item_unit': item['unit'] ?? 'kg',
+                    'item_unit': itemUnit,
                     'quantity': qty,
                     'unit_price': unitPrice,
                     'total_price': isItemAvailable ? subtotal : 0.0,
@@ -2161,9 +2663,25 @@ class CustomerOrderSyncService {
                   'order_type': remoteOrderType ?? 'Normal',
                   'order_taking_date': remoteOrderTakingDate,
                   'delivery_date': remoteDeliveryDate,
+                  if (ord['estimated_delivery_time'] != null &&
+                      ord['estimated_delivery_time'].toString().trim().isNotEmpty &&
+                      ord['estimated_delivery_time'].toString().trim().toLowerCase() != 'null')
+                    'estimated_delivery_time': ord['estimated_delivery_time']?.toString().trim(),
+                  if (ord['estimated_delivery_at'] != null &&
+                      ord['estimated_delivery_at'].toString().trim().isNotEmpty &&
+                      ord['estimated_delivery_at'].toString().trim().toLowerCase() != 'null')
+                    'estimated_delivery_at': ord['estimated_delivery_at']?.toString().trim(),
+                  if (ord['accepted_at'] != null &&
+                      ord['accepted_at'].toString().trim().isNotEmpty &&
+                      ord['accepted_at'].toString().trim().toLowerCase() != 'null')
+                    'accepted_at': ord['accepted_at']?.toString().trim(),
+                  if (ord['is_new_customer_order'] != null)
+                    'is_new_customer_order': (ord['is_new_customer_order'] == true || ord['is_new_customer_order'] == 1) ? 1 : 0,
                   'updated_at': ord['updated_at'] ?? DateTime.now().toIso8601String(),
                   'sync_status': 'synced',
                   'order_number': ord['order_number'],
+                  if (ord['latitude'] != null) 'latitude': (ord['latitude'] as num?)?.toDouble(),
+                  if (ord['longitude'] != null) 'longitude': (ord['longitude'] as num?)?.toDouble(),
                 },
                 where: 'id = ?',
                 whereArgs: [orderId],
@@ -2211,6 +2729,22 @@ class CustomerOrderSyncService {
   }
 
   Future<void> pushModifiedOrders() async {
+    if (_isPushingModifiedOrders) {
+      _pendingPushModifiedOrdersRequested = true;
+      return;
+    }
+    _isPushingModifiedOrders = true;
+    try {
+      do {
+        _pendingPushModifiedOrdersRequested = false;
+        await _pushModifiedOrdersInternal();
+      } while (_pendingPushModifiedOrdersRequested);
+    } finally {
+      _isPushingModifiedOrders = false;
+    }
+  }
+
+  Future<void> _pushModifiedOrdersInternal() async {
     try {
       await _ensureSupabaseAuth();
       final client = Supabase.instance.client;
@@ -2270,14 +2804,33 @@ class CustomerOrderSyncService {
 
           final serverStatus = _toServerStatus(localStatus);
 
-          // 1. Check if the order exists remotely or needs to be inserted
-          final existingRemote = await client
-              .from('orders')
-              .select('id, order_number')
-              .eq('id', remoteOrderId)
-              .maybeSingle();
+          // 1. Check if the order exists remotely by ID OR by order_number
+          Map<String, dynamic>? existingRemote;
+          try {
+            existingRemote = await client
+                .from('orders')
+                .select('id, order_number')
+                .eq('id', remoteOrderId)
+                .maybeSingle();
+          } catch (_) {}
 
-          String canonicalOrderNo = localOrderNo ?? '';
+          if (existingRemote == null && localOrderNo != null && localOrderNo.trim().isNotEmpty) {
+            try {
+              existingRemote = await client
+                  .from('orders')
+                  .select('id, order_number')
+                  .eq('order_number', localOrderNo.trim())
+                  .maybeSingle();
+            } catch (_) {}
+          }
+
+          final String effectiveRemoteOrderId = (existingRemote != null && existingRemote['id'] != null)
+              ? existingRemote['id'] as String
+              : remoteOrderId;
+
+          String canonicalOrderNo = (existingRemote != null && existingRemote['order_number'] != null)
+              ? existingRemote['order_number'].toString()
+              : (localOrderNo ?? '');
 
           if (existingRemote == null) {
             // Find customer details in local DB to populate remote order fields
@@ -2311,7 +2864,7 @@ class CustomerOrderSyncService {
             }
 
             final insertPayload = <String, dynamic>{
-              'id': remoteOrderId,
+              'id': effectiveRemoteOrderId,
               'customer_id': _getValidUuid(ord['customer_id'] as String? ?? ''),
               'customer_phone': custPhone,
               'customer_name': custName,
@@ -2322,6 +2875,18 @@ class CustomerOrderSyncService {
               'order_type': orderType ?? 'Normal',
               if (orderTakingDate != null && orderTakingDate.isNotEmpty) 'order_taking_date': orderTakingDate,
               if (deliveryDate != null && deliveryDate.isNotEmpty) 'delivery_date': deliveryDate,
+              if (ord['estimated_delivery_time'] != null &&
+                  ord['estimated_delivery_time'].toString().trim().isNotEmpty &&
+                  ord['estimated_delivery_time'].toString().trim().toLowerCase() != 'null')
+                'estimated_delivery_time': ord['estimated_delivery_time'].toString().trim(),
+              if (ord['estimated_delivery_at'] != null &&
+                  ord['estimated_delivery_at'].toString().trim().isNotEmpty &&
+                  ord['estimated_delivery_at'].toString().trim().toLowerCase() != 'null')
+                'estimated_delivery_at': ord['estimated_delivery_at'].toString().trim(),
+              if (ord['accepted_at'] != null &&
+                  ord['accepted_at'].toString().trim().isNotEmpty &&
+                  ord['accepted_at'].toString().trim().toLowerCase() != 'null')
+                'accepted_at': ord['accepted_at'].toString().trim(),
               if (localOrderNo != null && localOrderNo.isNotEmpty) 'order_number': localOrderNo,
               'order_date': ord['created_at'] ?? DateTime.now().toIso8601String(),
               'created_at': ord['created_at'] ?? DateTime.now().toIso8601String(),
@@ -2340,6 +2905,7 @@ class CustomerOrderSyncService {
             final updatePayload = <String, dynamic>{
               'total_amount': grandTotal,
               'status': serverStatus,
+              'delivery_status': serverStatus,
             };
             if (orderType != null && orderType.isNotEmpty) {
               updatePayload['order_type'] = orderType;
@@ -2350,18 +2916,53 @@ class CustomerOrderSyncService {
             if (deliveryDate != null && deliveryDate.isNotEmpty) {
               updatePayload['delivery_date'] = deliveryDate;
             }
+            final String? estTime = (ord['estimated_delivery_time'] != null &&
+                    ord['estimated_delivery_time'].toString().trim().isNotEmpty &&
+                    ord['estimated_delivery_time'].toString().trim().toLowerCase() != 'null')
+                ? ord['estimated_delivery_time'].toString().trim()
+                : null;
+            if (estTime != null) {
+              updatePayload['estimated_delivery_time'] = estTime;
+            }
+            final String? estAt = (ord['estimated_delivery_at'] != null &&
+                    ord['estimated_delivery_at'].toString().trim().isNotEmpty &&
+                    ord['estimated_delivery_at'].toString().trim().toLowerCase() != 'null')
+                ? ord['estimated_delivery_at'].toString().trim()
+                : null;
+            if (estAt != null) {
+              updatePayload['estimated_delivery_at'] = estAt;
+            }
+            final String? accAt = (ord['accepted_at'] != null &&
+                    ord['accepted_at'].toString().trim().isNotEmpty &&
+                    ord['accepted_at'].toString().trim().toLowerCase() != 'null')
+                ? ord['accepted_at'].toString().trim()
+                : null;
+            if (accAt != null) {
+              updatePayload['accepted_at'] = accAt;
+            }
             if (localOrderNo != null && localOrderNo.isNotEmpty) {
               updatePayload['order_number'] = localOrderNo;
             }
 
-            final List<dynamic> updatedOrders = await client
-                .from('orders')
-                .update(updatePayload)
-                .eq('id', remoteOrderId)
-                .select('order_number');
+            try {
+              final List<dynamic> updatedOrders = await client
+                  .from('orders')
+                  .update(updatePayload)
+                  .eq('id', effectiveRemoteOrderId)
+                  .select('order_number');
 
-            if (updatedOrders.isNotEmpty) {
-              canonicalOrderNo = updatedOrders.first['order_number'] as String? ?? canonicalOrderNo;
+              if (updatedOrders.isNotEmpty && updatedOrders.first['order_number'] != null) {
+                canonicalOrderNo = updatedOrders.first['order_number'].toString();
+              }
+            } catch (updErr) {
+              debugPrint('[SYNC-UPLOAD] Direct update failed, attempting RPC fallback: $updErr');
+              await client.rpc('update_order_delivery_status', params: {
+                'p_order_id': effectiveRemoteOrderId,
+                'p_status': serverStatus,
+                'p_estimated_delivery_time': estTime,
+                'p_estimated_delivery_at': estAt,
+                'p_accepted_at': accAt,
+              });
             }
           }
 
@@ -2373,16 +2974,17 @@ class CustomerOrderSyncService {
           );
 
           // 3. Clear remote order items
-          await client.from('order_items').delete().eq('order_id', remoteOrderId);
+          await client.from('order_items').delete().eq('order_id', effectiveRemoteOrderId);
 
-          // 4. Upload updated items
+          // 4. Upload updated items (deduplicated to prevent duplicate line items on Supabase)
           if (localItems.isNotEmpty) {
-            final itemsToInsert = localItems.map((item) {
+            final Map<String, Map<String, dynamic>> dedupedMap = {};
+            for (var item in localItems) {
               final String rawItemId = item['item_id'] as String? ?? '';
               final String itemName = (item['item_name'] as String? ?? '').trim();
               final String targetProductId = remoteProdById[rawItemId] ??
                   remoteProdByName[itemName.toLowerCase()] ??
-                  _getValidUuid(rawItemId);
+                  (rawItemId.isNotEmpty ? _getValidUuid(rawItemId) : const Uuid().v4());
 
               final double unitPrice = (item['unit_price'] as num?)?.toDouble() ?? 0.0;
               final double qty = (item['quantity'] as num?)?.toDouble() ?? 0.0;
@@ -2392,34 +2994,42 @@ class CustomerOrderSyncService {
               final bool isAvail = rawIsAvail != null
                   ? (rawIsAvail == 1 || rawIsAvail == true || rawIsAvail.toString() == '1' || rawIsAvail.toString().toLowerCase() == 'true')
                   : (totalPrice > 0.001);
+              final String itemUnit = (item['item_unit'] as String? ?? 'kg').trim();
 
-              return {
-                'id': const Uuid().v4(),
-                'order_id': remoteOrderId,
-                'product_id': targetProductId,
-                'product_name': itemName,
-                'price': unitPrice,
-                'quantity': qty,
-                'unit': (item['item_unit'] as String? ?? 'kg').trim(),
-                'total_price': totalPrice,
-                'product_name_snapshot': itemName,
-                'mrp_snapshot': mrp,
-                'selling_price_snapshot': unitPrice,
-                'line_total': totalPrice,
-                'is_available': isAvail,
-              };
-            }).toList();
+              final dedupKey = '${targetProductId}_${itemName.toLowerCase()}_${itemUnit.toLowerCase()}';
+              if (dedupedMap.containsKey(dedupKey)) {
+                // Drop duplicate line item to avoid duplicating quantity and inflating bill
+                continue;
+              } else {
+                dedupedMap[dedupKey] = {
+                  'id': const Uuid().v4(),
+                  'order_id': effectiveRemoteOrderId,
+                  'product_id': targetProductId,
+                  'product_name': itemName,
+                  'price': unitPrice,
+                  'quantity': qty,
+                  'unit': itemUnit,
+                  'total_price': totalPrice,
+                  'product_name_snapshot': itemName,
+                  'mrp_snapshot': mrp,
+                  'selling_price_snapshot': unitPrice,
+                  'line_total': totalPrice,
+                  'is_available': isAvail,
+                };
+              }
+            }
 
+            final itemsToInsert = dedupedMap.values.toList();
             await client.from('order_items').insert(itemsToInsert);
           }
 
-          // 5. Mark local order as synced & cascade remoteOrderId to SQLite if it differed
+          // 5. Mark local order as synced & cascade effectiveRemoteOrderId to SQLite if it differed
           await db.transaction((txn) async {
-            if (orderId != remoteOrderId) {
+            if (orderId != effectiveRemoteOrderId) {
               await txn.execute('PRAGMA defer_foreign_keys = ON;');
-              await txn.update('orders', {'id': remoteOrderId}, where: 'id = ?', whereArgs: [orderId]);
-              await txn.update('order_items', {'order_id': remoteOrderId}, where: 'order_id = ?', whereArgs: [orderId]);
-              await txn.update('payments', {'order_id': remoteOrderId}, where: 'order_id = ?', whereArgs: [orderId]);
+              await txn.update('orders', {'id': effectiveRemoteOrderId}, where: 'id = ?', whereArgs: [orderId]);
+              await txn.update('order_items', {'order_id': effectiveRemoteOrderId}, where: 'order_id = ?', whereArgs: [orderId]);
+              await txn.update('payments', {'order_id': effectiveRemoteOrderId}, where: 'order_id = ?', whereArgs: [orderId]);
             }
             await txn.update(
               'orders',
@@ -2428,11 +3038,11 @@ class CustomerOrderSyncService {
                 if (canonicalOrderNo.isNotEmpty) 'order_number': canonicalOrderNo,
               },
               where: 'id = ?',
-              whereArgs: [remoteOrderId],
+              whereArgs: [effectiveRemoteOrderId],
             );
           });
 
-          debugPrint('[SYNC-UPLOAD] Successfully pushed order $orderId to Supabase.');
+          debugPrint('[SYNC-UPLOAD] Successfully pushed order $orderId (remote: $effectiveRemoteOrderId) to Supabase.');
         } catch (itemErr) {
           debugPrint('[SYNC-UPLOAD] Error pushing individual order: $itemErr');
           // Revert sync_status so the order is retried on the next cycle
@@ -2452,14 +3062,29 @@ class CustomerOrderSyncService {
   }
 
   String _toServerStatus(String localStatus) {
-    switch (localStatus.toLowerCase().trim()) {
-      case 'pending': return 'Pending';
-      case 'confirmed': return 'Confirmed';
-      case 'preparing': return 'Preparing';
-      case 'out for delivery': return 'Out for Delivery';
-      case 'delivered': return 'Delivered';
-      case 'cancelled': return 'Cancelled';
-      default: return 'Confirmed';
+    final s = localStatus.toLowerCase().replaceAll('_', ' ').replaceAll('-', ' ').trim();
+    switch (s) {
+      case 'pending':
+      case 'placed':
+        return 'Pending';
+      case 'confirmed':
+      case 'approved':
+        return 'Confirmed';
+      case 'preparing':
+      case 'packing':
+        return 'Preparing';
+      case 'out for delivery':
+      case 'dispatched':
+      case 'on the way':
+        return 'Out for Delivery';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+      case 'denied':
+      case 'rejected':
+        return 'Cancelled';
+      default:
+        return 'Confirmed';
     }
   }
 

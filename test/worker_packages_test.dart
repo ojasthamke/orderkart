@@ -195,7 +195,8 @@ void main() {
       expect(workersVal.length, equals(1));
       expect(workersVal.first['name'], equals(workerName));
 
-      final areasVal = await valDb.query('areas');
+      final areasVal = await valDb.query('areas',
+          where: "id != '17aac4e9-9298-4774-927f-39e8d9369f9d'");
       expect(areasVal.length, equals(1));
       expect(areasVal.first['name'], equals('North Area'));
 
@@ -496,7 +497,9 @@ void main() {
       await AreaDao().insertArea(area);
 
       // Verify the area shows up in getAllAreas()
-      final areas = await AreaDao().getAllAreas();
+      final areas = (await AreaDao().getAllAreas())
+          .where((a) => a.id != '17aac4e9-9298-4774-927f-39e8d9369f9d')
+          .toList();
       expect(areas.length, equals(1));
       expect(areas.first.name, equals('Worker Added Area'));
 
