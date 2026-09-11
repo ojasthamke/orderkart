@@ -1816,6 +1816,17 @@ class CustomerOrderSyncService {
           'sequence_no': sequenceNo,
         };
 
+        final String subtitle = (item['subtitle'] as String? ?? '').trim();
+        final String benefit1 = (item['benefit_1'] as String? ?? '').trim();
+        final String benefit2 = (item['benefit_2'] as String? ?? '').trim();
+        final String benefit3 = (item['benefit_3'] as String? ?? '').trim();
+        if (subtitle.isNotEmpty) extra['subtitle'] = subtitle;
+        if (benefit1.isNotEmpty) extra['benefit_1'] = benefit1;
+        if (benefit2.isNotEmpty) extra['benefit_2'] = benefit2;
+        if (benefit3.isNotEmpty) extra['benefit_3'] = benefit3;
+        final bl = [benefit1, benefit2, benefit3].where((s) => s.isNotEmpty).toList();
+        if (bl.isNotEmpty) extra['benefits'] = bl;
+
         if (variantsList.isNotEmpty) {
           extra['variants'] = variantsList;
         } else if (matchingRemote != null) {
@@ -2076,6 +2087,28 @@ class CustomerOrderSyncService {
             } catch (_) {}
           }
 
+          String subtitle = '';
+          String benefit1 = '';
+          String benefit2 = '';
+          String benefit3 = '';
+          if (rawDesc.trim().startsWith('{') && rawDesc.trim().endsWith('}')) {
+            try {
+              final decoded = json.decode(rawDesc);
+              if (decoded is Map) {
+                subtitle = (decoded['subtitle'] ?? decoded['tagline'] ?? '').toString().trim();
+                benefit1 = (decoded['benefit_1'] ?? '').toString().trim();
+                benefit2 = (decoded['benefit_2'] ?? '').toString().trim();
+                benefit3 = (decoded['benefit_3'] ?? '').toString().trim();
+                if (decoded['benefits'] is List) {
+                  final bl = (decoded['benefits'] as List).map((e) => e.toString().trim()).toList();
+                  if (benefit1.isEmpty && bl.isNotEmpty) benefit1 = bl[0];
+                  if (benefit2.isEmpty && bl.length > 1) benefit2 = bl[1];
+                  if (benefit3.isEmpty && bl.length > 2) benefit3 = bl[2];
+                }
+              }
+            } catch (_) {}
+          }
+
           final String localNewId = rp['id']?.toString() ?? const Uuid().v4();
           await db.insert(
             'items',
@@ -2098,6 +2131,10 @@ class CustomerOrderSyncService {
               'order_now_cost_price': (rp['order_now_cost_price'] as num?)?.toDouble() ?? 0.0,
               'is_available': (rp['is_available'] == false || rp['is_available'] == 0 || rp['is_available']?.toString() == '0' || rp['is_available']?.toString().toLowerCase() == 'false') ? 0 : 1,
               'order_now_is_available': (rp['order_now_is_available'] == true || rp['order_now_is_available'] == 1 || rp['order_now_is_available']?.toString() == '1' || rp['order_now_is_available']?.toString().toLowerCase() == 'true') ? 1 : 0,
+              'subtitle': subtitle,
+              'benefit_1': benefit1,
+              'benefit_2': benefit2,
+              'benefit_3': benefit3,
               'created_at': rp['created_at']?.toString() ?? DateTime.now().toIso8601String(),
               'updated_at': rp['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
             },

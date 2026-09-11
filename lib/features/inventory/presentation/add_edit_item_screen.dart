@@ -52,6 +52,13 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   final _bestBeforeCon = TextEditingController();
   final _packCon = TextEditingController();
   final _weightPerPieceCon = TextEditingController(text: '0.25');
+
+  // Grocery Highlights (Customer Card)
+  final _subtitleCon = TextEditingController();
+  final _benefit1Con = TextEditingController();
+  final _benefit2Con = TextEditingController();
+  final _benefit3Con = TextEditingController();
+
   bool _rxRequired = false;
   String _photoPath = '';
   DateTime _createdAt = DateTime.now();
@@ -87,8 +94,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     try {
       final res = await Supabase.instance.client
           .from('categories')
-          .select('name, is_enabled')
-          .order('name');
+          .select('name, is_enabled, sort_order')
+          .order('sort_order', ascending: true)
+          .order('name', ascending: true);
       final list = <String>[];
       for (final r in res as List) {
         final name = (r['name'] ?? '').toString().trim();
@@ -155,6 +163,10 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         _orderNowCostCon.text = item.orderNowCostPrice > 0 ? '${item.orderNowCostPrice}' : '';
         _isAvailable = item.isAvailable;
         _orderNowIsAvailable = item.orderNowIsAvailable;
+        _subtitleCon.text = item.subtitle;
+        _benefit1Con.text = item.benefit1;
+        _benefit2Con.text = item.benefit2;
+        _benefit3Con.text = item.benefit3;
       });
 
     }
@@ -224,6 +236,10 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
     _orderNowMrpCon.dispose();
     _orderNowCostCon.dispose();
     _expiryCon.dispose();
+    _subtitleCon.dispose();
+    _benefit1Con.dispose();
+    _benefit2Con.dispose();
+    _benefit3Con.dispose();
 
     _batchCon.dispose();
     _dosageCon.dispose();
@@ -599,6 +615,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
               ),
               _buildAvailabilityCard(),
               _buildOrderNowFields(),
+              _buildGroceryHighlightsCard(),
               _buildCategorySpecificFields(),
               const SizedBox(height: 32),
 
@@ -723,6 +740,10 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         orderNowCostPrice: double.tryParse(_orderNowCostCon.text) ?? (double.tryParse(_costCon.text) ?? 0),
         isAvailable: _isAvailable,
         orderNowIsAvailable: _orderNowIsAvailable,
+        subtitle: _subtitleCon.text.trim(),
+        benefit1: _benefit1Con.text.trim(),
+        benefit2: _benefit2Con.text.trim(),
+        benefit3: _benefit3Con.text.trim(),
       );
 
 
@@ -929,6 +950,101 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
                   ],
                 ),
               ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGroceryHighlightsCard() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 32),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FDF4),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF86EFAC), width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.local_florist_rounded, color: Color(0xFF15803D), size: 22),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Grocery Card Subtitle & Highlights',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF15803D),
+                          ),
+                        ),
+                        Text(
+                          'Shown on Customer App grocery outer cards',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF166534)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _subtitleCon,
+                decoration: InputDecoration(
+                  labelText: 'Subtitle (e.g. Crisp & Juicy, Farm Direct)',
+                  prefixIcon: const Icon(Icons.subtitles_rounded, size: 20),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _benefit1Con,
+                decoration: InputDecoration(
+                  labelText: 'Benefit 1 (e.g. Rich in Vitamin C & Fiber)',
+                  prefixIcon: const Icon(Icons.check_circle_outline_rounded, size: 20, color: Color(0xFF16A34A)),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _benefit2Con,
+                decoration: InputDecoration(
+                  labelText: 'Benefit 2 (e.g. Naturally sweet & crunchy)',
+                  prefixIcon: const Icon(Icons.check_circle_outline_rounded, size: 20, color: Color(0xFF16A34A)),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _benefit3Con,
+                decoration: InputDecoration(
+                  labelText: 'Benefit 3 (e.g. 100% Organically Grown)',
+                  prefixIcon: const Icon(Icons.check_circle_outline_rounded, size: 20, color: Color(0xFF16A34A)),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
             ],
           ),
         ),

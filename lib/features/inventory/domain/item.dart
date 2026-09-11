@@ -26,6 +26,12 @@ class Item {
   final String photoPath;
   final int sequenceNo;
 
+  // Grocery Customer Card Highlights
+  final String subtitle;
+  final String benefit1;
+  final String benefit2;
+  final String benefit3;
+
   // Order Now Fields
   final double orderNowStock;
   final double orderNowSellingPrice;
@@ -64,6 +70,10 @@ class Item {
     this.weightPerPiece = 0.25,
     this.photoPath = '',
     this.sequenceNo = 0,
+    this.subtitle = '',
+    this.benefit1 = '',
+    this.benefit2 = '',
+    this.benefit3 = '',
     this.orderNowStock = 0,
     this.orderNowSellingPrice = 0,
     this.orderNowMrp = 0,
@@ -94,6 +104,10 @@ class Item {
     double? weightPerPiece,
     String? photoPath,
     int? sequenceNo,
+    String? subtitle,
+    String? benefit1,
+    String? benefit2,
+    String? benefit3,
     double? orderNowStock,
     double? orderNowSellingPrice,
     double? orderNowMrp,
@@ -123,6 +137,10 @@ class Item {
       weightPerPiece: weightPerPiece ?? this.weightPerPiece,
       photoPath: photoPath ?? this.photoPath,
       sequenceNo: sequenceNo ?? this.sequenceNo,
+      subtitle: subtitle ?? this.subtitle,
+      benefit1: benefit1 ?? this.benefit1,
+      benefit2: benefit2 ?? this.benefit2,
+      benefit3: benefit3 ?? this.benefit3,
       orderNowStock: orderNowStock ?? this.orderNowStock,
       orderNowSellingPrice: orderNowSellingPrice ?? this.orderNowSellingPrice,
       orderNowMrp: orderNowMrp ?? this.orderNowMrp,
@@ -154,6 +172,10 @@ class Item {
         'weight_per_piece': weightPerPiece,
         'photo_path': photoPath,
         'sequence_no': sequenceNo,
+        'subtitle': subtitle,
+        'benefit_1': benefit1,
+        'benefit_2': benefit2,
+        'benefit_3': benefit3,
         'order_now_stock': orderNowStock,
         'order_now_selling_price': orderNowSellingPrice,
         'order_now_mrp': orderNowMrp,
@@ -195,6 +217,10 @@ class Item {
         weightPerPiece: _parseDouble(map['weight_per_piece'], fallback: 0.25),
         photoPath: map['photo_path'] as String? ?? '',
         sequenceNo: (map['sequence_no'] as int?) ?? int.tryParse(map['sequence_no']?.toString() ?? '') ?? 0,
+        subtitle: map['subtitle'] as String? ?? '',
+        benefit1: (map['benefit_1'] ?? map['benefit1']) as String? ?? '',
+        benefit2: (map['benefit_2'] ?? map['benefit2']) as String? ?? '',
+        benefit3: (map['benefit_3'] ?? map['benefit3']) as String? ?? '',
         orderNowStock: _parseDouble(map['order_now_stock']),
         orderNowSellingPrice: _parseDouble(map['order_now_selling_price']),
         orderNowMrp: _parseDouble(map['order_now_mrp']),

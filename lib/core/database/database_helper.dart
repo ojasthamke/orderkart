@@ -144,6 +144,12 @@ class DatabaseHelper {
       'ALTER TABLE items ADD COLUMN order_now_mrp REAL DEFAULT 0.0',
       'ALTER TABLE items ADD COLUMN order_now_cost_price REAL DEFAULT 0.0',
       'ALTER TABLE items ADD COLUMN order_now_is_available INTEGER DEFAULT 1',
+      'ALTER TABLE items ADD COLUMN subtitle TEXT DEFAULT ""',
+      'ALTER TABLE items ADD COLUMN benefit_1 TEXT DEFAULT ""',
+      'ALTER TABLE items ADD COLUMN benefit_2 TEXT DEFAULT ""',
+      'ALTER TABLE items ADD COLUMN benefit_3 TEXT DEFAULT ""',
+      'ALTER TABLE categories ADD COLUMN image_url TEXT DEFAULT ""',
+      'ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0',
     ];
     for (final sql in cols) {
       try {
@@ -535,6 +541,10 @@ class DatabaseHelper {
         order_now_cost_price REAL DEFAULT 0,
         is_available INTEGER DEFAULT 1,
         order_now_is_available INTEGER DEFAULT 1,
+        subtitle      TEXT DEFAULT '',
+        benefit_1     TEXT DEFAULT '',
+        benefit_2     TEXT DEFAULT '',
+        benefit_3     TEXT DEFAULT '',
         created_at    TEXT NOT NULL,
         updated_at    TEXT NOT NULL
       )
