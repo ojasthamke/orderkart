@@ -1002,7 +1002,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     required AppOrder order,
     required String title,
     required IconData icon,
-    required Color color,
+    required Color accentColor,
+    required Color lightBg,
     required List<OrderItem> items,
     required double subtotal,
     required String currency,
@@ -1015,39 +1016,43 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: isDark ? 0.15 : 0.08),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: 0.25)),
+            color: isDark ? accentColor.withValues(alpha: 0.18) : lightBg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: accentColor.withValues(alpha: 0.28)),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 15, color: color),
-              const SizedBox(width: 6),
+              Icon(icon, size: 17, color: accentColor),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                    color: color,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: accentColor,
                   ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.black26 : Colors.white,
-                  borderRadius: BorderRadius.circular(4),
+                  color: isDark ? Colors.black38 : Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.15),
+                    width: 0.5,
+                  ),
                 ),
                 child: Text(
                   '${items.length} ${items.length == 1 ? "item" : "items"}',
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.bold,
-                    color: color,
+                    color: accentColor,
                   ),
                 ),
               ),
@@ -1055,60 +1060,131 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               Text(
                 '$currency${subtotal.toStringAsFixed(2)}',
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: accentColor,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 6),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: items.length,
-          itemBuilder: (ctx, i) {
-            final it = items[i];
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          it.itemName,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 14),
-                        ),
-                        Text(
-                          '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} × $currency${it.unitPrice > 0 && it.unitPrice < 1.0 ? it.unitPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '') : it.unitPrice.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 12),
-                        ),
-                      ],
+        const SizedBox(height: 8),
+        ...items.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final it = entry.value;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${idx + 1}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11.5,
+                      color: accentColor,
                     ),
                   ),
-                  Text(
-                    '$currency${it.totalPrice.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        it.itemName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                          color: isDark ? Colors.white : const Color(0xFF1E293B),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF334155)
+                                  : const Color(0xFFE2E8F0),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              AppFormatters.quantity(it.quantity, unit: it.itemUnit),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF334155),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              '@ $currency${it.unitPrice > 0 && it.unitPrice < 1.0 ? it.unitPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '') : it.unitPrice.toStringAsFixed(2)} / ${it.itemUnit}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.block_rounded,
-                        size: 18, color: Colors.orange),
-                    tooltip: 'Mark Unavailable',
-                    padding: const EdgeInsets.only(left: 8),
-                    constraints: const BoxConstraints(),
-                    onPressed: () => _toggleItemAvailability(order, it),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$currency${it.totalPrice.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
-                ],
-              ),
-            );
-          },
-        ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: Icon(
+                    Icons.block_rounded,
+                    size: 18,
+                    color: Colors.orange.shade700,
+                  ),
+                  tooltip: 'Mark Unavailable',
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _toggleItemAvailability(order, it),
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
@@ -1119,7 +1195,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     final unavailableItems = items.where((it) => !it.isAvailable).toList();
 
     final inventoryItems = ref.watch(inventoryProvider).valueOrNull ?? [];
-    final Map<String, Item> itemMap = {for (final item in inventoryItems) item.id: item};
+    final Map<String, Item> itemByIdMap = {for (final item in inventoryItems) item.id: item};
+    final Map<String, Item> itemByNameMap = {
+      for (final item in inventoryItems) item.name.toLowerCase().trim(): item
+    };
 
     final produceItems = <OrderItem>[];
     final groceryItems = <OrderItem>[];
@@ -1127,7 +1206,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     double grocerySubtotal = 0.0;
 
     for (final it in availableItems) {
-      final matchedItem = itemMap[it.itemId];
+      Item? matchedItem = itemByIdMap[it.itemId];
+      if (matchedItem == null && it.itemId.contains('_var_')) {
+        final baseId = it.itemId.split('_var_').first;
+        matchedItem = itemByIdMap[baseId];
+      }
+      matchedItem ??= itemByNameMap[it.itemName.toLowerCase().trim()];
       final isGrocery = CatalogClassifier.isGroceryOrderItem(it, matchedItem);
       if (isGrocery) {
         groceryItems.add(it);
@@ -1137,6 +1221,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         produceSubtotal += it.totalPrice;
       }
     }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       width: double.infinity,
@@ -1201,102 +1287,121 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           if (availableItems.isEmpty && unavailableItems.isEmpty)
             const Text('No items in this order')
           else ...[
             if (produceItems.isNotEmpty)
               _buildOrderItemSubSection(
                 order: order,
-                title: 'VEGETABLES & FRESH PRODUCE',
+                title: 'Fresh Produce & Vegetables',
                 icon: Icons.eco_rounded,
-                color: const Color(0xFF2E7D32),
+                accentColor: const Color(0xFF047857),
+                lightBg: const Color(0xFFECFDF5),
                 items: produceItems,
                 subtotal: produceSubtotal,
                 currency: currency,
               ),
             if (produceItems.isNotEmpty && groceryItems.isNotEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Divider(height: 1),
-              ),
+              const SizedBox(height: 12),
             if (groceryItems.isNotEmpty)
               _buildOrderItemSubSection(
                 order: order,
-                title: 'GROCERIES & PACKAGED GOODS',
-                icon: Icons.local_grocery_store_rounded,
-                color: const Color(0xFF1565C0),
+                title: 'Groceries & Packaged Goods',
+                icon: Icons.shopping_bag_outlined,
+                accentColor: const Color(0xFF1D4ED8),
+                lightBg: const Color(0xFFEFF6FF),
                 items: groceryItems,
                 subtotal: grocerySubtotal,
                 currency: currency,
               ),
             if (unavailableItems.isNotEmpty) ...[
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
+                padding: EdgeInsets.symmetric(vertical: 10.0),
                 child: Divider(),
               ),
               Row(
                 children: [
-                  const Icon(Icons.remove_shopping_cart_rounded, color: Colors.orange, size: 16),
+                  Icon(Icons.remove_shopping_cart_rounded,
+                      color: Colors.orange.shade800, size: 16),
                   const SizedBox(width: 6),
                   Text(
-                    'NOT AVAILABLE ITEMS',
+                    'OUT OF STOCK / UNAVAILABLE ITEMS',
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
                         color: Colors.orange.shade800),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: unavailableItems.length,
-                itemBuilder: (ctx, i) {
-                  final it = unavailableItems[i];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                it.itemName,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                    decoration: TextDecoration.lineThrough,
-                                    color: Colors.orange),
-                              ),
-                              Text(
-                                '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} × $currency${it.unitPrice > 0 && it.unitPrice < 1.0 ? it.unitPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '') : it.unitPrice.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                    color: Colors.orange, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          '${currency}0.00',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 14, color: Colors.orange),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.check_circle_outline_rounded,
-                              size: 18, color: Colors.green),
-                          tooltip: 'Mark Available',
-                          padding: const EdgeInsets.only(left: 8),
-                          constraints: const BoxConstraints(),
-                          onPressed: () => _toggleItemAvailability(order, it),
-                        ),
-                      ],
+              ...unavailableItems.map((it) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF451A03).withValues(alpha: 0.3)
+                        : const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF7C2D12)
+                          : const Color(0xFFFED7AA),
                     ),
-                  );
-                },
-              ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              it.itemName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13.5,
+                                decoration: TextDecoration.lineThrough,
+                                color: Color(0xFF9A3412),
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${AppFormatters.quantity(it.quantity, unit: it.itemUnit)} @ $currency${it.unitPrice > 0 && it.unitPrice < 1.0 ? it.unitPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '') : it.unitPrice.toStringAsFixed(2)} / ${it.itemUnit}',
+                              style: const TextStyle(
+                                color: Color(0xFFC2410C),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${currency}0.00',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14.5,
+                          color: Color(0xFFC2410C),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: Icon(Icons.check_circle_outline_rounded,
+                            size: 18, color: Colors.green.shade700),
+                        tooltip: 'Mark Available',
+                        padding: const EdgeInsets.all(6),
+                        constraints: const BoxConstraints(),
+                        onPressed: () => _toggleItemAvailability(order, it),
+                      ),
+                    ],
+                  ),
+                );
+              }),
             ],
           ],
         ],
