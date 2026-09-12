@@ -9,6 +9,7 @@ import '../domain/item_variant.dart';
 import '../domain/stock_history.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/services/customer_order_sync_service.dart';
+import '../../../core/utils/catalog_classifier.dart';
 import 'item_dao.dart';
 
 class InventoryRepositoryImpl implements InventoryRepository {
@@ -47,12 +48,28 @@ class InventoryRepositoryImpl implements InventoryRepository {
     final imagePath = p['image_path'] as String? ?? '';
     
     // Get category name
-    String categoryName = 'Vegetables';
+    String categoryName = '';
     final categories = p['categories'];
     if (categories is Map<String, dynamic>) {
-      categoryName = categories['name'] as String? ?? 'Vegetables';
+      categoryName = categories['name'] as String? ?? '';
+    } else if (categories is List && categories.isNotEmpty && categories.first is Map) {
+      categoryName = (categories.first as Map)['name'] as String? ?? '';
     } else if (p['category_name'] != null) {
       categoryName = p['category_name'] as String;
+    }
+    if (categoryName.isEmpty) {
+      final catId = (p['category_id'] ?? '').toString();
+      categoryName = CatalogClassifier.knownCategoryMap[catId] ??
+          (CatalogClassifier.isVegetableItem(Item(
+            id: id,
+            name: name,
+            category: '',
+            unit: unit,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ))
+              ? 'Vegetables'
+              : 'Groceries');
     }
     
     // Parse description for JSON extra fields

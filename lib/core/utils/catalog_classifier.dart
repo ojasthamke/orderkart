@@ -12,26 +12,43 @@ class CatalogClassifier {
     'grocery',
     'dairy',
     'dairy & eggs',
+    'dairy, bread & eggs',
+    'bread & eggs',
     'staples & grains',
     'staples',
     'grains',
     'atta, rice & dal',
+    'atta',
+    'rice',
+    'dal',
     'snacks & munchies',
     'snacks',
+    'snacks & drinks',
+    'chips & namkeen',
+    'namkeen',
     'beverages',
     'drinks',
+    'drinks & juices',
+    'juices',
     'tea & coffee',
+    'tea',
+    'coffee',
+    'instant food',
     'spices & masalas',
     'spices',
     'masalas',
     'oils & ghee',
+    'oil, ghee & masala',
     'oil',
+    'ghee',
+    'dry fruits & cereals',
+    'dry fruits',
+    'cereals',
     'packaged food',
     'personal care',
     'household',
     'cleaning & household',
     'bakery & biscuits',
-    'dry fruits',
     'fruits',
     'fruit',
     'fresh fruits',
@@ -50,6 +67,14 @@ class CatalogClassifier {
 
   /// Canonical static UUID-to-Category mapping directly from Supabase.
   static const Map<String, String> knownCategoryMap = {
+    'bd5411be-1bc0-4efb-a284-77c1040979a9': 'Atta, Rice & Dal',
+    'aab31b67-6929-4f72-ac3c-e7e62181dc2a': 'Oil, Ghee & Masala',
+    'e212d97b-5a46-4074-a50e-6e110d9089e6': 'Dairy, Bread & Eggs',
+    '43463f75-10c1-4235-b5d1-bfa89b322333': 'Dry Fruits & Cereals',
+    'b79844c2-f167-490a-bfb4-2b72e8a83626': 'Chips & Namkeen',
+    'f2f9d6fd-240f-4c3d-a3fe-e58e999f9f2b': 'Drinks & Juices',
+    '63f606c9-af27-4e1a-866c-7d4c137653ea': 'Tea & Coffee',
+    '74ca429e-40f4-4a0a-8816-c2e3844b08d2': 'Instant Food',
     'b784d64b-ac8a-499c-9bcc-d157009bbe68': 'Staples & Grains',
     '244b85ae-c0c8-48a8-b05e-2cc4db621757': 'Dairy',
     '127a6476-e3e1-4f42-84c2-41e50dcd9aa0': 'Snacks & Munchies',
@@ -63,6 +88,14 @@ class CatalogClassifier {
 
   /// Known Supabase UUIDs that belong to Groceries & Fruits
   static const Set<String> knownGroceryCategoryIds = {
+    'bd5411be-1bc0-4efb-a284-77c1040979a9',
+    'aab31b67-6929-4f72-ac3c-e7e62181dc2a',
+    'e212d97b-5a46-4074-a50e-6e110d9089e6',
+    '43463f75-10c1-4235-b5d1-bfa89b322333',
+    'b79844c2-f167-490a-bfb4-2b72e8a83626',
+    'f2f9d6fd-240f-4c3d-a3fe-e58e999f9f2b',
+    '63f606c9-af27-4e1a-866c-7d4c137653ea',
+    '74ca429e-40f4-4a0a-8816-c2e3844b08d2',
     'b784d64b-ac8a-499c-9bcc-d157009bbe68',
     '244b85ae-c0c8-48a8-b05e-2cc4db621757',
     '127a6476-e3e1-4f42-84c2-41e50dcd9aa0',
@@ -205,15 +238,49 @@ class CatalogClassifier {
 
   /// Determines if an [Item] is strictly a Grocery item.
   static bool isGroceryItem(Item item) {
+    // 1. Strict Exclusion: Explicit Vegetables or Medicines must NEVER be classified as groceries
+    final catLower = item.category.trim().toLowerCase();
+    if (nonGroceryCategories.contains(catLower) ||
+        catLower == 'vegetables' ||
+        catLower == 'vegetable' ||
+        catLower.contains('veggie') ||
+        catLower.contains('medicin')) {
+      return false;
+    }
+
+    // 2. Strict Exclusion: Fresh produce keywords without packaged grocery modifiers
+    // can NEVER be groceries (e.g. "Spring Onion", "Patta Kobi", "Tamatar", "Kanda")
+    final nameLower = item.name.toLowerCase().trim();
+    bool hasVegKeyword = false;
+    for (final kw in vegetableKeywords) {
+      if (nameLower.contains(kw)) {
+        hasVegKeyword = true;
+        break;
+      }
+    }
+    bool hasGroceryModifier = false;
+    for (final mod in groceryModifiers) {
+      if (nameLower.contains(mod)) {
+        hasGroceryModifier = true;
+        break;
+      }
+    }
+    if (hasVegKeyword && !hasGroceryModifier) {
+      return false;
+    }
+
+    // 3. Check known Grocery Category IDs
     final catIdLower = item.id.toLowerCase();
     if (knownGroceryCategoryIds.contains(catIdLower)) {
       return true;
     }
+
+    // 4. Check if item category is an approved grocery category
     if (isGroceryCategory(item.category)) {
       return true;
     }
 
-    final nameLower = item.name.toLowerCase().trim();
+    // 5. Check grocery modifiers and keywords
     for (final mod in groceryModifiers) {
       if (nameLower.contains(mod)) return true;
     }
@@ -223,14 +290,7 @@ class CatalogClassifier {
 
     final unitLower = item.unit.toLowerCase().trim();
     if (packagedUnits.contains(unitLower)) {
-      bool isVeg = false;
-      for (final kw in vegetableKeywords) {
-        if (nameLower.contains(kw)) {
-          isVeg = true;
-          break;
-        }
-      }
-      if (!isVeg) return true;
+      if (!hasVegKeyword) return true;
     }
 
     return false;

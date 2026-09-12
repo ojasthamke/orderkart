@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/catalog_classifier.dart';
 import '../../../core/utils/image_utils.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -20,7 +21,8 @@ import '../../settings/presentation/settings_provider.dart';
 
 class AddEditItemScreen extends ConsumerStatefulWidget {
   final String? itemId;
-  const AddEditItemScreen({super.key, this.itemId});
+  final String? initialCategory;
+  const AddEditItemScreen({super.key, this.itemId, this.initialCategory});
 
   @override
   ConsumerState<AddEditItemScreen> createState() => _AddEditItemScreenState();
@@ -73,6 +75,9 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialCategory != null && widget.initialCategory!.isNotEmpty) {
+      _category = widget.initialCategory!;
+    }
     _fetchDynamicCategories();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final mode = ref.read(appModeProvider).value;
@@ -729,9 +734,12 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
         dosageInfo: _category == AppConstants.catMedicines
             ? _dosageCon.text.trim()
             : '',
-        bestBefore:
-            _category == AppConstants.catGroceries ? _bestBeforeCon.text : '',
-        packDate: _category == AppConstants.catGroceries ? _packCon.text : '',
+        bestBefore: CatalogClassifier.isGroceryCategory(_category)
+            ? _bestBeforeCon.text
+            : '',
+        packDate: CatalogClassifier.isGroceryCategory(_category)
+            ? _packCon.text
+            : '',
         weightPerPiece: double.tryParse(_weightPerPieceCon.text) ?? 0.25,
         sequenceNo: int.tryParse(_sequenceCon.text.trim()) ?? 0,
         orderNowStock: double.tryParse(_orderNowStockCon.text) ?? (double.tryParse(_stockCon.text) ?? 0),
@@ -1120,7 +1128,7 @@ class _AddEditItemScreenState extends ConsumerState<AddEditItemScreen> {
           ),
         ],
       );
-    } else if (_category == AppConstants.catGroceries) {
+    } else if (CatalogClassifier.isGroceryCategory(_category)) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

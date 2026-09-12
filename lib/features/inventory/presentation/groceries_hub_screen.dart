@@ -42,13 +42,244 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
   final _spoilageRemarksCon = TextEditingController();
   bool _submittingSpoilage = false;
 
+  String _selectedCategory = 'All';
+  String _searchQuery = '';
+  final _searchCon = TextEditingController();
+  List<String> _dynamicGroceryCategories = ['All', ...AppConstants.groceryCategories];
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadGroceryCategories();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncToCloud(showFeedback: false);
     });
+  }
+
+  Future<void> _loadGroceryCategories() async {
+    try {
+      final res = await Supabase.instance.client
+          .from('categories')
+          .select('name, is_enabled, sort_order')
+          .order('sort_order', ascending: true)
+          .order('name', ascending: true);
+      final cats = <String>['All'];
+      for (final r in res as List) {
+        final name = (r['name'] ?? '').toString().trim();
+        final enabled = r['is_enabled'] != false;
+        if (name.isNotEmpty && enabled && CatalogClassifier.isGroceryCategory(name) && !cats.contains(name)) {
+          cats.add(name);
+        }
+      }
+      for (final def in AppConstants.groceryCategories) {
+        if (!cats.contains(def)) cats.add(def);
+      }
+      if (mounted) {
+        setState(() {
+          _dynamicGroceryCategories = cats;
+        });
+      }
+    } catch (_) {}
+  }
+
+  bool _matchesGroceryCategory(Item item, String selectedCat) {
+    if (selectedCat == 'All') return true;
+    final catLower = item.category.trim().toLowerCase();
+    final selLower = selectedCat.trim().toLowerCase();
+    if (catLower == selLower) return true;
+
+    switch (selectedCat) {
+      case 'Atta, Rice & Dal':
+      case 'Staples & Grains':
+        return catLower.contains('atta') ||
+            catLower.contains('rice') ||
+            catLower.contains('dal') ||
+            catLower.contains('staple') ||
+            catLower.contains('grain');
+      case 'Oil, Ghee & Masala':
+      case 'Oil':
+      case 'Spices & Masalas':
+        return catLower.contains('oil') ||
+            catLower.contains('ghee') ||
+            catLower.contains('spice') ||
+            catLower.contains('masala');
+      case 'Dairy, Bread & Eggs':
+      case 'Dairy':
+        return catLower.contains('dairy') ||
+            catLower.contains('milk') ||
+            catLower.contains('egg') ||
+            catLower.contains('bread');
+      case 'Dry Fruits & Cereals':
+      case 'Groceries':
+        return catLower.contains('dry fruit') ||
+            catLower.contains('cereal') ||
+            catLower == 'groceries';
+      case 'Chips & Namkeen':
+      case 'Snacks & Munchies':
+      case 'Snacks & Drinks':
+        return catLower.contains('chip') ||
+            catLower.contains('namkeen') ||
+            catLower.contains('snack') ||
+            catLower.contains('munch');
+      case 'Drinks & Juices':
+      case 'Beverages':
+        return catLower.contains('drink') ||
+            catLower.contains('juice') ||
+            catLower.contains('beverage') ||
+            catLower.contains('soda');
+      case 'Tea & Coffee':
+        return catLower.contains('tea') ||
+            catLower.contains('coffee') ||
+            catLower.contains('chai') ||
+            (catLower.contains('beverage') &&
+                (item.name.toLowerCase().contains('tea') ||
+                    item.name.toLowerCase().contains('coffee')));
+      case 'Instant Food':
+        return catLower.contains('instant') ||
+            catLower.contains('noodle') ||
+            catLower.contains('pasta') ||
+            catLower.contains('vermicelli');
+      default:
+        return catLower.contains(selLower);
+    }
+  }
+
+  Future<void> _showQuickCategoryPicker(BuildContext context, Item item) async {
+    AppHaptics.buttonClick();
+    final categories = _dynamicGroceryCategories.where((c) => c != 'All').toList();
+    if (!categories.contains('Vegetables')) categories.add('Vegetables');
+    if (!categories.contains('Fruits')) categories.add('Fruits');
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.72,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.category_rounded, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Assign Category',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          item.name,
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const Divider(height: 20),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: categories.length,
+                  itemBuilder: (c, idx) {
+                    final cat = categories[idx];
+                    final isSelected = item.category.trim().toLowerCase() == cat.trim().toLowerCase();
+                    final isMoveOut = cat == 'Vegetables' || cat == 'Fruits';
+
+                    return ListTile(
+                      dense: true,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      tileColor: isSelected
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : null,
+                      leading: Icon(
+                        isMoveOut
+                            ? Icons.eco_rounded
+                            : Icons.shopping_bag_outlined,
+                        color: isSelected
+                            ? AppColors.primary
+                            : (isMoveOut ? Colors.orange : AppColors.textSecondary),
+                      ),
+                      title: Text(
+                        cat,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          color: isSelected ? AppColors.primary : null,
+                        ),
+                      ),
+                      subtitle: isMoveOut
+                          ? const Text('Move out of Groceries Hub into general produce',
+                              style: TextStyle(fontSize: 10, color: Colors.orange))
+                          : null,
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
+                          : null,
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        await _updateItemCategory(item, cat);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _updateItemCategory(Item item, String newCategory) async {
+    try {
+      AppHaptics.buttonClick();
+      final dao = ItemDao();
+      final updatedItem = item.copyWith(category: newCategory);
+      final repo = InventoryRepositoryImpl(dao);
+      await repo.updateItem(updatedItem);
+      ref.invalidate(inventoryProvider);
+      ref.invalidate(groceryVariantsMapProvider);
+      if (mounted) {
+        SnackbarHelper.showSuccess(
+          context,
+          'Assigned "${item.name}" to "$newCategory"',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarHelper.showError(context, 'Failed to update category: $e');
+      }
+    }
   }
 
   Future<void> _syncToCloud({bool showFeedback = true}) async {
@@ -77,6 +308,7 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
     _tabController.dispose();
     _spoilageQtyCon.dispose();
     _spoilageRemarksCon.dispose();
+    _searchCon.dispose();
     super.dispose();
   }
 
@@ -203,6 +435,11 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
             onPressed: () {
               Navigator.of(context).pushNamed(
                 AppRoutes.addEditItem,
+                arguments: {
+                  'initialCategory': _selectedCategory != 'All'
+                      ? _selectedCategory
+                      : AppConstants.catAttaRiceDal,
+                },
               ).then((_) {
                 ref.invalidate(inventoryProvider);
                 ref.invalidate(groceryVariantsMapProvider);
@@ -214,7 +451,7 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
         controller: _tabController,
         indicatorColor: Colors.transparent,
         indicator: AppColors.tabDecoration(context),
-        labelColor: AppColors.primary,
+        labelColor: Colors.white,
         unselectedLabelColor: AppColors.textSecondary,
         tabs: const [
           Tab(
@@ -261,6 +498,26 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
 
   Widget _buildStockTab(List<Item> items, bool isWorker, bool isGroceriesOpen,
       Map<String, List<ItemVariant>> variantsMap, String currency) {
+    final filteredItems = items.where((item) {
+      if (_selectedCategory != 'All' &&
+          !_matchesGroceryCategory(item, _selectedCategory)) {
+        return false;
+      }
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final nameMatch = item.name.toLowerCase().contains(query);
+        final catMatch = item.category.toLowerCase().contains(query);
+        final barcodeMatch = item.barcode.toLowerCase().contains(query);
+        if (!nameMatch && !catMatch && !barcodeMatch) return false;
+      }
+      return true;
+    }).toList();
+
+    int getCategoryCount(String category) {
+      if (category == 'All') return items.length;
+      return items.where((i) => _matchesGroceryCategory(i, category)).length;
+    }
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -368,6 +625,113 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
           ),
         ),
 
+        // 2. Search Box
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+            ),
+          ),
+          child: TextField(
+            controller: _searchCon,
+            decoration: InputDecoration(
+              hintText: 'Search groceries by name or barcode...',
+              hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.primary),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () {
+                        setState(() {
+                          _searchCon.clear();
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            onChanged: (val) {
+              setState(() {
+                _searchQuery = val.trim();
+              });
+            },
+          ),
+        ),
+
+        // 3. Category Horizontal Filter Strip with Badges
+        SizedBox(
+          height: 38,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _dynamicGroceryCategories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, idx) {
+              final cat = _dynamicGroceryCategories[idx];
+              final isSelected = _selectedCategory == cat;
+              final count = getCategoryCount(cat);
+
+              return FilterChip(
+                selected: isSelected,
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      cat,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? Colors.white : null,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.25)
+                            : AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? Colors.white : AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                selectedColor: AppColors.primary,
+                backgroundColor: Theme.of(context).cardColor,
+                checkmarkColor: Colors.white,
+                showCheckmark: false,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: isSelected
+                        ? AppColors.primary
+                        : Theme.of(context).dividerColor.withValues(alpha: 0.15),
+                  ),
+                ),
+                onSelected: (_) {
+                  AppHaptics.buttonClick();
+                  setState(() {
+                    _selectedCategory = cat;
+                  });
+                },
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
+
         if (items.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 32),
@@ -377,8 +741,41 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
               subtitle: 'Tap the + button above to add grocery items',
             ),
           )
+        else if (filteredItems.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Column(
+              children: [
+                Icon(Icons.filter_alt_off_rounded, size: 48, color: Colors.grey[400]),
+                const SizedBox(height: 12),
+                Text(
+                  'No items found in "$_selectedCategory"',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _searchQuery.isNotEmpty
+                      ? 'No items match "$_searchQuery"'
+                      : 'Assign items to this category or add new ones',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 14),
+                TextButton.icon(
+                  icon: const Icon(Icons.clear_all_rounded, size: 18),
+                  label: const Text('Show All Groceries'),
+                  onPressed: () {
+                    setState(() {
+                      _selectedCategory = 'All';
+                      _searchCon.clear();
+                      _searchQuery = '';
+                    });
+                  },
+                ),
+              ],
+            ),
+          )
         else
-          ...items.asMap().entries.map((entry) {
+          ...filteredItems.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
             final isLow = item.isLowStock;
@@ -431,6 +828,58 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // Category Pill Badge (1-tap switcher)
+                                  InkWell(
+                                    onTap: isWorker
+                                        ? null
+                                        : () => _showQuickCategoryPicker(context, item),
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      margin: const EdgeInsets.only(bottom: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.25),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.category_outlined,
+                                              size: 12,
+                                              color: AppColors.primary),
+                                          const SizedBox(width: 4),
+                                          Flexible(
+                                            child: Text(
+                                              item.category.isNotEmpty
+                                                  ? item.category
+                                                  : 'Uncategorized',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.primary,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (!isWorker) ...[
+                                            const SizedBox(width: 3),
+                                            const Icon(
+                                                Icons.arrow_drop_down_rounded,
+                                                size: 14,
+                                                color: AppColors.primary),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                   Text(
                                     item.name,
                                     style: const TextStyle(
@@ -522,6 +971,8 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                                           ref.invalidate(
                                               groceryVariantsMapProvider);
                                         });
+                                      } else if (val == 'category') {
+                                        _showQuickCategoryPicker(context, item);
                                       } else if (val == 'delete') {
                                         _confirmDeleteItem(item).then((ok) {
                                           if (ok == true) _deleteItem(item);
@@ -538,6 +989,17 @@ class _GroceriesHubScreenState extends ConsumerState<GroceriesHubScreen>
                                             Icon(Icons.edit_rounded, size: 18),
                                             SizedBox(width: 8),
                                             Text('Edit'),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'category',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.category_rounded,
+                                                size: 18),
+                                            SizedBox(width: 8),
+                                            Text('Change Category'),
                                           ],
                                         ),
                                       ),

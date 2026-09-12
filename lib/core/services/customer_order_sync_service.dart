@@ -9,6 +9,8 @@ import '../utils/unit_converter.dart';
 import '../../features/customer/data/customer_dao.dart';
 
 import '../../features/customer/domain/customer.dart';
+import '../../features/inventory/domain/item.dart';
+import '../utils/catalog_classifier.dart';
 import 'notification_service.dart';
 
 class CustomerOrderSyncService {
@@ -1947,24 +1949,39 @@ class CustomerOrderSyncService {
               } catch (_) {}
             }
 
+            String? remoteCategory;
+            final catObj = matchingRemote['categories'];
+            if (catObj is Map) {
+              remoteCategory = (catObj['name'] ?? '').toString().trim();
+            } else if (catObj is List && catObj.isNotEmpty && catObj.first is Map) {
+              remoteCategory = (catObj.first['name'] ?? '').toString().trim();
+            } else if (matchingRemote['category_name'] != null) {
+              remoteCategory = matchingRemote['category_name']?.toString().trim();
+            }
+
             try {
               // Update local SQLite with remote metadata (but strictly preserve local prices, stock, mrp, cost_price!)
+              final Map<String, dynamic> localItemUpdates = {
+                'name': remoteName,
+                'unit': remoteUnit,
+                'photo_path': remoteImage,
+                'min_stock': parsedMinStock,
+                'weight_per_piece': parsedWeight,
+                'sequence_no': parsedSeq,
+                'updated_at': remoteUpdatedAt.toIso8601String(),
+                // Preserve local values explicitly:
+                'selling_price': sellingPrice,
+                'stock': stock,
+                'cost_price': costPrice,
+                'market_price': marketPrice,
+              };
+              if (remoteCategory != null && remoteCategory.isNotEmpty) {
+                localItemUpdates['category'] = remoteCategory;
+              }
+
               await db.update(
                 'items',
-                {
-                  'name': remoteName,
-                  'unit': remoteUnit,
-                  'photo_path': remoteImage,
-                  'min_stock': parsedMinStock,
-                  'weight_per_piece': parsedWeight,
-                  'sequence_no': parsedSeq,
-                  'updated_at': remoteUpdatedAt.toIso8601String(),
-                  // Preserve local values explicitly:
-                  'selling_price': sellingPrice,
-                  'stock': stock,
-                  'cost_price': costPrice,
-                  'market_price': marketPrice,
-                },
+                localItemUpdates,
                 where: 'id = ?',
                 whereArgs: [localId],
               );
@@ -2052,12 +2069,29 @@ class CustomerOrderSyncService {
         if (localIds.contains(rpId) || localNames.contains(rpNameLower)) continue;
 
         try {
-          String catName = 'Groceries';
+          String catName = '';
           final dynamic catData = rp['categories'];
           if (catData is Map) {
-            catName = catData['name']?.toString() ?? 'Groceries';
+            catName = catData['name']?.toString().trim() ?? '';
+          } else if (catData is List && catData.isNotEmpty && catData.first is Map) {
+            catName = catData.first['name']?.toString().trim() ?? '';
           } else if (rp['category_name'] != null) {
-            catName = rp['category_name'].toString();
+            catName = rp['category_name'].toString().trim();
+          }
+
+          if (catName.isEmpty) {
+            final catId = (rp['category_id'] ?? '').toString();
+            catName = CatalogClassifier.knownCategoryMap[catId] ??
+                (CatalogClassifier.isVegetableItem(Item(
+                  id: rpId,
+                  name: rpName,
+                  category: '',
+                  unit: 'kg',
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ))
+                    ? 'Vegetables'
+                    : 'Groceries');
           }
 
           final rawDesc = (rp['description'] ?? '').toString();

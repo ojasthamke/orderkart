@@ -91,10 +91,52 @@ class AppConstants {
   static const String catGroceries = 'Groceries';
   static const String catMedicines = 'Medicines';
 
+  // Specific Grocery Categories (matching Customer App & Supabase)
+  static const String catAttaRiceDal = 'Atta, Rice & Dal';
+  static const String catOilGheeMasala = 'Oil, Ghee & Masala';
+  static const String catDairyBreadEggs = 'Dairy, Bread & Eggs';
+  static const String catDryFruitsCereals = 'Dry Fruits & Cereals';
+  static const String catChipsNamkeen = 'Chips & Namkeen';
+  static const String catDrinksJuices = 'Drinks & Juices';
+  static const String catTeaCoffee = 'Tea & Coffee';
+  static const String catInstantFood = 'Instant Food';
+
+  static const List<String> groceryCategories = [
+    catAttaRiceDal,
+    catOilGheeMasala,
+    catDairyBreadEggs,
+    catDryFruitsCereals,
+    catChipsNamkeen,
+    catDrinksJuices,
+    catTeaCoffee,
+    catInstantFood,
+    catGroceries,
+    'Staples & Grains',
+    'Dairy',
+    'Oil',
+    'Spices & Masalas',
+    'Snacks & Munchies',
+    'Beverages',
+  ];
+
   static const List<String> itemCategories = [
     catVegetables,
     catFruits,
+    catAttaRiceDal,
+    catOilGheeMasala,
+    catDairyBreadEggs,
+    catDryFruitsCereals,
+    catChipsNamkeen,
+    catDrinksJuices,
+    catTeaCoffee,
+    catInstantFood,
     catGroceries,
+    'Staples & Grains',
+    'Dairy',
+    'Oil',
+    'Spices & Masalas',
+    'Snacks & Munchies',
+    'Beverages',
     catMedicines,
   ];
 

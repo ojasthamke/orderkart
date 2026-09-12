@@ -214,6 +214,7 @@ class _OrderKartAppState extends ConsumerState<OrderKartApp> {
         return _slide(
             AddEditItemScreen(
               itemId: args?['itemId'] as String?,
+              initialCategory: args?['initialCategory'] as String?,
             ),
             settings);
 
